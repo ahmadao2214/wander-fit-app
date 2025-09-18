@@ -1,12 +1,15 @@
 import { useColorScheme } from 'react-native'
 import { TamaguiProvider, type TamaguiProviderProps } from 'tamagui'
 import { ToastProvider, ToastViewport } from '@tamagui/toast'
+import { ConvexProvider, ConvexReactClient } from 'convex/react'
 import { CurrentToast } from './CurrentToast'
 import { config } from '../tamagui.config'
 
 export function Provider({ children, ...rest }: Omit<TamaguiProviderProps, 'config'>) {
   const colorScheme = useColorScheme()
-
+  const convexClient = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!, {
+    unsavedChangesWarning: false,
+  })
   return (
     <TamaguiProvider
       config={config}
@@ -23,7 +26,9 @@ export function Provider({ children, ...rest }: Omit<TamaguiProviderProps, 'conf
           ]
         }
       >
-        {children}
+        <ConvexProvider client={convexClient}>
+          {children}
+        </ConvexProvider>
         <CurrentToast />
         <ToastViewport top="$8" left={0} right={0} />
       </ToastProvider>

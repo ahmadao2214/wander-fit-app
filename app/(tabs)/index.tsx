@@ -1,13 +1,18 @@
 import { ExternalLink } from '@tamagui/lucide-icons'
-import { Anchor, H2, Paragraph, XStack, YStack } from 'tamagui'
+import { Anchor, H2, Paragraph, XStack, YStack, Text } from 'tamagui'
 import { ToastControl } from 'components/CurrentToast'
+import { api } from 'convex/_generated/api'
+import { useQuery } from 'convex/react'
 
 export default function TabOneScreen() {
+  const tasks = useQuery(api.tasks.get)
+
   return (
     <YStack flex={1} items="center" gap="$8" px="$10" pt="$5" bg="$background">
       <H2>Tamagui + Expo</H2>
 
       <ToastControl />
+      {tasks?.map(({ _id, text }) => <Text key={_id}>{text}</Text>)}
 
       <XStack
         items="center"
