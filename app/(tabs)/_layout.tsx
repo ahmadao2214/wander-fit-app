@@ -29,7 +29,7 @@ export default function TabLayout() {
           headerRight: () => (
             <Link href="/modal" asChild>
               <Button mr="$4" size="$2.5">
-                Hello!
+                Auth Modal
               </Button>
             </Link>
           ),
