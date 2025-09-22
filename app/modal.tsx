@@ -9,7 +9,7 @@ import { SignOutButton } from '../components/SignOutButton'
 
 
 export default function ModalScreen() {
-  const tasks = useQuery(api.tasks.get);
+  const trainers = useQuery(api.users.getTrainers);
   const { user } = useUser()
 
 
@@ -19,8 +19,8 @@ export default function ModalScreen() {
         <Authenticated>
           <Text>Hello {user?.emailAddresses[0].emailAddress}</Text>
           <View>
-            {tasks?.map((task) => (
-              <Text key={task._id}>{task.text}</Text>
+            {trainers?.map((trainer) => (
+              <Text key={trainer._id}>{trainer.name}</Text>
             ))}
           </View>
           <SignOutButton />

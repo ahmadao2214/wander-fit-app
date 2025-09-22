@@ -54,15 +54,7 @@ export default function Page() {
             if (createdSessionId) {
                 setActive!({
                     session: createdSessionId,
-                    navigate: async ({ session }) => {
-                        if (session?.currentTask) {
-                            // Check for tasks and navigate to custom UI to help users resolve them
-                            // See https://clerk.com/docs/custom-flows/overview#session-tasks
-                            console.log(session?.currentTask)
-                            return
-                        }
-                        router.replace('/')
-                    },
+                    navigate: async () => router.replace('/'),
                 })
             } else {
                 // If there is no `createdSessionId`,
