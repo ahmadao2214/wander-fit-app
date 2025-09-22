@@ -1,23 +1,32 @@
 import * as React from 'react'
-import { TouchableOpacity, View } from 'react-native'
-import { Text, Input } from 'tamagui'
+import { Text, Input, YStack, XStack, Button, RadioGroup, Label } from 'tamagui'
 import { useSignUp } from '@clerk/clerk-expo'
 import { Link, useRouter } from 'expo-router'
+import { useMutation } from 'convex/react'
+import { api } from 'convex/_generated/api'
 
 export default function SignUpScreen() {
   const { isLoaded, signUp, setActive } = useSignUp()
   const router = useRouter()
+  const createUser = useMutation(api.users.createUser)
 
   const [emailAddress, setEmailAddress] = React.useState('')
   const [password, setPassword] = React.useState('')
+  const [name, setName] = React.useState('')
+  const [role, setRole] = React.useState<'trainer' | 'client'>('client')
   const [pendingVerification, setPendingVerification] = React.useState(false)
   const [code, setCode] = React.useState('')
+  const [isCreatingUser, setIsCreatingUser] = React.useState(false)
 
   // Handle submission of sign-up form
   const onSignUpPress = async () => {
     if (!isLoaded) return
 
-    console.log(emailAddress, password)
+    // Validate inputs
+    if (!emailAddress || !password || !name) {
+      console.error('Please fill in all fields')
+      return
+    }
 
     // Start sign-up process using email and password provided
     try {
@@ -44,16 +53,38 @@ export default function SignUpScreen() {
     if (!isLoaded) return
 
     try {
+      setIsCreatingUser(true)
+
       // Use the code the user provided to attempt verification
       const signUpAttempt = await signUp.attemptEmailAddressVerification({
         code,
       })
 
       // If verification was completed, set the session to active
-      // and redirect the user
+      // and create user in Convex
       if (signUpAttempt.status === 'complete') {
         await setActive({ session: signUpAttempt.createdSessionId })
-        router.replace('/')
+
+        // Create user in Convex database
+        try {
+          await createUser({
+            email: emailAddress,
+            name: name,
+            role: role,
+            clerkId: signUpAttempt.createdUserId!,
+          })
+
+          // Navigate based on role
+          if (role === 'trainer') {
+            router.replace('/(trainer)')
+          } else {
+            router.replace('/(client)')
+          }
+        } catch (convexErr) {
+          console.error('Failed to create user in Convex:', convexErr)
+          // Still redirect to app, they can try again
+          router.replace('/')
+        }
       } else {
         // If the status is not complete, check why. User may need to
         // complete further steps.
@@ -63,51 +94,126 @@ export default function SignUpScreen() {
       // See https://clerk.com/docs/custom-flows/error-handling
       // for more info on error handling
       console.error(JSON.stringify(err, null, 2))
+    } finally {
+      setIsCreatingUser(false)
     }
   }
 
   if (pendingVerification) {
     return (
-      <>
-        <Text>Verify your email</Text>
-        <Input
-          value={code}
-          placeholder="Enter your verification code"
-          onChangeText={(code) => setCode(code)}
-        />
-        <TouchableOpacity onPress={onVerifyPress}>
-          <Text>Verify</Text>
-        </TouchableOpacity>
-      </>
+      <YStack flex={1} justify="center" gap="$4" px="$4" maxW={400} mx="auto" width="100%">
+        <YStack gap="$2" items="center">
+          <Text fontSize="$8" fontWeight="bold">Verify your email</Text>
+          <Text text="center">
+            We sent a verification code to {emailAddress}
+          </Text>
+        </YStack>
+
+        <YStack gap="$3">
+          <Input
+            value={code}
+            placeholder="Enter verification code"
+            onChangeText={(code) => setCode(code)}
+            size="$4"
+          />
+          <Button
+            onPress={onVerifyPress}
+            disabled={isCreatingUser}
+            theme="blue"
+            fontWeight="600"
+            size="$4"
+          >
+            {isCreatingUser ? 'Creating account...' : 'Verify & Continue'}
+          </Button>
+        </YStack>
+      </YStack>
     )
   }
 
+  {/*
+No google signup button
+                */}
+
   return (
-    <View>
-      <>
-        <Text>Sign up</Text>
+    <YStack flex={1} justify="center" gap="$4" px="$4" maxW={400} mx="auto" width="100%">
+      <YStack gap="$2" items="center">
+        <Text fontSize="$8" fontWeight="bold">Create Account</Text>
+        <Text text="center">
+          Join WanderFit as a trainer or client
+        </Text>
+      </YStack>
+
+      <YStack gap="$3">
+        {/* Name Input */}
+        <Input
+          value={name}
+          placeholder="Full name"
+          onChangeText={(name) => setName(name)}
+          size="$4"
+        />
+
+        {/* Email Input */}
         <Input
           autoCapitalize="none"
           value={emailAddress}
-          placeholder="Enter email"
+          placeholder="Email address"
           onChangeText={(email) => setEmailAddress(email)}
+          size="$4"
         />
+
+        {/* Password Input */}
         <Input
           value={password}
-          placeholder="Enter password"
+          placeholder="Password"
           secureTextEntry={true}
           onChangeText={(password) => setPassword(password)}
+          size="$4"
         />
-        <TouchableOpacity onPress={onSignUpPress}>
-          <Text>Continue</Text>
-        </TouchableOpacity>
-        <View style={{ display: 'flex', flexDirection: 'row', gap: 3 }}>
-          <Text>Already have an account?</Text>
-          <Link href="/sign-in">
-            <Text>Sign in</Text>
-          </Link>
-        </View>
-      </>
-    </View>
+
+        {/* Role Selection */}
+        <YStack gap="$2">
+          <Text fontWeight="600">I am a:</Text>
+          <RadioGroup
+            value={role}
+            onValueChange={(value) => setRole(value as 'trainer' | 'client')}
+          >
+            <XStack gap="$4">
+              <XStack items="center" gap="$2">
+                <RadioGroup.Item value="client" id="client" />
+                <Label htmlFor="client">Client</Label>
+              </XStack>
+              <XStack items="center" gap="$2">
+                <RadioGroup.Item value="trainer" id="trainer" />
+                <Label htmlFor="trainer">Trainer</Label>
+              </XStack>
+            </XStack>
+          </RadioGroup>
+          <Text fontSize="$2">
+            {role === 'client'
+              ? 'I want to follow workouts from my trainer'
+              : 'I want to create workouts for my clients'
+            }
+          </Text>
+        </YStack>
+
+        {/* Sign Up Button */}
+        <Button
+          onPress={onSignUpPress}
+          theme="blue"
+          fontWeight="600"
+          size="$4"
+        >
+          Continue
+        </Button>
+      </YStack>
+
+      {/* Sign In Link */}
+      <XStack justify="center" gap="$2">
+        <Text>Already have an account?</Text>
+        <Link href="/sign-in">
+          <Text fontWeight="600">Sign in</Text>
+        </Link>
+      </XStack>
+    </YStack>
   )
 }

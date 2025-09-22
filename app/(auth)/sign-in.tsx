@@ -44,7 +44,7 @@ export default function Page() {
                     ? AuthSession.makeRedirectUri()
                     : Platform.OS === 'ios' || Platform.OS === 'android'
                         ? AuthSession.makeRedirectUri({
-                            scheme: 'wander-fit-app',
+                            scheme: 'myapp',
                             path: 'oauth'
                         })
                         : undefined,
@@ -54,7 +54,18 @@ export default function Page() {
             if (createdSessionId) {
                 setActive!({
                     session: createdSessionId,
-                    navigate: async () => router.replace('/'),
+                    navigate: async () => {
+                        // Use same navigation logic as email/password sign-in
+                        if (Platform.OS !== 'web') {
+                            console.log('OAuth Mobile: Adding delay for auth state sync')
+                            setTimeout(() => {
+                                console.log('OAuth Mobile: Delayed navigation to /')
+                                router.replace('/')
+                            }, 500)
+                        } else {
+                            router.replace('/')
+                        }
+                    },
                 })
             } else {
                 // If there is no `createdSessionId`,
@@ -62,6 +73,12 @@ export default function Page() {
                 // Use the `signIn` or `signUp` returned from `startSSOFlow`
                 // to handle next steps
                 console.log('Additional steps required:', signIn || signUp)
+                
+                // Check if this is a sign-up scenario (new user)
+                if (signUp) {
+                    console.log('New user detected, redirecting to sign-up')
+                    router.push('/(auth)/sign-up')
+                }
             }
         } catch (err) {
             // See https://clerk.com/docs/custom-flows/error-handling
@@ -81,11 +98,26 @@ export default function Page() {
                 password,
             })
 
+            console.log('signInAttempt', signInAttempt)
+
             // If sign-in process is complete, set the created session as active
             // and redirect the user
             if (signInAttempt.status === 'complete') {
+                console.log('Setting active session with ID:', signInAttempt.createdSessionId)
                 await setActive({ session: signInAttempt.createdSessionId })
-                router.replace('/')
+                console.log('Session set, attempting to navigate to /')
+                
+                // Add small delay on mobile for auth state to sync
+                if (Platform.OS !== 'web') {
+                    console.log('Mobile: Adding delay for auth state sync')
+                    setTimeout(() => {
+                        console.log('Mobile: Delayed navigation to /')
+                        router.replace('/')
+                    }, 500)
+                } else {
+                    router.replace('/')
+                }
+                console.log('Navigation called')
             } else {
                 // If the status isn't complete, check why. User might need to
                 // complete further steps.
@@ -99,7 +131,7 @@ export default function Page() {
     }
 
     return (
-        <YStack gap="$4" flex={1} justify="center">
+        <YStack gap="$4" flex={1} justify="center" px="$4" maxW={400} mx="auto" width="100%">
             <YStack gap="$2" items="center">
                 <Text fontSize="$8" fontWeight="bold">Sign in</Text>
                 <Text text="center">
@@ -111,8 +143,7 @@ export default function Page() {
             <YStack gap="$3">
                 <Button
                     onPress={onOAuthPress}
-                    background="$red10"
-                    color="white"
+                    theme="red"
                     fontWeight="600"
                     size="$4"
                 >
@@ -140,10 +171,13 @@ export default function Page() {
                     onChangeText={(password) => setPassword(password)}
                     size="$4"
                 />
+                {/*
+                No Error Handling
+                Signs in but doesn't redirect
+                */}
                 <Button
-                    onPress={onSignInPress}
-                    background="$blue10"
-                    color="white"
+                    onPress={onSignInPress} // TODO: This is not redirecting as expected
+                    theme="blue"
                     fontWeight="600"
                     size="$4"
                 >
