@@ -1,12 +1,15 @@
 import * as React from 'react'
+import { Platform } from 'react-native'
 import { Text, Input, YStack, XStack, Button, RadioGroup, Label } from 'tamagui'
-import { useSignUp } from '@clerk/clerk-expo'
+import { useSignUp, useSSO } from '@clerk/clerk-expo'
 import { Link, useRouter } from 'expo-router'
 import { useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
+import * as AuthSession from 'expo-auth-session'
 
 export default function SignUpScreen() {
   const { isLoaded, signUp, setActive } = useSignUp()
+  const { startSSOFlow } = useSSO()
   const router = useRouter()
   const createUser = useMutation(api.users.createUser)
 
@@ -17,6 +20,68 @@ export default function SignUpScreen() {
   const [pendingVerification, setPendingVerification] = React.useState(false)
   const [code, setCode] = React.useState('')
   const [isCreatingUser, setIsCreatingUser] = React.useState(false)
+
+  // Handle OAuth sign-up
+  const onOAuthSignUpPress = React.useCallback(async () => {
+    try {
+      const { createdSessionId, setActive, signIn, signUp } = await startSSOFlow({
+        strategy: 'oauth_google',
+        redirectUrl: Platform.OS === 'web'
+          ? AuthSession.makeRedirectUri()
+          : Platform.OS === 'ios' || Platform.OS === 'android'
+            ? AuthSession.makeRedirectUri({
+                scheme: 'myapp',
+                path: 'oauth'
+              })
+            : undefined,
+      })
+
+      if (createdSessionId) {
+        // User already exists, sign them in
+        setActive!({
+          session: createdSessionId,
+          navigate: async () => {
+            if (Platform.OS !== 'web') {
+              setTimeout(() => {
+                router.replace('/')
+              }, 500)
+            } else {
+              router.replace('/')
+            }
+          },
+        })
+      } else if (signUp) {
+        // New user, complete signup immediately with selected role
+        console.log('New OAuth user, completing signup with role:', role)
+        
+        const signUpAttempt = await signUp.create({})
+        
+        if (signUpAttempt.status === 'complete') {
+          await setActive!({ session: signUpAttempt.createdSessionId })
+          
+          // Create user in Convex database with the pre-selected role
+          await createUser({
+            email: signUp.emailAddress!,
+            name: `${signUp.firstName || ''} ${signUp.lastName || ''}`.trim() || signUp.emailAddress!,
+            role: role, // Use the role selected in the main form
+            clerkId: signUpAttempt.createdUserId!,
+          })
+          
+          // Navigate based on role
+          if (Platform.OS !== 'web') {
+            setTimeout(() => {
+              router.replace('/')
+            }, 500)
+          } else {
+            router.replace('/')
+          }
+        }
+      }
+    } catch (err) {
+      console.error('OAuth Sign-up Error:', JSON.stringify(err, null, 2))
+    }
+  }, [startSSOFlow, router, role, createUser])
+
 
   // Handle submission of sign-up form
   const onSignUpPress = async () => {
@@ -99,6 +164,7 @@ export default function SignUpScreen() {
     }
   }
 
+
   if (pendingVerification) {
     return (
       <YStack flex={1} justify="center" gap="$4" px="$4" maxW={400} mx="auto" width="100%">
@@ -130,9 +196,6 @@ export default function SignUpScreen() {
     )
   }
 
-  {/*
-No google signup button
-                */}
 
   return (
     <YStack flex={1} justify="center" gap="$4" px="$4" maxW={400} mx="auto" width="100%">
@@ -144,33 +207,7 @@ No google signup button
       </YStack>
 
       <YStack gap="$3">
-        {/* Name Input */}
-        <Input
-          value={name}
-          placeholder="Full name"
-          onChangeText={(name) => setName(name)}
-          size="$4"
-        />
-
-        {/* Email Input */}
-        <Input
-          autoCapitalize="none"
-          value={emailAddress}
-          placeholder="Email address"
-          onChangeText={(email) => setEmailAddress(email)}
-          size="$4"
-        />
-
-        {/* Password Input */}
-        <Input
-          value={password}
-          placeholder="Password"
-          secureTextEntry={true}
-          onChangeText={(password) => setPassword(password)}
-          size="$4"
-        />
-
-        {/* Role Selection */}
+        {/* Role Selection - Moved to top */}
         <YStack gap="$2">
           <Text fontWeight="600">I am a:</Text>
           <RadioGroup
@@ -189,12 +226,50 @@ No google signup button
             </XStack>
           </RadioGroup>
           <Text fontSize="$2">
-            {role === 'client'
-              ? 'I want to follow workouts from my trainer'
+            {role === 'client' 
+              ? 'I want to follow workouts from my trainer' 
               : 'I want to create workouts for my clients'
             }
           </Text>
         </YStack>
+
+        {/* OAuth Section - After role selection */}
+        <Button
+          onPress={onOAuthSignUpPress}
+          theme="red"
+          fontWeight="600"
+          size="$4"
+        >
+          Continue with Google
+        </Button>
+
+        <XStack items="center" gap="$3">
+          <Text fontSize="$3">OR</Text>
+        </XStack>
+
+        {/* Email/Password Section */}
+        <Input
+          value={name}
+          placeholder="Full name"
+          onChangeText={(name) => setName(name)}
+          size="$4"
+        />
+
+        <Input
+          autoCapitalize="none"
+          value={emailAddress}
+          placeholder="Email address"
+          onChangeText={(email) => setEmailAddress(email)}
+          size="$4"
+        />
+
+        <Input
+          value={password}
+          placeholder="Password"
+          secureTextEntry={true}
+          onChangeText={(password) => setPassword(password)}
+          size="$4"
+        />
 
         {/* Sign Up Button */}
         <Button
@@ -203,7 +278,7 @@ No google signup button
           fontWeight="600"
           size="$4"
         >
-          Continue
+          Continue with Email
         </Button>
       </YStack>
 
