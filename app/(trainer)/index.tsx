@@ -4,9 +4,11 @@ import { api } from 'convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
 import { SignOutButton } from '../../components/SignOutButton'
 import { Plus } from '@tamagui/lucide-icons'
+import { useRouter } from 'expo-router'
 
 export default function TrainerDashboard() {
   const { user, isLoading } = useAuth()
+  const router = useRouter()
 
   const clients = useQuery(
     api.users.getTrainerClients,
@@ -121,17 +123,14 @@ export default function TrainerDashboard() {
             <Text fontSize="$5" fontWeight="600">
               Your Clients
             </Text>
-            <Button
-              size="$3"
-              variant="outlined"
-              icon={Plus}
-              onPress={() => {
-                // TODO: Navigate to add client screen
-                console.log('Add client pressed')
-              }}
-            >
-              Add Client
-            </Button>
+             <Button
+               size="$3"
+               variant="outlined"
+               icon={Plus}
+               onPress={() => router.push('/add-client')}
+             >
+               Add Client
+             </Button>
           </XStack>
 
           {clients && clients.length > 0 ? (
@@ -165,16 +164,13 @@ export default function TrainerDashboard() {
                 <Text text="center" color="gray">
                   No clients yet. Add your first client to get started!
                 </Text>
-                <Button
-                  size="$3"
-                  icon={Plus}
-                  onPress={() => {
-                    // TODO: Navigate to add client screen
-                    console.log('Add first client pressed')
-                  }}
-                >
-                  Add Your First Client
-                </Button>
+                 <Button
+                   size="$3"
+                   icon={Plus}
+                   onPress={() => router.push('/add-client')}
+                 >
+                   Add Your First Client
+                 </Button>
               </YStack>
             </Card>
           )}

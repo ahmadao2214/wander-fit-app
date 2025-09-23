@@ -86,13 +86,13 @@ function RootLayoutNav() {
         />
 
         <Stack.Screen
-          name="modal"
+          name="add-client"
           options={{
-            title: 'Tamagui + Expo',
+            title: 'Add Client',
             presentation: 'modal',
-            animation: 'slide_from_right',
+            animation: 'slide_from_bottom',
             gestureEnabled: true,
-            gestureDirection: 'horizontal',
+            gestureDirection: 'vertical',
             contentStyle: {
               backgroundColor: theme.background.val,
             },

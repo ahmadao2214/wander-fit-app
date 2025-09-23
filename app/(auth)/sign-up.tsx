@@ -1,9 +1,9 @@
 import * as React from 'react'
 import { Platform } from 'react-native'
-import { Text, Input, YStack, XStack, Button, RadioGroup, Label } from 'tamagui'
+import { Text, Input, YStack, XStack, Button, RadioGroup, Label, Card } from 'tamagui'
 import { useSignUp, useSSO } from '@clerk/clerk-expo'
 import { Link, useRouter } from 'expo-router'
-import { useMutation } from 'convex/react'
+import { useMutation, useQuery } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import * as AuthSession from 'expo-auth-session'
 
@@ -12,6 +12,7 @@ export default function SignUpScreen() {
   const { startSSOFlow } = useSSO()
   const router = useRouter()
   const createUser = useMutation(api.users.createUser)
+  const acceptInvitation = useMutation(api.invitations.acceptInvitation)
 
   const [emailAddress, setEmailAddress] = React.useState('')
   const [password, setPassword] = React.useState('')
@@ -20,6 +21,12 @@ export default function SignUpScreen() {
   const [pendingVerification, setPendingVerification] = React.useState(false)
   const [code, setCode] = React.useState('')
   const [isCreatingUser, setIsCreatingUser] = React.useState(false)
+
+  // Check for invitation when email changes
+  const invitation = useQuery(
+    api.invitations.getInvitationByEmail,
+    emailAddress ? { email: emailAddress } : "skip"
+  )
 
   // Handle OAuth sign-up
   const onOAuthSignUpPress = React.useCallback(async () => {
@@ -132,13 +139,26 @@ export default function SignUpScreen() {
 
         // Create user in Convex database
         try {
-          await createUser({
+          const userId = await createUser({
             email: emailAddress,
             name: name,
             role: role,
             clerkId: signUpAttempt.createdUserId!,
           })
 
+          // If there's an invitation for this email, accept it
+          if (invitation && role === 'client') {
+            try {
+              await acceptInvitation({
+                email: emailAddress,
+                clientId: userId,
+              })
+            } catch (inviteErr) {
+              console.error('Failed to accept invitation:', inviteErr)
+              // Continue anyway - user is created
+            }
+          }
+          
           // Navigate based on role
           if (role === 'trainer') {
             router.replace('/(trainer)')

@@ -122,6 +122,22 @@ export const getClientTrainer = query({
   },
 });
 
+// Get clients who don't have a trainer assigned
+export const getUnassignedClients = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db
+      .query("users")
+      .filter((q) => 
+        q.and(
+          q.eq(q.field("role"), "client"),
+          q.eq(q.field("trainerId"), undefined)
+        )
+      )
+      .collect();
+  },
+});
+
 // Update user profile
 export const updateUser = mutation({
   args: {
@@ -184,6 +200,64 @@ export const requestTrainerRelationship = mutation({
       trainerId: args.trainerId,
       clientId: args.clientId,
       status: "pending",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    return relationshipId;
+  },
+});
+
+// Connect existing client to trainer
+export const connectExistingClient = mutation({
+  args: {
+    clientId: v.id("users"),
+    trainerId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    // Verify client and trainer exist and have correct roles
+    const [client, trainer] = await Promise.all([
+      ctx.db.get(args.clientId),
+      ctx.db.get(args.trainerId),
+    ]);
+
+    if (!client || client.role !== "client") {
+      throw new Error("Invalid client");
+    }
+    if (!trainer || trainer.role !== "trainer") {
+      throw new Error("Invalid trainer");
+    }
+
+    // Check if client already has a trainer
+    if (client.trainerId) {
+      throw new Error("Client already has a trainer assigned");
+    }
+
+    // Check if relationship already exists
+    const existingRelationship = await ctx.db
+      .query("trainerClientRelationships")
+      .filter((q) => 
+        q.and(
+          q.eq(q.field("clientId"), args.clientId),
+          q.eq(q.field("trainerId"), args.trainerId)
+        )
+      )
+      .first();
+
+    if (existingRelationship) {
+      throw new Error("Relationship already exists");
+    }
+
+    // Update client with trainer ID
+    await ctx.db.patch(args.clientId, {
+      trainerId: args.trainerId,
+    });
+
+    // Create the relationship
+    const relationshipId = await ctx.db.insert("trainerClientRelationships", {
+      trainerId: args.trainerId,
+      clientId: args.clientId,
+      status: "active",
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });

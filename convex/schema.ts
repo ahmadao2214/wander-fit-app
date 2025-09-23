@@ -86,4 +86,24 @@ export default defineSchema({
     .index("by_client", ["clientId"])
     .index("by_trainer_status", ["trainerId", "status"])
     .index("by_client_status", ["clientId", "status"]),
+
+  // Client invitations sent by trainers
+  clientInvitations: defineTable({
+    email: v.string(),
+    name: v.string(),
+    trainerId: v.id("users"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("expired"),
+      v.literal("cancelled")
+    ),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+    acceptedAt: v.optional(v.number()),
+  })
+    .index("by_email", ["email"])
+    .index("by_trainer", ["trainerId"])
+    .index("by_status", ["status"])
+    .index("by_email_status", ["email", "status"]),
 });
