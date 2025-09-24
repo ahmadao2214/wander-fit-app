@@ -5,6 +5,7 @@ import { useMutation, useQuery } from 'convex/react'
 import { api } from '../convex/_generated/api'
 import { useAuth } from '../hooks/useAuth'
 import { ArrowLeft, UserPlus, Mail, Users } from '@tamagui/lucide-icons'
+import { TrainerOnlyRoute } from '../components/AuthGuard'
 
 export default function AddClientScreen() {
   const router = useRouter()
@@ -98,6 +99,44 @@ export default function AddClientScreen() {
 
   if (success) {
     return (
+      <TrainerOnlyRoute>
+        <YStack flex={1} bg="$background">
+          <YStack
+            flex={1}
+            gap="$4"
+            px="$4"
+            pt="$6"
+            maxW={1200}
+            width="100%"
+            self="center"
+            $sm={{ px: "$6" }}
+            $md={{ px: "$8" }}
+          >
+            <Card p="$6" bg="$green2" borderColor="$green8">
+              <YStack items="center" gap="$4">
+                <UserPlus size={48} color="$green10" />
+                <H2 color="$green11">
+                  {successData?.type === 'invited' ? 'Invitation Sent Successfully!' : 'Client Connected Successfully!'}
+                </H2>
+                <Text color="$green11">
+                  {successData?.type === 'invited'
+                    ? `An invitation has been sent to ${successData?.name} at ${successData?.email}. They can now sign up using that email to access workouts you create.`
+                    : `${successData?.name} has been connected to your account. You can now create and assign workouts to them.`
+                  }
+                </Text>
+                <Text fontSize="$2" color="$green10">
+                  Redirecting back to dashboard...
+                </Text>
+              </YStack>
+            </Card>
+          </YStack>
+        </YStack>
+      </TrainerOnlyRoute>
+    )
+  }
+
+  return (
+    <TrainerOnlyRoute>
       <YStack flex={1} bg="$background">
         <YStack
           flex={1}
@@ -107,41 +146,6 @@ export default function AddClientScreen() {
           maxW={1200}
           width="100%"
           self="center"
-          $sm={{ px: "$6" }}
-          $md={{ px: "$8" }}
-        >
-          <Card p="$6" bg="$green2" borderColor="$green8">
-            <YStack items="center" gap="$4">
-              <UserPlus size={48} color="$green10" />
-              <H2 color="$green11">
-                {successData?.type === 'invited' ? 'Invitation Sent Successfully!' : 'Client Connected Successfully!'}
-              </H2>
-              <Text color="$green11">
-                {successData?.type === 'invited'
-                  ? `An invitation has been sent to ${successData?.name} at ${successData?.email}. They can now sign up using that email to access workouts you create.`
-                  : `${successData?.name} has been connected to your account. You can now create and assign workouts to them.`
-                }
-              </Text>
-              <Text fontSize="$2" color="$green10">
-                Redirecting back to dashboard...
-              </Text>
-            </YStack>
-          </Card>
-        </YStack>
-      </YStack>
-    )
-  }
-
-  return (
-    <YStack flex={1} bg="$background">
-      <YStack
-        flex={1}
-        gap="$4"
-        px="$4"
-        pt="$6"
-        maxW={1200}
-        width="100%"
-        self="center"
         $sm={{ px: "$6" }}
         $md={{ px: "$8" }}
       >
@@ -318,7 +322,8 @@ export default function AddClientScreen() {
             </YStack>
           </Tabs.Content>
         </Tabs>
+        </YStack>
       </YStack>
-    </YStack>
+    </TrainerOnlyRoute>
   )
 }

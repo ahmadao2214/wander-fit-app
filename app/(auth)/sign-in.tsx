@@ -5,6 +5,7 @@ import { Platform } from 'react-native'
 import { Text, Input, Button, YStack, XStack } from 'tamagui'
 import * as WebBrowser from 'expo-web-browser'
 import * as AuthSession from 'expo-auth-session'
+import { PublicOnlyRoute } from '../../components/AuthGuard'
 
 // Custom hook for warming up browser on Android
 export const useWarmUpBrowser = () => {
@@ -131,66 +132,64 @@ export default function Page() {
     }
 
     return (
-        <YStack gap="$4" flex={1} justify="center" px="$4" maxW={400} mx="auto" width="100%">
-            <YStack gap="$2" items="center">
-                <Text fontSize="$8" fontWeight="bold">Sign in</Text>
-                <Text text="center">
-                    Welcome back! Please sign in to your account.
-                </Text>
-            </YStack>
+        <PublicOnlyRoute>
+            <YStack gap="$4" flex={1} justify="center" px="$4" maxW={400} mx="auto" width="100%">
+                <YStack gap="$2" items="center">
+                    <Text fontSize="$8" fontWeight="bold">Sign in</Text>
+                    <Text text="center">
+                        Welcome back! Please sign in to your account.
+                    </Text>
+                </YStack>
 
-            {/* OAuth Section */}
-            <YStack gap="$3">
-                <Button
-                    onPress={onOAuthPress}
-                    theme="red"
-                    fontWeight="600"
-                    size="$4"
-                >
-                    Continue with Google
-                </Button>
+                {/* OAuth Section */}
+                <YStack gap="$3">
+                    <Button
+                        onPress={onOAuthPress}
+                        theme="red"
+                        fontWeight="600"
+                        size="$4"
+                    >
+                        Continue with Google
+                    </Button>
 
-                <XStack items="center" gap="$3">
-                    <Text fontSize="$3">OR</Text>
+                    <XStack items="center" gap="$3">
+                        <Text fontSize="$3">OR</Text>
+                    </XStack>
+                </YStack>
+
+                {/* Email/Password Section */}
+                <YStack gap="$3">
+                    <Input
+                        autoCapitalize="none"
+                        value={emailAddress}
+                        placeholder="Enter email"
+                        onChangeText={(emailAddress) => setEmailAddress(emailAddress)}
+                        size="$4"
+                    />
+                    <Input
+                        value={password}
+                        placeholder="Enter password"
+                        secureTextEntry={true}
+                        onChangeText={(password) => setPassword(password)}
+                        size="$4"
+                    />
+                    <Button
+                        onPress={onSignInPress}
+                        theme="blue"
+                        fontWeight="600"
+                        size="$4"
+                    >
+                        Continue
+                    </Button>
+                </YStack>
+
+                <XStack justify="center" gap="$2">
+                    <Text>Don't have an account?</Text>
+                    <Link href="/sign-up">
+                        <Text fontWeight="600">Sign up</Text>
+                    </Link>
                 </XStack>
             </YStack>
-
-            {/* Email/Password Section */}
-            <YStack gap="$3">
-                <Input
-                    autoCapitalize="none"
-                    value={emailAddress}
-                    placeholder="Enter email"
-                    onChangeText={(emailAddress) => setEmailAddress(emailAddress)}
-                    size="$4"
-                />
-                <Input
-                    value={password}
-                    placeholder="Enter password"
-                    secureTextEntry={true}
-                    onChangeText={(password) => setPassword(password)}
-                    size="$4"
-                />
-                {/*
-                No Error Handling
-                Signs in but doesn't redirect
-                */}
-                <Button
-                    onPress={onSignInPress} // TODO: This is not redirecting as expected
-                    theme="blue"
-                    fontWeight="600"
-                    size="$4"
-                >
-                    Continue
-                </Button>
-            </YStack>
-
-            <XStack justify="center" gap="$2">
-                <Text>Don't have an account?</Text>
-                <Link href="/sign-up">
-                    <Text fontWeight="600">Sign up</Text>
-                </Link>
-            </XStack>
-        </YStack>
+        </PublicOnlyRoute>
     )
 }

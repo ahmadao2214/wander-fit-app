@@ -15,7 +15,7 @@ export {
 } from 'expo-router'
 
 export const unstable_settings = {
-  // Ensure that reloading starts at the index route for proper auth flow
+  // Ensure that reloading on any route goes through the index route for proper auth flow
   initialRouteName: 'index',
 }
 

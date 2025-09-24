@@ -6,6 +6,7 @@ import { Link, useRouter } from 'expo-router'
 import { useMutation, useQuery } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import * as AuthSession from 'expo-auth-session'
+import { PublicOnlyRoute } from '../../components/AuthGuard'
 
 export default function SignUpScreen() {
   const { isLoaded, signUp, setActive } = useSignUp()
@@ -218,13 +219,14 @@ export default function SignUpScreen() {
 
 
   return (
-    <YStack flex={1} justify="center" gap="$4" px="$4" maxW={400} mx="auto" width="100%">
-      <YStack gap="$2" items="center">
-        <Text fontSize="$8" fontWeight="bold">Create Account</Text>
-        <Text text="center">
-          Join WanderFit as a trainer or client
-        </Text>
-      </YStack>
+    <PublicOnlyRoute>
+      <YStack flex={1} justify="center" gap="$4" px="$4" maxW={400} mx="auto" width="100%">
+        <YStack gap="$2" items="center">
+          <Text fontSize="$8" fontWeight="bold">Create Account</Text>
+          <Text text="center">
+            Join WanderFit as a trainer or client
+          </Text>
+        </YStack>
 
       <YStack gap="$3">
         {/* Role Selection - Moved to top */}
@@ -309,6 +311,7 @@ export default function SignUpScreen() {
           <Text fontWeight="600">Sign in</Text>
         </Link>
       </XStack>
-    </YStack>
+      </YStack>
+    </PublicOnlyRoute>
   )
 }

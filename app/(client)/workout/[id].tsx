@@ -153,7 +153,7 @@ export default function WorkoutDetailScreen() {
                       width={32}
                       height={32}
                       bg="$blue9"
-                      borderRadius={16}
+                      rounded="$3"
                       items="center"
                       justify="center"
                     >
@@ -169,7 +169,7 @@ export default function WorkoutDetailScreen() {
                   </XStack>
 
                   {/* Exercise Details */}
-                  <XStack gap="$4" wrap="wrap">
+                  <XStack gap="$4" flexWrap="wrap">
                     <XStack items="center" gap="$2">
                       <Dumbbell size={16} color="gray" />
                       <Text fontSize="$3" color="gray">
@@ -215,7 +215,7 @@ export default function WorkoutDetailScreen() {
                   )}
 
                   {/* Exercise Summary */}
-                  <YStack gap="$1" bg="$gray2" p="$3" borderRadius="$3">
+                  <YStack gap="$1" background="$gray2" p="$3" rounded="$3">
                     <Text fontSize="$2" color="gray" fontWeight="600">
                       Exercise Summary:
                     </Text>
