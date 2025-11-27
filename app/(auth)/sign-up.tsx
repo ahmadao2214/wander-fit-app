@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Platform } from 'react-native'
+import { Platform, ScrollView } from 'react-native'
 import { Text, Input, YStack, XStack, Button, RadioGroup, Label, Card } from 'tamagui'
 import { useSignUp, useSSO } from '@clerk/clerk-expo'
 import { Link, useRouter } from 'expo-router'
@@ -22,6 +22,7 @@ export default function SignUpScreen() {
   const [pendingVerification, setPendingVerification] = React.useState(false)
   const [code, setCode] = React.useState('')
   const [isCreatingUser, setIsCreatingUser] = React.useState(false)
+  const [error, setError] = React.useState('')
 
   // Check for invitation when email changes
   const invitation = useQuery(
@@ -95,9 +96,12 @@ export default function SignUpScreen() {
   const onSignUpPress = async () => {
     if (!isLoaded) return
 
+    // Clear previous errors
+    setError('')
+
     // Validate inputs
     if (!emailAddress || !password || !name) {
-      console.error('Please fill in all fields')
+      setError('Please fill in all fields')
       return
     }
 
@@ -114,10 +118,28 @@ export default function SignUpScreen() {
       // Set 'pendingVerification' to true to display second form
       // and capture OTP code
       setPendingVerification(true)
-    } catch (err) {
+    } catch (err: any) {
       // See https://clerk.com/docs/custom-flows/error-handling
       // for more info on error handling
       console.error(JSON.stringify(err, null, 2))
+      
+      // Extract user-friendly error message from Clerk error
+      const clerkError = err?.errors?.[0]
+      if (clerkError) {
+        if (clerkError.code === 'form_identifier_exists') {
+          setError('An account with this email already exists. Please sign in instead.')
+        } else if (clerkError.code === 'form_password_pwned') {
+          setError('This password has been found in a data breach. Please use a different password.')
+        } else if (clerkError.code === 'form_password_length_too_short') {
+          setError('Password must be at least 8 characters long.')
+        } else if (clerkError.code === 'form_param_format_invalid') {
+          setError('Please enter a valid email address.')
+        } else {
+          setError(clerkError.longMessage || clerkError.message || 'Sign up failed. Please try again.')
+        }
+      } else {
+        setError('Sign up failed. Please try again.')
+      }
     }
   }
 
@@ -188,130 +210,156 @@ export default function SignUpScreen() {
 
   if (pendingVerification) {
     return (
-      <YStack flex={1} justify="center" gap="$4" px="$4" maxW={400} mx="auto" width="100%">
-        <YStack gap="$2" items="center">
-          <Text fontSize="$8" fontWeight="bold">Verify your email</Text>
-          <Text text="center">
-            We sent a verification code to {emailAddress}
-          </Text>
-        </YStack>
+      <ScrollView 
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <YStack flex={1} justify="center" gap="$4" px="$4" py="$6" maxW={400} mx="auto" width="100%">
+          <YStack gap="$2" items="center">
+            <Text fontSize="$8" fontWeight="bold">Verify your email</Text>
+            <Text text="center">
+              We sent a verification code to {emailAddress}
+            </Text>
+          </YStack>
 
-        <YStack gap="$3">
-          <Input
-            value={code}
-            placeholder="Enter verification code"
-            onChangeText={(code) => setCode(code)}
-            size="$4"
-          />
-          <Button
-            onPress={onVerifyPress}
-            disabled={isCreatingUser}
-            theme="blue"
-            fontWeight="600"
-            size="$4"
-          >
-            {isCreatingUser ? 'Creating account...' : 'Verify & Continue'}
-          </Button>
+          <YStack gap="$3">
+            <Input
+              value={code}
+              placeholder="Enter verification code"
+              onChangeText={(code) => setCode(code)}
+              size="$4"
+            />
+            <Button
+              onPress={onVerifyPress}
+              disabled={isCreatingUser}
+              theme="blue"
+              fontWeight="600"
+              size="$4"
+            >
+              {isCreatingUser ? 'Creating account...' : 'Verify & Continue'}
+            </Button>
+          </YStack>
         </YStack>
-      </YStack>
+      </ScrollView>
     )
   }
 
 
   return (
     <PublicOnlyRoute>
-      <YStack flex={1} justify="center" gap="$4" px="$4" maxW={400} mx="auto" width="100%">
-        <YStack gap="$2" items="center">
-          <Text fontSize="$8" fontWeight="bold">Create Account</Text>
-          <Text text="center">
-            Join WanderFit as a trainer or client
-          </Text>
-        </YStack>
+      <ScrollView 
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <YStack flex={1} justify="center" gap="$4" px="$4" py="$6" maxW={400} mx="auto" width="100%">
+          <YStack gap="$2" items="center">
+            <Text fontSize="$8" fontWeight="bold">Create Account</Text>
+            <Text text="center">
+              Join WanderFit as a trainer or client
+            </Text>
+          </YStack>
 
-      <YStack gap="$3">
-        {/* Role Selection - Moved to top */}
-        <YStack gap="$2">
-          <Text fontWeight="600">I am a:</Text>
-          <RadioGroup
-            value={role}
-            onValueChange={(value) => setRole(value as 'trainer' | 'client')}
-          >
-            <XStack gap="$4">
-              <XStack items="center" gap="$2">
-                <RadioGroup.Item value="client" id="client" />
-                <Label htmlFor="client">Client</Label>
-              </XStack>
-              <XStack items="center" gap="$2">
-                <RadioGroup.Item value="trainer" id="trainer" />
-                <Label htmlFor="trainer">Trainer</Label>
-              </XStack>
+          {/* Error Message */}
+          {error ? (
+            <YStack bg="$red2" p="$3" rounded="$3">
+              <Text color="$red10" text="center">{error}</Text>
+            </YStack>
+          ) : null}
+
+          <YStack gap="$3">
+            {/* Role Selection - Moved to top */}
+            <YStack gap="$2">
+              <Text fontWeight="600">I am a:</Text>
+              <RadioGroup
+                value={role}
+                onValueChange={(value) => setRole(value as 'trainer' | 'client')}
+              >
+                <XStack gap="$4">
+                  <XStack items="center" gap="$2">
+                    <RadioGroup.Item value="client" id="client" />
+                    <Label htmlFor="client">Client</Label>
+                  </XStack>
+                  <XStack items="center" gap="$2">
+                    <RadioGroup.Item value="trainer" id="trainer" />
+                    <Label htmlFor="trainer">Trainer</Label>
+                  </XStack>
+                </XStack>
+              </RadioGroup>
+              <Text fontSize="$2">
+                {role === 'client' 
+                  ? 'I want to follow workouts from my trainer' 
+                  : 'I want to create workouts for my clients'
+                }
+              </Text>
+            </YStack>
+
+            {/* OAuth Section - After role selection */}
+            <Button
+              onPress={onOAuthSignUpPress}
+              theme="red"
+              fontWeight="600"
+              size="$4"
+            >
+              Continue with Google
+            </Button>
+
+            <XStack items="center" gap="$3">
+              <Text fontSize="$3">OR</Text>
             </XStack>
-          </RadioGroup>
-          <Text fontSize="$2">
-            {role === 'client' 
-              ? 'I want to follow workouts from my trainer' 
-              : 'I want to create workouts for my clients'
-            }
-          </Text>
+
+            {/* Email/Password Section */}
+            <Input
+              value={name}
+              placeholder="Full name"
+              onChangeText={(name) => {
+                setName(name)
+                setError('')
+              }}
+              size="$4"
+            />
+
+            <Input
+              autoCapitalize="none"
+              value={emailAddress}
+              placeholder="Email address"
+              onChangeText={(email) => {
+                setEmailAddress(email)
+                setError('')
+              }}
+              size="$4"
+            />
+
+            <Input
+              value={password}
+              placeholder="Password"
+              secureTextEntry={true}
+              onChangeText={(password) => {
+                setPassword(password)
+                setError('')
+              }}
+              size="$4"
+            />
+
+            {/* Sign Up Button */}
+            <Button
+              onPress={onSignUpPress}
+              theme="blue"
+              fontWeight="600"
+              size="$4"
+            >
+              Continue with Email
+            </Button>
+          </YStack>
+
+          {/* Sign In Link */}
+          <XStack justify="center" gap="$2">
+            <Text>Already have an account?</Text>
+            <Link href="/sign-in">
+              <Text fontWeight="600">Sign in</Text>
+            </Link>
+          </XStack>
         </YStack>
-
-        {/* OAuth Section - After role selection */}
-        <Button
-          onPress={onOAuthSignUpPress}
-          theme="red"
-          fontWeight="600"
-          size="$4"
-        >
-          Continue with Google
-        </Button>
-
-        <XStack items="center" gap="$3">
-          <Text fontSize="$3">OR</Text>
-        </XStack>
-
-        {/* Email/Password Section */}
-        <Input
-          value={name}
-          placeholder="Full name"
-          onChangeText={(name) => setName(name)}
-          size="$4"
-        />
-
-        <Input
-          autoCapitalize="none"
-          value={emailAddress}
-          placeholder="Email address"
-          onChangeText={(email) => setEmailAddress(email)}
-          size="$4"
-        />
-
-        <Input
-          value={password}
-          placeholder="Password"
-          secureTextEntry={true}
-          onChangeText={(password) => setPassword(password)}
-          size="$4"
-        />
-
-        {/* Sign Up Button */}
-        <Button
-          onPress={onSignUpPress}
-          theme="blue"
-          fontWeight="600"
-          size="$4"
-        >
-          Continue with Email
-        </Button>
-      </YStack>
-
-      {/* Sign In Link */}
-      <XStack justify="center" gap="$2">
-        <Text>Already have an account?</Text>
-        <Link href="/sign-in">
-          <Text fontWeight="600">Sign in</Text>
-        </Link>
-      </XStack>
-      </YStack>
+      </ScrollView>
     </PublicOnlyRoute>
   )
 }
