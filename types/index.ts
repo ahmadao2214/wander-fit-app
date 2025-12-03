@@ -1,50 +1,180 @@
 import { Doc, Id } from "convex/_generated/dataModel";
 
-// User types
-export type User = Doc<"users">;
-export type UserRole = "trainer" | "client";
+// ═══════════════════════════════════════════════════════════════════════════════
+// GPP CORE TYPES (MVP)
+// ═══════════════════════════════════════════════════════════════════════════════
 
-export interface CreateUserInput {
-  email: string;
-  name: string;
-  role: UserRole;
-  clerkId: string;
-  trainerId?: Id<"users">;
-}
+/**
+ * GPP Category identifiers (1-4)
+ * Maps to category names via gpp_categories table
+ * 
+ * 1: Continuous/Directional (Soccer, etc.)
+ * 2: Explosive/Vertical (Basketball, etc.)
+ * 3: Rotational/Unilateral (Baseball, etc.)
+ * 4: General Strength (Football, Wrestling, etc.)
+ */
+export type GppCategoryId = 1 | 2 | 3 | 4;
 
-// Workout types
-export type Workout = Doc<"workouts">;
-export type WorkoutSession = Doc<"workoutSessions">;
-export type TrainerClientRelationship = Doc<"trainerClientRelationships">;
+/**
+ * Training Phases - The periodization cycle
+ * 
+ * GPP = General Physical Preparedness
+ *   - Foundation phase focusing on overall fitness, movement quality, work capacity
+ *   - Typically 4 weeks, prepares athlete for sport-specific training
+ *   - Focus: Build base strength, mobility, conditioning
+ * 
+ * SPP = Specific Physical Preparedness  
+ *   - Sport-specific phase with movements that transfer to sport demands
+ *   - Typically 4 weeks, bridges general fitness to competition readiness
+ *   - Focus: Sport-specific strength, power development
+ * 
+ * SSP = Sport-Specific Preparedness (Competition/Peaking Phase)
+ *   - Final preparation phase closest to competition
+ *   - Typically 4 weeks, maintains fitness while reducing volume for freshness
+ *   - Focus: Maintain gains, peak for competition, reduce fatigue
+ */
+export type Phase = "GPP" | "SPP" | "SSP";
 
-export interface Exercise {
-  id: string;
-  name: string;
+/**
+ * Full phase names for display purposes
+ */
+export const PHASE_NAMES: Record<Phase, string> = {
+  GPP: "General Physical Preparedness",
+  SPP: "Specific Physical Preparedness",
+  SSP: "Sport-Specific Preparedness",
+};
+
+// Skill levels
+export type SkillLevel = "Novice" | "Moderate" | "Advanced";
+
+// Session status
+export type SessionStatus = "in_progress" | "completed" | "abandoned";
+
+// Intake types
+export type IntakeType = "initial" | "reassessment";
+
+// Document types from schema
+export type Exercise = Doc<"exercises">;
+export type Sport = Doc<"sports">;
+export type GppCategory = Doc<"gpp_categories">;
+export type ProgramTemplate = Doc<"program_templates">;
+export type UserProgram = Doc<"user_programs">;
+export type IntakeResponse = Doc<"intake_responses">;
+export type GppWorkoutSession = Doc<"gpp_workout_sessions">;
+export type UserProgress = Doc<"user_progress">;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GPP Exercise Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type ExerciseDifficulty = "beginner" | "intermediate" | "advanced";
+
+/**
+ * Exercise prescription within a template
+ */
+export interface ExercisePrescription {
+  exerciseId: Id<"exercises">;
   sets: number;
-  reps?: number;
-  duration?: number; // seconds
-  restDuration: number; // seconds
-  orderIndex: number;
+  reps: string; // "10-12", "5", "AMRAP", "30s"
+  tempo?: string; // "3010", "X010"
+  restSeconds: number; // Seconds between sets
   notes?: string;
+  orderIndex: number;
+  superset?: string; // "A", "B" for grouping
 }
 
-export interface CreateWorkoutInput {
-  name: string;
-  description?: string;
-  clientId: Id<"users">;
-  exercises: Omit<Exercise, 'id' | 'orderIndex'>[];
+// ─────────────────────────────────────────────────────────────────────────────
+// GPP Intake Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Intake form data - what the user enters
+ * Note: This will be expanded in dedicated intake session
+ */
+export interface IntakeFormData {
+  sportId: Id<"sports">;
+  yearsOfExperience: number; // How many years of training
+  preferredTrainingDaysPerWeek: number; // 1-7
+  weeksUntilSeason?: number; // Optional: for planning phase duration
 }
 
-// Workout execution types
+/**
+ * Intake calculation result - what we derive from their answers
+ */
+export interface IntakeResult {
+  gppCategoryId: GppCategoryId;
+  skillLevel: SkillLevel;
+  sportName: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GPP User Program Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Current program state - where the athlete is in their journey
+ * (Renamed from WorkoutLookupParams for clarity)
+ */
+export interface CurrentProgramState {
+  gppCategoryId: GppCategoryId;
+  phase: Phase;
+  skillLevel: SkillLevel;
+  week: number; // 1-4
+  day: number; // 1-7
+}
+
+/**
+ * User's progress summary
+ * 
+ * Progress defined as:
+ * - Completion: days → weeks → training blocks
+ * - Coverage: unique exercises performed
+ * - Consistency: average workouts per week
+ */
+export interface ProgressSummary {
+  // Current position
+  scheduledPhase: Phase;
+  scheduledWeek: number;
+  scheduledDay: number;
+  
+  // Phase access
+  unlockedPhases: Phase[];
+  
+  // Assignment
+  category: GppCategoryId;
+  skillLevel: SkillLevel;
+  
+  // Completion metrics
+  daysCompleted: number;
+  weeksCompleted: number;
+  blocksCompleted: number;
+  
+  // Coverage metrics
+  uniqueExercisesPerformed: number;
+  totalExercisesInCategory: number;
+  exerciseCoveragePercent: number; // uniqueExercises / totalExercises * 100
+  
+  // Consistency
+  averageWorkoutsPerWeek: number;
+  currentStreak: number;
+  longestStreak: number;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GPP Session Execution Types
+// ─────────────────────────────────────────────────────────────────────────────
+
 export interface CompletedSet {
   repsCompleted?: number;
-  durationCompleted?: number;
+  durationSeconds?: number; // For timed exercises
+  weight?: number; // Weight used
+  rpe?: number; // Rating of Perceived Exertion (1-10)
   completed: boolean;
   skipped: boolean;
 }
 
 export interface CompletedExercise {
-  exerciseId: string;
+  exerciseId: Id<"exercises">;
   completed: boolean;
   skipped: boolean;
   notes?: string;
@@ -55,44 +185,32 @@ export interface ExecutionState {
   currentExerciseIndex: number;
   currentSetIndex: number;
   isResting: boolean;
-  workoutElapsedTime: number; // seconds
-  exerciseTimer: number; // for timed exercises
-  restTimer: number;
+  workoutElapsedTimeSeconds: number;
+  exerciseTimerSeconds: number;
+  restTimerSeconds: number;
   completedExercises: CompletedExercise[];
 }
 
-export interface CreateWorkoutSessionInput {
-  workoutId: Id<"workouts">;
-  clientId: Id<"users">;
-  exercises: CompletedExercise[];
-  totalDuration?: number;
-  status: "completed" | "abandoned";
+// ═══════════════════════════════════════════════════════════════════════════════
+// SHARED/REUSABLE TYPES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// User types
+export type User = Doc<"users">;
+
+export interface CreateUserInput {
+  email: string;
+  name: string;
+  clerkId: string;
 }
 
-// Auth store types
-export interface AuthState {
-  user: User | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  role: UserRole | null;
-}
-
-export interface AuthActions {
-  setUser: (user: User | null) => void;
-  setLoading: (loading: boolean) => void;
-  logout: () => void;
-  updateUser: (updates: Partial<User>) => void;
-}
-
-export type AuthStore = AuthState & AuthActions;
-
-// Timer types
-export type TimerType = 'workout' | 'exercise' | 'rest';
+// Timer types (reusable for workout execution)
+export type TimerType = "workout" | "exercise" | "rest";
 
 export interface TimerState {
-  workoutTimer: number;
-  exerciseTimer: number;
-  restTimer: number;
+  workoutTimerSeconds: number;
+  exerciseTimerSeconds: number;
+  restTimerSeconds: number;
   isWorkoutActive: boolean;
   isExerciseActive: boolean;
   isRestActive: boolean;
@@ -102,10 +220,10 @@ export interface TimerActions {
   startWorkoutTimer: () => void;
   pauseWorkoutTimer: () => void;
   resetWorkoutTimer: () => void;
-  startExerciseTimer: (duration: number) => void;
+  startExerciseTimer: (durationSeconds: number) => void;
   pauseExerciseTimer: () => void;
   resetExerciseTimer: () => void;
-  startRestTimer: (duration: number) => void;
+  startRestTimer: (durationSeconds: number) => void;
   pauseRestTimer: () => void;
   resetRestTimer: () => void;
   pauseAllTimers: () => void;
@@ -113,31 +231,6 @@ export interface TimerActions {
 }
 
 export type TimerStore = TimerState & TimerActions;
-
-// Workout execution store types
-export interface WorkoutExecutionState {
-  currentWorkout: Workout | null;
-  executionState: ExecutionState;
-  isExecuting: boolean;
-  isPaused: boolean;
-}
-
-export interface WorkoutExecutionActions {
-  startWorkout: (workout: Workout) => void;
-  pauseWorkout: () => void;
-  resumeWorkout: () => void;
-  completeSet: (reps?: number, duration?: number) => void;
-  skipSet: () => void;
-  skipExercise: () => void;
-  completeWorkout: () => Promise<void>;
-  abandonWorkout: () => Promise<void>;
-  resetExecution: () => void;
-  nextExercise: () => void;
-  startRest: () => void;
-  endRest: () => void;
-}
-
-export type WorkoutExecutionStore = WorkoutExecutionState & WorkoutExecutionActions;
 
 // Navigation types
 export interface TabBarIconProps {
@@ -147,24 +240,12 @@ export interface TabBarIconProps {
 }
 
 // Component prop types
-export interface WorkoutCardProps {
-  workout: Workout;
-  onPress: () => void;
-  showClient?: boolean; // for trainer view
-}
-
-export interface ExerciseCardProps {
-  exercise: Exercise;
-  isActive?: boolean;
-  onPress?: () => void;
-}
-
 export interface TimerDisplayProps {
   type: TimerType;
   seconds: number;
   isActive: boolean;
   onComplete?: () => void;
-  size?: 'small' | 'medium' | 'large';
+  size?: "small" | "medium" | "large";
 }
 
 export interface SetCounterProps {
@@ -188,30 +269,8 @@ export interface LoginForm {
   password: string;
 }
 
-export interface SignUpForm {
-  email: string;
-  password: string;
-  name: string;
-  role: UserRole;
-  trainerId?: Id<"users">;
-}
-
-export interface CreateWorkoutForm {
-  name: string;
-  description: string;
-  clientId: Id<"users">;
-  exercises: {
-    name: string;
-    sets: number;
-    reps?: number;
-    duration?: number;
-    restDuration: number;
-    notes?: string;
-  }[];
-}
-
 // API response types
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
@@ -220,3 +279,22 @@ export interface ApiResponse<T = any> {
 // Utility types
 export type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
 export type RequiredFields<T, K extends keyof T> = T & Required<Pick<T, K>>;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LEGACY TYPES (Kept for backward compatibility during migration)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** @deprecated Use single athlete model */
+export type UserRole = "trainer" | "client";
+
+/** @deprecated Use ProgramTemplate instead */
+export type Workout = Doc<"workouts">;
+
+/** @deprecated Use GppWorkoutSession instead */
+export type WorkoutSession = Doc<"workoutSessions">;
+
+/** @deprecated Trainer relationships removed in GPP model */
+export type TrainerClientRelationship = Doc<"trainerClientRelationships">;
+
+/** @deprecated Use CurrentProgramState instead */
+export type WorkoutLookupParams = CurrentProgramState;

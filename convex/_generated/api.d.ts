@@ -13,8 +13,14 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as exercises from "../exercises.js";
 import type * as invitations from "../invitations.js";
+import type * as programTemplates from "../programTemplates.js";
 import type * as sampleData from "../sampleData.js";
+import type * as seed from "../seed.js";
+import type * as seedData from "../seedData.js";
+import type * as sports from "../sports.js";
+import type * as userPrograms from "../userPrograms.js";
 import type * as users from "../users.js";
 import type * as workoutSessions from "../workoutSessions.js";
 import type * as workouts from "../workouts.js";
@@ -28,8 +34,14 @@ import type * as workouts from "../workouts.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  exercises: typeof exercises;
   invitations: typeof invitations;
+  programTemplates: typeof programTemplates;
   sampleData: typeof sampleData;
+  seed: typeof seed;
+  seedData: typeof seedData;
+  sports: typeof sports;
+  userPrograms: typeof userPrograms;
   users: typeof users;
   workoutSessions: typeof workoutSessions;
   workouts: typeof workouts;
