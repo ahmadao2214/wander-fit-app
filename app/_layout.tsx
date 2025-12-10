@@ -53,10 +53,12 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
 function RootLayoutNav() {
   const colorScheme = useColorScheme()
   const theme = useTheme()
+  
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
       <Stack>
+        {/* Auth routes (sign in, sign up) */}
         <Stack.Screen
           name="(auth)"
           options={{
@@ -64,27 +66,52 @@ function RootLayoutNav() {
           }}
         />
         
+        {/* Intake flow (sport selection, experience, results) */}
         <Stack.Screen
-          name="(trainer)"
+          name="(intake)"
           options={{
             headerShown: false,
           }}
         />
         
+        {/* Main athlete dashboard */}
+        <Stack.Screen
+          name="(athlete)"
+          options={{
+            headerShown: false,
+          }}
+        />
+
+        {/* Index/landing page */}
+        <Stack.Screen
+          name="index"
+          options={{
+            headerShown: false,
+          }}
+        />
+
+        {/* ═══════════════════════════════════════════════════════════════════
+            LEGACY ROUTES (kept for backward compatibility during migration)
+            These will be removed once migration is complete
+            ═══════════════════════════════════════════════════════════════════ */}
+        
+        {/* @deprecated - Use (athlete) instead */}
         <Stack.Screen
           name="(client)"
           options={{
             headerShown: false,
           }}
         />
-
+        
+        {/* @deprecated - Trainer functionality removed in GPP model */}
         <Stack.Screen
-          name="(tabs)"
+          name="(trainer)"
           options={{
             headerShown: false,
           }}
         />
 
+        {/* @deprecated - Trainer functionality removed */}
         <Stack.Screen
           name="add-client"
           options={{
@@ -96,13 +123,6 @@ function RootLayoutNav() {
             contentStyle: {
               backgroundColor: theme.background.val,
             },
-          }}
-        />
-
-        <Stack.Screen
-          name="index"
-          options={{
-            headerShown: false,
           }}
         />
       </Stack>

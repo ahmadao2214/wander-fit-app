@@ -22,6 +22,7 @@
     "@clerk/clerk-expo": "^2.15.0",
     "@clerk/clerk-react": "^5.47.0",
     "@react-navigation/native": "^7.1.6",
+    "@tamagui/colors": "^1.138.6",
     "@tamagui/config": "^1.132.24",
     "@tamagui/lucide-icons": "^1.132.24",
     "@tamagui/toast": "^1.132.24",

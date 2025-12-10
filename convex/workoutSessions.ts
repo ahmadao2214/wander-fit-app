@@ -38,8 +38,9 @@ export const startWorkoutSession = mutation({
       throw new Error("User not found");
     }
 
-    if (user.role !== "client") {
-      throw new Error("Only clients can start workout sessions");
+    // Only trainers are explicitly excluded from starting workout sessions
+    if (user.role === "trainer") {
+      throw new Error("Trainers cannot start workout sessions");
     }
 
     const workout = await ctx.db.get(args.workoutId);
@@ -258,8 +259,10 @@ export const getCurrentSession = query({
       throw new Error("User not found");
     }
 
-    if (user.role !== "client") {
-      throw new Error("Only clients can have active sessions");
+    // Only trainers are explicitly excluded - all other users (including undefined role) are athletes
+    if (user.role === "trainer") {
+      // Trainers don't have personal workout sessions, just return null
+      return null;
     }
 
     const session = await ctx.db
@@ -303,8 +306,9 @@ export const getSessionHistory = query({
       throw new Error("User not found");
     }
 
-    if (user.role !== "client") {
-      throw new Error("Only clients can view session history");
+    // Only trainers are explicitly excluded - return empty for them
+    if (user.role === "trainer") {
+      return [];
     }
 
     const limit = args.limit || 20;

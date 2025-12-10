@@ -236,6 +236,259 @@ export const seedSampleTemplate = mutation({
 });
 
 /**
+ * Seed templates for all skill levels (for Week 1, Days 1-3)
+ * This ensures athletes of any skill level have workouts available
+ */
+export const seedAllSkillLevelTemplates = mutation({
+  args: {},
+  handler: async (ctx) => {
+    // Helper to get exercise ID by slug
+    const getExerciseId = async (slug: string): Promise<Id<"exercises">> => {
+      const exercise = await ctx.db
+        .query("exercises")
+        .withIndex("by_slug", (q) => q.eq("slug", slug))
+        .first();
+
+      if (!exercise) {
+        throw new Error(`Exercise not found: ${slug}. Run seedExercises first.`);
+      }
+
+      return exercise._id;
+    };
+
+    const results: { created: number; skipped: number } = { created: 0, skipped: 0 };
+    const skillLevels = ["Novice", "Moderate", "Advanced"] as const;
+    const gppCategories = [1, 2, 3, 4]; // All 4 GPP categories
+
+    // Base exercises for lower body day (warmup + main + cooldown)
+    const lowerBodyExercises = [
+      { slug: "cat_cow", sets: 1, reps: "10", restSeconds: 0, notes: "Warmup", orderIndex: 0 },
+      { slug: "worlds_greatest_stretch", sets: 1, reps: "5 each side", restSeconds: 0, orderIndex: 1 },
+    ];
+
+    // Skill-level specific exercises
+    const lowerBodyBySkill = {
+      Novice: [
+        { slug: "goblet_squat", sets: 3, reps: "12-15", tempo: "3010", restSeconds: 60, orderIndex: 2 },
+        { slug: "romanian_deadlift", sets: 3, reps: "10-12", tempo: "3010", restSeconds: 60, orderIndex: 3 },
+        { slug: "reverse_lunge", sets: 2, reps: "10 each", restSeconds: 45, orderIndex: 4 },
+        { slug: "plank", sets: 3, reps: "30s", restSeconds: 30, orderIndex: 5 },
+      ],
+      Moderate: [
+        { slug: "back_squat", sets: 4, reps: "8-10", tempo: "3010", restSeconds: 90, orderIndex: 2 },
+        { slug: "romanian_deadlift", sets: 4, reps: "8-10", tempo: "3010", restSeconds: 75, orderIndex: 3 },
+        { slug: "bulgarian_split_squat", sets: 3, reps: "8 each", restSeconds: 60, orderIndex: 4 },
+        { slug: "pallof_press", sets: 3, reps: "10 each side", restSeconds: 45, orderIndex: 5 },
+      ],
+      Advanced: [
+        { slug: "back_squat", sets: 5, reps: "5-6", tempo: "3010", restSeconds: 120, notes: "Heavy compound", orderIndex: 2 },
+        { slug: "trap_bar_deadlift", sets: 4, reps: "6-8", tempo: "2010", restSeconds: 120, orderIndex: 3 },
+        { slug: "bulgarian_split_squat", sets: 4, reps: "6 each", restSeconds: 75, orderIndex: 4 },
+        { slug: "single_leg_rdl", sets: 3, reps: "8 each", restSeconds: 60, orderIndex: 5 },
+        { slug: "hanging_leg_raise", sets: 3, reps: "10-12", restSeconds: 45, orderIndex: 6 },
+      ],
+    };
+
+    // Upper body exercises by skill level
+    const upperBodyBySkill = {
+      Novice: [
+        { slug: "dead_bug", sets: 1, reps: "10 each side", restSeconds: 0, notes: "Warmup", orderIndex: 0 },
+        { slug: "push_up", sets: 3, reps: "10-15", restSeconds: 60, orderIndex: 1 },
+        { slug: "inverted_row", sets: 3, reps: "10-12", restSeconds: 60, orderIndex: 2 },
+        { slug: "db_shoulder_press", sets: 3, reps: "10-12", restSeconds: 60, orderIndex: 3 },
+        { slug: "face_pull", sets: 2, reps: "15", restSeconds: 45, orderIndex: 4 },
+      ],
+      Moderate: [
+        { slug: "bird_dog", sets: 1, reps: "8 each side", restSeconds: 0, notes: "Warmup", orderIndex: 0 },
+        { slug: "db_bench_press", sets: 4, reps: "8-10", restSeconds: 75, orderIndex: 1 },
+        { slug: "db_row", sets: 4, reps: "8-10 each", restSeconds: 60, orderIndex: 2 },
+        { slug: "overhead_press", sets: 3, reps: "8-10", restSeconds: 75, orderIndex: 3 },
+        { slug: "pull_up", sets: 3, reps: "AMRAP", restSeconds: 90, orderIndex: 4 },
+        { slug: "face_pull", sets: 3, reps: "12-15", restSeconds: 45, orderIndex: 5 },
+      ],
+      Advanced: [
+        { slug: "thoracic_rotation", sets: 1, reps: "8 each side", restSeconds: 0, notes: "Warmup", orderIndex: 0 },
+        { slug: "db_bench_press", sets: 5, reps: "5-6", restSeconds: 120, orderIndex: 1 },
+        { slug: "pull_up", sets: 5, reps: "5-8", restSeconds: 90, orderIndex: 2 },
+        { slug: "overhead_press", sets: 4, reps: "6-8", restSeconds: 90, orderIndex: 3 },
+        { slug: "db_row", sets: 4, reps: "6-8 each", restSeconds: 75, orderIndex: 4 },
+        { slug: "incline_db_press", sets: 3, reps: "8-10", restSeconds: 60, orderIndex: 5 },
+        { slug: "face_pull", sets: 3, reps: "12-15", restSeconds: 45, orderIndex: 6 },
+      ],
+    };
+
+    // Power/conditioning day by skill level
+    const powerBySkill = {
+      Novice: [
+        { slug: "cat_cow", sets: 1, reps: "10", restSeconds: 0, notes: "Warmup", orderIndex: 0 },
+        { slug: "broad_jump", sets: 3, reps: "5", restSeconds: 60, notes: "Focus on landing", orderIndex: 1 },
+        { slug: "kettlebell_swing", sets: 3, reps: "12-15", restSeconds: 60, orderIndex: 2 },
+        { slug: "med_ball_slam", sets: 3, reps: "8", restSeconds: 45, orderIndex: 3 },
+        { slug: "lateral_lunge", sets: 2, reps: "8 each", restSeconds: 45, orderIndex: 4 },
+      ],
+      Moderate: [
+        { slug: "bird_dog", sets: 1, reps: "8 each side", restSeconds: 0, notes: "Warmup", orderIndex: 0 },
+        { slug: "box_jump", sets: 4, reps: "5", restSeconds: 75, orderIndex: 1 },
+        { slug: "kettlebell_swing", sets: 4, reps: "15", restSeconds: 60, orderIndex: 2 },
+        { slug: "med_ball_rotational_throw", sets: 3, reps: "8 each side", restSeconds: 60, orderIndex: 3 },
+        { slug: "skater_jump", sets: 3, reps: "10 each", restSeconds: 45, orderIndex: 4 },
+      ],
+      Advanced: [
+        { slug: "worlds_greatest_stretch", sets: 1, reps: "5 each side", restSeconds: 0, notes: "Warmup", orderIndex: 0 },
+        { slug: "depth_jump", sets: 4, reps: "4", restSeconds: 120, notes: "Maximal reactive power", orderIndex: 1 },
+        { slug: "box_jump", sets: 4, reps: "5", restSeconds: 90, orderIndex: 2 },
+        { slug: "med_ball_rotational_throw", sets: 4, reps: "6 each side", restSeconds: 75, orderIndex: 3 },
+        { slug: "kettlebell_swing", sets: 4, reps: "12", restSeconds: 60, orderIndex: 4 },
+        { slug: "cable_woodchop", sets: 3, reps: "10 each side", restSeconds: 45, orderIndex: 5 },
+      ],
+    };
+
+    const cooldownExercise = { slug: "90_90_hip_stretch", sets: 1, reps: "30s each side", restSeconds: 0, notes: "Cooldown" };
+
+    // Create templates for all combinations
+    for (const categoryId of gppCategories) {
+      for (const skillLevel of skillLevels) {
+        // Day 1: Lower Body
+        const day1Exercises = [
+          ...lowerBodyExercises,
+          ...lowerBodyBySkill[skillLevel],
+          { ...cooldownExercise, orderIndex: lowerBodyBySkill[skillLevel].length + 2 },
+        ];
+
+        const day1ExercisesWithIds = await Promise.all(
+          day1Exercises.map(async (e) => ({
+            exerciseId: await getExerciseId(e.slug),
+            sets: e.sets,
+            reps: e.reps,
+            tempo: "tempo" in e ? e.tempo : undefined,
+            restSeconds: e.restSeconds,
+            notes: "notes" in e ? e.notes : undefined,
+            orderIndex: e.orderIndex,
+          }))
+        );
+
+        // Check and create Day 1
+        const existingDay1 = await ctx.db
+          .query("program_templates")
+          .withIndex("by_assignment", (q) =>
+            q.eq("gppCategoryId", categoryId).eq("phase", "GPP").eq("skillLevel", skillLevel).eq("week", 1).eq("day", 1)
+          )
+          .first();
+
+        if (!existingDay1) {
+          await ctx.db.insert("program_templates", {
+            gppCategoryId: categoryId,
+            phase: "GPP",
+            skillLevel,
+            week: 1,
+            day: 1,
+            name: `Lower Body ${skillLevel === "Novice" ? "Foundation" : skillLevel === "Moderate" ? "Development" : "Strength"} - Day 1`,
+            description: skillLevel === "Novice" 
+              ? "Introduction to fundamental lower body movement patterns."
+              : skillLevel === "Moderate"
+              ? "Building lower body strength with progressive loading."
+              : "High-intensity lower body training for advanced athletes.",
+            estimatedDurationMinutes: skillLevel === "Novice" ? 40 : skillLevel === "Moderate" ? 50 : 60,
+            exercises: day1ExercisesWithIds,
+          });
+          results.created++;
+        } else {
+          results.skipped++;
+        }
+
+        // Day 2: Upper Body
+        const day2Exercises = upperBodyBySkill[skillLevel];
+        const day2ExercisesWithIds = await Promise.all(
+          day2Exercises.map(async (e) => ({
+            exerciseId: await getExerciseId(e.slug),
+            sets: e.sets,
+            reps: e.reps,
+            restSeconds: e.restSeconds,
+            notes: "notes" in e ? e.notes : undefined,
+            orderIndex: e.orderIndex,
+          }))
+        );
+
+        const existingDay2 = await ctx.db
+          .query("program_templates")
+          .withIndex("by_assignment", (q) =>
+            q.eq("gppCategoryId", categoryId).eq("phase", "GPP").eq("skillLevel", skillLevel).eq("week", 1).eq("day", 2)
+          )
+          .first();
+
+        if (!existingDay2) {
+          await ctx.db.insert("program_templates", {
+            gppCategoryId: categoryId,
+            phase: "GPP",
+            skillLevel,
+            week: 1,
+            day: 2,
+            name: `Upper Body ${skillLevel === "Novice" ? "Foundation" : skillLevel === "Moderate" ? "Development" : "Strength"} - Day 2`,
+            description: skillLevel === "Novice"
+              ? "Building upper body pushing and pulling patterns."
+              : skillLevel === "Moderate"
+              ? "Progressive upper body strength development."
+              : "High-volume upper body training for advanced athletes.",
+            estimatedDurationMinutes: skillLevel === "Novice" ? 35 : skillLevel === "Moderate" ? 45 : 55,
+            exercises: day2ExercisesWithIds,
+          });
+          results.created++;
+        } else {
+          results.skipped++;
+        }
+
+        // Day 3: Power/Conditioning
+        const day3Exercises = powerBySkill[skillLevel];
+        const day3ExercisesWithIds = await Promise.all(
+          day3Exercises.map(async (e) => ({
+            exerciseId: await getExerciseId(e.slug),
+            sets: e.sets,
+            reps: e.reps,
+            restSeconds: e.restSeconds,
+            notes: "notes" in e ? e.notes : undefined,
+            orderIndex: e.orderIndex,
+          }))
+        );
+
+        const existingDay3 = await ctx.db
+          .query("program_templates")
+          .withIndex("by_assignment", (q) =>
+            q.eq("gppCategoryId", categoryId).eq("phase", "GPP").eq("skillLevel", skillLevel).eq("week", 1).eq("day", 3)
+          )
+          .first();
+
+        if (!existingDay3) {
+          await ctx.db.insert("program_templates", {
+            gppCategoryId: categoryId,
+            phase: "GPP",
+            skillLevel,
+            week: 1,
+            day: 3,
+            name: `Power & Conditioning ${skillLevel === "Novice" ? "Intro" : skillLevel === "Moderate" ? "Development" : "Advanced"} - Day 3`,
+            description: skillLevel === "Novice"
+              ? "Introduction to explosive movements and conditioning."
+              : skillLevel === "Moderate"
+              ? "Building power and work capacity."
+              : "High-intensity power and reactive training.",
+            estimatedDurationMinutes: skillLevel === "Novice" ? 35 : skillLevel === "Moderate" ? 45 : 50,
+            exercises: day3ExercisesWithIds,
+          });
+          results.created++;
+        } else {
+          results.skipped++;
+        }
+      }
+    }
+
+    return {
+      message: "Templates seeded for all skill levels",
+      ...results,
+      details: `Created templates for ${gppCategories.length} categories × ${skillLevels.length} skill levels × 3 days = ${gppCategories.length * skillLevels.length * 3} templates`,
+    };
+  },
+});
+
+/**
  * Seed example user program (for testing)
  * Requires a test user and sports to be seeded first
  * 
