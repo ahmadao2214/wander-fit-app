@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect } from 'react'
 import { useSignIn, useSSO } from '@clerk/clerk-expo'
 import { Link, useRouter } from 'expo-router'
-import { Platform, ScrollView } from 'react-native'
+import { Platform, ScrollView, KeyboardAvoidingView } from 'react-native'
 import { Text, Input, Button, YStack, XStack } from 'tamagui'
 import * as WebBrowser from 'expo-web-browser'
 import * as AuthSession from 'expo-auth-session'
@@ -179,89 +179,94 @@ export default function Page() {
 
     return (
         <PublicOnlyRoute>
-            <ScrollView 
-                contentContainerStyle={{ flexGrow: 1 }}
-                keyboardShouldPersistTaps="handled"
+            <KeyboardAvoidingView 
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={{ flex: 1 }}
             >
-                <YStack gap="$4" flex={1} justify="center" px="$4" py="$6" maxW={400} mx="auto" width="100%">
-                    <YStack gap="$2" items="center">
-                        <Text fontSize="$8" fontWeight="bold">Sign in</Text>
-                        <Text text="center">
-                            Welcome back! Please sign in to your account.
-                        </Text>
-                    </YStack>
+                <ScrollView 
+                    contentContainerStyle={{ flexGrow: 1 }}
+                    keyboardShouldPersistTaps="handled"
+                >
+                    <YStack gap="$4" flex={1} justify="center" px="$4" py="$6" maxW={400} mx="auto" width="100%">
+                        <YStack gap="$2" items="center">
+                            <Text fontSize="$8" fontWeight="bold">Sign in</Text>
+                            <Text text="center">
+                                Welcome back! Please sign in to your account.
+                            </Text>
+                        </YStack>
 
-                    {/* OAuth Section */}
-                    <YStack gap="$3">
-                        <Button
-                            onPress={onOAuthPress}
-                            theme="red"
-                            fontWeight="600"
-                            size="$4"
-                        >
-                            Continue with Google
-                        </Button>
+                        {/* OAuth Section */}
+                        <YStack gap="$3">
+                            <Button
+                                onPress={onOAuthPress}
+                                theme="red"
+                                fontWeight="600"
+                                size="$4"
+                            >
+                                Continue with Google
+                            </Button>
 
-                        <XStack items="center" gap="$3">
-                            <Text fontSize="$3">OR</Text>
+                            <XStack items="center" gap="$3">
+                                <Text fontSize="$3">OR</Text>
+                            </XStack>
+                        </YStack>
+
+                        {/* Error Message */}
+                        {error ? (
+                            <YStack bg="$red2" p="$3" rounded="$3">
+                                <Text color="$red10" text="center">{error}</Text>
+                            </YStack>
+                        ) : null}
+
+                        {/* Email/Password Section */}
+                        <YStack gap="$3">
+                            <Input
+                                autoCapitalize="none"
+                                keyboardType="email-address"
+                                autoComplete="email"
+                                returnKeyType="next"
+                                value={emailAddress}
+                                placeholder="Enter email"
+                                onChangeText={(emailAddress) => {
+                                    setEmailAddress(emailAddress)
+                                    setError('') // Clear error when user types
+                                }}
+                                size="$4"
+                            />
+                            <Input
+                                value={password}
+                                placeholder="Enter password"
+                                secureTextEntry={true}
+                                autoComplete="password"
+                                returnKeyType="done"
+                                onChangeText={(password) => {
+                                    setPassword(password)
+                                    setError('') // Clear error when user types
+                                }}
+                                onSubmitEditing={onSignInPress}
+                                size="$4"
+                            />
+                            <Button
+                                onPress={onSignInPress}
+                                disabled={isSigningIn}
+                                theme="blue"
+                                fontWeight="600"
+                                size="$4"
+                                opacity={isSigningIn ? 0.7 : 1}
+                            >
+                                {isSigningIn ? 'Signing in...' : 'Continue'}
+                            </Button>
+                        </YStack>
+
+                        <XStack justify="center" gap="$2">
+                            <Text>Don't have an account?</Text>
+                            <Link href="/sign-up">
+                                <Text fontWeight="600">Sign up</Text>
+                            </Link>
                         </XStack>
                     </YStack>
-
-                    {/* Error Message */}
-                    {error ? (
-                        <YStack bg="$red2" p="$3" rounded="$3">
-                            <Text color="$red10" text="center">{error}</Text>
-                        </YStack>
-                    ) : null}
-
-                    {/* Email/Password Section */}
-                    <YStack gap="$3">
-                        <Input
-                            autoCapitalize="none"
-                            keyboardType="email-address"
-                            autoComplete="email"
-                            returnKeyType="next"
-                            value={emailAddress}
-                            placeholder="Enter email"
-                            onChangeText={(emailAddress) => {
-                                setEmailAddress(emailAddress)
-                                setError('') // Clear error when user types
-                            }}
-                            size="$4"
-                        />
-                        <Input
-                            value={password}
-                            placeholder="Enter password"
-                            secureTextEntry={true}
-                            autoComplete="password"
-                            returnKeyType="done"
-                            onChangeText={(password) => {
-                                setPassword(password)
-                                setError('') // Clear error when user types
-                            }}
-                            onSubmitEditing={onSignInPress}
-                            size="$4"
-                        />
-                        <Button
-                            onPress={onSignInPress}
-                            disabled={isSigningIn}
-                            theme="blue"
-                            fontWeight="600"
-                            size="$4"
-                            opacity={isSigningIn ? 0.7 : 1}
-                        >
-                            {isSigningIn ? 'Signing in...' : 'Continue'}
-                        </Button>
-                    </YStack>
-
-                    <XStack justify="center" gap="$2">
-                        <Text>Don't have an account?</Text>
-                        <Link href="/sign-up">
-                            <Text fontWeight="600">Sign up</Text>
-                        </Link>
-                    </XStack>
-                </YStack>
-            </ScrollView>
+                </ScrollView>
+            </KeyboardAvoidingView>
         </PublicOnlyRoute>
     )
 }
