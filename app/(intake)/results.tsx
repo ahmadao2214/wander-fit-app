@@ -113,13 +113,20 @@ export default function ResultsScreen() {
     }
   }, [isSuccess, router])
 
-  if (!sport || !category) {
+  // Show loading while fetching sport/category (undefined = still loading)
+  if (sport === undefined || category === undefined) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
         <Spinner size="large" color="$green10" />
         <Text color="$gray11">Calculating your program...</Text>
       </YStack>
     )
+  }
+
+  // Handle sport or category not found (null = query completed but no document)
+  if (sport === null || category === null) {
+    router.replace('/(intake)/sport')
+    return null
   }
 
   // Show success state while waiting for redirect

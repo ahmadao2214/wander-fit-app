@@ -1,6 +1,9 @@
 import { useState } from 'react'
-import { YStack, XStack, H2, H3, Text, Card, Button, ScrollView, Slider } from 'tamagui'
+import { YStack, XStack, H2, H3, Text, Card, Button, ScrollView, Slider, Spinner } from 'tamagui'
 import { useRouter, useLocalSearchParams } from 'expo-router'
+import { useQuery } from 'convex/react'
+import { api } from '../../convex/_generated/api'
+import { Id } from '../../convex/_generated/dataModel'
 import { 
   ChevronRight,
   ChevronLeft,
@@ -12,7 +15,7 @@ import {
  * Experience & Training Days Screen
  * 
  * Step 2 of intake flow.
- * Collects years of experience and preferred training days.
+ * Collects years of sport-specific experience and preferred training days.
  */
 export default function ExperienceScreen() {
   const router = useRouter()
@@ -21,8 +24,30 @@ export default function ExperienceScreen() {
   const [yearsOfExperience, setYearsOfExperience] = useState(1)
   const [trainingDays, setTrainingDays] = useState(3)
 
+  // Fetch sport details to display sport name
+  const sport = useQuery(
+    api.sports.getById,
+    sportId ? { sportId: sportId as Id<"sports"> } : "skip"
+  )
+
   // Redirect back if no sport selected
   if (!sportId) {
+    router.replace('/(intake)/sport')
+    return null
+  }
+
+  // Show loading while fetching sport (undefined = still loading)
+  if (sport === undefined) {
+    return (
+      <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
+        <Spinner size="large" color="$green10" />
+        <Text color="$gray11">Loading...</Text>
+      </YStack>
+    )
+  }
+
+  // Handle sport not found (null = query completed but no document)
+  if (sport === null) {
     router.replace('/(intake)/sport')
     return null
   }
@@ -64,9 +89,9 @@ export default function ExperienceScreen() {
           {/* Header */}
           <YStack gap="$2" items="center">
             <TrendingUp size={48} color={"$green10" as any} />
-            <H2>Your Experience</H2>
+            <H2>Your {sport.name} Experience</H2>
             <Text color="$color11" fontSize="$4">
-              Tell us about your training background
+              Tell us about your background in {sport.name}
             </Text>
           </YStack>
 
@@ -75,10 +100,10 @@ export default function ExperienceScreen() {
             <YStack gap="$4">
               <YStack gap="$1">
                 <Text fontSize="$5" fontWeight="600">
-                  Training Experience
+                  {sport.name} Experience
                 </Text>
                 <Text fontSize="$3" color="$color10">
-                  How many years have you been training?
+                  How long have you been playing {sport.name}?
                 </Text>
               </YStack>
 
@@ -136,10 +161,10 @@ export default function ExperienceScreen() {
             <YStack gap="$4">
               <YStack gap="$1">
                 <Text fontSize="$5" fontWeight="600">
-                  Training Schedule
+                  Training Commitment
                 </Text>
                 <Text fontSize="$3" color="$color10">
-                  How many days per week do you want to train?
+                  How many times per week can you commit to training?
                 </Text>
               </YStack>
 
@@ -178,8 +203,8 @@ export default function ExperienceScreen() {
                 Why does this matter?
               </Text>
               <Text fontSize="$3" color="$blue11">
-                Your experience level determines the intensity and complexity of your program.
-                Training days help us schedule your workouts appropriately with rest days built in.
+                Your {sport.name} experience determines the intensity and complexity of your program.
+                Your training commitment helps us schedule workouts with appropriate rest days built in.
               </Text>
             </YStack>
           </Card>

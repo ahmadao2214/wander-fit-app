@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { YStack, XStack, H2, H3, Text, Card, Button, ScrollView, Spinner, Input } from 'tamagui'
+import { YStack, XStack, H2, Text, Card, Button, ScrollView, Spinner, Input, Circle } from 'tamagui'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { useRouter } from 'expo-router'
@@ -7,27 +7,153 @@ import {
   Search,
   ChevronRight,
   Target,
+  Check,
 } from '@tamagui/lucide-icons'
 import { Id } from '../../convex/_generated/dataModel'
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SportIcon Component
+// Placeholder using styled initials - designed to be swapped for Lottie later
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface SportIconProps {
+  name: string
+  size?: number
+  isSelected?: boolean
+}
+
+/**
+ * SportIcon - Placeholder icon component for sports
+ * 
+ * Displays styled initials extracted from sport name.
+ * Designed to be easily swapped for Lottie animations later:
+ * 
+ * Future implementation:
+ * ```tsx
+ * if (lottieSource) {
+ *   return <LottieView source={lottieSource} style={{ width: size, height: size }} />;
+ * }
+ * ```
+ */
+const SportIcon = ({ name, size = 56, isSelected = false }: SportIconProps) => {
+  // Extract initials: "Field Hockey" → "FH", "Soccer" → "S", "Track (Distance)" → "TD"
+  // Filter out parentheses, slashes, and non-letter characters
+  const initials = name
+    .split(/[\s()/]+/) // Split on spaces, parentheses, and slashes
+    .filter(word => word.length > 0) // Remove empty strings
+    .map(word => word[0]) // Get first letter of each word
+    .filter(char => /[A-Za-z]/.test(char)) // Only keep letters
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+
+  return (
+    <Circle 
+      size={size} 
+      bg={isSelected ? '$green5' : '$gray4'}
+    >
+      <Text 
+        fontSize={size / 2.5} 
+        fontWeight="700" 
+        color={isSelected ? '$green11' : '$gray11'}
+      >
+        {initials}
+      </Text>
+    </Circle>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SportTile Component
+// Individual tile for a sport in the grid
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface SportTileProps {
+  sport: {
+    _id: Id<"sports">
+    name: string
+    description?: string
+  }
+  isSelected: boolean
+  onSelect: () => void
+}
+
+const SportTile = ({ sport, isSelected, onSelect }: SportTileProps) => {
+  return (
+    <Card
+      // Fill the grid cell width, use aspect ratio for square tiles
+      width="100%"
+      aspectRatio={1}
+      bg={isSelected ? '$green2' : '$gray2'}
+      borderColor={isSelected ? '$green8' : 'transparent'}
+      borderWidth={2}
+      borderRadius="$4"
+      pressStyle={{ scale: 0.95, opacity: 0.9 }}
+      onPress={onSelect}
+      position="relative"
+    >
+      <YStack 
+        flex={1} 
+        items="center" 
+        justify="center" 
+        gap="$2" 
+        p="$2"
+      >
+        <SportIcon 
+          name={sport.name} 
+          size={48}
+          isSelected={isSelected} 
+        />
+        <Text 
+          fontSize="$2" 
+          fontWeight="600" 
+          textAlign="center" 
+          numberOfLines={2}
+          color={isSelected ? '$green11' : '$color12'}
+        >
+          {sport.name}
+        </Text>
+      </YStack>
+      
+      {/* Selected indicator */}
+      {isSelected && (
+        <Circle
+          size={24}
+          bg="$green9"
+          position="absolute"
+          top={8}
+          right={8}
+        >
+          <Check size={14} color="white" strokeWidth={3} />
+        </Circle>
+      )}
+    </Card>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sport Selection Screen
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Sport Selection Screen
  * 
  * Step 1 of intake flow.
- * User selects their primary sport, which determines their GPP category.
+ * User selects their primary sport from a visual tile grid.
+ * GPP category is determined behind the scenes - not shown to user.
  */
 export default function SportSelectionScreen() {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedSportId, setSelectedSportId] = useState<Id<"sports"> | null>(null)
 
-  // Get all sports
+  // Get all sports (no categories needed for display)
   const sports = useQuery(api.sports.list, {})
 
-  // Get categories for display
-  const categories = useQuery(api.sports.getCategories, {})
+  // Grid gap for tile spacing
+  const GAP = 12 // $3 gap between tiles
 
-  if (!sports || !categories) {
+  if (!sports) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
         <Spinner size="large" color="$green10" />
@@ -36,22 +162,20 @@ export default function SportSelectionScreen() {
     )
   }
 
-  // Filter sports by search query
+  // Filter sports by search query (flat list, no categories)
   const filteredSports = searchQuery
     ? sports.filter((s) => 
         s.name.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : sports
 
-  // Group sports by category
-  const sportsByCategory = categories.map((category) => ({
-    category,
-    sports: filteredSports.filter((s) => s.gppCategoryId === category.categoryId),
-  })).filter((group) => group.sports.length > 0)
+  // Sort alphabetically for consistent ordering
+  const sortedSports = [...filteredSports].sort((a, b) => 
+    a.name.localeCompare(b.name)
+  )
 
   const handleContinue = () => {
     if (selectedSportId) {
-      // Store in URL params for next screen
       router.push({
         pathname: '/(intake)/experience',
         params: { sportId: selectedSportId },
@@ -102,60 +226,27 @@ export default function SportSelectionScreen() {
             />
           </XStack>
 
-          {/* Sports by Category */}
-          <YStack gap="$5">
-            {sportsByCategory.map(({ category, sports: categorySports }) => (
-              <YStack key={category.categoryId} gap="$3">
-                <YStack gap="$1">
-                  <H3 fontSize="$5">{category.shortName}</H3>
-                  <Text fontSize="$2" color="$gray10">
-                    {category.name}
-                  </Text>
-                </YStack>
-
-                <YStack gap="$2">
-                  {categorySports.map((sport) => {
-                    const isSelected = selectedSportId === sport._id
-
-                    return (
-                      <Card
-                        key={sport._id}
-                        p="$4"
-                        bg={isSelected ? '$green2' : '$background'}
-                        borderColor={isSelected ? '$green8' : '$gray6'}
-                        borderWidth={isSelected ? 2 : 1}
-                        pressStyle={{ scale: 0.98, opacity: 0.9 }}
-                        onPress={() => setSelectedSportId(sport._id)}
-                      >
-                        <XStack items="center" gap="$3">
-                          <YStack flex={1}>
-                            <Text fontSize="$4" fontWeight="600">
-                              {sport.name}
-                            </Text>
-                            {sport.description && (
-                              <Text fontSize="$2" color="$gray10">
-                                {sport.description}
-                              </Text>
-                            )}
-                          </YStack>
-                          {isSelected && (
-                            <Card bg="$green9" px="$2" py="$1" borderRadius="$10">
-                              <Text fontSize="$1" color="white" fontWeight="600">
-                                SELECTED
-                              </Text>
-                            </Card>
-                          )}
-                        </XStack>
-                      </Card>
-                    )
-                  })}
-                </YStack>
-              </YStack>
+          {/* Sport Tiles Grid - Using CSS Grid for reliable 3-column layout */}
+          <YStack 
+            width="100%"
+            style={{
+              display: 'grid' as any,
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: GAP,
+            }}
+          >
+            {sortedSports.map((sport) => (
+              <SportTile
+                key={sport._id}
+                sport={sport}
+                isSelected={selectedSportId === sport._id}
+                onSelect={() => setSelectedSportId(sport._id)}
+              />
             ))}
           </YStack>
 
           {/* No Results */}
-          {sportsByCategory.length === 0 && searchQuery && (
+          {sortedSports.length === 0 && searchQuery && (
             <Card p="$6" bg="$gray2">
               <YStack items="center" gap="$2">
                 <Text color="$gray10" textAlign="center">
@@ -193,4 +284,3 @@ export default function SportSelectionScreen() {
     </YStack>
   )
 }
-
