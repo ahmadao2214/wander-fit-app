@@ -6,6 +6,7 @@
       "dependencies": {
         "@clerk/clerk-expo": "^2.15.0",
         "@clerk/clerk-react": "^5.47.0",
+        "@lottiefiles/dotlottie-react": "^0.17.10",
         "@react-navigation/native": "^7.1.6",
         "@tamagui/colors": "^1.139.2",
         "@tamagui/config": "^1.139.2",
@@ -27,6 +28,7 @@
         "expo-status-bar": "~2.2.3",
         "expo-system-ui": "~5.0.7",
         "expo-web-browser": "~14.2.0",
+        "lottie-react-native": "7.2.2",
         "memoize-one": "^6.0.0",
         "react": "19.0.0",
         "react-dom": "19.0.0",
@@ -433,6 +435,10 @@
     "@jridgewell/sourcemap-codec": ["@jridgewell/sourcemap-codec@1.5.5", "", {}, ""],
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, ""],
+
+    "@lottiefiles/dotlottie-react": ["@lottiefiles/dotlottie-react@0.17.10", "", { "dependencies": { "@lottiefiles/dotlottie-web": "0.58.1" }, "peerDependencies": { "react": "^17 || ^18 || ^19" } }, "sha512-ikrN05/q0/KjqIU+n48uNwmE7DeZIC9y3Nd19httcKqe273zoOeNYycEaQzLSdcpEGnWLmHaZpgtoo07aQZAXg=="],
+
+    "@lottiefiles/dotlottie-web": ["@lottiefiles/dotlottie-web@0.58.1", "", {}, "sha512-YC4pmScrV0R3rd11gU5xHrjeNczlCic69zlnMH/buDIzYxIbpR88oPUhGtKgu5ln7EJchoLpeRJbA3uLCzSeTA=="],
 
     "@motionone/animation": ["@motionone/animation@10.18.0", "", { "dependencies": { "@motionone/easing": "^10.18.0", "@motionone/types": "^10.17.1", "@motionone/utils": "^10.18.0", "tslib": "^2.3.1" } }, ""],
 
@@ -1481,6 +1487,8 @@
     "log-symbols": ["log-symbols@2.2.0", "", { "dependencies": { "chalk": "^2.0.1" } }, ""],
 
     "loose-envify": ["loose-envify@1.4.0", "", { "dependencies": { "js-tokens": "^3.0.0 || ^4.0.0" }, "bin": "cli.js" }, ""],
+
+    "lottie-react-native": ["lottie-react-native@7.2.2", "", { "peerDependencies": { "@lottiefiles/dotlottie-react": "^0.6.5", "react": "*", "react-native": ">=0.46", "react-native-windows": ">=0.63.x" }, "optionalPeers": ["@lottiefiles/dotlottie-react", "react-native-windows"] }, "sha512-pp3dnFVFZlfZzIL5qKGXju2d6RfnYhPbb8xQL9dYqvPbPy2EbnK2aFlv6jAZLYh0QjUGPEmRAgAAnsOOtT+H9Q=="],
 
     "lower-case": ["lower-case@2.0.2", "", { "dependencies": { "tslib": "^2.0.3" } }, ""],
 

@@ -10,6 +10,18 @@ import {
   Check,
 } from '@tamagui/lucide-icons'
 import { Id } from '../../convex/_generated/dataModel'
+import LottieView from 'lottie-react-native'
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sport Icon Lottie Mapping
+// Maps sport names to their Lottie animation files
+// Download animations from LottieFiles.com and place in assets/lottie/sports/
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SPORT_LOTTIE: Record<string, any> = {
+  'Soccer': require('../../assets/lottie/sports/soccer.json'),
+  // Add more sports here as animations are added
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SportIcon Component
@@ -23,21 +35,38 @@ interface SportIconProps {
 }
 
 /**
- * SportIcon - Placeholder icon component for sports
+ * SportIcon - Icon component for sports
  * 
- * Displays styled initials extracted from sport name.
- * Designed to be easily swapped for Lottie animations later:
- * 
- * Future implementation:
- * ```tsx
- * if (lottieSource) {
- *   return <LottieView source={lottieSource} style={{ width: size, height: size }} />;
- * }
- * ```
+ * Renders Lottie animation if available, otherwise falls back to styled initials.
  */
 const SportIcon = ({ name, size = 56, isSelected = false }: SportIconProps) => {
-  // Extract initials: "Field Hockey" → "FH", "Soccer" → "S", "Track (Distance)" → "TD"
-  // Filter out parentheses, slashes, and non-letter characters
+  // Check if we have a Lottie animation for this sport
+  const lottieSource = SPORT_LOTTIE[name]
+  
+  if (lottieSource) {
+    return (
+      <Circle 
+        size={size} 
+        bg={isSelected ? '$green5' : '$gray4'}
+        overflow="hidden"
+        items="center"
+        justify="center"
+      >
+        <LottieView
+          // Key forces remount when selection changes, triggering autoPlay
+          key={isSelected ? 'playing' : 'paused'}
+          source={lottieSource}
+          autoPlay={isSelected}
+          loop={isSelected}
+          speed={0.8}
+          style={{ width: size * 1.4, height: size * 1.4 }}
+        />
+      </Circle>
+    )
+  }
+
+  // Fallback: Extract initials for sports without Lottie animations
+  // "Field Hockey" → "FH", "Soccer" → "S", "Track (Distance)" → "TD"
   const initials = name
     .split(/[\s()/]+/) // Split on spaces, parentheses, and slashes
     .filter(word => word.length > 0) // Remove empty strings
