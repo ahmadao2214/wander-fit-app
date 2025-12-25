@@ -84,6 +84,51 @@ export const getCurrentSession = query({
 });
 
 /**
+ * Get the most recent session for a specific template
+ * Used to check if today's workout has been completed
+ */
+export const getSessionForTemplate = query({
+  args: { templateId: v.id("program_templates") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) {
+      return null;
+    }
+
+    // Get the most recent session for this template
+    const sessions = await ctx.db
+      .query("gpp_workout_sessions")
+      .withIndex("by_template", (q) => q.eq("templateId", args.templateId))
+      .order("desc")
+      .take(10);
+
+    // Find the user's session (most recent)
+    const userSession = sessions.find(s => s.userId === user._id);
+
+    if (!userSession) {
+      return null;
+    }
+
+    // Get the template for context
+    const template = await ctx.db.get(userSession.templateId);
+
+    return {
+      ...userSession,
+      template,
+    };
+  },
+});
+
+/**
  * Get a specific session by ID with full details
  */
 export const getById = query({
@@ -332,6 +377,7 @@ export const completeSession = mutation({
   args: {
     sessionId: v.id("gpp_workout_sessions"),
     exercises: v.array(exerciseCompletionValidator),
+    exerciseOrder: v.optional(v.array(v.number())), // Persist exercise order on complete
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -364,12 +410,24 @@ export const completeSession = mutation({
     const now = Date.now();
     const totalDurationSeconds = Math.round((now - session.startedAt) / 1000);
 
-    await ctx.db.patch(args.sessionId, {
+    const updates: {
+      exercises: typeof args.exercises;
+      completedAt: number;
+      totalDurationSeconds: number;
+      status: "completed";
+      exerciseOrder?: number[];
+    } = {
       exercises: args.exercises,
       completedAt: now,
       totalDurationSeconds,
       status: "completed",
-    });
+    };
+
+    if (args.exerciseOrder) {
+      updates.exerciseOrder = args.exerciseOrder;
+    }
+
+    await ctx.db.patch(args.sessionId, updates);
 
     // Update user program's last workout date
     const userProgram = await ctx.db.get(session.userProgramId);
@@ -395,6 +453,7 @@ export const abandonSession = mutation({
   args: {
     sessionId: v.id("gpp_workout_sessions"),
     exercises: v.optional(v.array(exerciseCompletionValidator)),
+    exerciseOrder: v.optional(v.array(v.number())), // Persist exercise order on abandon
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -424,12 +483,20 @@ export const abandonSession = mutation({
       throw new Error("Session is not in progress");
     }
 
-    const updates: { status: "abandoned"; exercises?: typeof args.exercises } = {
+    const updates: { 
+      status: "abandoned"; 
+      exercises?: typeof args.exercises;
+      exerciseOrder?: number[];
+    } = {
       status: "abandoned",
     };
 
     if (args.exercises) {
       updates.exercises = args.exercises;
+    }
+
+    if (args.exerciseOrder) {
+      updates.exerciseOrder = args.exerciseOrder;
     }
 
     await ctx.db.patch(args.sessionId, updates);

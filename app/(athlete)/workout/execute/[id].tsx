@@ -215,12 +215,12 @@ export default function WorkoutExecutionScreen() {
     }, 2000) // 2 second debounce
   }, [sessionId, exerciseCompletions, exerciseOrder, updateProgress])
 
-  // Trigger save when completions change
+  // Trigger save when completions or exercise order changes
   useEffect(() => {
     if (isInitialized && exerciseCompletions.length > 0) {
       debouncedSave()
     }
-  }, [exerciseCompletions, isInitialized, debouncedSave])
+  }, [exerciseCompletions, exerciseOrder, isInitialized, debouncedSave])
 
   // Handle set update
   const handleSetUpdate = (setIndex: number, data: SetData) => {
@@ -270,14 +270,15 @@ export default function WorkoutExecutionScreen() {
       await completeSession({
         sessionId: sessionId as Id<"gpp_workout_sessions">,
         exercises: exerciseCompletions,
+        exerciseOrder: exerciseOrder.length > 0 ? exerciseOrder : undefined,
       })
       setShowCompletionDialog(false)
-      // Go back to the workout detail screen or home
-      router.dismiss(2) // Dismiss both execution and detail screens
+      // Navigate to athlete home to see updated today's workout card
+      router.replace('/(athlete)')
     } catch (error) {
       console.error('Failed to complete workout:', error)
       // Even if there's an error, try to navigate back
-      router.back()
+      router.replace('/(athlete)')
     }
   }
 
@@ -287,11 +288,14 @@ export default function WorkoutExecutionScreen() {
       await abandonSession({
         sessionId: sessionId as Id<"gpp_workout_sessions">,
         exercises: exerciseCompletions,
+        exerciseOrder: exerciseOrder.length > 0 ? exerciseOrder : undefined,
       })
       setShowExitDialog(false)
-      router.back()
+      // Navigate back to athlete home
+      router.replace('/(athlete)')
     } catch (error) {
       console.error('Failed to abandon workout:', error)
+      router.replace('/(athlete)')
     }
   }
 

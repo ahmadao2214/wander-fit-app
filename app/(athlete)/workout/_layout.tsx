@@ -22,10 +22,9 @@ export default function WorkoutLayout() {
         }}
       />
       <Stack.Screen 
-        name="execute/[id]" 
+        name="execute" 
         options={{
-          animation: 'slide_from_bottom',
-          gestureEnabled: false, // Prevent accidental swipe-to-dismiss
+          headerShown: false,
         }}
       />
     </Stack>

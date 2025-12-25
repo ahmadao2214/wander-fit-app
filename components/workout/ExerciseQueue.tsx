@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { 
   YStack, 
   XStack, 
@@ -6,17 +6,19 @@ import {
   Card, 
   Button,
   Sheet,
-  ScrollView,
 } from 'tamagui'
 import { 
   Check, 
-  ChevronUp,
-  ChevronDown,
   ChevronRight,
   List,
   X,
+  GripVertical,
 } from '@tamagui/lucide-icons'
-import { TouchableOpacity, Platform, Vibration } from 'react-native'
+import { TouchableOpacity, Platform, Vibration, StyleSheet, View } from 'react-native'
+import DraggableFlatList, { 
+  ScaleDecorator,
+  RenderItemParams,
+} from 'react-native-draggable-flatlist'
 
 /**
  * ExerciseQueue - Swipe drawer with exercise list
@@ -24,7 +26,7 @@ import { TouchableOpacity, Platform, Vibration } from 'react-native'
  * Shows all exercises in the workout with:
  * - Completed exercises (checkmark, grayed out)
  * - Current exercise (highlighted)
- * - Upcoming exercises (draggable to reorder - simplified for MVP)
+ * - Upcoming exercises (draggable to reorder via grip handle)
  */
 
 interface Exercise {
@@ -49,32 +51,127 @@ export function ExerciseQueue({
   onReorder,
 }: ExerciseQueueProps) {
   const [open, setOpen] = useState(false)
-  const [reorderMode, setReorderMode] = useState(false)
 
   const completedCount = exercises.filter(e => e.completed).length
 
   // Haptic feedback helper
-  const triggerHaptic = () => {
+  const triggerHaptic = useCallback(() => {
     if (Platform.OS !== 'web') {
       Vibration.vibrate(10)
     }
-  }
+  }, [])
 
-  // Move exercise up (swap with previous)
-  const moveUp = (index: number) => {
-    if (index > currentIndex + 1) {
-      triggerHaptic()
-      onReorder(index, index - 1)
+  // Handle drag end - update the order
+  const handleDragEnd = useCallback(({ data, from, to }: { data: Exercise[], from: number, to: number }) => {
+    if (from !== to) {
+      // Only allow reordering of upcoming exercises (after current)
+      if (from > currentIndex && to > currentIndex) {
+        triggerHaptic()
+        onReorder(from, to)
+      }
     }
-  }
+  }, [currentIndex, onReorder, triggerHaptic])
 
-  // Move exercise down (swap with next)
-  const moveDown = (index: number) => {
-    if (index < exercises.length - 1 && index > currentIndex) {
-      triggerHaptic()
-      onReorder(index, index + 1)
-    }
-  }
+  // Render individual exercise item
+  const renderItem = useCallback(({ item, drag, isActive, getIndex }: RenderItemParams<Exercise>) => {
+    const index = getIndex() ?? 0
+    const isCompleted = item.completed
+    const isCurrent = index === currentIndex
+    const isUpcoming = index > currentIndex && !isCompleted
+    const canDrag = isUpcoming // Only upcoming exercises can be dragged
+
+    return (
+      <ScaleDecorator activeScale={1.03}>
+        <TouchableOpacity
+          onPress={() => {
+            triggerHaptic()
+            onExerciseSelect(index)
+            setOpen(false)
+          }}
+          activeOpacity={0.7}
+          disabled={isActive}
+        >
+          <Card
+            p="$3"
+            mb="$2"
+            bg={isActive ? '$green3' : isCurrent ? '$green2' : isCompleted ? '$gray2' : '$background'}
+            borderColor={isActive ? '$green9' : isCurrent ? '$green8' : '$gray6'}
+            borderWidth={isCurrent || isActive ? 2 : 1}
+            borderRadius="$3"
+            opacity={isCompleted && !isCurrent ? 0.7 : 1}
+            elevate={isActive}
+          >
+            <XStack items="center" gap="$3">
+              {/* Drag Handle - only for upcoming exercises */}
+              {canDrag ? (
+                <TouchableOpacity
+                  onLongPress={drag}
+                  delayLongPress={100}
+                  disabled={isActive}
+                  style={styles.dragHandle}
+                >
+                  <GripVertical size={20} color="$color9" />
+                </TouchableOpacity>
+              ) : (
+                <YStack width={28} />
+              )}
+
+              {/* Status Indicator */}
+              <Card
+                width={28}
+                height={28}
+                borderRadius="$10"
+                bg={isCompleted ? '$green9' : isCurrent ? '$green9' : '$gray5'}
+                items="center"
+                justify="center"
+              >
+                {isCompleted ? (
+                  <Check size={16} color="white" />
+                ) : (
+                  <Text 
+                    fontSize="$2" 
+                    fontWeight="600" 
+                    color={isCurrent ? 'white' : '$color11'}
+                  >
+                    {index + 1}
+                  </Text>
+                )}
+              </Card>
+
+              {/* Exercise Info */}
+              <YStack flex={1}>
+                <Text 
+                  fontSize="$4" 
+                  fontWeight={isCurrent ? '700' : '500'}
+                  color={isCompleted ? '$color10' : '$color12'}
+                  textDecorationLine={isCompleted ? 'line-through' : 'none'}
+                >
+                  {item.name}
+                </Text>
+                <Text fontSize="$2" color="$color10">
+                  {item.sets} sets × {item.reps}
+                </Text>
+              </YStack>
+
+              {/* Current Badge or Navigation Arrow */}
+              {isCurrent ? (
+                <Card bg="$green9" px="$2" py="$1" borderRadius="$2">
+                  <Text fontSize="$1" color="white" fontWeight="600">
+                    CURRENT
+                  </Text>
+                </Card>
+              ) : !isCompleted && !canDrag ? (
+                <ChevronRight size={18} color="$color10" />
+              ) : null}
+            </XStack>
+          </Card>
+        </TouchableOpacity>
+      </ScaleDecorator>
+    )
+  }, [currentIndex, onExerciseSelect, triggerHaptic])
+
+  const keyExtractor = useCallback((item: Exercise, index: number) => 
+    `${item.exerciseId}-${index}`, [])
 
   return (
     <>
@@ -82,12 +179,7 @@ export function ExerciseQueue({
       <TouchableOpacity
         onPress={() => setOpen(true)}
         activeOpacity={0.7}
-        style={{
-          position: 'absolute',
-          right: 0,
-          top: '40%',
-          zIndex: 100,
-        }}
+        style={styles.triggerButton}
       >
         <YStack
           bg="$green9"
@@ -129,156 +221,59 @@ export function ExerciseQueue({
                   {completedCount} of {exercises.length} completed
                 </Text>
               </YStack>
-              <XStack gap="$2">
-                <Button
-                  size="$3"
-                  variant={reorderMode ? 'outlined' : 'outlined'}
-                  bg={reorderMode ? '$blue9' : undefined}
-                  color={reorderMode ? 'white' : undefined}
-                  onPress={() => setReorderMode(!reorderMode)}
-                >
-                  {reorderMode ? 'Done' : 'Reorder'}
-                </Button>
               <Button
                 size="$3"
                 circular
                 variant="outlined"
                 icon={X}
-                  onPress={() => {
-                    setReorderMode(false)
-                    setOpen(false)
-                  }}
+                onPress={() => setOpen(false)}
               />
-              </XStack>
             </XStack>
 
-            {/* Exercise List */}
-            <ScrollView flex={1}>
-              <YStack gap="$2">
-                {exercises.map((exercise, index) => {
-                  const isCompleted = exercise.completed
-                  const isCurrent = index === currentIndex
-                  const isUpcoming = index > currentIndex && !isCompleted
+            {/* Drag hint */}
+            <XStack items="center" gap="$2" pb="$3">
+              <GripVertical size={14} color="$color9" />
+              <Text fontSize="$2" color="$color9">
+                Hold and drag upcoming exercises to reorder
+              </Text>
+            </XStack>
 
-                  return (
-                    <TouchableOpacity
-                      key={`${exercise.exerciseId}-${index}`}
-                      onPress={() => {
-                        if (!reorderMode) {
-                          triggerHaptic()
-                        onExerciseSelect(index)
-                        setOpen(false)
-                        }
-                      }}
-                      activeOpacity={reorderMode ? 1 : 0.7}
-                    >
-                      <Card
-                        p="$3"
-                        bg={isCurrent ? '$green2' : isCompleted ? '$gray2' : '$background'}
-                        borderColor={isCurrent ? '$green8' : '$gray6'}
-                        borderWidth={isCurrent ? 2 : 1}
-                        borderRadius="$3"
-                        opacity={isCompleted && !isCurrent ? 0.7 : 1}
-                      >
-                        <XStack items="center" gap="$3">
-                          {/* Status Indicator */}
-                          <Card
-                            width={28}
-                            height={28}
-                            borderRadius="$10"
-                            bg={isCompleted ? '$green9' : isCurrent ? '$green9' : '$gray5'}
-                            items="center"
-                            justify="center"
-                          >
-                            {isCompleted ? (
-                              <Check size={16} color="white" />
-                            ) : (
-                              <Text 
-                                fontSize="$2" 
-                                fontWeight="600" 
-                                color={isCurrent ? 'white' : '$color11'}
-                              >
-                                {index + 1}
-                              </Text>
-                            )}
-                          </Card>
-
-                          {/* Exercise Info */}
-                          <YStack flex={1}>
-                            <Text 
-                              fontSize="$4" 
-                              fontWeight={isCurrent ? '700' : '500'}
-                              color={isCompleted ? '$color10' : '$color12'}
-                              textDecorationLine={isCompleted ? 'line-through' : 'none'}
-                            >
-                              {exercise.name}
-                            </Text>
-                            <Text fontSize="$2" color="$color10">
-                              {exercise.sets} sets × {exercise.reps}
-                            </Text>
-                          </YStack>
-
-                          {/* Action Area */}
-                          {isCurrent && (
-                            <Card bg="$green9" px="$2" py="$1" borderRadius="$2">
-                              <Text fontSize="$1" color="white" fontWeight="600">
-                                CURRENT
-                              </Text>
-                            </Card>
-                          )}
-
-                          {/* Reorder buttons for upcoming exercises */}
-                          {reorderMode && isUpcoming && (
-                            <XStack gap="$1">
-                              <TouchableOpacity
-                                onPress={() => moveUp(index)}
-                                disabled={index <= currentIndex + 1}
-                              >
-                                <Card
-                                  p="$2"
-                                  bg={index <= currentIndex + 1 ? '$gray3' : '$blue9'}
-                                  borderRadius="$2"
-                                >
-                                  <ChevronUp 
-                                    size={18} 
-                                    color={index <= currentIndex + 1 ? '$gray8' : 'white'} 
-                                  />
-                                </Card>
-                              </TouchableOpacity>
-                              <TouchableOpacity
-                                onPress={() => moveDown(index)}
-                                disabled={index >= exercises.length - 1}
-                              >
-                                <Card
-                                  p="$2"
-                                  bg={index >= exercises.length - 1 ? '$gray3' : '$blue9'}
-                                  borderRadius="$2"
-                                >
-                                  <ChevronDown 
-                                    size={18} 
-                                    color={index >= exercises.length - 1 ? '$gray8' : 'white'} 
-                                  />
-                                </Card>
-                              </TouchableOpacity>
-                            </XStack>
-                          )}
-
-                          {/* Normal navigation arrow */}
-                          {!reorderMode && !isCurrent && !isCompleted && (
-                            <ChevronRight size={18} color="$color10" />
-                          )}
-                        </XStack>
-                      </Card>
-                    </TouchableOpacity>
-                  )
-                })}
-              </YStack>
-            </ScrollView>
+            {/* Draggable Exercise List */}
+            <View style={styles.listContainer}>
+              <DraggableFlatList
+                data={exercises}
+                onDragEnd={handleDragEnd}
+                keyExtractor={keyExtractor}
+                renderItem={renderItem}
+                containerStyle={styles.flatList}
+                activationDistance={10}
+                onDragBegin={() => triggerHaptic()}
+              />
+            </View>
           </YStack>
         </Sheet.Frame>
       </Sheet>
     </>
   )
 }
+
+const styles = StyleSheet.create({
+  triggerButton: {
+    position: 'absolute',
+    right: 0,
+    top: '40%',
+    zIndex: 100,
+  },
+  dragHandle: {
+    padding: 4,
+    marginLeft: -4,
+  },
+  listContainer: {
+    flex: 1,
+  },
+  flatList: {
+    flex: 1,
+  },
+})
 
 export default ExerciseQueue

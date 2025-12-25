@@ -54,10 +54,16 @@ export default function AthleteDashboard() {
     } : "skip"
   )
 
-  // Check for active GPP session
+  // Check for active GPP session (in-progress)
   const activeSession = useQuery(
     api.gppWorkoutSessions.getCurrentSession,
     user ? {} : "skip"
+  )
+
+  // Check for session on today's scheduled workout (any status)
+  const todaySession = useQuery(
+    api.gppWorkoutSessions.getSessionForTemplate,
+    scheduledWorkout ? { templateId: scheduledWorkout._id } : "skip"
   )
 
   // Start session mutation
@@ -157,16 +163,14 @@ export default function AthleteDashboard() {
 
           {/* Scheduled Workout Card */}
           {(() => {
-            // Determine workout state
-            const isInProgress = activeSession && 
-              activeSession.status === 'in_progress' && 
-              scheduledWorkout && 
-              activeSession.templateId === scheduledWorkout._id
+            // Determine workout state using todaySession for accurate status
+            const isInProgress = todaySession && 
+              todaySession.status === 'in_progress' && 
+              scheduledWorkout
             
-            const isCompleted = activeSession && 
-              activeSession.status === 'completed' &&
-              scheduledWorkout &&
-              activeSession.templateId === scheduledWorkout._id
+            const isCompleted = todaySession && 
+              todaySession.status === 'completed' &&
+              scheduledWorkout
 
             // Pick card styling based on state
             const cardBg = isCompleted ? '$gray2' : '$green2'
@@ -260,7 +264,7 @@ export default function AthleteDashboard() {
                       onPress={() => {
                         router.push({
                           pathname: '/(athlete)/workout/execute/[id]',
-                          params: { id: activeSession._id },
+                          params: { id: todaySession._id },
                         })
                       }}
                     >

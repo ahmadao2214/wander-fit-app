@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { 
   YStack, 
   XStack, 
@@ -23,6 +23,8 @@ import {
   RotateCcw,
   Info,
   Lock,
+  CheckCircle,
+  Shuffle,
 } from '@tamagui/lucide-icons'
 import { PHASE_NAMES } from '../../../types'
 
@@ -33,6 +35,7 @@ import { PHASE_NAMES } from '../../../types'
  * - Athletes can start ANY workout within their unlocked phases
  * - No suggested/scheduled workout - full flexibility
  * - Locked phases show a lock message
+ * - Shows exercises in user's custom order if they reordered during execution
  */
 export default function WorkoutDetailScreen() {
   const router = useRouter()
@@ -45,6 +48,12 @@ export default function WorkoutDetailScreen() {
   // Get the template with exercise details
   const template = useQuery(
     api.programTemplates.getByIdWithExercises,
+    id ? { templateId: id as Id<"program_templates"> } : "skip"
+  )
+
+  // Get user's session for this template (to get custom exercise order)
+  const session = useQuery(
+    api.gppWorkoutSessions.getSessionForTemplate,
     id ? { templateId: id as Id<"program_templates"> } : "skip"
   )
 
@@ -62,6 +71,22 @@ export default function WorkoutDetailScreen() {
 
   // Mutation for starting workout session
   const startSession = useMutation(api.gppWorkoutSessions.startSession)
+
+  // Compute ordered exercises - use session's order if available
+  const orderedExercises = useMemo(() => {
+    if (!template?.exercises) return []
+    
+    // If session has a custom exercise order, use it
+    if (session?.exerciseOrder && session.exerciseOrder.length > 0) {
+      return session.exerciseOrder.map(idx => template.exercises[idx]).filter(Boolean)
+    }
+    
+    // Otherwise use template's original order
+    return template.exercises
+  }, [template?.exercises, session?.exerciseOrder])
+
+  const hasCustomOrder = session?.exerciseOrder && session.exerciseOrder.length > 0
+  const isCompleted = session?.status === 'completed'
 
   if (!user) {
     return (
@@ -206,8 +231,30 @@ export default function WorkoutDetailScreen() {
             </Card>
           )}
 
+          {/* Completed Badge */}
+          {isCompleted && (
+            <Card p="$4" bg="$green2" borderColor="$green7">
+              <XStack items="center" gap="$3">
+                <CheckCircle size={24} color="$green10" />
+                <YStack flex={1}>
+                  <Text fontWeight="600" color="$green11">
+                    Workout Completed
+                  </Text>
+                  {hasCustomOrder && (
+                    <XStack items="center" gap="$1" pt="$1">
+                      <Shuffle size={14} color="$green10" />
+                      <Text fontSize="$2" color="$green10">
+                        Exercises shown in your custom order
+                      </Text>
+                    </XStack>
+                  )}
+                </YStack>
+              </XStack>
+            </Card>
+          )}
+
           {/* Start Button (enabled if phase is unlocked) */}
-          {isPhaseUnlocked && (
+          {isPhaseUnlocked && !isCompleted && (
             <Button
               bg="$green9"
               color="white"
@@ -223,9 +270,9 @@ export default function WorkoutDetailScreen() {
 
           {/* Exercise List */}
           <YStack gap="$3">
-            <H3>Exercises ({template.exercises.length})</H3>
+            <H3>Exercises ({orderedExercises.length})</H3>
             
-            {template.exercises.map((exercise, index) => {
+            {orderedExercises.map((exercise, index) => {
               const exerciseDetails = exercise.exercise
               
               return (
@@ -356,7 +403,16 @@ export default function WorkoutDetailScreen() {
           </Card>
 
           {/* Bottom Action */}
-          {isPhaseUnlocked ? (
+          {isCompleted ? (
+            <Card p="$4" bg="$green2" borderColor="$green6">
+              <XStack items="center" justify="center" gap="$2">
+                <CheckCircle size={20} color="$green10" />
+                <Text color="$green10" fontWeight="500">
+                  Great job! Workout completed.
+                </Text>
+              </XStack>
+            </Card>
+          ) : isPhaseUnlocked ? (
             <Button
               bg="$green9"
               color="white"
