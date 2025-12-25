@@ -18,8 +18,14 @@ export default function WorkoutLayout() {
       <Stack.Screen 
         name="[id]" 
         options={{
-          // Can add header here if needed
           animation: 'slide_from_right',
+        }}
+      />
+      <Stack.Screen 
+        name="execute/[id]" 
+        options={{
+          animation: 'slide_from_bottom',
+          gestureEnabled: false, // Prevent accidental swipe-to-dismiss
         }}
       />
     </Stack>

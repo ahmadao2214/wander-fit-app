@@ -12,6 +12,7 @@ import {
   Calendar,
   Zap,
   Sparkles,
+  Clock,
 } from '@tamagui/lucide-icons'
 import { PHASE_NAMES } from '../../types'
 import { useAuth } from '../../hooks/useAuth'
@@ -28,10 +29,11 @@ import { useAuth } from '../../hooks/useAuth'
 export default function ResultsScreen() {
   const router = useRouter()
   const { hasCompletedIntake } = useAuth()
-  const { sportId, yearsOfExperience, trainingDays } = useLocalSearchParams<{
+  const { sportId, yearsOfExperience, trainingDays, weeksUntilSeason } = useLocalSearchParams<{
     sportId: string
     yearsOfExperience: string
     trainingDays: string
+    weeksUntilSeason: string
   }>()
 
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -53,13 +55,23 @@ export default function ResultsScreen() {
   const completeIntake = useMutation(api.userPrograms.completeIntake)
 
   // Redirect back if missing params
-  if (!sportId || !yearsOfExperience || !trainingDays) {
+  if (!sportId || !yearsOfExperience || !trainingDays || !weeksUntilSeason) {
     router.replace('/(intake)/sport')
     return null
   }
 
   const years = parseInt(yearsOfExperience, 10)
   const days = parseInt(trainingDays, 10)
+  const weeks = parseInt(weeksUntilSeason, 10)
+
+  // Determine training phase based on weeks until season
+  const getTrainingPhase = () => {
+    if (weeks <= 4) return 'In-Season Prep'
+    if (weeks <= 8) return 'Pre-Season'
+    return 'Off-Season'
+  }
+
+  const trainingPhase = getTrainingPhase()
 
   // Calculate skill level
   const getSkillLevel = () => {
@@ -81,6 +93,7 @@ export default function ResultsScreen() {
         sportId: sportId as Id<"sports">,
         yearsOfExperience: years,
         preferredTrainingDaysPerWeek: days,
+        weeksUntilSeason: weeks,
       })
 
       // Show success state - IntakeOnlyRoute will handle redirect
@@ -215,6 +228,20 @@ export default function ResultsScreen() {
                   <Text fontSize="$2" color="$green10">Training Schedule</Text>
                   <Text fontSize="$5" fontWeight="700" color="$green12">
                     {days} days per week
+                  </Text>
+                </YStack>
+              </XStack>
+
+              {/* Training Phase */}
+              <XStack items="center" gap="$3">
+                <Clock size={24} color="$green10" />
+                <YStack flex={1}>
+                  <Text fontSize="$2" color="$green10">Current Phase</Text>
+                  <Text fontSize="$5" fontWeight="700" color="$green12">
+                    {trainingPhase}
+                  </Text>
+                  <Text fontSize="$3" color="$green11">
+                    {weeks} weeks until season
                   </Text>
                 </YStack>
               </XStack>

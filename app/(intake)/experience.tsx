@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   Calendar,
   TrendingUp,
+  Clock,
 } from '@tamagui/lucide-icons'
 
 /**
@@ -23,6 +24,7 @@ export default function ExperienceScreen() {
   
   const [yearsOfExperience, setYearsOfExperience] = useState(1)
   const [trainingDays, setTrainingDays] = useState(3)
+  const [weeksUntilSeason, setWeeksUntilSeason] = useState(8)
 
   // Fetch sport details to display sport name
   const sport = useQuery(
@@ -59,6 +61,7 @@ export default function ExperienceScreen() {
         sportId,
         yearsOfExperience: yearsOfExperience.toString(),
         trainingDays: trainingDays.toString(),
+        weeksUntilSeason: weeksUntilSeason.toString(),
       },
     })
   }
@@ -196,6 +199,70 @@ export default function ExperienceScreen() {
             </YStack>
           </Card>
 
+          {/* Weeks Until Season */}
+          <Card p="$5" borderColor={"$gray6" as any} borderWidth={1}>
+            <YStack gap="$4">
+              <YStack gap="$1">
+                <XStack items="center" gap="$2">
+                  <Clock size={20} color={"$orange10" as any} />
+                  <Text fontSize="$5" fontWeight="600">
+                    Season Timeline
+                  </Text>
+                </XStack>
+                <Text fontSize="$3" color="$color10">
+                  How many weeks until your upcoming season?
+                </Text>
+              </YStack>
+
+              <YStack gap="$3" items="center">
+                <Text fontSize="$8" fontWeight="700" color="$orange10">
+                  {weeksUntilSeason >= 16 ? '16+' : weeksUntilSeason} weeks
+                </Text>
+                
+                <XStack width="100%" px="$2">
+                  <Slider
+                    value={[weeksUntilSeason]}
+                    onValueChange={(val) => setWeeksUntilSeason(val[0])}
+                    min={1}
+                    max={16}
+                    step={1}
+                    width="100%"
+                  >
+                    <Slider.Track bg={"$gray5" as any} height={8} borderRadius={4}>
+                      <Slider.TrackActive bg="$orange9" />
+                    </Slider.Track>
+                    <Slider.Thumb
+                      index={0}
+                      size={28}
+                      bg="$orange9"
+                      borderWidth={3}
+                      borderColor="white"
+                      circular
+                      elevate
+                    />
+                  </Slider>
+                </XStack>
+
+                <XStack width="100%" justify="space-between" px="$2">
+                  <Text fontSize="$2" color="$color9">1 week</Text>
+                  <Text fontSize="$2" color="$color9">16+ weeks</Text>
+                </XStack>
+              </YStack>
+
+              {/* Phase Preview */}
+              <Card bg="$orange2" p="$3" borderRadius="$3">
+                <XStack items="center" gap="$2">
+                  <Text fontSize="$3" color="$orange11">
+                    Training Phase:
+                  </Text>
+                  <Text fontSize="$3" fontWeight="700" color="$orange11">
+                    {weeksUntilSeason <= 4 ? 'In-Season Prep' : weeksUntilSeason <= 8 ? 'Pre-Season' : 'Off-Season'}
+                  </Text>
+                </XStack>
+              </Card>
+            </YStack>
+          </Card>
+
           {/* Info Card */}
           <Card p="$4" bg="$blue2" borderColor="$blue6">
             <YStack gap="$2">
@@ -204,7 +271,8 @@ export default function ExperienceScreen() {
               </Text>
               <Text fontSize="$3" color="$blue11">
                 Your {sport.name} experience determines the intensity and complexity of your program.
-                Your training commitment helps us schedule workouts with appropriate rest days built in.
+                Your training commitment helps us schedule workouts with appropriate rest days.
+                Your season timeline shapes the training phases — building strength in the off-season and sharpening performance as the season approaches.
               </Text>
             </YStack>
           </Card>

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { 
   YStack, 
   XStack, 
@@ -10,7 +11,7 @@ import {
   Spinner 
 } from 'tamagui'
 import { useRouter, useLocalSearchParams } from 'expo-router'
-import { useQuery } from 'convex/react'
+import { useQuery, useMutation } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
 import { useAuth } from '../../../hooks/useAuth'
 import { Id } from '../../../convex/_generated/dataModel'
@@ -38,6 +39,9 @@ export default function WorkoutDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { user } = useAuth()
 
+  // All hooks must be called before any early returns
+  const [isStarting, setIsStarting] = useState(false)
+
   // Get the template with exercise details
   const template = useQuery(
     api.programTemplates.getByIdWithExercises,
@@ -55,6 +59,9 @@ export default function WorkoutDetailScreen() {
     api.userPrograms.getUnlockedPhases,
     user ? {} : "skip"
   )
+
+  // Mutation for starting workout session
+  const startSession = useMutation(api.gppWorkoutSessions.startSession)
 
   if (!user) {
     return (
@@ -87,10 +94,26 @@ export default function WorkoutDetailScreen() {
     template.phase as "GPP" | "SPP" | "SSP"
   )
 
-  const startWorkout = () => {
-    // TODO: Create workout session and navigate to execution
-    console.log('Starting workout:', template._id)
-    alert('Workout execution feature coming soon!')
+  const startWorkout = async () => {
+    if (isStarting) return
+    
+    setIsStarting(true)
+    try {
+      const result = await startSession({
+        templateId: template._id,
+      })
+      
+      // Navigate to execution screen with the session ID
+      router.push({
+        pathname: '/(athlete)/workout/execute/[id]',
+        params: { id: result.sessionId },
+      })
+    } catch (error) {
+      console.error('Failed to start workout:', error)
+      alert('Failed to start workout. Please try again.')
+    } finally {
+      setIsStarting(false)
+    }
   }
 
   const totalSets = template.exercises.reduce((sum, ex) => sum + ex.sets, 0)
@@ -190,10 +213,11 @@ export default function WorkoutDetailScreen() {
               color="white"
               size="$5"
               onPress={startWorkout}
-              icon={Play}
+              icon={isStarting ? undefined : Play}
               fontWeight="700"
+              disabled={isStarting}
             >
-              Start Workout
+              {isStarting ? 'Starting...' : 'Start Workout'}
             </Button>
           )}
 
@@ -338,10 +362,11 @@ export default function WorkoutDetailScreen() {
               color="white"
               size="$5"
               onPress={startWorkout}
-              icon={Play}
+              icon={isStarting ? undefined : Play}
               fontWeight="700"
+              disabled={isStarting}
             >
-              Ready? Start Workout
+              {isStarting ? 'Starting...' : 'Ready? Start Workout'}
             </Button>
           ) : (
             <Card p="$4" bg="$gray3" borderColor="$gray6">

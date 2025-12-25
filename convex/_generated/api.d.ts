@@ -14,6 +14,7 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as exercises from "../exercises.js";
+import type * as gppWorkoutSessions from "../gppWorkoutSessions.js";
 import type * as invitations from "../invitations.js";
 import type * as programTemplates from "../programTemplates.js";
 import type * as sampleData from "../sampleData.js";
@@ -35,6 +36,7 @@ import type * as workouts from "../workouts.js";
  */
 declare const fullApi: ApiFromModules<{
   exercises: typeof exercises;
+  gppWorkoutSessions: typeof gppWorkoutSessions;
   invitations: typeof invitations;
   programTemplates: typeof programTemplates;
   sampleData: typeof sampleData;

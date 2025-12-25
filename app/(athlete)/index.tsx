@@ -1,5 +1,5 @@
 import { YStack, XStack, H2, H3, Text, Card, Button, ScrollView, Spinner } from 'tamagui'
-import { useQuery } from 'convex/react'
+import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
 import { SignOutButton } from '../../components/SignOutButton'
@@ -13,6 +13,8 @@ import {
   Flame,
   TrendingUp,
   Calendar,
+  CheckCircle,
+  RotateCcw,
 } from '@tamagui/lucide-icons'
 import { PHASE_NAMES } from '../../types'
 
@@ -52,11 +54,14 @@ export default function AthleteDashboard() {
     } : "skip"
   )
 
-  // Check for active session
+  // Check for active GPP session
   const activeSession = useQuery(
-    api.workoutSessions.getCurrentSession,
+    api.gppWorkoutSessions.getCurrentSession,
     user ? {} : "skip"
   )
+
+  // Start session mutation
+  const startSession = useMutation(api.gppWorkoutSessions.startSession)
 
   if (authLoading || programState === undefined) {
     return (
@@ -120,7 +125,7 @@ export default function AthleteDashboard() {
           </XStack>
 
           {/* Active Session Alert */}
-          {activeSession && (
+          {activeSession && activeSession.status === 'in_progress' && (
             <Card bg="$orange3" borderColor="$orange8" p="$4" borderRadius="$4">
               <XStack items="center" gap="$3">
                 <Clock color="$orange11" size={24} />
@@ -129,16 +134,19 @@ export default function AthleteDashboard() {
                     Workout in Progress
                   </Text>
                   <Text fontSize="$2" color="$orange10">
-                    Pick up where you left off
+                    {activeSession.template?.name || 'Pick up where you left off'}
                   </Text>
                 </YStack>
                 <Button
                   size="$3"
                   bg="$orange9"
                   color="white"
+                  icon={RotateCcw}
                   onPress={() => {
-                    // TODO: Navigate to workout execution
-                    console.log('Resume workout:', activeSession._id)
+                    router.push({
+                      pathname: '/(athlete)/workout/execute/[id]',
+                      params: { id: activeSession._id },
+                    })
                   }}
                 >
                   Resume
@@ -148,34 +156,61 @@ export default function AthleteDashboard() {
           )}
 
           {/* Scheduled Workout Card */}
+          {(() => {
+            // Determine workout state
+            const isInProgress = activeSession && 
+              activeSession.status === 'in_progress' && 
+              scheduledWorkout && 
+              activeSession.templateId === scheduledWorkout._id
+            
+            const isCompleted = activeSession && 
+              activeSession.status === 'completed' &&
+              scheduledWorkout &&
+              activeSession.templateId === scheduledWorkout._id
+
+            // Pick card styling based on state
+            const cardBg = isCompleted ? '$gray2' : '$green2'
+            const cardBorder = isCompleted ? '$gray6' : '$green7'
+            const textColor = isCompleted ? '$gray11' : '$green11'
+            const titleColor = isCompleted ? '$gray12' : '$green12'
+
+            return (
           <Card
-            bg="$green2"
-            borderColor="$green7"
+                bg={cardBg}
+                borderColor={cardBorder}
             borderWidth={2}
             p="$5"
             borderRadius="$6"
-            elevation={2}
+                elevation={isCompleted ? 0 : 2}
           >
             <YStack gap="$4">
               {/* Phase Badge */}
-              <XStack>
-                <Card bg="$green9" px="$3" py="$1" borderRadius="$10">
+                  <XStack items="center" gap="$2">
+                    <Card bg={isCompleted ? '$gray8' : '$green9'} px="$3" py="$1" borderRadius="$10">
                   <Text color="white" fontSize="$2" fontWeight="600">
                     {programState.phase} • Week {programState.week} • Day {programState.day}
                   </Text>
                 </Card>
+                    {isCompleted && (
+                      <XStack items="center" gap="$1">
+                        <CheckCircle size={18} color="$green10" />
+                        <Text fontSize="$2" color="$green10" fontWeight="600">
+                          Completed
+                        </Text>
+                      </XStack>
+                    )}
               </XStack>
 
               {/* Workout Title */}
               <YStack gap="$1">
-                <Text fontSize="$2" color="$green11" fontWeight="500">
+                    <Text fontSize="$2" color={textColor} fontWeight="500">
                   TODAY'S WORKOUT
                 </Text>
-                <H3 color="$green12">
+                    <H3 color={titleColor}>
                   {scheduledWorkout?.name || 'Loading...'}
                 </H3>
                 {scheduledWorkout?.description && (
-                  <Text color="$green11" fontSize="$3">
+                      <Text color={textColor} fontSize="$3">
                     {scheduledWorkout.description}
                   </Text>
                 )}
@@ -185,21 +220,53 @@ export default function AthleteDashboard() {
               {scheduledWorkout && (
                 <XStack gap="$4" flexWrap="wrap">
                   <XStack items="center" gap="$2">
-                    <Dumbbell size={16} color="$green10" />
-                    <Text fontSize="$3" color="$green11">
+                        <Dumbbell size={16} color={textColor} />
+                        <Text fontSize="$3" color={textColor}>
                       {scheduledWorkout.exercises.length} exercises
                     </Text>
                   </XStack>
                   <XStack items="center" gap="$2">
-                    <Timer size={16} color="$green10" />
-                    <Text fontSize="$3" color="$green11">
+                        <Timer size={16} color={textColor} />
+                        <Text fontSize="$3" color={textColor}>
                       ~{scheduledWorkout.estimatedDurationMinutes} min
                     </Text>
                   </XStack>
                 </XStack>
               )}
 
-              {/* Start Button */}
+                  {/* Action Button - varies by state */}
+                  {isCompleted ? (
+                    <Button
+                      size="$5"
+                      variant="outlined"
+                      borderColor="$gray6"
+                      icon={CheckCircle}
+                      fontWeight="700"
+                      onPress={() => {
+                        if (scheduledWorkout) {
+                          router.push(`/(athlete)/workout/${scheduledWorkout._id}`)
+                        }
+                      }}
+                    >
+                      View Workout
+                    </Button>
+                  ) : isInProgress ? (
+                    <Button
+                      size="$5"
+                      bg="$orange9"
+                      color="white"
+                      icon={RotateCcw}
+                      fontWeight="700"
+                      onPress={() => {
+                        router.push({
+                          pathname: '/(athlete)/workout/execute/[id]',
+                          params: { id: activeSession._id },
+                        })
+                      }}
+                    >
+                      Resume Workout
+                    </Button>
+                  ) : (
               <Button
                 size="$5"
                 bg="$green9"
@@ -215,8 +282,11 @@ export default function AthleteDashboard() {
               >
                 Start Workout
               </Button>
+                  )}
             </YStack>
           </Card>
+            )
+          })()}
 
           {/* Progress Summary */}
           {progress && (

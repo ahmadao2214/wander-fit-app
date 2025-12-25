@@ -307,6 +307,10 @@ export default defineSchema({
       })),
     })),
 
+    // Exercise order (indices into template.exercises array)
+    // Allows athletes to reorder exercises during workout execution
+    exerciseOrder: v.optional(v.array(v.number())),
+
     /**
      * templateSnapshot - Captures template state at time of workout
      * Preserves history even if template is later modified.
