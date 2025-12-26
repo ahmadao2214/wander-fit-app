@@ -58,6 +58,20 @@ describe("getSkillLevel", () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe("getTrainingPhase", () => {
+  describe("Edge cases (negative values and zero)", () => {
+    it("returns 'In-Season Prep' for 0 weeks (season has started)", () => {
+      expect(getTrainingPhase(0)).toBe("In-Season Prep");
+    });
+
+    it("returns 'In-Season Prep' for -1 week (past season start)", () => {
+      expect(getTrainingPhase(-1)).toBe("In-Season Prep");
+    });
+
+    it("returns 'In-Season Prep' for -5 weeks (well past season start)", () => {
+      expect(getTrainingPhase(-5)).toBe("In-Season Prep");
+    });
+  });
+
   describe("In-Season Prep (<= 4 weeks)", () => {
     it("returns 'In-Season Prep' for 1 week until season", () => {
       expect(getTrainingPhase(1)).toBe("In-Season Prep");
