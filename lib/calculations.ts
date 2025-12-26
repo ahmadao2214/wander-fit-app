@@ -32,17 +32,19 @@ export type TrainingPhase = "In-Season Prep" | "Pre-Season" | "Off-Season";
 /**
  * Calculate training phase based on weeks until season
  *
- * @param weeksUntilSeason - Number of weeks until the upcoming season
+ * @param weeksUntilSeason - Number of weeks until the upcoming season. Values less than or equal to 0
+ *   (season has started or date is in the past) are treated as 0 and classified as "In-Season Prep".
  * @returns TrainingPhase - 'In-Season Prep', 'Pre-Season', or 'Off-Season'
  *
- * Thresholds:
- * - <= 4 weeks: In-Season Prep
+ * Thresholds (after normalization):
+ * - 0-4 weeks: In-Season Prep
  * - 5-8 weeks: Pre-Season
  * - > 8 weeks: Off-Season
  */
 export function getTrainingPhase(weeksUntilSeason: number): TrainingPhase {
-  if (weeksUntilSeason <= 4) return "In-Season Prep";
-  if (weeksUntilSeason <= 8) return "Pre-Season";
+  const normalizedWeeks = Math.max(0, weeksUntilSeason);
+  if (normalizedWeeks <= 4) return "In-Season Prep";
+  if (normalizedWeeks <= 8) return "Pre-Season";
   return "Off-Season";
 }
 
