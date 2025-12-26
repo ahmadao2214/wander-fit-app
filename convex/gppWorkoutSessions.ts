@@ -225,6 +225,7 @@ export const getHistory = query({
 export const startSession = mutation({
   args: {
     templateId: v.id("program_templates"),
+    exerciseOrder: v.optional(v.array(v.number())), // Custom exercise order from workout summary
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -300,6 +301,8 @@ export const startSession = mutation({
       startedAt: now,
       status: "in_progress",
       exercises: initialExercises,
+      // Persist custom exercise order if provided from workout summary
+      exerciseOrder: args.exerciseOrder,
       templateSnapshot: {
         name: template.name,
         phase: template.phase,

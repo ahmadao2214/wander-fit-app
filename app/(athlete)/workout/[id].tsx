@@ -106,9 +106,10 @@ export default function WorkoutDetailScreen() {
   // Use shared drag reorder hook
   const {
     orderedExercises,
+    orderIndices,
+    hasCustomOrder,
     handleDragEnd,
     triggerHaptic,
-    // orderIndices - TODO: pass to startSession when backend supports it
   } = useDragReorder({
     exercises: (template?.exercises ?? []) as ExerciseItem[],
     savedOrder: session?.exerciseOrder,
@@ -134,9 +135,10 @@ export default function WorkoutDetailScreen() {
     
     setIsStarting(true)
     try {
-      // TODO: Pass custom exercise order when backend supports it
+      // Pass custom exercise order if user reordered exercises
       const result = await startSession({
         templateId: template._id,
+        exerciseOrder: hasCustomOrder ? orderIndices : undefined,
       })
       
       // Navigate to execution screen with the session ID
@@ -150,7 +152,7 @@ export default function WorkoutDetailScreen() {
     } finally {
       setIsStarting(false)
     }
-  }, [isStarting, template, startSession, router])
+  }, [isStarting, template, startSession, router, hasCustomOrder, orderIndices])
 
   // Render item for DraggableFlatList
   const renderExerciseItem = useCallback(
