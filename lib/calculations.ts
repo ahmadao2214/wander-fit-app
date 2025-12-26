@@ -10,17 +10,19 @@ import type { SkillLevel } from "../types";
 /**
  * Calculate skill level based on years of experience
  *
- * @param yearsOfExperience - Number of years of sport-specific experience
+ * @param yearsOfExperience - Number of years of sport-specific experience. Negative values
+ *   are treated as 0 and classified as "Novice".
  * @returns SkillLevel - 'Novice', 'Moderate', or 'Advanced'
  *
- * Thresholds:
+ * Thresholds (after normalization):
  * - < 1 year: Novice
  * - 1-3 years: Moderate
  * - 3+ years: Advanced
  */
 export function getSkillLevel(yearsOfExperience: number): SkillLevel {
-  if (yearsOfExperience < 1) return "Novice";
-  if (yearsOfExperience < 3) return "Moderate";
+  const normalizedYears = Math.max(0, yearsOfExperience);
+  if (normalizedYears < 1) return "Novice";
+  if (normalizedYears < 3) return "Moderate";
   return "Advanced";
 }
 
