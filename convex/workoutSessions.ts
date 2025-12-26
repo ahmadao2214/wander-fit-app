@@ -334,6 +334,11 @@ export const getSessionHistory = query({
   },
 });
 
+/**
+ * @deprecated Alias for getSessionHistory - kept for backward compatibility with old clients
+ */
+export const getHistory = getSessionHistory;
+
 // Get client session history for trainer view
 export const getClientSessionHistory = query({
   args: {

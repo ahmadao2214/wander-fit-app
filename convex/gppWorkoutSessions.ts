@@ -44,87 +44,114 @@ const exerciseCompletionValidator = v.object({
 
 /**
  * Get the current in-progress session for the user
+ * 
+ * NOTE: This query is defensive and returns null on any error
+ * to prevent client crashes when data is inconsistent.
  */
 export const getCurrentSession = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
+    try {
+      const identity = await ctx.auth.getUserIdentity();
+      if (!identity) {
+        return null;
+      }
+
+      const user = await ctx.db
+        .query("users")
+        .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
+        .first();
+
+      if (!user) {
+        return null;
+      }
+
+      const session = await ctx.db
+        .query("gpp_workout_sessions")
+        .withIndex("by_user_status", (q) =>
+          q.eq("userId", user._id).eq("status", "in_progress")
+        )
+        .first();
+
+      if (!session) {
+        return null;
+      }
+
+      // Get the template for context (may be null if deleted)
+      const template = await ctx.db.get(session.templateId);
+
+      return {
+        ...session,
+        template,
+      };
+    } catch (error) {
+      console.error("getCurrentSession error:", error);
       return null;
     }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      return null;
-    }
-
-    const session = await ctx.db
-      .query("gpp_workout_sessions")
-      .withIndex("by_user_status", (q) =>
-        q.eq("userId", user._id).eq("status", "in_progress")
-      )
-      .first();
-
-    if (!session) {
-      return null;
-    }
-
-    // Get the template for context
-    const template = await ctx.db.get(session.templateId);
-
-    return {
-      ...session,
-      template,
-    };
   },
 });
 
 /**
  * Get the most recent session for a specific template
  * Used to check if today's workout has been completed
+ * 
+ * NOTE: This query is defensive and returns null on any error
+ * to prevent client crashes when data is inconsistent or when
+ * called with invalid parameters from older client builds.
+ * 
+ * The templateId is optional to allow old clients that might pass
+ * undefined values to gracefully fail instead of throwing validation errors.
  */
 export const getSessionForTemplate = query({
-  args: { templateId: v.id("program_templates") },
+  args: { templateId: v.optional(v.id("program_templates")) },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
+    try {
+      // Early return if no templateId provided
+      if (!args.templateId) {
+        return null;
+      }
+
+      const identity = await ctx.auth.getUserIdentity();
+      if (!identity) {
+        return null;
+      }
+
+      const user = await ctx.db
+        .query("users")
+        .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
+        .first();
+
+      if (!user) {
+        return null;
+      }
+
+      // Get the most recent session for this template
+      // templateId is guaranteed to be defined here since we check above
+      const sessions = await ctx.db
+        .query("gpp_workout_sessions")
+        .withIndex("by_template", (q) => q.eq("templateId", args.templateId!))
+        .order("desc")
+        .take(10);
+
+      // Find the user's session (most recent)
+      const userSession = sessions.find(s => s.userId === user._id);
+
+      if (!userSession) {
+        return null;
+      }
+
+      // Get the template for context (may be null if deleted)
+      const template = await ctx.db.get(userSession.templateId);
+
+      return {
+        ...userSession,
+        template,
+      };
+    } catch (error) {
+      // Log error for debugging but don't crash the client
+      console.error("getSessionForTemplate error:", error);
       return null;
     }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      return null;
-    }
-
-    // Get the most recent session for this template
-    const sessions = await ctx.db
-      .query("gpp_workout_sessions")
-      .withIndex("by_template", (q) => q.eq("templateId", args.templateId))
-      .order("desc")
-      .take(10);
-
-    // Find the user's session (most recent)
-    const userSession = sessions.find(s => s.userId === user._id);
-
-    if (!userSession) {
-      return null;
-    }
-
-    // Get the template for context
-    const template = await ctx.db.get(userSession.templateId);
-
-    return {
-      ...userSession,
-      template,
-    };
   },
 });
 
