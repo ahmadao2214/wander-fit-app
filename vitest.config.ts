@@ -6,7 +6,10 @@ export default defineConfig({
     environment: "node",
     
     // Include test files
-    include: ["convex/__tests__/**/*.test.ts"],
+    include: [
+      "convex/__tests__/**/*.test.ts",
+      "lib/__tests__/**/*.test.ts",
+    ],
     
     // Exclude patterns
     exclude: ["node_modules", "dist"],
@@ -15,8 +18,8 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],
-      include: ["convex/**/*.ts"],
-      exclude: ["convex/_generated/**", "convex/__tests__/**"],
+      include: ["convex/**/*.ts", "lib/**/*.ts"],
+      exclude: ["convex/_generated/**", "convex/__tests__/**", "lib/__tests__/**"],
     },
     
     // Global test settings

@@ -16,6 +16,7 @@ import {
 } from '@tamagui/lucide-icons'
 import { PHASE_NAMES } from '../../types'
 import { useAuth } from '../../hooks/useAuth'
+import { getSkillLevel, getTrainingPhase } from '../../lib'
 
 /**
  * Results Screen
@@ -64,23 +65,9 @@ export default function ResultsScreen() {
   const days = parseInt(trainingDays, 10)
   const weeks = parseInt(weeksUntilSeason, 10)
 
-  // Determine training phase based on weeks until season
-  const getTrainingPhase = () => {
-    if (weeks <= 4) return 'In-Season Prep'
-    if (weeks <= 8) return 'Pre-Season'
-    return 'Off-Season'
-  }
-
-  const trainingPhase = getTrainingPhase()
-
-  // Calculate skill level
-  const getSkillLevel = () => {
-    if (years < 1) return 'Novice'
-    if (years < 3) return 'Moderate'
-    return 'Advanced'
-  }
-
-  const skillLevel = getSkillLevel()
+  // Use extracted pure functions for calculations
+  const trainingPhase = getTrainingPhase(weeks)
+  const skillLevel = getSkillLevel(years)
 
   const handleBack = () => {
     router.back()
