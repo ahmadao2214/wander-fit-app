@@ -1,3 +1,4 @@
+import { TouchableOpacity, Pressable, StyleSheet, View } from 'react-native'
 import { 
   YStack, 
   XStack, 
@@ -62,59 +63,73 @@ export function ExerciseAccordionItem({
   return (
     <Card 
       borderColor={isActive ? "$green8" : "$gray6"} 
-      borderWidth={1}
+      borderWidth={isActive ? 2 : 1}
       bg={isActive ? "$green2" : "$background"}
       elevation={isActive ? 4 : 0}
-      scale={isActive ? 1.02 : 1}
-      opacity={isActive ? 0.95 : 1}
+      mb="$2"
     >
       {/* Collapsed Header - Always Visible */}
-      <XStack 
-        items="center" 
-        gap="$3" 
-        p="$3"
-        pressStyle={{ opacity: 0.7 }}
-        onPress={onToggle}
-      >
-        {/* Drag Handle */}
-        <XStack
-          p="$2"
-          onLongPress={drag}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <GripVertical size={20} color="$gray8" />
-        </XStack>
+      <XStack items="center" gap="$2" p="$3">
+        {/* Drag Handle - larger touch area for mobile */}
+        {drag ? (
+          <Pressable
+            onLongPress={drag}
+            delayLongPress={150}
+            disabled={isActive}
+            style={styles.dragHandle}
+            hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+          >
+            <View style={[
+              styles.dragHandleInner,
+              isActive && styles.dragHandleActive
+            ]}>
+              <GripVertical size={20} color={isActive ? "$green9" : "$color9"} />
+            </View>
+          </Pressable>
+        ) : (
+          <View style={styles.dragHandlePlaceholder} />
+        )}
 
         {/* Order Number */}
-        <YStack
+        <Card
           width={28}
           height={28}
           bg="$green9"
-          borderRadius={14}
+          borderRadius="$10"
           items="center"
           justify="center"
+          p={0}
         >
           <Text color="white" fontWeight="600" fontSize="$2">
             {index + 1}
           </Text>
-        </YStack>
+        </Card>
 
-        {/* Exercise Name */}
-        <Text flex={1} fontWeight="500" fontSize="$4" numberOfLines={1}>
-          {exerciseDetails?.name || 'Exercise'}
-        </Text>
+        {/* Tappable area for toggle */}
+        <TouchableOpacity 
+          style={styles.exerciseInfo}
+          onPress={onToggle}
+          activeOpacity={0.7}
+        >
+          <XStack items="center" gap="$2" flex={1}>
+            {/* Exercise Name */}
+            <Text flex={1} fontWeight="500" fontSize="$4" numberOfLines={1}>
+              {exerciseDetails?.name || 'Exercise'}
+            </Text>
 
-        {/* Sets x Reps */}
-        <Text color="$color10" fontSize="$3">
-          {exercise.sets} × {exercise.reps}
-        </Text>
+            {/* Sets x Reps */}
+            <Text color="$color10" fontSize="$3">
+              {exercise.sets} × {exercise.reps}
+            </Text>
 
-        {/* Expand/Collapse Chevron */}
-        {isExpanded ? (
-          <ChevronUp size={20} color="$gray8" />
-        ) : (
-          <ChevronDown size={20} color="$gray8" />
-        )}
+            {/* Expand/Collapse Chevron */}
+            {isExpanded ? (
+              <ChevronUp size={20} color="$gray8" />
+            ) : (
+              <ChevronDown size={20} color="$gray8" />
+            )}
+          </XStack>
+        </TouchableOpacity>
       </XStack>
 
       {/* Expanded Content */}
@@ -187,14 +202,16 @@ export function ExerciseAccordionItem({
 
           {/* Exercise Instructions */}
           {exerciseDetails?.instructions && (
-            <YStack gap="$1" bg="$gray2" p="$3" borderRadius="$3">
-              <Text fontSize="$2" color="$color10" fontWeight="600">
-                Instructions:
-              </Text>
-              <Text fontSize="$2" color="$color11">
-                {exerciseDetails.instructions}
-              </Text>
-            </YStack>
+            <Card bg="$gray2" p="$3" borderRadius="$3">
+              <YStack gap="$1">
+                <Text fontSize="$2" color="$color10" fontWeight="600">
+                  Instructions:
+                </Text>
+                <Text fontSize="$2" color="$color11">
+                  {exerciseDetails.instructions}
+                </Text>
+              </YStack>
+            </Card>
           )}
         </YStack>
       )}
@@ -202,4 +219,29 @@ export function ExerciseAccordionItem({
   )
 }
 
-
+const styles = StyleSheet.create({
+  dragHandle: {
+    // Larger touch target for mobile accessibility (44pt minimum)
+    minWidth: 44,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: -8,
+  },
+  dragHandleInner: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 6,
+  },
+  dragHandleActive: {
+    backgroundColor: 'rgba(34, 197, 94, 0.2)', // green tint when dragging
+  },
+  dragHandlePlaceholder: {
+    width: 32,
+  },
+  exerciseInfo: {
+    flex: 1,
+  },
+})
