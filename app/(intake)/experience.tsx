@@ -11,6 +11,7 @@ import {
   TrendingUp,
   Clock,
 } from '@tamagui/lucide-icons'
+import { getSkillLevel, getTrainingPhase } from '../../lib'
 
 /**
  * Experience & Training Days Screen
@@ -68,13 +69,6 @@ export default function ExperienceScreen() {
 
   const handleBack = () => {
     router.back()
-  }
-
-  // Calculate skill level preview
-  const getSkillLevelPreview = () => {
-    if (yearsOfExperience < 1) return 'Novice'
-    if (yearsOfExperience < 3) return 'Moderate'
-    return 'Advanced'
   }
 
   return (
@@ -152,7 +146,7 @@ export default function ExperienceScreen() {
                     Skill Level:
                   </Text>
                   <Text fontSize="$3" fontWeight="700" color="$green11">
-                    {getSkillLevelPreview()}
+                    {getSkillLevel(yearsOfExperience)}
                   </Text>
                 </XStack>
               </Card>
@@ -256,7 +250,7 @@ export default function ExperienceScreen() {
                     Training Phase:
                   </Text>
                   <Text fontSize="$3" fontWeight="700" color="$orange11">
-                    {weeksUntilSeason <= 4 ? 'In-Season Prep' : weeksUntilSeason <= 8 ? 'Pre-Season' : 'Off-Season'}
+                    {getTrainingPhase(weeksUntilSeason)}
                   </Text>
                 </XStack>
               </Card>

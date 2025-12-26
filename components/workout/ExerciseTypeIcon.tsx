@@ -1,5 +1,6 @@
 import { YStack } from 'tamagui'
 import { Dumbbell, Footprints } from '@tamagui/lucide-icons'
+import { isCardioExercise } from '../../lib'
 
 /**
  * ExerciseTypeIcon - Simple icon based on exercise tags
@@ -15,20 +16,12 @@ interface ExerciseTypeIconProps {
   color?: string
 }
 
-// Tags that indicate cardio/movement exercises
-const CARDIO_TAGS = ['cardio', 'run', 'walk', 'jump', 'plyometric', 'sprint', 'jog', 'conditioning']
-
 export function ExerciseTypeIcon({ 
   tags, 
   size = 64, 
   color = '$green10' 
 }: ExerciseTypeIconProps) {
-  // Check if any tag matches cardio/movement
-  const isCardio = tags.some(tag => 
-    CARDIO_TAGS.includes(tag.toLowerCase())
-  )
-
-  const IconComponent = isCardio ? Footprints : Dumbbell
+  const IconComponent = isCardioExercise(tags) ? Footprints : Dumbbell
 
   return (
     <YStack

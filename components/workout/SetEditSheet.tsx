@@ -10,6 +10,7 @@ import {
   H3,
 } from 'tamagui'
 import { X, Check, Minus, Plus } from '@tamagui/lucide-icons'
+import { parseReps } from '../../lib'
 
 /**
  * SetEditSheet - Bottom sheet for editing set data
@@ -35,12 +36,6 @@ interface SetEditSheetProps {
   prescribedReps: string
   initialData: SetData
   onSave: (data: SetData) => void
-}
-
-// Parse prescribed reps (handles "10-12", "10", etc.)
-function parseReps(repsStr: string): number {
-  const match = repsStr.match(/(\d+)/)
-  return match ? parseInt(match[1], 10) : 10
 }
 
 export function SetEditSheet({
