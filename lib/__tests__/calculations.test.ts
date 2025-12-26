@@ -51,6 +51,20 @@ describe("getSkillLevel", () => {
       expect(getSkillLevel(25)).toBe("Advanced");
     });
   });
+
+  describe("Edge cases - Invalid inputs", () => {
+    it("returns 'Novice' for negative years of experience (-1)", () => {
+      expect(getSkillLevel(-1)).toBe("Novice");
+    });
+
+    it("returns 'Novice' for negative years of experience (-5)", () => {
+      expect(getSkillLevel(-5)).toBe("Novice");
+    });
+
+    it("returns 'Novice' for negative decimal years (-0.5)", () => {
+      expect(getSkillLevel(-0.5)).toBe("Novice");
+    });
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
