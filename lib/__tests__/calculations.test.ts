@@ -18,6 +18,11 @@ describe("getSkillLevel", () => {
     it("returns 'Novice' for 0.99 years of experience", () => {
       expect(getSkillLevel(0.99)).toBe("Novice");
     });
+
+    it("returns 'Novice' for negative years of experience", () => {
+      expect(getSkillLevel(-1)).toBe("Novice");
+      expect(getSkillLevel(-5)).toBe("Novice");
+    });
   });
 
   describe("Moderate level (1-3 years)", () => {
@@ -69,6 +74,15 @@ describe("getTrainingPhase", () => {
 
     it("returns 'In-Season Prep' for exactly 4 weeks (boundary)", () => {
       expect(getTrainingPhase(4)).toBe("In-Season Prep");
+    });
+
+    it("returns 'In-Season Prep' for negative weeks (past date)", () => {
+      expect(getTrainingPhase(-1)).toBe("In-Season Prep");
+      expect(getTrainingPhase(-10)).toBe("In-Season Prep");
+    });
+
+    it("returns 'In-Season Prep' for 0 weeks (season started)", () => {
+      expect(getTrainingPhase(0)).toBe("In-Season Prep");
     });
   });
 
