@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react'
-import { YStack, XStack, H2, Text, Card, Button, ScrollView, Spinner, Popover, Separator } from 'tamagui'
+import { YStack, XStack, H2, Text, Card, Button, ScrollView, Spinner, Popover } from 'tamagui'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
