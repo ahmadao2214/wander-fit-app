@@ -275,18 +275,23 @@ export const getTodayWorkout = query({
       return weekWorkouts.find((w) => w.day === day) ?? null;
     };
 
-    // Sort by day and find first incomplete
+    // PRIORITY 3: Find first incomplete workout in current week
+    // We iterate through days in order and return the first workout that hasn't been completed.
+    // This ensures users always see their next actionable workout as "today's workout".
     const sortedDays = [...new Set(weekWorkouts.map((w) => w.day))].sort((a, b) => a - b);
     
     for (const day of sortedDays) {
       const template = await getEffectiveTemplateForSlot(day);
       if (template && !completedTemplateIds.has(template._id)) {
-        const isScheduledSlot = day === program.currentDay;
+        const hasSlotOverride = !!overrideRecord?.slotOverrides.find(
+          (o) => o.phase === program.currentPhase && o.week === program.currentWeek && o.day === day
+        );
+        // isFirstIncomplete: true if this isn't the user's scheduled slot (program.currentDay)
+        // This flag helps UI distinguish between "scheduled today" vs "first available"
+        const isFirstIncomplete = day !== program.currentDay;
         return getTemplateWithExercises(template, { 
-          isSlotOverride: !!overrideRecord?.slotOverrides.find(
-            (o) => o.phase === program.currentPhase && o.week === program.currentWeek && o.day === day
-          ),
-          isFirstIncomplete: !isScheduledSlot, // Mark if this is different from scheduled slot
+          isSlotOverride: hasSlotOverride,
+          isFirstIncomplete,
         });
       }
     }
@@ -386,6 +391,11 @@ export const getPhaseOverviewWithOverrides = query({
             // Mark as overridden
             _isOverridden: true,
           } as typeof t;
+        } else {
+          // Override references a template not in current phase/skill level (stale data)
+          console.warn(
+            `Slot override references missing template: ${overriddenTemplateId} for slot week=${t.week} day=${t.day}. Falling back to original.`
+          );
         }
       }
 
@@ -609,6 +619,23 @@ export const swapWorkouts = mutation({
 
     if (!templateA || !templateB) {
       throw new Error("One or both workout slots are empty (rest days)");
+    }
+
+    // Backend validation: prevent swapping completed workouts
+    const completedSessions = await ctx.db
+      .query("gpp_workout_sessions")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .filter((q) => q.eq(q.field("status"), "completed"))
+      .collect();
+    const completedTemplateIds = new Set(completedSessions.map((s) => s.templateId));
+
+    if (completedTemplateIds.has(templateA._id) || completedTemplateIds.has(templateB._id)) {
+      throw new Error("Cannot swap: one or both workouts are already completed");
+    }
+
+    // Validate templates belong to expected phase
+    if (templateA.phase !== args.slotA.phase || templateB.phase !== args.slotB.phase) {
+      throw new Error("Template phase mismatch: override references template from different phase");
     }
 
     const now = Date.now();

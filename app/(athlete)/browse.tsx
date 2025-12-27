@@ -99,7 +99,7 @@ export default function BrowsePage() {
 
   // Handle workout swap via drag-and-drop
   // Rules:
-  // 1. Can't swap if either workout is completed
+  // 1. Can't swap if either workout is completed (validated on backend too)
   // 2. If swap involves today's slot, clear today's focus
   const handleSwap = useCallback(async (
     fromWorkout: WorkoutItem,
@@ -107,7 +107,7 @@ export default function BrowsePage() {
   ) => {
     if (fromWorkout._id === toWorkout._id) return
     
-    // Don't allow swaps involving completed workouts
+    // Client-side check for UX; backend also validates to prevent bypass
     const isFromCompleted = completedTemplateIds?.includes(fromWorkout._id) ?? false
     const isToCompleted = completedTemplateIds?.includes(toWorkout._id) ?? false
     
