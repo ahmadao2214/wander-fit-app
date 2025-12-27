@@ -77,7 +77,7 @@ export default function WorkoutDetailScreen() {
     if (router.canDismiss()) {
       router.dismiss()
     } else {
-      router.replace('/(athlete)/browse')
+      router.replace('/(athlete)/program')
     }
   }, [router])
   // Track which accordions are expanded (by index)

@@ -34,7 +34,7 @@ export default function AthleteLayout() {
           }}
         />
         <Tabs.Screen
-          name="browse"
+          name="program"
           options={{
             title: 'Program',
             tabBarIcon: ({ color, size }) => <BookOpen size={size} color={color as any} />,

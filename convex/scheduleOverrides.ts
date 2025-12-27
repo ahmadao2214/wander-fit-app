@@ -122,9 +122,10 @@ export const getWeekSchedule = query({
           // Fetch the overridden template
           const overriddenTemplate = await ctx.db.get(override.templateId);
           if (overriddenTemplate) {
-            // Return the overridden template but keep the slot's day position
+            // Return the overridden template but keep the slot's day position for correct sorting
             return {
               ...overriddenTemplate,
+              day: template.day, // Use slot position for sorting, not original template's day
               _originalDay: template.day, // Track original slot
               _isOverridden: true,
             };

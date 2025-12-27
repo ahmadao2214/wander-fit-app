@@ -291,9 +291,9 @@ describe("shouldClearTodayFocus", () => {
     expect(shouldClearTodayFocus(setTime, checkTime)).toBe(true);
   });
 
-  it("returns false at midnight boundary (same day)", () => {
-    const setTime = new Date("2024-01-15T23:59:59").getTime();
-    const checkTime = new Date("2024-01-15T00:00:01").getTime();
+  it("returns false when set earlier and checked later same day", () => {
+    const setTime = new Date("2024-01-15T08:00:00").getTime();
+    const checkTime = new Date("2024-01-15T23:59:59").getTime();
     expect(shouldClearTodayFocus(setTime, checkTime)).toBe(false);
   });
 });

@@ -42,7 +42,7 @@ interface WorkoutItem {
 }
 
 /**
- * Browse Tab - Phase Browser with Drag-and-Drop Reordering
+ * Program Tab - Training Program with Drag-and-Drop Reordering
  * 
  * OPEN ACCESS: Athletes can freely choose ANY workout within unlocked phases.
  * REORDERING: Athletes can drag-and-drop to swap workouts within the same phase.
@@ -50,7 +50,7 @@ interface WorkoutItem {
  * SEQUENTIAL UNLOCK: GPP always unlocked, SPP unlocks after GPP completion,
  * SSP unlocks after SPP completion.
  */
-export default function BrowsePage() {
+export default function ProgramPage() {
   const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
   const [selectedPhase, setSelectedPhase] = useState<Phase>('GPP')
@@ -165,20 +165,56 @@ export default function BrowsePage() {
 
   // Handle setting today's focus with auto-swap
   // When user selects a different workout for today, we:
-  // 1. Set it as today's focus
+  // 1. Set it as today's focus (backend validates completion status)
   // 2. Swap it with the FIRST INCOMPLETE workout slot (not completed ones)
   const handleSetTodayFocus = useCallback(async (
     selectedWorkout: WorkoutItem
   ) => {
     if (!programState || !phaseOverview || !completedTemplateIds) return
     
-    // Validate the selected workout isn't completed before proceeding
+    // Client-side check for UX; backend also validates to prevent bypass
     if (completedTemplateIds.includes(selectedWorkout._id)) {
       console.log('Cannot set completed workout as today focus')
       return
     }
     
     try {
+      // Set as today's focus - backend validates completion status
+      await setTodayFocus({ templateId: selectedWorkout._id })
+      
+      // Find the first incomplete workout slot in the current week for auto-swap
+      const currentWeekWorkouts = phaseOverview
+        .flatMap(w => w.workouts)
+        .filter(w => w.week === programState.week)
+        .sort((a, b) => a.day - b.day)
+      
+      const firstIncompleteSlot = currentWeekWorkouts.find(
+        w => !completedTemplateIds.includes(w._id)
+      )
+      
+      // If selected workout is not already in the first incomplete slot, swap them
+      if (
+        firstIncompleteSlot && 
+        firstIncompleteSlot._id !== selectedWorkout._id &&
+        !(selectedWorkout.week === firstIncompleteSlot.week && selectedWorkout.day === firstIncompleteSlot.day)
+      ) {
+        await swapWorkouts({
+          slotA: {
+            phase: selectedPhase,
+            week: selectedWorkout.week,
+            day: selectedWorkout.day,
+          },
+          slotB: {
+            phase: selectedPhase,
+            week: firstIncompleteSlot.week,
+            day: firstIncompleteSlot.day,
+          },
+        })
+      }
+    } catch (error) {
+      console.error('Failed to set today focus:', error)
+    }
+  }, [setTodayFocus, swapWorkouts, programState, selectedPhase, phaseOverview, completedTemplateIds])
 
   // Haptic feedback helper
   const triggerHaptic = useCallback(() => {
