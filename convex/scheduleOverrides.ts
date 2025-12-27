@@ -327,7 +327,7 @@ export const getPhaseOverviewWithOverrides = query({
       // but keep the original slot's week/day for display
       let workoutToShow = t;
       if (overriddenTemplateId) {
-        const overriddenTemplate = templateMap.get(overriddenTemplateId as any);
+        const overriddenTemplate = templateMap.get(overriddenTemplateId);
         if (overriddenTemplate) {
           // Create a "virtual" template with the overridden workout's content
           // but displayed in this slot's position
