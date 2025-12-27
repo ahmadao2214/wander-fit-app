@@ -274,8 +274,10 @@ export const getTodayWorkout = query({
         const overriddenTemplate = await ctx.db.get(slotOverride.templateId);
         if (!overriddenTemplate) {
           // Stale override: referenced template was deleted, fall back to original
+          // TODO: Consider adding a scheduled job to clean up stale overrides periodically
+          // or expose a user-facing "schedule health" indicator in settings
           console.warn(
-            `Stale slot override: template ${slotOverride.templateId} not found for day=${day}. Falling back to original.`
+            `[STALE_OVERRIDE] user=${user._id} template=${slotOverride.templateId} day=${day}. Falling back to original.`
           );
           return weekWorkouts.find((w) => w.day === day) ?? null;
         }
@@ -296,8 +298,12 @@ export const getTodayWorkout = query({
         const hasSlotOverride = !!overrideRecord?.slotOverrides.find(
           (o) => o.phase === program.currentPhase && o.week === program.currentWeek && o.day === day
         );
-        // isFirstIncomplete: true if this isn't the user's scheduled slot (program.currentDay)
-        // This flag helps UI distinguish between "scheduled today" vs "first available"
+        // isFirstIncomplete semantics:
+        // - TRUE when the first incomplete workout is NOT on the user's originally scheduled day
+        //   (e.g., user completed Day 1, so Day 2 becomes "first incomplete" but their schedule says Day 1)
+        // - FALSE when the first incomplete workout IS on the scheduled day
+        //   (e.g., Day 1 is incomplete and schedule says Day 1 - normal case)
+        // This helps UI distinguish: show "first available" badge vs "scheduled today" badge
         const isFirstIncomplete = day !== program.currentDay;
         return getTemplateWithExercises(template, { 
           isSlotOverride: hasSlotOverride,
@@ -707,6 +713,183 @@ export const swapWorkouts = mutation({
     }
 
     return { success: true };
+  },
+});
+
+/**
+ * Atomically set today's focus AND swap with first incomplete slot
+ * 
+ * This combines setTodayFocus + swapWorkouts into a single transaction to avoid
+ * race conditions where a workout could be completed between the two operations.
+ */
+export const setTodayFocusWithSwap = mutation({
+  args: {
+    templateId: v.id("program_templates"),
+    autoSwap: v.optional(v.boolean()), // If true, swap with first incomplete slot
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const program = await ctx.db
+      .query("user_programs")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .first();
+
+    if (!program) {
+      throw new Error("No active program found");
+    }
+
+    // Verify template exists and belongs to user's category
+    const template = await ctx.db.get(args.templateId);
+    if (!template) {
+      throw new Error("Template not found");
+    }
+
+    if (template.gppCategoryId !== program.gppCategoryId) {
+      throw new Error("Template does not belong to your program category");
+    }
+
+    // Get all completed sessions for validation
+    const completedSessions = await ctx.db
+      .query("gpp_workout_sessions")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .filter((q) => q.eq(q.field("status"), "completed"))
+      .collect();
+    const completedTemplateIds = new Set(completedSessions.map((s) => s.templateId));
+
+    // Prevent setting completed workout as today's focus
+    if (completedTemplateIds.has(args.templateId)) {
+      throw new Error("Cannot set completed workout as today's focus");
+    }
+
+    const now = Date.now();
+
+    // Get or create override record
+    let existingOverride = await ctx.db
+      .query("user_schedule_overrides")
+      .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
+      .first();
+
+    let newSlotOverrides = existingOverride?.slotOverrides || [];
+
+    // If autoSwap is enabled, find first incomplete slot and swap
+    if (args.autoSwap !== false) {
+      // Get current week's workouts
+      const weekWorkouts = await ctx.db
+        .query("program_templates")
+        .withIndex("by_assignment", (q) =>
+          q
+            .eq("gppCategoryId", program.gppCategoryId)
+            .eq("phase", program.currentPhase)
+            .eq("skillLevel", program.skillLevel)
+            .eq("week", program.currentWeek)
+        )
+        .collect();
+
+      const sortedDays = [...new Set(weekWorkouts.map((w) => w.day))].sort((a, b) => a - b);
+
+      // Helper to get current template for a slot
+      const getTemplateForSlot = async (day: number) => {
+        const slotOverride = newSlotOverrides.find(
+          (o) => o.phase === program.currentPhase && o.week === program.currentWeek && o.day === day
+        );
+        if (slotOverride) {
+          return await ctx.db.get(slotOverride.templateId);
+        }
+        return weekWorkouts.find((w) => w.day === day) ?? null;
+      };
+
+      // Find first incomplete slot
+      let firstIncompleteSlot: { day: number; templateId: string } | null = null;
+      for (const day of sortedDays) {
+        const slotTemplate = await getTemplateForSlot(day);
+        if (slotTemplate && !completedTemplateIds.has(slotTemplate._id)) {
+          firstIncompleteSlot = { day, templateId: slotTemplate._id };
+          break;
+        }
+      }
+
+      // Find which slot the selected template is currently in
+      let selectedTemplateSlot: { day: number } | null = null;
+      for (const day of sortedDays) {
+        const slotTemplate = await getTemplateForSlot(day);
+        if (slotTemplate && slotTemplate._id === args.templateId) {
+          selectedTemplateSlot = { day };
+          break;
+        }
+      }
+
+      // Perform swap if needed
+      if (
+        firstIncompleteSlot &&
+        selectedTemplateSlot &&
+        firstIncompleteSlot.day !== selectedTemplateSlot.day &&
+        firstIncompleteSlot.templateId !== args.templateId
+      ) {
+        const templateA = await getTemplateForSlot(selectedTemplateSlot.day);
+        const templateB = await getTemplateForSlot(firstIncompleteSlot.day);
+
+        if (templateA && templateB) {
+          // Both must be incomplete for swap
+          if (!completedTemplateIds.has(templateA._id) && !completedTemplateIds.has(templateB._id)) {
+            // Remove existing overrides for these slots
+            newSlotOverrides = newSlotOverrides.filter(
+              (o) =>
+                !(o.phase === program.currentPhase && o.week === program.currentWeek && o.day === selectedTemplateSlot!.day) &&
+                !(o.phase === program.currentPhase && o.week === program.currentWeek && o.day === firstIncompleteSlot!.day)
+            );
+
+            // Add swap overrides
+            newSlotOverrides.push({
+              phase: program.currentPhase,
+              week: program.currentWeek,
+              day: selectedTemplateSlot.day,
+              templateId: templateB._id,
+            });
+            newSlotOverrides.push({
+              phase: program.currentPhase,
+              week: program.currentWeek,
+              day: firstIncompleteSlot.day,
+              templateId: templateA._id,
+            });
+          }
+        }
+      }
+    }
+
+    // Update or create override record with focus AND slot overrides atomically
+    if (existingOverride) {
+      await ctx.db.patch(existingOverride._id, {
+        todayFocusTemplateId: args.templateId,
+        todayFocusSetAt: now,
+        slotOverrides: newSlotOverrides,
+        updatedAt: now,
+      });
+    } else {
+      await ctx.db.insert("user_schedule_overrides", {
+        userId: user._id,
+        userProgramId: program._id,
+        todayFocusTemplateId: args.templateId,
+        todayFocusSetAt: now,
+        slotOverrides: newSlotOverrides,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    return { success: true, templateId: args.templateId, swapped: newSlotOverrides.length > 0 };
   },
 });
 
