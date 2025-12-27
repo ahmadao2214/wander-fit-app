@@ -375,3 +375,399 @@ describe("countOverridesByPhase", () => {
   });
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// SCENARIO: TODAY'S WORKOUT PRIORITY
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Helper to determine today's workout based on priority order:
+ * 1. In-progress session (if user has active workout → that IS today's focus)
+ * 2. Explicit focus override (via setTodayFocus)
+ * 3. First incomplete workout in current week
+ * 4. Scheduled workout for current day
+ */
+interface WorkoutTemplate {
+  id: string;
+  day: number;
+}
+
+interface TodayWorkoutContext {
+  inProgressTemplateId: string | null;
+  focusOverrideTemplateId: string | null;
+  weekWorkouts: WorkoutTemplate[];
+  completedTemplateIds: Set<string>;
+  currentDay: number;
+}
+
+function determineTodayWorkout(ctx: TodayWorkoutContext): string | null {
+  // Priority 1: In-progress session
+  if (ctx.inProgressTemplateId) {
+    return ctx.inProgressTemplateId;
+  }
+
+  // Priority 2: Explicit focus override (if not completed)
+  if (ctx.focusOverrideTemplateId && !ctx.completedTemplateIds.has(ctx.focusOverrideTemplateId)) {
+    return ctx.focusOverrideTemplateId;
+  }
+
+  // Priority 3: First incomplete workout in current week
+  const sortedWorkouts = [...ctx.weekWorkouts].sort((a, b) => a.day - b.day);
+  const firstIncomplete = sortedWorkouts.find(w => !ctx.completedTemplateIds.has(w.id));
+  if (firstIncomplete) {
+    return firstIncomplete.id;
+  }
+
+  // Priority 4: Scheduled workout for current day
+  const scheduledWorkout = ctx.weekWorkouts.find(w => w.day === ctx.currentDay);
+  return scheduledWorkout?.id ?? null;
+}
+
+describe("Today's Workout Priority Logic", () => {
+  const weekWorkouts: WorkoutTemplate[] = [
+    { id: "lower-body", day: 1 },
+    { id: "upper-body", day: 2 },
+    { id: "power-conditioning", day: 3 },
+  ];
+
+  describe("Priority 1: In-Progress Session", () => {
+    it("returns in-progress workout even if it's not today's scheduled", () => {
+      const result = determineTodayWorkout({
+        inProgressTemplateId: "upper-body",
+        focusOverrideTemplateId: null,
+        weekWorkouts,
+        completedTemplateIds: new Set(),
+        currentDay: 1, // Day 1 is scheduled, but Day 2 is in-progress
+      });
+      expect(result).toBe("upper-body");
+    });
+
+    it("returns in-progress workout even with focus override set", () => {
+      const result = determineTodayWorkout({
+        inProgressTemplateId: "power-conditioning",
+        focusOverrideTemplateId: "lower-body",
+        weekWorkouts,
+        completedTemplateIds: new Set(),
+        currentDay: 1,
+      });
+      expect(result).toBe("power-conditioning");
+    });
+
+    it("returns in-progress workout even if that workout is also completed", () => {
+      // Edge case: workout is completed but still showing in-progress (shouldn't happen, but test robustness)
+      const result = determineTodayWorkout({
+        inProgressTemplateId: "lower-body",
+        focusOverrideTemplateId: null,
+        weekWorkouts,
+        completedTemplateIds: new Set(["lower-body"]),
+        currentDay: 1,
+      });
+      expect(result).toBe("lower-body");
+    });
+  });
+
+  describe("Priority 2: Focus Override", () => {
+    it("returns focus override when no in-progress session", () => {
+      const result = determineTodayWorkout({
+        inProgressTemplateId: null,
+        focusOverrideTemplateId: "power-conditioning",
+        weekWorkouts,
+        completedTemplateIds: new Set(),
+        currentDay: 1,
+      });
+      expect(result).toBe("power-conditioning");
+    });
+
+    it("skips completed focus override and falls through to first incomplete", () => {
+      const result = determineTodayWorkout({
+        inProgressTemplateId: null,
+        focusOverrideTemplateId: "lower-body", // Day 1 is completed
+        weekWorkouts,
+        completedTemplateIds: new Set(["lower-body"]),
+        currentDay: 1,
+      });
+      expect(result).toBe("upper-body"); // First incomplete
+    });
+  });
+
+  describe("Priority 3: First Incomplete Workout", () => {
+    it("returns first incomplete when Day 1 is completed", () => {
+      const result = determineTodayWorkout({
+        inProgressTemplateId: null,
+        focusOverrideTemplateId: null,
+        weekWorkouts,
+        completedTemplateIds: new Set(["lower-body"]),
+        currentDay: 1,
+      });
+      expect(result).toBe("upper-body");
+    });
+
+    it("returns first incomplete when Days 1 and 2 are completed", () => {
+      const result = determineTodayWorkout({
+        inProgressTemplateId: null,
+        focusOverrideTemplateId: null,
+        weekWorkouts,
+        completedTemplateIds: new Set(["lower-body", "upper-body"]),
+        currentDay: 1,
+      });
+      expect(result).toBe("power-conditioning");
+    });
+
+    it("handles out-of-order completions (Day 3 done before Day 1 and 2)", () => {
+      const result = determineTodayWorkout({
+        inProgressTemplateId: null,
+        focusOverrideTemplateId: null,
+        weekWorkouts,
+        completedTemplateIds: new Set(["power-conditioning"]),
+        currentDay: 1,
+      });
+      expect(result).toBe("lower-body"); // Day 1 is still first incomplete
+    });
+  });
+
+  describe("Priority 4: Scheduled Workout", () => {
+    it("returns scheduled workout when all are completed", () => {
+      const result = determineTodayWorkout({
+        inProgressTemplateId: null,
+        focusOverrideTemplateId: null,
+        weekWorkouts,
+        completedTemplateIds: new Set(["lower-body", "upper-body", "power-conditioning"]),
+        currentDay: 2,
+      });
+      expect(result).toBe("upper-body"); // Day 2 scheduled
+    });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SCENARIO: COMPLETED WORKOUT BLOCKING
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Helper to check if a swap is allowed considering completed workouts
+ */
+function isSwapAllowed(
+  fromTemplateId: string,
+  toTemplateId: string,
+  completedTemplateIds: Set<string>
+): { allowed: boolean; reason?: string } {
+  if (completedTemplateIds.has(fromTemplateId)) {
+    return { allowed: false, reason: "Cannot swap: source workout is completed" };
+  }
+  if (completedTemplateIds.has(toTemplateId)) {
+    return { allowed: false, reason: "Cannot swap: target workout is completed" };
+  }
+  return { allowed: true };
+}
+
+describe("Completed Workout Blocking", () => {
+  it("allows swap between two incomplete workouts", () => {
+    const result = isSwapAllowed("lower-body", "upper-body", new Set());
+    expect(result.allowed).toBe(true);
+  });
+
+  it("blocks swap when source workout is completed", () => {
+    const result = isSwapAllowed("lower-body", "upper-body", new Set(["lower-body"]));
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toContain("source workout is completed");
+  });
+
+  it("blocks swap when target workout is completed", () => {
+    const result = isSwapAllowed("lower-body", "upper-body", new Set(["upper-body"]));
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toContain("target workout is completed");
+  });
+
+  it("blocks swap when both workouts are completed", () => {
+    const result = isSwapAllowed("lower-body", "upper-body", new Set(["lower-body", "upper-body"]));
+    expect(result.allowed).toBe(false);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SCENARIO: SET AS TODAY AUTO-SWAP
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Helper to find the first incomplete slot in current week for auto-swap
+ */
+function findFirstIncompleteSlot(
+  weekWorkouts: WorkoutTemplate[],
+  completedTemplateIds: Set<string>
+): WorkoutTemplate | null {
+  const sorted = [...weekWorkouts].sort((a, b) => a.day - b.day);
+  return sorted.find(w => !completedTemplateIds.has(w.id)) ?? null;
+}
+
+/**
+ * Determines if a swap is needed when setting a workout as today's focus
+ */
+function determineSetTodaySwap(
+  selectedWorkoutId: string,
+  selectedWorkoutDay: number,
+  weekWorkouts: WorkoutTemplate[],
+  completedTemplateIds: Set<string>
+): { needsSwap: boolean; swapWithDay?: number } {
+  const firstIncomplete = findFirstIncompleteSlot(weekWorkouts, completedTemplateIds);
+  
+  if (!firstIncomplete) {
+    return { needsSwap: false };
+  }
+
+  // If selected is already first incomplete, no swap needed
+  if (firstIncomplete.id === selectedWorkoutId) {
+    return { needsSwap: false };
+  }
+
+  // If selected is already in the first incomplete slot, no swap needed
+  if (selectedWorkoutDay === firstIncomplete.day) {
+    return { needsSwap: false };
+  }
+
+  return { needsSwap: true, swapWithDay: firstIncomplete.day };
+}
+
+describe("Set As Today Auto-Swap", () => {
+  const weekWorkouts: WorkoutTemplate[] = [
+    { id: "lower-body", day: 1 },
+    { id: "upper-body", day: 2 },
+    { id: "power-conditioning", day: 3 },
+  ];
+
+  it("no swap needed when selecting first incomplete workout", () => {
+    const result = determineSetTodaySwap(
+      "lower-body",
+      1,
+      weekWorkouts,
+      new Set()
+    );
+    expect(result.needsSwap).toBe(false);
+  });
+
+  it("swaps Day 3 workout with Day 1 (first incomplete)", () => {
+    const result = determineSetTodaySwap(
+      "power-conditioning",
+      3,
+      weekWorkouts,
+      new Set()
+    );
+    expect(result.needsSwap).toBe(true);
+    expect(result.swapWithDay).toBe(1);
+  });
+
+  it("swaps Day 3 workout with Day 2 when Day 1 is completed", () => {
+    const result = determineSetTodaySwap(
+      "power-conditioning",
+      3,
+      weekWorkouts,
+      new Set(["lower-body"])
+    );
+    expect(result.needsSwap).toBe(true);
+    expect(result.swapWithDay).toBe(2);
+  });
+
+  it("no swap needed when all workouts are completed", () => {
+    const result = determineSetTodaySwap(
+      "power-conditioning",
+      3,
+      weekWorkouts,
+      new Set(["lower-body", "upper-body", "power-conditioning"])
+    );
+    expect(result.needsSwap).toBe(false);
+  });
+
+  it("correctly handles selecting Day 2 when Day 1 is incomplete", () => {
+    const result = determineSetTodaySwap(
+      "upper-body",
+      2,
+      weekWorkouts,
+      new Set()
+    );
+    expect(result.needsSwap).toBe(true);
+    expect(result.swapWithDay).toBe(1); // Swap with Day 1 (first incomplete)
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SCENARIO: AUTO-FOCUS ON START
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Determines if auto-focus should be set when starting a workout
+ */
+function shouldAutoFocusOnStart(
+  startingWorkoutId: string,
+  currentTodayWorkoutId: string | null
+): boolean {
+  // Auto-focus if starting a different workout than today's focus
+  return currentTodayWorkoutId !== null && startingWorkoutId !== currentTodayWorkoutId;
+}
+
+describe("Auto-Focus On Start", () => {
+  it("should auto-focus when starting a different workout", () => {
+    const result = shouldAutoFocusOnStart("upper-body", "lower-body");
+    expect(result).toBe(true);
+  });
+
+  it("should not auto-focus when starting today's workout", () => {
+    const result = shouldAutoFocusOnStart("lower-body", "lower-body");
+    expect(result).toBe(false);
+  });
+
+  it("should not auto-focus when no today workout exists", () => {
+    const result = shouldAutoFocusOnStart("lower-body", null);
+    expect(result).toBe(false);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SCENARIO: MULTIPLE COMPLETIONS PER DAY
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("Multiple Completions Per Day", () => {
+  it("allows starting different workouts after completing one", () => {
+    const weekWorkouts: WorkoutTemplate[] = [
+      { id: "lower-body", day: 1 },
+      { id: "upper-body", day: 2 },
+      { id: "power-conditioning", day: 3 },
+    ];
+    
+    // Day 1 completed
+    const completedTemplateIds = new Set(["lower-body"]);
+    
+    // User wants to start Day 3 next
+    const swapAllowed = isSwapAllowed("power-conditioning", "upper-body", completedTemplateIds);
+    expect(swapAllowed.allowed).toBe(true);
+    
+    // Today's workout should be Day 2 (first incomplete)
+    const todayWorkout = determineTodayWorkout({
+      inProgressTemplateId: null,
+      focusOverrideTemplateId: null,
+      weekWorkouts,
+      completedTemplateIds,
+      currentDay: 1,
+    });
+    expect(todayWorkout).toBe("upper-body");
+  });
+
+  it("tracks multiple completed workouts independently", () => {
+    const completedTemplateIds = new Set(["lower-body", "power-conditioning"]);
+    
+    // Day 1 and Day 3 completed, Day 2 still available
+    const weekWorkouts: WorkoutTemplate[] = [
+      { id: "lower-body", day: 1 },
+      { id: "upper-body", day: 2 },
+      { id: "power-conditioning", day: 3 },
+    ];
+    
+    const todayWorkout = determineTodayWorkout({
+      inProgressTemplateId: null,
+      focusOverrideTemplateId: null,
+      weekWorkouts,
+      completedTemplateIds,
+      currentDay: 1,
+    });
+    
+    expect(todayWorkout).toBe("upper-body"); // Only incomplete workout
+  });
+});
+

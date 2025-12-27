@@ -9,7 +9,7 @@ import { AthleteOnlyRoute } from '../../components/AuthGuard'
  * 
  * Tabs:
  * - Today: Scheduled workout + quick start
- * - Browse: Phase browser (GPP/SPP/SSP with unlock status)
+ * - Program: Training program browser with drag-to-reorder (GPP/SPP/SSP)
  * - History: Completed workouts log
  * - Profile: Athlete info + stats (Settings is a separate route)
  * 
@@ -36,7 +36,7 @@ export default function AthleteLayout() {
         <Tabs.Screen
           name="browse"
           options={{
-            title: 'Browse',
+            title: 'Program',
             tabBarIcon: ({ color, size }) => <BookOpen size={size} color={color as any} />,
           }}
         />

@@ -69,6 +69,17 @@ export default function WorkoutDetailScreen() {
 
   // All hooks must be called before any early returns
   const [isStarting, setIsStarting] = useState(false)
+
+  // Safe back navigation - avoids getting stuck in execution screens
+  const handleBack = useCallback(() => {
+    // Use dismiss if available (pops screen from stack cleanly)
+    // Falls back to navigating to Program tab as a safe default
+    if (router.canDismiss()) {
+      router.dismiss()
+    } else {
+      router.replace('/(athlete)/browse')
+    }
+  }, [router])
   // Track which accordions are expanded (by index)
   const [expandedIndices, setExpandedIndices] = useState<Set<number>>(new Set())
 
@@ -92,11 +103,20 @@ export default function WorkoutDetailScreen() {
 
   // Mutation for starting workout session
   const startSession = useMutation(api.gppWorkoutSessions.startSession)
+  
+  // Mutation for setting today's focus (auto-focus on start)
+  const setTodayFocus = useMutation(api.scheduleOverrides.setTodayFocus)
+  
+  // Get current today's workout to check if we need to auto-focus
+  const todayWorkout = useQuery(
+    api.scheduleOverrides.getTodayWorkout,
+    user ? {} : "skip"
+  )
 
   const isCompleted = session?.status === 'completed'
 
   // Check if this workout's phase is unlocked
-  const isPhaseUnlocked = unlockedPhases?.phases.includes(
+  const isPhaseUnlocked = (unlockedPhases?.phases as readonly ("GPP" | "SPP" | "SSP")[] | undefined)?.includes(
     template?.phase as "GPP" | "SPP" | "SSP"
   ) ?? false
 
@@ -135,6 +155,12 @@ export default function WorkoutDetailScreen() {
     
     setIsStarting(true)
     try {
+      // Auto-focus: If this workout isn't already today's focus, set it
+      // This keeps the Today tab in sync with what user is actually working on
+      if (todayWorkout && todayWorkout._id !== template._id) {
+        await setTodayFocus({ templateId: template._id })
+      }
+      
       // Pass custom exercise order if user reordered exercises
       const result = await startSession({
         templateId: template._id,
@@ -152,7 +178,7 @@ export default function WorkoutDetailScreen() {
     } finally {
       setIsStarting(false)
     }
-  }, [isStarting, template, startSession, router, hasCustomOrder, orderIndices])
+  }, [isStarting, template, startSession, router, hasCustomOrder, orderIndices, todayWorkout, setTodayFocus])
 
   // Render item for DraggableFlatList
   const renderExerciseItem = useCallback(
@@ -183,21 +209,11 @@ export default function WorkoutDetailScreen() {
     if (!template) return null
     return (
       <YStack gap="$3" pb="$3">
-        {/* Phase/Week/Day Badges */}
+        {/* Phase Badge - simplified, no week/day to avoid confusion with reordering */}
         <XStack gap="$2" flexWrap="wrap">
           <Card bg="$green3" px="$3" py="$1" borderRadius="$10">
             <Text fontSize="$2" color="$green11" fontWeight="500">
               {template.phase}
-            </Text>
-          </Card>
-          <Card bg="$blue3" px="$3" py="$1" borderRadius="$10">
-            <Text fontSize="$2" color="$blue11" fontWeight="500">
-              Week {template.week}
-            </Text>
-          </Card>
-          <Card bg={"$purple3" as any} px="$3" py="$1" borderRadius="$10">
-            <Text fontSize="$2" color={"$purple11" as any} fontWeight="500">
-              Day {template.day}
             </Text>
           </Card>
         </XStack>
@@ -278,7 +294,7 @@ export default function WorkoutDetailScreen() {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4" px="$4">
         <Text>Workout not found</Text>
-        <Button onPress={() => router.back()}>Go Back</Button>
+        <Button onPress={handleBack}>Go Back</Button>
       </YStack>
     )
   }
@@ -299,7 +315,7 @@ export default function WorkoutDetailScreen() {
             size="$3"
             variant="outlined"
             icon={ArrowLeft}
-            onPress={() => router.back()}
+            onPress={handleBack}
             circular
           />
           <YStack flex={1} overflow="hidden">

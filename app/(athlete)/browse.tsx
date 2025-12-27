@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { YStack, XStack, H2, Text, Card, Button, ScrollView, Spinner, Popover, Separator } from 'tamagui'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
@@ -13,6 +13,8 @@ import {
   GripVertical,
   MoreVertical,
   RotateCcw,
+  CalendarCheck,
+  CheckCircle,
 } from '@tamagui/lucide-icons'
 import { PHASE_NAMES, type Phase } from '../../types'
 import { Platform, TouchableOpacity, Vibration, StyleSheet, View } from 'react-native'
@@ -54,6 +56,8 @@ export default function BrowsePage() {
   const [selectedPhase, setSelectedPhase] = useState<Phase>('GPP')
   const [menuOpen, setMenuOpen] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
+  // Key to force DraggableFlatList to reset when a swap is rejected
+  const [listResetKey, setListResetKey] = useState(0)
 
   // Get unlocked phases
   const unlockedPhases = useQuery(
@@ -75,16 +79,42 @@ export default function BrowsePage() {
     } : "skip"
   )
 
+  // Get current schedule override to know today's focus
+  const scheduleOverride = useQuery(
+    api.scheduleOverrides.getScheduleOverride,
+    user ? {} : "skip"
+  )
+
+  // Get completed template IDs to show completion status
+  const completedTemplateIds = useQuery(
+    api.gppWorkoutSessions.getCompletedTemplateIds,
+    user ? {} : "skip"
+  )
+
   // Mutations for schedule overrides
   const swapWorkouts = useMutation(api.scheduleOverrides.swapWorkouts)
   const resetPhaseToDefault = useMutation(api.scheduleOverrides.resetPhaseToDefault)
+  const setTodayFocus = useMutation(api.scheduleOverrides.setTodayFocus)
+  const clearTodayFocus = useMutation(api.scheduleOverrides.clearTodayFocus)
 
   // Handle workout swap via drag-and-drop
+  // Rules:
+  // 1. Can't swap if either workout is completed
+  // 2. If swap involves today's slot, clear today's focus
   const handleSwap = useCallback(async (
     fromWorkout: WorkoutItem,
     toWorkout: WorkoutItem
   ) => {
     if (fromWorkout._id === toWorkout._id) return
+    
+    // Don't allow swaps involving completed workouts
+    const isFromCompleted = completedTemplateIds?.includes(fromWorkout._id) ?? false
+    const isToCompleted = completedTemplateIds?.includes(toWorkout._id) ?? false
+    
+    if (isFromCompleted || isToCompleted) {
+      console.log('Cannot swap: one or both workouts are completed')
+      return
+    }
 
     try {
       await swapWorkouts({
@@ -99,10 +129,26 @@ export default function BrowsePage() {
           day: toWorkout.day,
         },
       })
+      
+      // If either slot is today's slot, clear today's focus
+      // so the reordered schedule takes effect immediately
+      if (programState) {
+        const isTodaySlotInvolved = 
+          (fromWorkout.week === programState.week && fromWorkout.day === programState.day) ||
+          (toWorkout.week === programState.week && toWorkout.day === programState.day)
+        
+        if (isTodaySlotInvolved && programState.hasTodayFocusOverride) {
+          await clearTodayFocus({})
+        }
+      }
+      
+      // Force list to re-sync with backend data after successful swap
+      // This ensures DraggableFlatList's internal state matches the new order
+      setListResetKey(k => k + 1)
     } catch (error) {
       console.error('Failed to swap workouts:', error)
     }
-  }, [selectedPhase, swapWorkouts])
+  }, [selectedPhase, swapWorkouts, programState, clearTodayFocus, completedTemplateIds])
 
   // Handle reset to default
   const handleResetPhase = async () => {
@@ -117,6 +163,59 @@ export default function BrowsePage() {
     }
   }
 
+  // Handle setting today's focus with auto-swap
+  // When user selects a different workout for today, we:
+  // 1. Set it as today's focus
+  // 2. Swap it with the FIRST INCOMPLETE workout slot (not completed ones)
+  const handleSetTodayFocus = useCallback(async (
+    selectedWorkout: WorkoutItem
+  ) => {
+    if (!programState || !phaseOverview || !completedTemplateIds) return
+    
+    try {
+      // Set as today's focus
+      await setTodayFocus({ templateId: selectedWorkout._id })
+      
+      // Find the first incomplete workout slot in the current week
+      const currentWeekWorkouts = phaseOverview
+        .flatMap(w => w.workouts)
+        .filter(w => w.week === programState.week)
+        .sort((a, b) => a.day - b.day)
+      
+      const firstIncompleteSlot = currentWeekWorkouts.find(
+        w => !completedTemplateIds.includes(w._id)
+      )
+      
+      // If the selected workout is already the first incomplete, no swap needed
+      if (!firstIncompleteSlot || selectedWorkout._id === firstIncompleteSlot._id) {
+        return
+      }
+      
+      // Check if the selected workout is already in the first incomplete slot
+      const isAlreadyInFirstIncompleteSlot = 
+        selectedWorkout.week === firstIncompleteSlot.week && 
+        selectedWorkout.day === firstIncompleteSlot.day
+      
+      if (!isAlreadyInFirstIncompleteSlot) {
+        // Swap the selected workout with the first incomplete slot
+        await swapWorkouts({
+          slotA: {
+            phase: selectedPhase,
+            week: selectedWorkout.week,
+            day: selectedWorkout.day,
+          },
+          slotB: {
+            phase: selectedPhase,
+            week: firstIncompleteSlot.week,
+            day: firstIncompleteSlot.day,
+          },
+        })
+      }
+    } catch (error) {
+      console.error('Failed to set today focus:', error)
+    }
+  }, [setTodayFocus, swapWorkouts, programState, selectedPhase, phaseOverview, completedTemplateIds])
+
   // Haptic feedback helper
   const triggerHaptic = useCallback(() => {
     if (Platform.OS !== 'web') {
@@ -124,62 +223,146 @@ export default function BrowsePage() {
     }
   }, [])
 
+  // Find the first incomplete workout in the current week
+  // This is used for "Today" indicator when the scheduled slot is already completed
+  const firstIncompleteWorkoutId = useMemo(() => {
+    if (!phaseOverview || !programState || !completedTemplateIds) return null
+    if (selectedPhase !== programState.phase) return null
+    
+    // Get current week's workouts sorted by day
+    const currentWeekWorkouts = phaseOverview
+      .flatMap(w => w.workouts)
+      .filter(w => w.week === programState.week)
+      .sort((a, b) => a.day - b.day)
+    
+    // Find first incomplete one
+    const firstIncomplete = currentWeekWorkouts.find(
+      w => !completedTemplateIds.includes(w._id)
+    )
+    
+    return firstIncomplete?._id ?? null
+  }, [phaseOverview, programState, completedTemplateIds, selectedPhase])
+
   // Render a draggable workout card - defined before early return to follow hooks rules
-  const renderWorkoutCard = useCallback(({ item, drag, isActive }: RenderItemParams<WorkoutItem>) => (
-    <ScaleDecorator activeScale={1.03}>
-      <TouchableOpacity
-        activeOpacity={0.7}
-        onPress={() => router.push(`/(athlete)/workout/${item._id}`)}
-        disabled={isActive}
-      >
-        <Card
-          p="$4"
-          mb="$2"
-          bg={isActive ? '$green2' : '$background'}
-          borderColor={isActive ? '$green7' : '$gray6'}
-          borderWidth={isActive ? 2 : 1}
-          opacity={isActive ? 0.95 : 1}
-          elevate={isActive}
+  const renderWorkoutCard = useCallback(({ item, drag, isActive }: RenderItemParams<WorkoutItem>) => {
+    // Check if this workout is completed
+    const isCompleted = completedTemplateIds?.includes(item._id) ?? false
+    
+    // Check if this is today's workout
+    // Priority: 1) Explicit focus override, 2) First incomplete in current week
+    const isTodayFocusOverride = scheduleOverride?.todayFocusTemplateId === item._id
+    const isFirstIncomplete = item._id === firstIncompleteWorkoutId
+    
+    // Show as "today" if: explicit focus override OR first incomplete (when viewing current phase)
+    const isToday = !isCompleted && (
+      isTodayFocusOverride || 
+      (isFirstIncomplete && !scheduleOverride?.todayFocusTemplateId)
+    )
+    
+    // Determine card styling based on state (priority: active > completed > today > default)
+    const getCardBg = () => {
+      if (isActive) return '$green2'
+      if (isCompleted) return '$gray2'
+      if (isToday) return '$green2'
+      return '$background'
+    }
+    
+    const getCardBorder = () => {
+      if (isActive) return '$green7'
+      if (isCompleted) return '$gray5'
+      if (isToday) return '$green7'
+      return '$gray6'
+    }
+    
+    return (
+      <ScaleDecorator activeScale={1.03}>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => router.push(`/(athlete)/workout/${item._id}`)}
+          disabled={isActive}
         >
-          <XStack items="center" gap="$3">
-            {/* Drag Handle */}
-            <TouchableOpacity
-              onLongPress={drag}
-              delayLongPress={100}
-              disabled={isActive}
-              style={styles.dragHandle}
-            >
-              <GripVertical size={20} color="$gray8" />
-            </TouchableOpacity>
-          
-            <YStack flex={1} gap="$1">
-              <Text fontSize="$2" color="$color10" fontWeight="500">
-                DAY {item.day}
-              </Text>
-              <Text fontSize="$4" fontWeight="600">
-                {item.name}
-              </Text>
-              <XStack gap="$3">
-                <XStack items="center" gap="$1">
-                  <Dumbbell size={14} color="$color10" />
-                  <Text fontSize="$2" color="$color10">
-                    {item.exercises.length} exercises
+          <Card
+            p="$4"
+            mb="$2"
+            bg={getCardBg()}
+            borderColor={getCardBorder()}
+            borderWidth={isActive || isToday ? 2 : 1}
+            opacity={isActive ? 0.95 : isCompleted ? 0.8 : 1}
+            elevate={isActive}
+          >
+            <XStack items="center" gap="$3">
+              {/* Drag Handle - disabled for completed workouts */}
+              <TouchableOpacity
+                onLongPress={isCompleted ? undefined : drag}
+                delayLongPress={100}
+                disabled={isActive || isCompleted}
+                style={[styles.dragHandle, isCompleted && styles.dragHandleDisabled]}
+              >
+                <GripVertical size={20} color={isCompleted ? '$gray5' : '$gray8'} />
+              </TouchableOpacity>
+            
+              <YStack flex={1} gap="$1">
+                <XStack items="center" gap="$2">
+                  <Text fontSize="$2" color="$color10" fontWeight="500">
+                    DAY {item.day}
                   </Text>
+                  {isCompleted && (
+                    <Card bg="$gray8" px="$2" py="$0.5" borderRadius="$10">
+                      <XStack items="center" gap="$1">
+                        <CheckCircle size={10} color="white" />
+                        <Text color="white" fontSize="$1" fontWeight="600">
+                          Done
+                        </Text>
+                      </XStack>
+                    </Card>
+                  )}
+                  {isToday && !isCompleted && (
+                    <Card bg="$green9" px="$2" py="$0.5" borderRadius="$10">
+                      <Text color="white" fontSize="$1" fontWeight="600">
+                        Today
+                      </Text>
+                    </Card>
+                  )}
                 </XStack>
-                <XStack items="center" gap="$1">
-                  <Timer size={14} color="$color10" />
-                  <Text fontSize="$2" color="$color10">
-                    ~{item.estimatedDurationMinutes} min
-                  </Text>
+                <Text fontSize="$4" fontWeight="600">
+                  {item.name}
+                </Text>
+                <XStack gap="$3">
+                  <XStack items="center" gap="$1">
+                    <Dumbbell size={14} color="$color10" />
+                    <Text fontSize="$2" color="$color10">
+                      {item.exercises.length} exercises
+                    </Text>
+                  </XStack>
+                  <XStack items="center" gap="$1">
+                    <Timer size={14} color="$color10" />
+                    <Text fontSize="$2" color="$color10">
+                      ~{item.estimatedDurationMinutes} min
+                    </Text>
+                  </XStack>
                 </XStack>
-              </XStack>
-            </YStack>
-            <ChevronRight size={20} color="$gray8" />
-          </XStack>
-        </Card>
-      </TouchableOpacity>
-    </ScaleDecorator>
-  ), [router, triggerHaptic])
+              </YStack>
+              
+              {/* Set as Today button - only show if not already today's workout and not completed */}
+              {!isToday && !isCompleted && (
+                <TouchableOpacity
+                  onPress={(e) => {
+                    e.stopPropagation?.()
+                    handleSetTodayFocus(item)
+                  }}
+                  style={styles.todayButton}
+                >
+                  <CalendarCheck size={20} color="$green10" />
+                </TouchableOpacity>
+              )}
+              
+              <ChevronRight size={20} color="$gray8" />
+            </XStack>
+          </Card>
+        </TouchableOpacity>
+      </ScaleDecorator>
+    )
+  }, [router, scheduleOverride?.todayFocusTemplateId, handleSetTodayFocus, programState, selectedPhase, completedTemplateIds, firstIncompleteWorkoutId])
 
   if (authLoading || !unlockedPhases) {
     return (
@@ -210,9 +393,9 @@ export default function BrowsePage() {
             {/* Header with Menu */}
             <XStack justify="space-between" items="center">
               <YStack gap="$1">
-                <H2>Training Block</H2>
+                <H2>My Program</H2>
                 <Text color="$color11">
-                  Hold and drag to reorder workouts
+                  Drag to reorder your workouts
                 </Text>
               </YStack>
 
@@ -321,18 +504,34 @@ export default function BrowsePage() {
                       
                       <View style={styles.listContainer}>
                         <DraggableFlatList
+                          key={`${week}-${listResetKey}`}
                           data={workoutsWithWeek}
                           keyExtractor={(item) => item._id}
                           renderItem={renderWorkoutCard}
                           onDragBegin={() => triggerHaptic()}
-                          onDragEnd={({ data, from, to }) => {
-                            if (from !== to && data[from] && data[to]) {
-                              triggerHaptic()
+                          onDragEnd={({ from, to }) => {
+                            if (from !== to) {
                               const originalFrom = workoutsWithWeek[from]
                               const originalTo = workoutsWithWeek[to]
-                              if (originalFrom && originalTo) {
-                                handleSwap(originalFrom, originalTo)
+                              
+                              if (!originalFrom || !originalTo) {
+                                setListResetKey(k => k + 1)
+                                return
                               }
+                              
+                              // Check if either workout is completed - block swap if so
+                              const isFromCompleted = completedTemplateIds?.includes(originalFrom._id) ?? false
+                              const isToCompleted = completedTemplateIds?.includes(originalTo._id) ?? false
+                              
+                              if (isFromCompleted || isToCompleted) {
+                                // Force list to reset to original order
+                                setListResetKey(k => k + 1)
+                                console.log('Swap blocked: cannot reorder completed workouts')
+                                return
+                              }
+                              
+                              triggerHaptic()
+                              handleSwap(originalFrom, originalTo)
                             }
                           }}
                           activationDistance={10}
@@ -382,7 +581,15 @@ const styles = StyleSheet.create({
     padding: 4,
     marginLeft: -4,
   },
+  dragHandleDisabled: {
+    opacity: 0.4,
+  },
   listContainer: {
     flex: 1,
+  },
+  todayButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
   },
 })

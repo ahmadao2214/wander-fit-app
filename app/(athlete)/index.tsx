@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { YStack, XStack, H2, H3, Text, Card, Button, ScrollView, Spinner, Tooltip } from 'tamagui'
+import { YStack, XStack, H2, H3, Text, Card, Button, ScrollView, Spinner } from 'tamagui'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
@@ -16,11 +15,8 @@ import {
   Calendar,
   CheckCircle,
   RotateCcw,
-  Pencil,
 } from '@tamagui/lucide-icons'
 import { PHASE_NAMES } from '../../types'
-import { TodayWorkoutPicker } from '../../components/TodayWorkoutPicker'
-import { WeekSchedulePreview } from '../../components/WeekSchedulePreview'
 
 /**
  * Athlete Dashboard - "Today" Tab
@@ -33,7 +29,6 @@ import { WeekSchedulePreview } from '../../components/WeekSchedulePreview'
 export default function AthleteDashboard() {
   const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
-  const [isPickerOpen, setIsPickerOpen] = useState(false)
 
   // Get current program state
   const programState = useQuery(
@@ -206,42 +201,9 @@ export default function AthleteDashboard() {
 
               {/* Workout Title */}
               <YStack gap="$1">
-                <XStack items="center" gap="$2">
-                  <Text fontSize="$2" color="$green11" fontWeight="500">
-                    TODAY'S WORKOUT
-                  </Text>
-                  <Tooltip placement="bottom">
-                    <Tooltip.Trigger>
-                      <Button
-                        size="$2"
-                        circular
-                        chromeless
-                        icon={<Pencil size={14} color="$green10" />}
-                        onPress={() => setIsPickerOpen(true)}
-                        pressStyle={{ opacity: 0.7 }}
-                      />
-                    </Tooltip.Trigger>
-                    <Tooltip.Content
-                      enterStyle={{ opacity: 0, scale: 0.9 }}
-                      exitStyle={{ opacity: 0, scale: 0.9 }}
-                      animation="quick"
-                      bg="$gray12"
-                      px="$3"
-                      py="$2"
-                    >
-                      <Text color="$gray1" fontSize="$2">
-                        Tap to change today's workout
-                      </Text>
-                    </Tooltip.Content>
-                  </Tooltip>
-                  {todayWorkout?._isFocusOverride && (
-                    <Card bg="$blue9" px="$2" py="$1" borderRadius="$10">
-                      <Text color="white" fontSize="$1" fontWeight="600">
-                        Custom
-                      </Text>
-                    </Card>
-                  )}
-                </XStack>
+                <Text fontSize="$2" color="$green11" fontWeight="500">
+                  TODAY'S WORKOUT
+                </Text>
                 <H3 color="$green12">
                   {todayWorkout?.name || 'Loading...'}
                 </H3>
@@ -323,21 +285,6 @@ export default function AthleteDashboard() {
           </Card>
             )
           })()}
-
-          {/* Workout Picker Modal */}
-          <TodayWorkoutPicker
-            open={isPickerOpen}
-            onOpenChange={setIsPickerOpen}
-            currentPhase={programState?.phase}
-            currentWeek={programState?.week}
-          />
-
-          {/* Week Schedule Preview */}
-          <WeekSchedulePreview
-            phase={programState?.phase}
-            week={programState?.week}
-            currentDay={programState?.day}
-          />
 
           {/* Progress Summary */}
           {progress && (
