@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 
 /**
  * Schedule Overrides - User Schedule Customization
@@ -269,7 +270,15 @@ export const getTodayWorkout = query({
       );
       
       if (slotOverride) {
-        return await ctx.db.get(slotOverride.templateId);
+        const overriddenTemplate = await ctx.db.get(slotOverride.templateId);
+        if (!overriddenTemplate) {
+          // Stale override: referenced template was deleted, fall back to original
+          console.warn(
+            `Stale slot override: template ${slotOverride.templateId} not found for day=${day}. Falling back to original.`
+          );
+          return weekWorkouts.find((w) => w.day === day) ?? null;
+        }
+        return overriddenTemplate;
       }
       
       return weekWorkouts.find((w) => w.day === day) ?? null;
@@ -360,7 +369,7 @@ export const getPhaseOverviewWithOverrides = query({
     ) || [];
 
     // Create a map of slot -> overridden templateId
-    const slotOverrideMap = new Map<string, string>();
+    const slotOverrideMap = new Map<string, Id<"program_templates">>();
     phaseOverrides.forEach((o) => {
       slotOverrideMap.set(`${o.week}-${o.day}`, o.templateId);
     });
@@ -457,6 +466,22 @@ export const setTodayFocus = mutation({
 
     if (template.gppCategoryId !== program.gppCategoryId) {
       throw new Error("Template does not belong to your program category");
+    }
+
+    // Prevent setting completed workout as today's focus
+    const completedSession = await ctx.db
+      .query("gpp_workout_sessions")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("templateId"), args.templateId),
+          q.eq(q.field("status"), "completed")
+        )
+      )
+      .first();
+
+    if (completedSession) {
+      throw new Error("Cannot set completed workout as today's focus");
     }
 
     const now = Date.now();
