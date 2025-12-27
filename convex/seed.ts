@@ -382,7 +382,7 @@ export const seedAllSkillLevelTemplates = mutation({
             skillLevel,
             week: 1,
             day: 1,
-            name: `Lower Body ${skillLevel === "Novice" ? "Foundation" : skillLevel === "Moderate" ? "Development" : "Strength"} - Day 1`,
+            name: `Lower Body ${skillLevel === "Novice" ? "Foundation" : skillLevel === "Moderate" ? "Development" : "Strength"}`,
             description: skillLevel === "Novice" 
               ? "Introduction to fundamental lower body movement patterns."
               : skillLevel === "Moderate"
@@ -423,7 +423,7 @@ export const seedAllSkillLevelTemplates = mutation({
             skillLevel,
             week: 1,
             day: 2,
-            name: `Upper Body ${skillLevel === "Novice" ? "Foundation" : skillLevel === "Moderate" ? "Development" : "Strength"} - Day 2`,
+            name: `Upper Body ${skillLevel === "Novice" ? "Foundation" : skillLevel === "Moderate" ? "Development" : "Strength"}`,
             description: skillLevel === "Novice"
               ? "Building upper body pushing and pulling patterns."
               : skillLevel === "Moderate"
@@ -464,7 +464,7 @@ export const seedAllSkillLevelTemplates = mutation({
             skillLevel,
             week: 1,
             day: 3,
-            name: `Power & Conditioning ${skillLevel === "Novice" ? "Intro" : skillLevel === "Moderate" ? "Development" : "Advanced"} - Day 3`,
+            name: `Power & Conditioning ${skillLevel === "Novice" ? "Intro" : skillLevel === "Moderate" ? "Development" : "Advanced"}`,
             description: skillLevel === "Novice"
               ? "Introduction to explosive movements and conditioning."
               : skillLevel === "Moderate"

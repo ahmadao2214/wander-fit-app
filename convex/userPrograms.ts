@@ -104,6 +104,7 @@ export const getByUserId = query({
 /**
  * Get current program state (for workout lookup)
  * Returns the coordinates needed to fetch the scheduled workout template
+ * Also includes today's focus override if set
  */
 export const getCurrentProgramState = query({
   args: {},
@@ -125,6 +126,12 @@ export const getCurrentProgramState = query({
 
     if (!program) return null;
 
+    // Check for today's focus override
+    const scheduleOverride = await ctx.db
+      .query("user_schedule_overrides")
+      .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
+      .first();
+
     return {
       gppCategoryId: program.gppCategoryId,
       phase: program.currentPhase,
@@ -132,6 +139,10 @@ export const getCurrentProgramState = query({
       week: program.currentWeek,
       day: program.currentDay,
       programId: program._id,
+      // Override info
+      todayFocusTemplateId: scheduleOverride?.todayFocusTemplateId,
+      hasTodayFocusOverride: !!scheduleOverride?.todayFocusTemplateId,
+      hasSlotOverrides: (scheduleOverride?.slotOverrides?.length ?? 0) > 0,
     };
   },
 });

@@ -242,6 +242,40 @@ export const getHistory = query({
   },
 });
 
+/**
+ * Get IDs of all templates that have completed sessions
+ * Used by Program tab to show completion status on workout cards
+ */
+export const getCompletedTemplateIds = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return [];
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) {
+      return [];
+    }
+
+    // Get all completed sessions for this user
+    const completedSessions = await ctx.db
+      .query("gpp_workout_sessions")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .filter((q) => q.eq(q.field("status"), "completed"))
+      .collect();
+
+    // Return unique template IDs
+    const templateIds = [...new Set(completedSessions.map((s) => s.templateId))];
+    return templateIds;
+  },
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // MUTATIONS
 // ─────────────────────────────────────────────────────────────────────────────

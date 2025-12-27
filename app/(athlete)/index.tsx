@@ -42,16 +42,10 @@ export default function AthleteDashboard() {
     user ? {} : "skip"
   )
 
-  // Get the scheduled workout template
-  const scheduledWorkout = useQuery(
-    api.programTemplates.getWorkout,
-    programState ? {
-      gppCategoryId: programState.gppCategoryId,
-      phase: programState.phase,
-      skillLevel: programState.skillLevel,
-      week: programState.week,
-      day: programState.day,
-    } : "skip"
+  // Get today's workout (with override support)
+  const todayWorkout = useQuery(
+    api.scheduleOverrides.getTodayWorkout,
+    user ? {} : "skip"
   )
 
   // Check for active GPP session (in-progress)
@@ -63,7 +57,7 @@ export default function AthleteDashboard() {
   // Check for session on today's scheduled workout (any status)
   const todaySession = useQuery(
     api.gppWorkoutSessions.getSessionForTemplate,
-    scheduledWorkout ? { templateId: scheduledWorkout._id } : "skip"
+    todayWorkout ? { templateId: todayWorkout._id } : "skip"
   )
 
   // Start session mutation
@@ -93,7 +87,7 @@ export default function AthleteDashboard() {
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4" px="$4">
         <Target size={48} color="$gray10" />
         <H3>Complete Your Setup</H3>
-        <Text color="$gray11" textAlign="center">
+        <Text color="$gray11">
           Let's get you started with a personalized training program.
         </Text>
         <Button
@@ -166,11 +160,11 @@ export default function AthleteDashboard() {
             // Determine workout state using todaySession for accurate status
             const isInProgress = todaySession && 
               todaySession.status === 'in_progress' && 
-              scheduledWorkout
+              todayWorkout
             
             const isCompleted = todaySession && 
               todaySession.status === 'completed' &&
-              scheduledWorkout
+              todayWorkout
 
             // Pick card styling based on state
             const cardBg = isCompleted ? '$gray2' : '$green2'
@@ -207,32 +201,32 @@ export default function AthleteDashboard() {
 
               {/* Workout Title */}
               <YStack gap="$1">
-                    <Text fontSize="$2" color={textColor} fontWeight="500">
+                <Text fontSize="$2" color="$green11" fontWeight="500">
                   TODAY'S WORKOUT
                 </Text>
-                    <H3 color={titleColor}>
-                  {scheduledWorkout?.name || 'Loading...'}
+                <H3 color="$green12">
+                  {todayWorkout?.name || 'Loading...'}
                 </H3>
-                {scheduledWorkout?.description && (
-                      <Text color={textColor} fontSize="$3">
-                    {scheduledWorkout.description}
+                {todayWorkout?.description && (
+                  <Text color="$green11" fontSize="$3">
+                    {todayWorkout.description}
                   </Text>
                 )}
               </YStack>
 
               {/* Workout Stats */}
-              {scheduledWorkout && (
+              {todayWorkout && (
                 <XStack gap="$4" flexWrap="wrap">
                   <XStack items="center" gap="$2">
-                        <Dumbbell size={16} color={textColor} />
-                        <Text fontSize="$3" color={textColor}>
-                      {scheduledWorkout.exercises.length} exercises
+                    <Dumbbell size={16} color="$green10" />
+                    <Text fontSize="$3" color="$green11">
+                      {todayWorkout.exercises.length} exercises
                     </Text>
                   </XStack>
                   <XStack items="center" gap="$2">
-                        <Timer size={16} color={textColor} />
-                        <Text fontSize="$3" color={textColor}>
-                      ~{scheduledWorkout.estimatedDurationMinutes} min
+                    <Timer size={16} color="$green10" />
+                    <Text fontSize="$3" color="$green11">
+                      ~{todayWorkout.estimatedDurationMinutes} min
                     </Text>
                   </XStack>
                 </XStack>
@@ -247,8 +241,8 @@ export default function AthleteDashboard() {
                       icon={CheckCircle}
                       fontWeight="700"
                       onPress={() => {
-                        if (scheduledWorkout) {
-                          router.push(`/(athlete)/workout/${scheduledWorkout._id}`)
+                        if (todayWorkout) {
+                          router.push(`/(athlete)/workout/${todayWorkout._id}`)
                         }
                       }}
                     >
@@ -278,11 +272,11 @@ export default function AthleteDashboard() {
                 icon={Play}
                 fontWeight="700"
                 onPress={() => {
-                  if (scheduledWorkout) {
-                    router.push(`/(athlete)/workout/${scheduledWorkout._id}`)
+                  if (todayWorkout) {
+                    router.push(`/(athlete)/workout/${todayWorkout._id}`)
                   }
                 }}
-                disabled={!scheduledWorkout}
+                disabled={!todayWorkout}
               >
                 Start Workout
               </Button>

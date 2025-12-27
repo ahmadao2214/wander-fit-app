@@ -41,3 +41,18 @@ export type {
   RouteDecision,
 } from "./authGuard";
 
+// Schedule override logic
+export {
+  isSameSlot,
+  isSamePhase,
+  findSlotOverride,
+  removeSlotOverrides,
+  buildSwapOverrides,
+  getOverridesForPhase,
+  removePhaseOverrides,
+  shouldClearTodayFocus,
+  validateSwap,
+  countOverridesByPhase,
+} from "./scheduleOverride";
+export type { WorkoutSlot, SlotOverride } from "./scheduleOverride";
+
