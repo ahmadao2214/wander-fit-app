@@ -1,4 +1,5 @@
-import { YStack, XStack, H2, H3, Text, Card, Button, ScrollView, Spinner } from 'tamagui'
+import { useState } from 'react'
+import { YStack, XStack, H2, H3, Text, Card, Button, ScrollView, Spinner, Tooltip } from 'tamagui'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
@@ -15,8 +16,11 @@ import {
   Calendar,
   CheckCircle,
   RotateCcw,
+  Pencil,
 } from '@tamagui/lucide-icons'
 import { PHASE_NAMES } from '../../types'
+import { TodayWorkoutPicker } from '../../components/TodayWorkoutPicker'
+import { WeekSchedulePreview } from '../../components/WeekSchedulePreview'
 
 /**
  * Athlete Dashboard - "Today" Tab
@@ -29,6 +33,7 @@ import { PHASE_NAMES } from '../../types'
 export default function AthleteDashboard() {
   const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
+  const [isPickerOpen, setIsPickerOpen] = useState(false)
 
   // Get current program state
   const programState = useQuery(
@@ -42,16 +47,10 @@ export default function AthleteDashboard() {
     user ? {} : "skip"
   )
 
-  // Get the scheduled workout template
-  const scheduledWorkout = useQuery(
-    api.programTemplates.getWorkout,
-    programState ? {
-      gppCategoryId: programState.gppCategoryId,
-      phase: programState.phase,
-      skillLevel: programState.skillLevel,
-      week: programState.week,
-      day: programState.day,
-    } : "skip"
+  // Get today's workout (with override support)
+  const todayWorkout = useQuery(
+    api.scheduleOverrides.getTodayWorkout,
+    user ? {} : "skip"
   )
 
   // Check for active GPP session (in-progress)
@@ -63,7 +62,7 @@ export default function AthleteDashboard() {
   // Check for session on today's scheduled workout (any status)
   const todaySession = useQuery(
     api.gppWorkoutSessions.getSessionForTemplate,
-    scheduledWorkout ? { templateId: scheduledWorkout._id } : "skip"
+    todayWorkout ? { templateId: todayWorkout._id } : "skip"
   )
 
   // Start session mutation
@@ -93,7 +92,7 @@ export default function AthleteDashboard() {
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4" px="$4">
         <Target size={48} color="$gray10" />
         <H3>Complete Your Setup</H3>
-        <Text color="$gray11" textAlign="center">
+        <Text color="$gray11">
           Let's get you started with a personalized training program.
         </Text>
         <Button
@@ -166,11 +165,11 @@ export default function AthleteDashboard() {
             // Determine workout state using todaySession for accurate status
             const isInProgress = todaySession && 
               todaySession.status === 'in_progress' && 
-              scheduledWorkout
+              todayWorkout
             
             const isCompleted = todaySession && 
               todaySession.status === 'completed' &&
-              scheduledWorkout
+              todayWorkout
 
             // Pick card styling based on state
             const cardBg = isCompleted ? '$gray2' : '$green2'
@@ -207,32 +206,65 @@ export default function AthleteDashboard() {
 
               {/* Workout Title */}
               <YStack gap="$1">
-                    <Text fontSize="$2" color={textColor} fontWeight="500">
-                  TODAY'S WORKOUT
-                </Text>
-                    <H3 color={titleColor}>
-                  {scheduledWorkout?.name || 'Loading...'}
+                <XStack items="center" gap="$2">
+                  <Text fontSize="$2" color="$green11" fontWeight="500">
+                    TODAY'S WORKOUT
+                  </Text>
+                  <Tooltip placement="bottom">
+                    <Tooltip.Trigger>
+                      <Button
+                        size="$2"
+                        circular
+                        chromeless
+                        icon={<Pencil size={14} color="$green10" />}
+                        onPress={() => setIsPickerOpen(true)}
+                        pressStyle={{ opacity: 0.7 }}
+                      />
+                    </Tooltip.Trigger>
+                    <Tooltip.Content
+                      enterStyle={{ opacity: 0, scale: 0.9 }}
+                      exitStyle={{ opacity: 0, scale: 0.9 }}
+                      animation="quick"
+                      bg="$gray12"
+                      px="$3"
+                      py="$2"
+                    >
+                      <Text color="$gray1" fontSize="$2">
+                        Tap to change today's workout
+                      </Text>
+                    </Tooltip.Content>
+                  </Tooltip>
+                  {todayWorkout?._isFocusOverride && (
+                    <Card bg="$blue9" px="$2" py="$1" borderRadius="$10">
+                      <Text color="white" fontSize="$1" fontWeight="600">
+                        Custom
+                      </Text>
+                    </Card>
+                  )}
+                </XStack>
+                <H3 color="$green12">
+                  {todayWorkout?.name || 'Loading...'}
                 </H3>
-                {scheduledWorkout?.description && (
-                      <Text color={textColor} fontSize="$3">
-                    {scheduledWorkout.description}
+                {todayWorkout?.description && (
+                  <Text color="$green11" fontSize="$3">
+                    {todayWorkout.description}
                   </Text>
                 )}
               </YStack>
 
               {/* Workout Stats */}
-              {scheduledWorkout && (
+              {todayWorkout && (
                 <XStack gap="$4" flexWrap="wrap">
                   <XStack items="center" gap="$2">
-                        <Dumbbell size={16} color={textColor} />
-                        <Text fontSize="$3" color={textColor}>
-                      {scheduledWorkout.exercises.length} exercises
+                    <Dumbbell size={16} color="$green10" />
+                    <Text fontSize="$3" color="$green11">
+                      {todayWorkout.exercises.length} exercises
                     </Text>
                   </XStack>
                   <XStack items="center" gap="$2">
-                        <Timer size={16} color={textColor} />
-                        <Text fontSize="$3" color={textColor}>
-                      ~{scheduledWorkout.estimatedDurationMinutes} min
+                    <Timer size={16} color="$green10" />
+                    <Text fontSize="$3" color="$green11">
+                      ~{todayWorkout.estimatedDurationMinutes} min
                     </Text>
                   </XStack>
                 </XStack>
@@ -247,8 +279,8 @@ export default function AthleteDashboard() {
                       icon={CheckCircle}
                       fontWeight="700"
                       onPress={() => {
-                        if (scheduledWorkout) {
-                          router.push(`/(athlete)/workout/${scheduledWorkout._id}`)
+                        if (todayWorkout) {
+                          router.push(`/(athlete)/workout/${todayWorkout._id}`)
                         }
                       }}
                     >
@@ -278,11 +310,11 @@ export default function AthleteDashboard() {
                 icon={Play}
                 fontWeight="700"
                 onPress={() => {
-                  if (scheduledWorkout) {
-                    router.push(`/(athlete)/workout/${scheduledWorkout._id}`)
+                  if (todayWorkout) {
+                    router.push(`/(athlete)/workout/${todayWorkout._id}`)
                   }
                 }}
-                disabled={!scheduledWorkout}
+                disabled={!todayWorkout}
               >
                 Start Workout
               </Button>
@@ -291,6 +323,21 @@ export default function AthleteDashboard() {
           </Card>
             )
           })()}
+
+          {/* Workout Picker Modal */}
+          <TodayWorkoutPicker
+            open={isPickerOpen}
+            onOpenChange={setIsPickerOpen}
+            currentPhase={programState?.phase}
+            currentWeek={programState?.week}
+          />
+
+          {/* Week Schedule Preview */}
+          <WeekSchedulePreview
+            phase={programState?.phase}
+            week={programState?.week}
+            currentDay={programState?.day}
+          />
 
           {/* Progress Summary */}
           {progress && (

@@ -365,6 +365,47 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_program", ["userProgramId"]),
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // SCHEDULE OVERRIDES (User Customization)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * user_schedule_overrides - Stores user's schedule customizations
+   * 
+   * Allows athletes to:
+   * 1. Set a different workout as "today's focus" (override scheduled workout)
+   * 2. Swap/reorder workouts within a phase
+   * 
+   * DESIGN:
+   * - One record per user program
+   * - todayFocusTemplateId: temporary override for what to work on today
+   * - slotOverrides: persistent swaps within phases (same phase only)
+   */
+  user_schedule_overrides: defineTable({
+    userId: v.id("users"),
+    userProgramId: v.id("user_programs"),
+    
+    // Today's workout focus (optional)
+    // If set, this template is shown as "today's workout" instead of default
+    todayFocusTemplateId: v.optional(v.id("program_templates")),
+    todayFocusSetAt: v.optional(v.number()), // Timestamp when focus was set
+    
+    // Slot overrides within phases
+    // Each entry maps a specific slot (phase/week/day) to a different template
+    // Used for persistent swaps - when you swap A and B, both slots get entries
+    slotOverrides: v.array(v.object({
+      phase: phaseValidator,
+      week: v.number(),
+      day: v.number(),
+      templateId: v.id("program_templates"), // The workout assigned to this slot
+    })),
+    
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_program", ["userProgramId"]),
+
   // ═══════════════════════════════════════════════════════════════════════════════
   // LEGACY TABLES (Kept for backward compatibility during migration)
   // ═══════════════════════════════════════════════════════════════════════════════
