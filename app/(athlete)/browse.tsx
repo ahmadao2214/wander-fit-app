@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react'
-import { YStack, XStack, H2, Text, Card, Button, ScrollView, Spinner, Popover, Separator } from 'tamagui'
+import { YStack, XStack, H2, Text, Card, Button, ScrollView, Spinner, Popover } from 'tamagui'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
@@ -172,49 +172,13 @@ export default function BrowsePage() {
   ) => {
     if (!programState || !phaseOverview || !completedTemplateIds) return
     
-    try {
-      // Set as today's focus
-      await setTodayFocus({ templateId: selectedWorkout._id })
-      
-      // Find the first incomplete workout slot in the current week
-      const currentWeekWorkouts = phaseOverview
-        .flatMap(w => w.workouts)
-        .filter(w => w.week === programState.week)
-        .sort((a, b) => a.day - b.day)
-      
-      const firstIncompleteSlot = currentWeekWorkouts.find(
-        w => !completedTemplateIds.includes(w._id)
-      )
-      
-      // If the selected workout is already the first incomplete, no swap needed
-      if (!firstIncompleteSlot || selectedWorkout._id === firstIncompleteSlot._id) {
-        return
-      }
-      
-      // Check if the selected workout is already in the first incomplete slot
-      const isAlreadyInFirstIncompleteSlot = 
-        selectedWorkout.week === firstIncompleteSlot.week && 
-        selectedWorkout.day === firstIncompleteSlot.day
-      
-      if (!isAlreadyInFirstIncompleteSlot) {
-        // Swap the selected workout with the first incomplete slot
-        await swapWorkouts({
-          slotA: {
-            phase: selectedPhase,
-            week: selectedWorkout.week,
-            day: selectedWorkout.day,
-          },
-          slotB: {
-            phase: selectedPhase,
-            week: firstIncompleteSlot.week,
-            day: firstIncompleteSlot.day,
-          },
-        })
-      }
-    } catch (error) {
-      console.error('Failed to set today focus:', error)
+    // Validate the selected workout isn't completed before proceeding
+    if (completedTemplateIds.includes(selectedWorkout._id)) {
+      console.log('Cannot set completed workout as today focus')
+      return
     }
-  }, [setTodayFocus, swapWorkouts, programState, selectedPhase, phaseOverview, completedTemplateIds])
+    
+    try {
 
   // Haptic feedback helper
   const triggerHaptic = useCallback(() => {
