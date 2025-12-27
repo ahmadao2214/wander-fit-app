@@ -751,6 +751,12 @@ export const setTodayFocusWithSwap = mutation({
       throw new Error("No active program found");
     }
 
+    // Verify template exists
+    const template = await ctx.db.get(args.templateId);
+    if (!template) {
+      throw new Error("Template not found");
+    }
+
     if (template.gppCategoryId !== program.gppCategoryId) {
       throw new Error("Template does not belong to your program category");
     }
