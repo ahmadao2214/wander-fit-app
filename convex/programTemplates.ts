@@ -455,8 +455,8 @@ export const getWorkoutWithIntensity = query({
           targetWeight: oneRepMax ? Math.round(oneRepMax * avgPercent) : undefined,
           percentOf1RM: Math.round(avgPercent * 100),
           // Intensity metadata
-          isBodyweight: false,
-          isSubstituted: false,
+          targetWeight: oneRepMax ? Math.round(oneRepMax * ((config.oneRepMaxPercent.min + config.oneRepMaxPercent.max) / 2)) : undefined,
+          percentOf1RM: Math.round(((config.oneRepMaxPercent.min + config.oneRepMaxPercent.max) / 2) * 100),
           rpeTarget: config.rpeTarget,
           hasOneRepMax: !!oneRepMax,
         };
