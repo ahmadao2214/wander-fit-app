@@ -7,7 +7,8 @@ import {
   Text, 
   Card, 
   Button,
-  Spinner 
+  Spinner,
+  ToggleGroup,
 } from 'tamagui'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useQuery, useMutation } from 'convex/react'
@@ -69,6 +70,9 @@ export default function WorkoutDetailScreen() {
 
   // All hooks must be called before any early returns
   const [isStarting, setIsStarting] = useState(false)
+  
+  // Intensity selection for workout scaling
+  const [selectedIntensity, setSelectedIntensity] = useState<"Low" | "Moderate" | "High">("Moderate")
 
   // Safe back navigation - avoids getting stuck in execution screens
   const handleBack = useCallback(() => {
@@ -161,10 +165,11 @@ export default function WorkoutDetailScreen() {
         await setTodayFocus({ templateId: template._id })
       }
       
-      // Pass custom exercise order if user reordered exercises
+      // Pass custom exercise order and intensity
       const result = await startSession({
         templateId: template._id,
         exerciseOrder: hasCustomOrder ? orderIndices : undefined,
+        targetIntensity: selectedIntensity,
       })
       
       // Navigate to execution screen with the session ID
@@ -178,7 +183,7 @@ export default function WorkoutDetailScreen() {
     } finally {
       setIsStarting(false)
     }
-  }, [isStarting, template, startSession, router, hasCustomOrder, orderIndices, todayWorkout, setTodayFocus])
+  }, [isStarting, template, startSession, router, hasCustomOrder, orderIndices, todayWorkout, setTodayFocus, selectedIntensity])
 
   // Render item for DraggableFlatList
   const renderExerciseItem = useCallback(
@@ -242,6 +247,38 @@ export default function WorkoutDetailScreen() {
           </Card>
         )}
 
+        {/* Intensity Selector */}
+        {isPhaseUnlocked && !isCompleted && (
+          <Card p="$3" bg="$gray2" borderColor="$gray6">
+            <YStack gap="$2">
+              <Text fontSize="$3" fontWeight="600" color="$color12">
+                Workout Intensity
+              </Text>
+              <ToggleGroup
+                type="single"
+                value={selectedIntensity}
+                onValueChange={(val) => val && setSelectedIntensity(val as "Low" | "Moderate" | "High")}
+                disableDeactivation
+              >
+                <ToggleGroup.Item value="Low" flex={1}>
+                  <Text fontSize="$2">🟢 Low</Text>
+                </ToggleGroup.Item>
+                <ToggleGroup.Item value="Moderate" flex={1}>
+                  <Text fontSize="$2">🟡 Moderate</Text>
+                </ToggleGroup.Item>
+                <ToggleGroup.Item value="High" flex={1}>
+                  <Text fontSize="$2">🔴 High</Text>
+                </ToggleGroup.Item>
+              </ToggleGroup>
+              <Text fontSize="$1" color="$gray10">
+                {selectedIntensity === "Low" && "Lighter weights, longer rest • RPE 5-6"}
+                {selectedIntensity === "Moderate" && "Standard prescription • RPE 6-7"}
+                {selectedIntensity === "High" && "Heavier weights, shorter rest • RPE 8-9"}
+              </Text>
+            </YStack>
+          </Card>
+        )}
+
         {/* Exercise List Header */}
         <XStack items="center" justify="space-between" pt="$2">
           <H3>Exercises</H3>
@@ -253,7 +290,7 @@ export default function WorkoutDetailScreen() {
         </XStack>
       </YStack>
     )
-  }, [template, isPhaseUnlocked, isCompleted, canReorder])
+  }, [template, isPhaseUnlocked, isCompleted, canReorder, selectedIntensity, setSelectedIntensity])
 
   // Footer component with bottom padding
   const ListFooter = useMemo(() => {
