@@ -12,6 +12,9 @@ import {
   isBodyweightExercise,
 } from "../intensityScaling";
 
+// Also import from lib to verify re-exports work correctly
+import * as libExports from "../../lib/intensityScaling";
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // INTENSITY CONFIG TESTS
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -556,5 +559,179 @@ describe("Real World Scenarios", () => {
       expect(result.exerciseSlug).toBe("decline_push_up");
       expect(result.reps).toBe("13");
     });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INTEGRATION TESTS - PROVING NO CODE DUPLICATION
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("Integration Tests - Single Source of Truth", () => {
+  describe("lib/intensityScaling.ts re-exports correctly", () => {
+    it("exports all expected functions", () => {
+      // Verify all expected exports exist
+      expect(libExports.INTENSITY_CONFIG).toBeDefined();
+      expect(libExports.BODYWEIGHT_INTENSITY_CONFIG).toBeDefined();
+      expect(libExports.applyIntensityToWeighted).toBeDefined();
+      expect(libExports.applyIntensityToBodyweight).toBeDefined();
+      expect(libExports.parseRepsString).toBeDefined();
+      expect(libExports.formatScaledValue).toBeDefined();
+      expect(libExports.scaleRepsOrDuration).toBeDefined();
+      expect(libExports.calculateOneRepMax).toBeDefined();
+      expect(libExports.calculateTargetWeight).toBeDefined();
+      expect(libExports.isBodyweightExercise).toBeDefined();
+      expect(libExports.getAvgOneRepMaxPercent).toBeDefined();
+      expect(libExports.getRpeTarget).toBeDefined();
+    });
+  });
+
+  describe("convex/ and lib/ exports are identical (no duplication)", () => {
+    it("INTENSITY_CONFIG is the same object", () => {
+      // Both should reference the exact same object (not copies)
+      expect(INTENSITY_CONFIG).toBe(libExports.INTENSITY_CONFIG);
+    });
+
+    it("BODYWEIGHT_INTENSITY_CONFIG is the same object", () => {
+      expect(BODYWEIGHT_INTENSITY_CONFIG).toBe(libExports.BODYWEIGHT_INTENSITY_CONFIG);
+    });
+
+    it("applyIntensityToWeighted is the same function", () => {
+      expect(applyIntensityToWeighted).toBe(libExports.applyIntensityToWeighted);
+    });
+
+    it("applyIntensityToBodyweight is the same function", () => {
+      expect(applyIntensityToBodyweight).toBe(libExports.applyIntensityToBodyweight);
+    });
+
+    it("parseRepsString is the same function", () => {
+      expect(parseRepsString).toBe(libExports.parseRepsString);
+    });
+
+    it("formatScaledValue is the same function", () => {
+      expect(formatScaledValue).toBe(libExports.formatScaledValue);
+    });
+
+    it("scaleRepsOrDuration is the same function", () => {
+      expect(scaleRepsOrDuration).toBe(libExports.scaleRepsOrDuration);
+    });
+
+    it("calculateOneRepMax is the same function", () => {
+      expect(calculateOneRepMax).toBe(libExports.calculateOneRepMax);
+    });
+
+    it("calculateTargetWeight is the same function", () => {
+      expect(calculateTargetWeight).toBe(libExports.calculateTargetWeight);
+    });
+
+    it("isBodyweightExercise is the same function", () => {
+      expect(isBodyweightExercise).toBe(libExports.isBodyweightExercise);
+    });
+  });
+
+  describe("convex/ and lib/ produce identical results", () => {
+    const weightedPrescription = { sets: 4, reps: 8, restSeconds: 60 };
+    const bodyweightPrescription = { reps: "30s", restSeconds: 30 };
+    const progressions = { easier: "easier_variant", harder: "harder_variant" };
+
+    it("applyIntensityToWeighted returns identical results", () => {
+      const intensities: Array<"Low" | "Moderate" | "High"> = ["Low", "Moderate", "High"];
+      
+      for (const intensity of intensities) {
+        const convexResult = applyIntensityToWeighted(weightedPrescription, intensity, 200);
+        const libResult = libExports.applyIntensityToWeighted(weightedPrescription, intensity, 200);
+        expect(convexResult).toEqual(libResult);
+      }
+    });
+
+    it("applyIntensityToBodyweight returns identical results", () => {
+      const intensities: Array<"Low" | "Moderate" | "High"> = ["Low", "Moderate", "High"];
+      
+      for (const intensity of intensities) {
+        const convexResult = applyIntensityToBodyweight(bodyweightPrescription, intensity, "base_exercise", progressions);
+        const libResult = libExports.applyIntensityToBodyweight(bodyweightPrescription, intensity, "base_exercise", progressions);
+        expect(convexResult).toEqual(libResult);
+      }
+    });
+
+    it("scaleRepsOrDuration returns identical results for various inputs", () => {
+      const testCases = [
+        { reps: "10", multiplier: 1.33 },
+        { reps: "30s", multiplier: 0.67 },
+        { reps: "2 min", multiplier: 1.0 },
+        { reps: "10-12", multiplier: 0.75 },
+        { reps: "AMRAP", multiplier: 1.5 },
+        { reps: "5 each side", multiplier: 1.33 },
+      ];
+
+      for (const { reps, multiplier } of testCases) {
+        const convexResult = scaleRepsOrDuration(reps, multiplier);
+        const libResult = libExports.scaleRepsOrDuration(reps, multiplier);
+        expect(convexResult).toBe(libResult);
+      }
+    });
+
+    it("calculateOneRepMax returns identical results", () => {
+      const testCases = [
+        { weight: 100, reps: 10 },
+        { weight: 200, reps: 1 },
+        { weight: 135, reps: 5 },
+        { weight: 0, reps: 10 },
+        { weight: 100, reps: 0 },
+      ];
+
+      for (const { weight, reps } of testCases) {
+        const convexResult = calculateOneRepMax(weight, reps);
+        const libResult = libExports.calculateOneRepMax(weight, reps);
+        expect(convexResult).toBe(libResult);
+      }
+    });
+
+    it("isBodyweightExercise returns identical results", () => {
+      const testCases = [
+        undefined,
+        [],
+        ["bodyweight"],
+        ["dumbbell"],
+        ["bodyweight", "bench"],
+      ];
+
+      for (const equipment of testCases) {
+        const convexResult = isBodyweightExercise(equipment);
+        const libResult = libExports.isBodyweightExercise(equipment);
+        expect(convexResult).toBe(libResult);
+      }
+    });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// API BOUNDARY TESTS - lib/index.ts EXPORTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("API Boundary Tests - lib/index.ts exports", () => {
+  // Import from lib/index.ts to verify the public API
+  it("lib/index.ts exports all intensity scaling functions", async () => {
+    const libIndex = await import("../../lib/index");
+    
+    // Verify all expected exports
+    expect(libIndex.INTENSITY_CONFIG).toBeDefined();
+    expect(libIndex.BODYWEIGHT_INTENSITY_CONFIG).toBeDefined();
+    expect(libIndex.applyIntensityToWeighted).toBeDefined();
+    expect(libIndex.applyIntensityToBodyweight).toBeDefined();
+    expect(libIndex.parseRepsString).toBeDefined();
+    expect(libIndex.formatScaledValue).toBeDefined();
+    expect(libIndex.scaleRepsOrDuration).toBeDefined();
+    expect(libIndex.calculateOneRepMax).toBeDefined();
+    expect(libIndex.calculateTargetWeight).toBeDefined();
+    expect(libIndex.isBodyweightExercise).toBeDefined();
+  });
+
+  it("lib/index.ts exports point to the same implementation", async () => {
+    const libIndex = await import("../../lib/index");
+    
+    // Verify they point to the same functions
+    expect(libIndex.INTENSITY_CONFIG).toBe(INTENSITY_CONFIG);
+    expect(libIndex.applyIntensityToWeighted).toBe(applyIntensityToWeighted);
+    expect(libIndex.scaleRepsOrDuration).toBe(scaleRepsOrDuration);
   });
 });

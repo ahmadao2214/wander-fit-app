@@ -1,5 +1,12 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import {
+  INTENSITY_CONFIG,
+  BODYWEIGHT_INTENSITY_CONFIG,
+  scaleRepsOrDuration,
+  isBodyweightExercise,
+  type Intensity,
+} from "./intensityScaling";
 
 /**
  * Program Templates - The Logic Engine
@@ -397,92 +404,10 @@ export const getWorkoutWithIntensity = query({
       }
     }
 
-    // Intensity configuration (inline because Convex can't import from lib/)
-    const intensityConfig = {
-      Low: {
-        oneRepMaxPercent: { min: 0.60, max: 0.70 },
-        setsMultiplier: 0.75,
-        repsMultiplier: 1.0,
-        restMultiplier: 1.25,
-        rpeTarget: { min: 5, max: 6 },
-      },
-      Moderate: {
-        oneRepMaxPercent: { min: 0.75, max: 0.80 },
-        setsMultiplier: 1.0,
-        repsMultiplier: 1.0,
-        restMultiplier: 1.0,
-        rpeTarget: { min: 6, max: 7 },
-      },
-      High: {
-        oneRepMaxPercent: { min: 0.85, max: 0.90 },
-        setsMultiplier: 1.25,
-        repsMultiplier: 0.85,
-        restMultiplier: 0.75,
-        rpeTarget: { min: 8, max: 9 },
-      },
-    };
-
-    const bodyweightConfig = {
-      Low: { repsMultiplier: 0.67 },
-      Moderate: { repsMultiplier: 1.0 },
-      High: { repsMultiplier: 1.33 },
-    };
-
-    const config = intensityConfig[args.intensity];
-    const bwConfig = bodyweightConfig[args.intensity];
+    // Get intensity configuration from shared module (single source of truth)
+    const config = INTENSITY_CONFIG[args.intensity];
+    const bwConfig = BODYWEIGHT_INTENSITY_CONFIG[args.intensity];
     const avgPercent = (config.oneRepMaxPercent.min + config.oneRepMaxPercent.max) / 2;
-
-    // Helper to check if exercise is bodyweight-only
-    const isBodyweightExercise = (equipment?: string[]) => {
-      if (!equipment || equipment.length === 0) return true;
-      return equipment.length === 1 && equipment[0] === "bodyweight";
-    };
-
-    // Helper to parse reps string and scale
-    const scaleRepsOrDuration = (reps: string, multiplier: number): string => {
-      // Handle "AMRAP" - cannot scale
-      if (reps.toLowerCase() === "amrap") return reps;
-
-      // Handle minutes
-      const minMatch = reps.match(/^(\d+(?:\.\d+)?)\s*min(?:utes?)?$/i);
-      if (minMatch) {
-        const seconds = parseFloat(minMatch[1]) * 60 * multiplier;
-        const rounded = Math.round(seconds / 5) * 5;
-        return rounded >= 60 ? `${Math.round(rounded / 60)} min` : `${rounded}s`;
-      }
-
-      // Handle seconds
-      const secMatch = reps.match(/^(\d+(?:\.\d+)?)\s*s(?:ec(?:onds?)?)?$/i);
-      if (secMatch) {
-        const scaled = parseFloat(secMatch[1]) * multiplier;
-        const rounded = Math.max(5, Math.round(scaled / 5) * 5);
-        return `${rounded}s`;
-      }
-
-      // Handle "each side" etc
-      const sideMatch = reps.match(/^(\d+)\s*(each|per)\s+(side|leg|arm)/i);
-      if (sideMatch) {
-        const scaled = Math.max(1, Math.round(parseInt(sideMatch[1]) * multiplier));
-        return `${scaled} ${sideMatch[2]} ${sideMatch[3]}`;
-      }
-
-      // Handle ranges (use midpoint)
-      const rangeMatch = reps.match(/^(\d+)\s*-\s*(\d+)$/);
-      if (rangeMatch) {
-        const mid = (parseInt(rangeMatch[1]) + parseInt(rangeMatch[2])) / 2;
-        const scaled = Math.max(1, Math.round(mid * multiplier));
-        return String(scaled);
-      }
-
-      // Handle plain numbers
-      const numMatch = reps.match(/^(\d+)$/);
-      if (numMatch) {
-        const scaled = Math.max(1, Math.round(parseInt(numMatch[1]) * multiplier));
-        return String(scaled);
-      }
-
-      return reps;
-    };
 
     // Apply intensity scaling to each exercise
     const scaledExercises = template.exercises.map((prescription) => {
