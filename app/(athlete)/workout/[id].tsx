@@ -75,14 +75,24 @@ type ExerciseItem = {
  */
 export default function WorkoutDetailScreen() {
   const router = useRouter()
-  const { id } = useLocalSearchParams<{ id: string }>()
+  const { id, intensity: urlIntensity } = useLocalSearchParams<{ id: string; intensity?: string }>()
   const { user } = useAuth()
 
   // All hooks must be called before any early returns
   const [isStarting, setIsStarting] = useState(false)
   
-  // Intensity selection for workout scaling
-  const [selectedIntensity, setSelectedIntensity] = useState<"Low" | "Moderate" | "High">("Moderate")
+  // Intensity selection for workout scaling (persisted in URL)
+  const validIntensities = ["Low", "Moderate", "High"] as const
+  const initialIntensity = validIntensities.includes(urlIntensity as any) 
+    ? (urlIntensity as "Low" | "Moderate" | "High") 
+    : "Moderate"
+  const [selectedIntensity, setSelectedIntensityState] = useState<"Low" | "Moderate" | "High">(initialIntensity)
+  
+  // Update URL when intensity changes (persists on refresh)
+  const setSelectedIntensity = useCallback((intensity: "Low" | "Moderate" | "High") => {
+    setSelectedIntensityState(intensity)
+    router.setParams({ intensity })
+  }, [router])
 
   // Safe back navigation - avoids getting stuck in execution screens
   const handleBack = useCallback(() => {

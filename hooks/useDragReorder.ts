@@ -61,17 +61,26 @@ export function useDragReorder<T extends BaseExercise>({
   const [localOrder, setLocalOrder] = useState<T[] | null>(null)
 
   // Compute the ordered exercises
+  // Key insight: localOrder stores the ORDER (by exerciseId), not the exercise data itself
+  // This allows exercise data to update (e.g., intensity scaling) while preserving order
   const orderedExercises = useMemo(() => {
     if (!exercises.length) return []
     
-    // If user has reordered locally, use that
+    // Create a map for quick lookup of current exercise data by ID
+    const exerciseMap = new Map(exercises.map(ex => [ex.exerciseId, ex]))
+    
+    // If user has reordered locally, apply that order but use CURRENT exercise data
     if (localOrder) {
       return localOrder
+        .map(orderedEx => exerciseMap.get(orderedEx.exerciseId))
+        .filter(Boolean) as T[]
     }
     
-    // If there's a saved order, apply it
+    // If there's a saved order, apply it with current exercise data
     if (savedOrder && savedOrder.length > 0) {
-      return savedOrder.map(idx => exercises[idx]).filter(Boolean) as T[]
+      return savedOrder
+        .map(idx => exercises[idx])
+        .filter(Boolean) as T[]
     }
     
     // Otherwise use original order
