@@ -8,7 +8,6 @@ import {
   Card, 
   Button,
   Spinner,
-  ToggleGroup,
 } from 'tamagui'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useQuery, useMutation } from 'convex/react'
@@ -261,31 +260,93 @@ export default function WorkoutDetailScreen() {
         {/* Intensity Selector */}
         {isPhaseUnlocked && !isCompleted && (
           <Card p="$3" bg="$gray2" borderColor="$gray6">
-            <YStack gap="$2">
+            <YStack gap="$3">
               <Text fontSize="$3" fontWeight="600" color="$color12">
                 Workout Intensity
               </Text>
-              <ToggleGroup
-                type="single"
-                value={selectedIntensity}
-                onValueChange={(val) => val && setSelectedIntensity(val as "Low" | "Moderate" | "High")}
-                disableDeactivation
-              >
-                <ToggleGroup.Item value="Low" flex={1}>
-                  <Text fontSize="$2">🟢 Low</Text>
-                </ToggleGroup.Item>
-                <ToggleGroup.Item value="Moderate" flex={1}>
-                  <Text fontSize="$2">🟡 Moderate</Text>
-                </ToggleGroup.Item>
-                <ToggleGroup.Item value="High" flex={1}>
-                  <Text fontSize="$2">🔴 High</Text>
-                </ToggleGroup.Item>
-              </ToggleGroup>
-              <Text fontSize="$1" color="$gray10">
-                {selectedIntensity === "Low" && "Lighter weights, longer rest • RPE 5-6"}
-                {selectedIntensity === "Moderate" && "Standard prescription • RPE 6-7"}
-                {selectedIntensity === "High" && "Heavier weights, shorter rest • RPE 8-9"}
-              </Text>
+              <XStack gap="$2">
+                <Card
+                  flex={1}
+                  p="$3"
+                  bg={selectedIntensity === "Low" ? "$green9" : "$gray4"}
+                  borderColor={selectedIntensity === "Low" ? "$green10" : "$gray6"}
+                  borderWidth={selectedIntensity === "Low" ? 2 : 1}
+                  pressStyle={{ scale: 0.98 }}
+                  onPress={() => setSelectedIntensity("Low")}
+                  cursor="pointer"
+                >
+                  <YStack items="center" gap="$1">
+                    <Text 
+                      fontSize="$4" 
+                      fontWeight={selectedIntensity === "Low" ? "700" : "500"}
+                      color={selectedIntensity === "Low" ? "white" : "$color11"}
+                    >
+                      Low
+                    </Text>
+                    <Text 
+                      fontSize="$1" 
+                      color={selectedIntensity === "Low" ? "white" : "$color10"}
+                      opacity={selectedIntensity === "Low" ? 0.9 : 0.7}
+                    >
+                      RPE 5-6
+                    </Text>
+                  </YStack>
+                </Card>
+                <Card
+                  flex={1}
+                  p="$3"
+                  bg={selectedIntensity === "Moderate" ? "$yellow9" : "$gray4"}
+                  borderColor={selectedIntensity === "Moderate" ? "$yellow10" : "$gray6"}
+                  borderWidth={selectedIntensity === "Moderate" ? 2 : 1}
+                  pressStyle={{ scale: 0.98 }}
+                  onPress={() => setSelectedIntensity("Moderate")}
+                  cursor="pointer"
+                >
+                  <YStack items="center" gap="$1">
+                    <Text 
+                      fontSize="$4" 
+                      fontWeight={selectedIntensity === "Moderate" ? "700" : "500"}
+                      color={selectedIntensity === "Moderate" ? "black" : "$color11"}
+                    >
+                      Moderate
+                    </Text>
+                    <Text 
+                      fontSize="$1" 
+                      color={selectedIntensity === "Moderate" ? "black" : "$color10"}
+                      opacity={selectedIntensity === "Moderate" ? 0.8 : 0.7}
+                    >
+                      RPE 6-7
+                    </Text>
+                  </YStack>
+                </Card>
+                <Card
+                  flex={1}
+                  p="$3"
+                  bg={selectedIntensity === "High" ? "$red9" : "$gray4"}
+                  borderColor={selectedIntensity === "High" ? "$red10" : "$gray6"}
+                  borderWidth={selectedIntensity === "High" ? 2 : 1}
+                  pressStyle={{ scale: 0.98 }}
+                  onPress={() => setSelectedIntensity("High")}
+                  cursor="pointer"
+                >
+                  <YStack items="center" gap="$1">
+                    <Text 
+                      fontSize="$4" 
+                      fontWeight={selectedIntensity === "High" ? "700" : "500"}
+                      color={selectedIntensity === "High" ? "white" : "$color11"}
+                    >
+                      High
+                    </Text>
+                    <Text 
+                      fontSize="$1" 
+                      color={selectedIntensity === "High" ? "white" : "$color10"}
+                      opacity={selectedIntensity === "High" ? 0.9 : 0.7}
+                    >
+                      RPE 8-9
+                    </Text>
+                  </YStack>
+                </Card>
+              </XStack>
             </YStack>
           </Card>
         )}
