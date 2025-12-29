@@ -403,7 +403,7 @@ export const getWorkoutWithIntensity = query({
       const oneRepMax = userMaxMap[prescription.exerciseId.toString()];
       const isBW = isBodyweight(exercise?.equipment);
 
-      // Parse original reps to number for weighted exercises
+      const isBW = isBodyweightExercise(exercise?.equipment);
       const repsMatch = prescription.reps.match(/^(\d+)/);
       const baseReps = repsMatch ? parseInt(repsMatch[1]) : 8;
 
