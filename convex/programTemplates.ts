@@ -423,7 +423,6 @@ const bwConfig = BODYWEIGHT_INTENSITY_CONFIG[args.intensity];
         
         // Determine variant based on intensity
         let exerciseSlug = exercise?.slug || "";
-        let substitutedExerciseId = prescription.exerciseId;
         let isSubstituted = false;
 
         if (exercise?.progressions) {
