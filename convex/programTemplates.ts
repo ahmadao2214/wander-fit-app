@@ -397,17 +397,7 @@ export const getWorkoutWithIntensity = query({
       }
     }
 
-// Import from lib
-import { 
-  INTENSITY_CONFIG, 
-  BODYWEIGHT_INTENSITY_CONFIG
-} from "../../lib/intensityScaling";
-
-const config = INTENSITY_CONFIG[args.intensity];
-const bwConfig = BODYWEIGHT_INTENSITY_CONFIG[args.intensity];
-// ... use imported functions
-
-    // Apply intensity scaling to each exercise
+// (These imports should be moved to line 2, after the existing imports)
     const scaledExercises = template.exercises.map((prescription) => {
       const exercise = exerciseMap.get(prescription.exerciseId.toString());
       const oneRepMax = userMaxMap[prescription.exerciseId.toString()];
