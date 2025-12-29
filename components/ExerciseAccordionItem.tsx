@@ -1,4 +1,4 @@
-import { TouchableOpacity, Pressable, StyleSheet, View } from 'react-native'
+import { TouchableOpacity, Pressable, StyleSheet, View, Platform } from 'react-native'
 import { 
   YStack, 
   XStack, 
@@ -86,13 +86,16 @@ export function ExerciseAccordionItem({
     >
       {/* Collapsed Header - Always Visible */}
       <XStack items="center" gap="$2" p="$3">
-        {/* Drag Handle - larger touch area for mobile */}
+        {/* Drag Handle - works on both mobile (long-press) and web (click-hold) */}
         {drag ? (
           <Pressable
             onLongPress={drag}
-            delayLongPress={150}
+            delayLongPress={Platform.OS === 'web' ? 100 : 150}
             disabled={isActive}
-            style={styles.dragHandle}
+            style={[
+              styles.dragHandle,
+              Platform.OS === 'web' && styles.dragHandleWeb,
+            ]}
             hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
           >
             <View style={[
@@ -245,6 +248,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: -8,
+    // Ensure drag handle is always on top and receives events
+    zIndex: 10,
+  },
+  dragHandleWeb: {
+    // Web-specific: show grab cursor to indicate draggable
+    cursor: 'grab' as any,
   },
   dragHandleInner: {
     width: 32,
@@ -255,6 +264,7 @@ const styles = StyleSheet.create({
   },
   dragHandleActive: {
     backgroundColor: 'rgba(34, 197, 94, 0.2)', // green tint when dragging
+    cursor: 'grabbing' as any,
   },
   dragHandlePlaceholder: {
     width: 32,
