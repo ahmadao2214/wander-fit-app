@@ -12,9 +12,6 @@ import {
   Dumbbell,
   RotateCcw,
   Info,
-  Target,
-  Flame,
-  ArrowUpDown,
 } from '@tamagui/lucide-icons'
 
 /**
@@ -78,7 +75,6 @@ export function ExerciseAccordionItem({
   const displaySets = exercise.scaledSets ?? exercise.sets
   const displayReps = exercise.scaledReps ?? exercise.reps
   const displayRest = exercise.scaledRestSeconds ?? exercise.restSeconds
-  const hasScaling = exercise.scaledSets !== undefined || exercise.scaledReps !== undefined
 
   return (
     <Card 
@@ -137,13 +133,10 @@ export function ExerciseAccordionItem({
               {exerciseDetails?.name || 'Exercise'}
             </Text>
 
-            {/* Sets x Reps (with scaling indicator) */}
-            <XStack items="center" gap="$1">
-              {hasScaling && <Flame size={14} color="$orange9" />}
-              <Text color={hasScaling ? "$orange11" : "$color10"} fontSize="$3" fontWeight={hasScaling ? "600" : "400"}>
-                {displaySets} × {displayReps}
-              </Text>
-            </XStack>
+            {/* Sets x Reps */}
+            <Text color="$color10" fontSize="$3">
+              {displaySets} × {displayReps}
+            </Text>
 
             {/* Expand/Collapse Chevron */}
             {isExpanded ? (
@@ -171,59 +164,22 @@ export function ExerciseAccordionItem({
             </XStack>
           )}
 
-          {/* Intensity Scaling Info */}
-          {hasScaling && (
-            <Card bg="$orange2" p="$2" borderRadius="$2" borderColor="$orange6">
-              <XStack items="center" gap="$2" flexWrap="wrap">
-                <Flame size={14} color="$orange9" />
-                <Text fontSize="$2" color="$orange11" fontWeight="500">
-                  Intensity Adjusted
-                </Text>
-                {exercise.targetWeight && (
-                  <Text fontSize="$2" color="$orange11">
-                    • Target: {exercise.targetWeight} lbs ({exercise.percentOf1RM}% 1RM)
-                  </Text>
-                )}
-                {exercise.rpeTarget && (
-                  <Text fontSize="$2" color="$orange11">
-                    • RPE {exercise.rpeTarget.min}-{exercise.rpeTarget.max}
-                  </Text>
-                )}
-                {!exercise.targetWeight && !exercise.isBodyweight && (
-                  <Text fontSize="$2" color="$orange11">
-                    • Use RPE {exercise.rpeTarget?.min}-{exercise.rpeTarget?.max} to select weight
-                  </Text>
-                )}
-              </XStack>
-            </Card>
-          )}
-
-          {/* Substitution Notice */}
-          {exercise.isSubstituted && exercise.substitutedExerciseSlug && (
-            <Card bg="$blue2" p="$2" borderRadius="$2" borderColor="$blue6">
-              <XStack items="center" gap="$2">
-                <ArrowUpDown size={14} color="$blue9" />
-                <Text fontSize="$2" color="$blue11">
-                  Substituted: {exercise.substitutedExerciseSlug.replace(/_/g, ' ')}
-                </Text>
-              </XStack>
-            </Card>
-          )}
-
           {/* Exercise Details Row */}
           <XStack gap="$4" flexWrap="wrap">
             <XStack items="center" gap="$2">
               <Dumbbell size={16} color="$color10" />
               <Text fontSize="$3" color="$color11">
-                {displaySets} sets
+                {displaySets} sets × {displayReps}
               </Text>
             </XStack>
-            
-            <XStack items="center" gap="$2">
-              <Text fontSize="$3" color="$color11">
-                {displayReps}
-              </Text>
-            </XStack>
+
+            {exercise.targetWeight && (
+              <XStack items="center" gap="$2">
+                <Text fontSize="$3" color="$color11">
+                  @ {exercise.targetWeight} lbs
+                </Text>
+              </XStack>
+            )}
 
             {exercise.tempo && (
               <XStack items="center" gap="$2">
