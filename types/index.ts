@@ -1,4 +1,4 @@
-import { Doc, Id } from "convex/_generated/dataModel";
+import { Doc, Id } from "../convex/_generated/dataModel";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // GPP CORE TYPES (MVP)
