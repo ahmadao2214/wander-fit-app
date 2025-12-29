@@ -38,6 +38,18 @@ const sessionStatusValidator = v.union(
   v.literal("abandoned")
 );
 
+const intensityValidator = v.union(
+  v.literal("Low"),
+  v.literal("Moderate"),
+  v.literal("High")
+);
+
+const oneRepMaxSourceValidator = v.union(
+  v.literal("user_input"),     // Athlete entered manually
+  v.literal("calculated"),     // Derived from workout history
+  v.literal("assessment")      // From dedicated assessment workout
+);
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // GPP TABLES (MVP)
 // 
@@ -92,9 +104,43 @@ export default defineSchema({
       v.literal("intermediate"),
       v.literal("advanced")
     )),
+    // Progressions for bodyweight intensity scaling
+    // At Low intensity: use easier variant if available
+    // At High intensity: use harder variant if available
+    progressions: v.optional(v.object({
+      easier: v.optional(v.string()), // Slug of easier variant
+      harder: v.optional(v.string()), // Slug of harder variant
+    })),
     // FUTURE: videoUrl, thumbnailUrl (with blob storage)
   })
     .index("by_slug", ["slug"]),
+
+  /**
+   * user_maxes - 1RM (One Rep Max) tracking for key lifts
+   * 
+   * Athletes need a way to establish their 1RM for key lifts to calculate intensity.
+   * 
+   * 1RM Capture Methods (in priority order):
+   * 1. user_input - Athlete entered manually (they know their max)
+   * 2. calculated - Derived from workout history (e.g., Epley formula: 1RM = weight × (1 + reps/30))
+   * 3. assessment - From dedicated assessment workout
+   * 
+   * Key Lifts for 1RM Tracking:
+   * - Back Squat
+   * - Trap Bar Deadlift / Romanian Deadlift
+   * - Bench Press / Dumbbell Bench Press
+   * - Overhead Press
+   */
+  user_maxes: defineTable({
+    userId: v.id("users"),
+    exerciseId: v.id("exercises"),       // e.g., back_squat, bench_press, deadlift
+    oneRepMax: v.number(),               // in lbs or kg (user preference)
+    source: oneRepMaxSourceValidator,
+    recordedAt: v.number(),              // timestamp
+    notes: v.optional(v.string()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_exercise", ["userId", "exerciseId"]),
 
   /**
    * sports - Maps sports to GPP categories for intake flow
@@ -290,6 +336,10 @@ export default defineSchema({
 
     // Session state
     status: sessionStatusValidator,
+
+    // Target intensity for this session (affects all prescription variables)
+    // Defaults to "Moderate" if not specified
+    targetIntensity: v.optional(intensityValidator),
 
     // Exercise completion tracking
     exercises: v.array(v.object({

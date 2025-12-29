@@ -280,6 +280,13 @@ export const getCompletedTemplateIds = query({
 // MUTATIONS
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Intensity validator
+const intensityValidator = v.union(
+  v.literal("Low"),
+  v.literal("Moderate"),
+  v.literal("High")
+);
+
 /**
  * Start a new workout session
  */
@@ -287,6 +294,7 @@ export const startSession = mutation({
   args: {
     templateId: v.id("program_templates"),
     exerciseOrder: v.optional(v.array(v.number())), // Custom exercise order from workout summary
+    targetIntensity: v.optional(intensityValidator), // Target intensity for this session
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -364,6 +372,8 @@ export const startSession = mutation({
       exercises: initialExercises,
       // Persist custom exercise order if provided from workout summary
       exerciseOrder: args.exerciseOrder,
+      // Target intensity for this session (defaults to Moderate if not specified)
+      targetIntensity: args.targetIntensity,
       templateSnapshot: {
         name: template.name,
         phase: template.phase,

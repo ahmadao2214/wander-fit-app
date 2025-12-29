@@ -56,3 +56,25 @@ export {
 } from "./scheduleOverride";
 export type { WorkoutSlot, SlotOverride } from "./scheduleOverride";
 
+// Intensity scaling
+export {
+  INTENSITY_CONFIG,
+  BODYWEIGHT_INTENSITY_CONFIG,
+  applyIntensityToWeighted,
+  applyIntensityToBodyweight,
+  parseRepsString,
+  formatScaledValue,
+  scaleRepsOrDuration,
+  calculateOneRepMax,
+  calculateTargetWeight,
+  isBodyweightExercise,
+} from "./intensityScaling";
+export type {
+  IntensityConfig,
+  WeightedPrescription,
+  ScaledWeightedPrescription,
+  BodyweightPrescription,
+  ExerciseProgressions,
+  ScaledBodyweightPrescription,
+} from "./intensityScaling";
+

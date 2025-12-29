@@ -53,6 +53,10 @@ export type SessionStatus = "in_progress" | "completed" | "abandoned";
 // Intake types
 export type IntakeType = "initial" | "reassessment";
 
+// Intensity types
+export type Intensity = "Low" | "Moderate" | "High";
+export type OneRepMaxSource = "user_input" | "calculated" | "assessment";
+
 // Document types from schema
 export type Exercise = Doc<"exercises">;
 export type Sport = Doc<"sports">;
@@ -62,6 +66,7 @@ export type UserProgram = Doc<"user_programs">;
 export type IntakeResponse = Doc<"intake_responses">;
 export type GppWorkoutSession = Doc<"gpp_workout_sessions">;
 export type UserProgress = Doc<"user_progress">;
+export type UserMax = Doc<"user_maxes">;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GPP Exercise Types

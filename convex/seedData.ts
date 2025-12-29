@@ -381,11 +381,48 @@ export const EXERCISES = [
   // LOWER BODY - LUNGE PATTERNS
   // ─────────────────────────────────────────────────────────────────────────────
   {
+    name: "Bodyweight Squat",
+    slug: "bodyweight_squat",
+    tags: ["lower_body", "squat", "bilateral", "strength", "bodyweight"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+    instructions: "Stand with feet shoulder-width apart. Squat down until thighs are parallel to ground, then stand.",
+    progressions: {
+      easier: "assisted_squat",
+      harder: "jump_squat",
+    },
+  },
+  {
+    name: "Assisted Squat",
+    slug: "assisted_squat",
+    tags: ["lower_body", "squat", "bilateral", "mobility", "bodyweight"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+    instructions: "Hold onto a sturdy support (door frame, rack) while squatting. Easier than standard squat.",
+    progressions: {
+      harder: "bodyweight_squat",
+    },
+  },
+  {
+    name: "Jump Squat",
+    slug: "jump_squat",
+    tags: ["lower_body", "squat", "bilateral", "plyometric", "power", "explosive"],
+    equipment: ["bodyweight"],
+    difficulty: "intermediate" as const,
+    instructions: "Perform a squat, then explode upward into a jump. Land softly and repeat.",
+    progressions: {
+      easier: "bodyweight_squat",
+    },
+  },
+  {
     name: "Reverse Lunge",
     slug: "reverse_lunge",
     tags: ["lower_body", "lunge", "unilateral", "strength", "single_leg"],
     equipment: ["dumbbell", "bodyweight"],
     difficulty: "beginner" as const,
+    progressions: {
+      harder: "walking_lunge",
+    },
   },
   {
     name: "Walking Lunge",
@@ -393,6 +430,9 @@ export const EXERCISES = [
     tags: ["lower_body", "lunge", "unilateral", "strength", "conditioning"],
     equipment: ["dumbbell", "bodyweight"],
     difficulty: "beginner" as const,
+    progressions: {
+      easier: "reverse_lunge",
+    },
   },
   {
     name: "Lateral Lunge",
@@ -406,11 +446,37 @@ export const EXERCISES = [
   // UPPER BODY - PUSH
   // ─────────────────────────────────────────────────────────────────────────────
   {
+    name: "Incline Push-Up",
+    slug: "incline_push_up",
+    tags: ["upper_body", "push", "horizontal", "strength", "chest", "bodyweight"],
+    equipment: ["bodyweight", "bench"],
+    difficulty: "beginner" as const,
+    instructions: "Place hands on an elevated surface (bench, box). Perform push-up with body at an incline. Easier than standard push-up.",
+    progressions: {
+      harder: "push_up",
+    },
+  },
+  {
     name: "Push-Up",
     slug: "push_up",
     tags: ["upper_body", "push", "horizontal", "strength", "chest", "bodyweight"],
     equipment: ["bodyweight"],
     difficulty: "beginner" as const,
+    progressions: {
+      easier: "incline_push_up",
+      harder: "decline_push_up",
+    },
+  },
+  {
+    name: "Decline Push-Up",
+    slug: "decline_push_up",
+    tags: ["upper_body", "push", "horizontal", "strength", "chest", "bodyweight"],
+    equipment: ["bodyweight", "bench"],
+    difficulty: "intermediate" as const,
+    instructions: "Place feet on an elevated surface. Perform push-up with feet higher than hands. Harder than standard push-up.",
+    progressions: {
+      easier: "push_up",
+    },
   },
   {
     name: "Dumbbell Bench Press",
@@ -445,11 +511,37 @@ export const EXERCISES = [
   // UPPER BODY - PULL
   // ─────────────────────────────────────────────────────────────────────────────
   {
+    name: "Assisted Pull-Up",
+    slug: "assisted_pull_up",
+    tags: ["upper_body", "pull", "vertical", "strength", "back"],
+    equipment: ["pull_up_bar", "band"],
+    difficulty: "beginner" as const,
+    instructions: "Use a resistance band or assisted pull-up machine to help complete the movement. Easier than standard pull-up.",
+    progressions: {
+      harder: "pull_up",
+    },
+  },
+  {
     name: "Pull-Up",
     slug: "pull_up",
     tags: ["upper_body", "pull", "vertical", "strength", "back", "bodyweight"],
     equipment: ["pull_up_bar"],
     difficulty: "intermediate" as const,
+    progressions: {
+      easier: "assisted_pull_up",
+      harder: "weighted_pull_up",
+    },
+  },
+  {
+    name: "Weighted Pull-Up",
+    slug: "weighted_pull_up",
+    tags: ["upper_body", "pull", "vertical", "strength", "back"],
+    equipment: ["pull_up_bar", "dumbbell"],
+    difficulty: "advanced" as const,
+    instructions: "Perform pull-ups with additional weight (dumbbell between feet or weight belt). Harder than standard pull-up.",
+    progressions: {
+      easier: "pull_up",
+    },
   },
   {
     name: "Inverted Row",
@@ -484,11 +576,37 @@ export const EXERCISES = [
   // CORE
   // ─────────────────────────────────────────────────────────────────────────────
   {
+    name: "Knee Plank",
+    slug: "knee_plank",
+    tags: ["core", "anti_extension", "stability", "isometric"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+    instructions: "Hold plank position with knees on the ground. Easier than standard plank.",
+    progressions: {
+      harder: "plank",
+    },
+  },
+  {
     name: "Plank",
     slug: "plank",
     tags: ["core", "anti_extension", "stability", "isometric"],
     equipment: ["bodyweight"],
     difficulty: "beginner" as const,
+    progressions: {
+      easier: "knee_plank",
+      harder: "plank_shoulder_taps",
+    },
+  },
+  {
+    name: "Plank with Shoulder Taps",
+    slug: "plank_shoulder_taps",
+    tags: ["core", "anti_extension", "anti_rotation", "stability", "dynamic"],
+    equipment: ["bodyweight"],
+    difficulty: "intermediate" as const,
+    instructions: "From plank position, alternate tapping each shoulder while maintaining stable hips. Harder than standard plank.",
+    progressions: {
+      easier: "plank",
+    },
   },
   {
     name: "Dead Bug",
