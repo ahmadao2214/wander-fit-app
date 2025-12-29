@@ -400,9 +400,7 @@ export const getWorkoutWithIntensity = query({
 // Import from lib
 import { 
   INTENSITY_CONFIG, 
-  BODYWEIGHT_INTENSITY_CONFIG,
-  isBodyweightExercise,
-  scaleRepsOrDuration
+  BODYWEIGHT_INTENSITY_CONFIG
 } from "../../lib/intensityScaling";
 
 const config = INTENSITY_CONFIG[args.intensity];
