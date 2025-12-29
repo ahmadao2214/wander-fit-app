@@ -94,8 +94,8 @@ export default function WorkoutDetailScreen() {
       router.replace('/(athlete)/program')
     }
   }, [router])
-  // Track which accordions are expanded (by index)
-  const [expandedIndices, setExpandedIndices] = useState<Set<number>>(new Set())
+  // Track which accordions are expanded (by exercise ID, not index, so state persists through reordering)
+  const [expandedExerciseIds, setExpandedExerciseIds] = useState<Set<string>>(new Set())
 
   // Get the template with intensity scaling applied
   const templateQuery = useQuery(
@@ -161,14 +161,14 @@ export default function WorkoutDetailScreen() {
     enabled: canReorder,
   })
 
-  // Toggle accordion expansion
-  const toggleExpanded = useCallback((index: number) => {
-    setExpandedIndices(prev => {
+  // Toggle accordion expansion (by exercise ID so state persists through reordering)
+  const toggleExpanded = useCallback((exerciseId: string) => {
+    setExpandedExerciseIds(prev => {
       const newSet = new Set(prev)
-      if (newSet.has(index)) {
-        newSet.delete(index)
+      if (newSet.has(exerciseId)) {
+        newSet.delete(exerciseId)
       } else {
-        newSet.add(index)
+        newSet.add(exerciseId)
       }
       return newSet
     })
@@ -215,15 +215,15 @@ export default function WorkoutDetailScreen() {
           <ExerciseAccordionItem
             exercise={item}
             index={index}
-            isExpanded={expandedIndices.has(index)}
-            onToggle={() => toggleExpanded(index)}
+            isExpanded={expandedExerciseIds.has(item.exerciseId)}
+            onToggle={() => toggleExpanded(item.exerciseId)}
             drag={canReorder ? drag : undefined}
             isActive={isActive}
           />
         </ScaleDecorator>
       )
     },
-    [expandedIndices, toggleExpanded, canReorder]
+    [expandedExerciseIds, toggleExpanded, canReorder]
   )
 
   // Key extractor for FlatList
