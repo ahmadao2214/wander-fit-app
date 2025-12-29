@@ -411,7 +411,7 @@ export const getWorkoutWithIntensity = query({
         // Bodyweight exercise scaling
         const scaledReps = scaleReps(prescription.reps, bwConfig.repsMultiplier);
         
-        // Determine variant based on intensity
+        const scaledReps = scaleRepsOrDuration(prescription.reps, bwConfig.repsMultiplier);
         let exerciseSlug = exercise?.slug || "";
         let isSubstituted = false;
 
