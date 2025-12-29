@@ -30,7 +30,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { ExerciseAccordionItem } from '../../../components/ExerciseAccordionItem'
 
 /**
- * Exercise type for the draggable list
+ * Exercise type for the draggable list (with intensity scaling)
  */
 type ExerciseItem = {
   exerciseId: string
@@ -47,6 +47,17 @@ type ExerciseItem = {
     instructions?: string
     tags?: string[]
   }
+  // Intensity scaling fields
+  scaledSets?: number
+  scaledReps?: string
+  scaledRestSeconds?: number
+  targetWeight?: number
+  percentOf1RM?: number
+  rpeTarget?: { min: number; max: number }
+  isBodyweight?: boolean
+  isSubstituted?: boolean
+  substitutedExerciseSlug?: string
+  hasOneRepMax?: boolean
 }
 
 /**
@@ -87,10 +98,10 @@ export default function WorkoutDetailScreen() {
   // Track which accordions are expanded (by index)
   const [expandedIndices, setExpandedIndices] = useState<Set<number>>(new Set())
 
-  // Get the template with exercise details
+  // Get the template with intensity scaling applied
   const template = useQuery(
-    api.programTemplates.getByIdWithExercises,
-    id ? { templateId: id as Id<"program_templates"> } : "skip"
+    api.programTemplates.getWorkoutWithIntensity,
+    id ? { templateId: id as Id<"program_templates">, intensity: selectedIntensity } : "skip"
   )
 
   // Get user's session for this template (to get custom exercise order)
