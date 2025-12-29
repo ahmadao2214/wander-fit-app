@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { View, StyleSheet } from 'react-native'
 import { 
   YStack, 
@@ -98,10 +98,21 @@ export default function WorkoutDetailScreen() {
   const [expandedIndices, setExpandedIndices] = useState<Set<number>>(new Set())
 
   // Get the template with intensity scaling applied
-  const template = useQuery(
+  const templateQuery = useQuery(
     api.programTemplates.getWorkoutWithIntensity,
     id ? { templateId: id as Id<"program_templates">, intensity: selectedIntensity } : "skip"
   )
+  
+  // Keep previous template data while loading new intensity to prevent flicker
+  const lastTemplateRef = useRef(templateQuery)
+  useEffect(() => {
+    if (templateQuery !== undefined) {
+      lastTemplateRef.current = templateQuery
+    }
+  }, [templateQuery])
+  
+  // Use the last valid template (prevents flicker during intensity changes)
+  const template = templateQuery === undefined ? lastTemplateRef.current : templateQuery
 
   // Get user's session for this template (to get custom exercise order)
   const session = useQuery(
