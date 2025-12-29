@@ -229,6 +229,15 @@ export default function AthleteDashboard() {
                       ~{todayWorkout.estimatedDurationMinutes} min
                     </Text>
                   </XStack>
+                  {/* Intensity Badge - show if session has intensity */}
+                  {todaySession?.targetIntensity && (
+                    <XStack items="center" gap="$2">
+                      <Target size={16} color="$green10" />
+                      <Text fontSize="$3" color="$green11">
+                        {todaySession.targetIntensity} intensity
+                      </Text>
+                    </XStack>
+                  )}
                 </XStack>
               )}
 

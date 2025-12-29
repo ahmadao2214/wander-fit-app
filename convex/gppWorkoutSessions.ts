@@ -1,5 +1,12 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import {
+  INTENSITY_CONFIG,
+  BODYWEIGHT_INTENSITY_CONFIG,
+  scaleRepsOrDuration,
+  isBodyweightExercise,
+  type Intensity,
+} from "./intensityScaling";
 
 /**
  * GPP Workout Sessions - Execution Tracking
@@ -157,6 +164,11 @@ export const getSessionForTemplate = query({
 
 /**
  * Get a specific session by ID with full details
+ * 
+ * INTENSITY SCALING:
+ * If the session has a targetIntensity, this query applies intensity scaling
+ * to all exercises. This ensures the execution screen shows the same scaled
+ * values that were selected on the workout summary screen.
  */
 export const getById = query({
   args: { sessionId: v.id("gpp_workout_sessions") },
@@ -181,14 +193,100 @@ export const getById = query({
       exercises.filter(Boolean).map((ex) => [ex!._id.toString(), ex!])
     );
 
+    // Get user's 1RM records for intensity scaling
+    let userMaxMap: Record<string, number> = {};
+    if (session.userId) {
+      const userMaxes = await ctx.db
+        .query("user_maxes")
+        .withIndex("by_user", (q) => q.eq("userId", session.userId))
+        .collect();
+
+      for (const max of userMaxes) {
+        userMaxMap[max.exerciseId.toString()] = max.oneRepMax;
+      }
+    }
+
+    // Apply intensity scaling if targetIntensity is set
+    const intensity = (session.targetIntensity || "Moderate") as Intensity;
+    const config = INTENSITY_CONFIG[intensity];
+    const bwConfig = BODYWEIGHT_INTENSITY_CONFIG[intensity];
+    const avgPercent = (config.oneRepMaxPercent.min + config.oneRepMaxPercent.max) / 2;
+
+    const scaledExercises = template.exercises.map((prescription) => {
+      const exercise = exerciseMap.get(prescription.exerciseId.toString());
+      const oneRepMax = userMaxMap[prescription.exerciseId.toString()];
+      const isBW = isBodyweightExercise(exercise?.equipment);
+
+      // Parse original reps to number for weighted exercises
+      const repsMatch = prescription.reps.match(/^(\d+)/);
+      const baseReps = repsMatch ? parseInt(repsMatch[1]) : 8;
+
+      if (isBW) {
+        // Bodyweight exercise scaling
+        const scaledReps = scaleRepsOrDuration(prescription.reps, bwConfig.repsMultiplier);
+        
+        // Determine variant based on intensity
+        let exerciseSlug = exercise?.slug || "";
+        let isSubstituted = false;
+
+        if (exercise?.progressions) {
+          if (intensity === "Low" && exercise.progressions.easier) {
+            exerciseSlug = exercise.progressions.easier;
+            isSubstituted = true;
+          } else if (intensity === "High" && exercise.progressions.harder) {
+            exerciseSlug = exercise.progressions.harder;
+            isSubstituted = true;
+          }
+        }
+
+        return {
+          ...prescription,
+          exercise,
+          // Scaled values
+          scaledSets: prescription.sets,
+          scaledReps: scaledReps,
+          scaledRestSeconds: Math.max(15, Math.round(prescription.restSeconds * config.restMultiplier)),
+          // Intensity metadata
+          isBodyweight: true,
+          isSubstituted,
+          substitutedExerciseSlug: isSubstituted ? exerciseSlug : undefined,
+          rpeTarget: config.rpeTarget,
+        };
+      } else {
+        // Weighted exercise scaling
+        const scaledSets = Math.max(1, Math.round(prescription.sets * config.setsMultiplier));
+        const scaledReps = Math.max(1, Math.round(baseReps * config.repsMultiplier));
+        const scaledRest = Math.max(15, Math.round(prescription.restSeconds * config.restMultiplier));
+
+        return {
+          ...prescription,
+          exercise,
+          // Scaled values
+          scaledSets,
+          scaledReps: String(scaledReps),
+          scaledRestSeconds: scaledRest,
+          // Weight calculation (if 1RM known)
+          targetWeight: oneRepMax ? Math.round(oneRepMax * avgPercent) : undefined,
+          percentOf1RM: Math.round(avgPercent * 100),
+          // Intensity metadata
+          isBodyweight: false,
+          isSubstituted: false,
+          rpeTarget: config.rpeTarget,
+          hasOneRepMax: !!oneRepMax,
+        };
+      }
+    });
+
     return {
       ...session,
       template: {
         ...template,
-        exercises: template.exercises.map((prescription) => ({
-          ...prescription,
-          exercise: exerciseMap.get(prescription.exerciseId.toString()),
-        })),
+        exercises: scaledExercises,
+        appliedIntensity: intensity,
+        intensityConfig: {
+          percentOf1RM: Math.round(avgPercent * 100),
+          rpeTarget: config.rpeTarget,
+        },
       },
     };
   },

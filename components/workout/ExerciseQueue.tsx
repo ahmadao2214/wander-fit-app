@@ -34,6 +34,8 @@ interface Exercise {
   name: string
   sets: number
   reps: string
+  scaledSets?: number
+  scaledReps?: string
   completed: boolean
 }
 
@@ -149,7 +151,7 @@ export function ExerciseQueue({
                   {item.name}
                 </Text>
                 <Text fontSize="$2" color="$color10">
-                  {item.sets} sets × {item.reps}
+                  {item.scaledSets ?? item.sets} sets × {item.scaledReps ?? item.reps}
                 </Text>
               </YStack>
 
