@@ -426,11 +426,16 @@ export default function WorkoutExecutionScreen() {
         <YStack items="center" gap="$1">
               <H2>{exerciseDetails?.name || 'Exercise'}</H2>
           <Text fontSize="$5" color="$color10">
-            {currentExercise.sets} sets × {currentExercise.reps}
+            {currentExercise.scaledSets ?? currentExercise.sets} sets × {currentExercise.scaledReps ?? currentExercise.reps}
           </Text>
           {currentExercise.tempo && (
             <Text fontSize="$3" color="$color9">
               Tempo: {currentExercise.tempo}
+            </Text>
+          )}
+          {currentExercise.targetWeight && (
+            <Text fontSize="$3" color="$green10">
+              Target: {currentExercise.targetWeight} lbs ({currentExercise.percentOf1RM}% 1RM)
             </Text>
           )}
         </YStack>
@@ -440,8 +445,8 @@ export default function WorkoutExecutionScreen() {
           <Card p="$4" borderColor="$gray6" borderWidth={1}>
             <SetTracker
               sets={currentCompletion.sets}
-              prescribedReps={currentExercise.reps}
-              prescribedSets={currentExercise.sets}
+              prescribedReps={currentExercise.scaledReps ?? currentExercise.reps}
+              prescribedSets={currentExercise.scaledSets ?? currentExercise.sets}
               onSetUpdate={handleSetUpdate}
             />
           </Card>
@@ -498,6 +503,8 @@ export default function WorkoutExecutionScreen() {
           name: ex.exercise?.name || `Exercise ${idx + 1}`,
           sets: ex.sets,
           reps: ex.reps,
+          scaledSets: ex.scaledSets,
+          scaledReps: ex.scaledReps,
           completed: exerciseCompletions[idx]?.completed || false,
         }))}
         currentIndex={currentExerciseIndex}

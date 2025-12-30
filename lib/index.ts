@@ -56,3 +56,28 @@ export {
 } from "./scheduleOverride";
 export type { WorkoutSlot, SlotOverride } from "./scheduleOverride";
 
+// Intensity scaling (re-exported from convex/intensityScaling.ts - single source of truth)
+export {
+  INTENSITY_CONFIG,
+  BODYWEIGHT_INTENSITY_CONFIG,
+  applyIntensityToWeighted,
+  applyIntensityToBodyweight,
+  parseRepsString,
+  formatScaledValue,
+  scaleRepsOrDuration,
+  calculateOneRepMax,
+  calculateTargetWeight,
+  isBodyweightExercise,
+  getAvgOneRepMaxPercent,
+  getRpeTarget,
+} from "./intensityScaling";
+export type {
+  Intensity,
+  IntensityConfig,
+  WeightedPrescription,
+  ScaledWeightedPrescription,
+  BodyweightPrescription,
+  ExerciseProgressions,
+  ScaledBodyweightPrescription,
+} from "./intensityScaling";
+

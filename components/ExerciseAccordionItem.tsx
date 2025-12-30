@@ -1,4 +1,4 @@
-import { TouchableOpacity, Pressable, StyleSheet, View } from 'react-native'
+import { TouchableOpacity, Pressable, StyleSheet, View, Platform } from 'react-native'
 import { 
   YStack, 
   XStack, 
@@ -15,7 +15,7 @@ import {
 } from '@tamagui/lucide-icons'
 
 /**
- * Exercise type from the template
+ * Exercise type from the template (with optional intensity scaling)
  */
 interface ExerciseData {
   exerciseId: string
@@ -31,6 +31,17 @@ interface ExerciseData {
     instructions?: string
     tags?: string[]
   }
+  // Intensity scaling fields (from getWorkoutWithIntensity)
+  scaledSets?: number
+  scaledReps?: string
+  scaledRestSeconds?: number
+  targetWeight?: number
+  percentOf1RM?: number
+  rpeTarget?: { min: number; max: number }
+  isBodyweight?: boolean
+  isSubstituted?: boolean
+  substitutedExerciseSlug?: string
+  hasOneRepMax?: boolean
 }
 
 interface ExerciseAccordionItemProps {
@@ -59,6 +70,11 @@ export function ExerciseAccordionItem({
   isActive,
 }: ExerciseAccordionItemProps) {
   const exerciseDetails = exercise.exercise
+  
+  // Use scaled values if available, otherwise fall back to base values
+  const displaySets = exercise.scaledSets ?? exercise.sets
+  const displayReps = exercise.scaledReps ?? exercise.reps
+  const displayRest = exercise.scaledRestSeconds ?? exercise.restSeconds
 
   return (
     <Card 
@@ -70,13 +86,16 @@ export function ExerciseAccordionItem({
     >
       {/* Collapsed Header - Always Visible */}
       <XStack items="center" gap="$2" p="$3">
-        {/* Drag Handle - larger touch area for mobile */}
+        {/* Drag Handle - works on both mobile (long-press) and web (click-hold) */}
         {drag ? (
           <Pressable
             onLongPress={drag}
-            delayLongPress={150}
+            delayLongPress={Platform.OS === 'web' ? 100 : 150}
             disabled={isActive}
-            style={styles.dragHandle}
+            style={[
+              styles.dragHandle,
+              Platform.OS === 'web' && styles.dragHandleWeb,
+            ]}
             hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
           >
             <View style={[
@@ -119,7 +138,7 @@ export function ExerciseAccordionItem({
 
             {/* Sets x Reps */}
             <Text color="$color10" fontSize="$3">
-              {exercise.sets} × {exercise.reps}
+              {displaySets} × {displayReps}
             </Text>
 
             {/* Expand/Collapse Chevron */}
@@ -153,15 +172,17 @@ export function ExerciseAccordionItem({
             <XStack items="center" gap="$2">
               <Dumbbell size={16} color="$color10" />
               <Text fontSize="$3" color="$color11">
-                {exercise.sets} sets
+                {displaySets} sets × {displayReps}
               </Text>
             </XStack>
-            
-            <XStack items="center" gap="$2">
-              <Text fontSize="$3" color="$color11">
-                {exercise.reps}
-              </Text>
-            </XStack>
+
+            {exercise.targetWeight && (
+              <XStack items="center" gap="$2">
+                <Text fontSize="$3" color="$color11">
+                  @ {exercise.targetWeight} lbs
+                </Text>
+              </XStack>
+            )}
 
             {exercise.tempo && (
               <XStack items="center" gap="$2">
@@ -174,7 +195,7 @@ export function ExerciseAccordionItem({
             <XStack items="center" gap="$2">
               <RotateCcw size={16} color="$color10" />
               <Text fontSize="$3" color="$color11">
-                {exercise.restSeconds}s rest
+                {displayRest}s rest
               </Text>
             </XStack>
           </XStack>
@@ -227,6 +248,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: -8,
+    // Ensure drag handle is always on top and receives events
+    zIndex: 10,
+  },
+  dragHandleWeb: {
+    // Web-specific: show grab cursor to indicate draggable
+    cursor: 'grab' as any,
   },
   dragHandleInner: {
     width: 32,
@@ -237,6 +264,7 @@ const styles = StyleSheet.create({
   },
   dragHandleActive: {
     backgroundColor: 'rgba(34, 197, 94, 0.2)', // green tint when dragging
+    cursor: 'grabbing' as any,
   },
   dragHandlePlaceholder: {
     width: 32,
