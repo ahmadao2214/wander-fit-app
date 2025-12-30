@@ -247,7 +247,7 @@ export default function WorkoutDetailScreen() {
       <YStack gap="$3" pb="$3">
         {/* Phase Badge - simplified, no week/day to avoid confusion with reordering */}
         <XStack gap="$2" flexWrap="wrap">
-          <Card bg="$green3" px="$3" py="$1" borderRadius="$10">
+          <Card bg="$green3" px="$3" py="$1" rounded="$10">
             <Text fontSize="$2" color="$green11" fontWeight="500">
               {template.phase}
             </Text>

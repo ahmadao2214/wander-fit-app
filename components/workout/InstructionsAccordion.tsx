@@ -74,7 +74,7 @@ export function InstructionsAccordion({
               </XStack>
               <XStack gap="$2" flexWrap="wrap">
                 {equipment.map((item) => (
-                  <Card key={item} bg="$gray3" px="$2" py="$1" borderRadius="$2">
+                  <Card key={item} bg="$gray3" px="$2" py="$1" rounded="$2">
                     <Text fontSize="$2" color="$color11">
                       {item}
                     </Text>
@@ -86,7 +86,7 @@ export function InstructionsAccordion({
 
           {/* Notes */}
           {notes && (
-            <Card bg="$yellow2" p="$3" borderRadius="$2">
+            <Card bg="$yellow2" p="$3" rounded="$2">
               <Text fontSize="$2" color="$yellow11">
                 <Text fontWeight="600">Note: </Text>
                 {notes}

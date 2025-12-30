@@ -278,7 +278,7 @@ export default function ProgramPage() {
                     DAY {item.day}
                   </Text>
                   {isCompleted && (
-                    <Card bg="$gray8" px="$2" py="$0.5" borderRadius="$10">
+                    <Card bg="$gray8" px="$2" py="$0.5" rounded="$10">
                       <XStack items="center" gap="$1">
                         <CheckCircle size={10} color="white" />
                         <Text color="white" fontSize="$1" fontWeight="600">
@@ -288,7 +288,7 @@ export default function ProgramPage() {
                     </Card>
                   )}
                   {isToday && !isCompleted && (
-                    <Card bg="$green9" px="$2" py="$0.5" borderRadius="$10">
+                    <Card bg="$green9" px="$2" py="$0.5" rounded="$10">
                       <Text color="white" fontSize="$1" fontWeight="600">
                         Today
                       </Text>
@@ -465,7 +465,7 @@ export default function ProgramPage() {
                           Week {week}
                         </Text>
                         {programState?.week === week && programState?.phase === selectedPhase && (
-                          <Card bg="$green9" px="$2" py="$0.5" borderRadius="$10">
+                          <Card bg="$green9" px="$2" py="$0.5" rounded="$10">
                             <Text color="white" fontSize="$1" fontWeight="600">
                               Current
                             </Text>

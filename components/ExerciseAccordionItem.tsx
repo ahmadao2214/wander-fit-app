@@ -114,7 +114,7 @@ export function ExerciseAccordionItem({
           width={28}
           height={28}
           bg="$green9"
-          borderRadius="$10"
+          rounded="$10"
           items="center"
           justify="center"
           p={0}
@@ -158,7 +158,7 @@ export function ExerciseAccordionItem({
           {exerciseDetails?.tags && exerciseDetails.tags.length > 0 && (
             <XStack gap="$1" flexWrap="wrap">
               {exerciseDetails.tags.slice(0, 3).map((tag) => (
-                <Card key={tag} bg="$gray3" px="$2" py="$0.5" borderRadius="$2">
+                <Card key={tag} bg="$gray3" px="$2" py="$0.5" rounded="$2">
                   <Text fontSize="$1" color="$color10">
                     {tag.replace(/_/g, ' ')}
                   </Text>
@@ -202,7 +202,7 @@ export function ExerciseAccordionItem({
 
           {/* Superset Indicator */}
           {exercise.superset && (
-            <Card bg={"$purple2" as any} p="$2" borderRadius="$2">
+            <Card bg={"$purple2" as any} p="$2" rounded="$2">
               <Text fontSize="$2" color="purple" fontWeight="500">
                 Superset {exercise.superset}
               </Text>
@@ -223,7 +223,7 @@ export function ExerciseAccordionItem({
 
           {/* Exercise Instructions */}
           {exerciseDetails?.instructions && (
-            <Card bg="$gray2" p="$3" borderRadius="$3">
+            <Card bg="$gray2" p="$3" rounded="$3">
               <YStack gap="$1">
                 <Text fontSize="$2" color="$color10" fontWeight="600">
                   Instructions:

@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { YStack, XStack, H2, Text, Card, Button, ScrollView, Spinner, Input, Circle } from 'tamagui'
+import { YStack, XStack, Text, Card, Button, ScrollView, Spinner, Input, Circle, styled } from 'tamagui'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { useRouter } from 'expo-router'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { 
   Search,
   ChevronRight,
@@ -13,19 +14,35 @@ import { Id } from '../../convex/_generated/dataModel'
 import LottieView from 'lottie-react-native'
 
 // ─────────────────────────────────────────────────────────────────────────────
+// STYLED COMPONENTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+const DisplayHeading = styled(Text, {
+  fontFamily: '$heading',
+  fontSize: 32,
+  letterSpacing: 1,
+  color: '$color12',
+  text: 'center',
+})
+
+const Subtitle = styled(Text, {
+  fontFamily: '$body',
+  fontSize: 15,
+  color: '$color10',
+  text: 'center',
+  lineHeight: 22,
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Sport Icon Lottie Mapping
-// Maps sport names to their Lottie animation files
-// Download animations from LottieFiles.com and place in assets/lottie/sports/
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SPORT_LOTTIE: Record<string, any> = {
   'Soccer': require('../../assets/lottie/sports/soccer.json'),
-  // Add more sports here as animations are added
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SportIcon Component
-// Placeholder using styled initials - designed to be swapped for Lottie later
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface SportIconProps {
@@ -34,26 +51,19 @@ interface SportIconProps {
   isSelected?: boolean
 }
 
-/**
- * SportIcon - Icon component for sports
- * 
- * Renders Lottie animation if available, otherwise falls back to styled initials.
- */
 const SportIcon = ({ name, size = 56, isSelected = false }: SportIconProps) => {
-  // Check if we have a Lottie animation for this sport
   const lottieSource = SPORT_LOTTIE[name]
   
   if (lottieSource) {
     return (
       <Circle 
         size={size} 
-        bg={isSelected ? '$green5' : '$gray4'}
+        bg={isSelected ? '$brand3' : '$color4'}
         overflow="hidden"
         items="center"
         justify="center"
       >
         <LottieView
-          // Key forces remount when selection changes, triggering autoPlay
           key={isSelected ? 'playing' : 'paused'}
           source={lottieSource}
           autoPlay={isSelected}
@@ -65,13 +75,12 @@ const SportIcon = ({ name, size = 56, isSelected = false }: SportIconProps) => {
     )
   }
 
-  // Fallback: Extract initials for sports without Lottie animations
-  // "Field Hockey" → "FH", "Soccer" → "S", "Track (Distance)" → "TD"
+  // Fallback: Extract initials
   const initials = name
-    .split(/[\s()/]+/) // Split on spaces, parentheses, and slashes
-    .filter(word => word.length > 0) // Remove empty strings
-    .map(word => word[0]) // Get first letter of each word
-    .filter(char => /[A-Za-z]/.test(char)) // Only keep letters
+    .split(/[\s()/]+/)
+    .filter(word => word.length > 0)
+    .map(word => word[0])
+    .filter(char => /[A-Za-z]/.test(char))
     .join('')
     .slice(0, 2)
     .toUpperCase()
@@ -79,12 +88,12 @@ const SportIcon = ({ name, size = 56, isSelected = false }: SportIconProps) => {
   return (
     <Circle 
       size={size} 
-      bg={isSelected ? '$green5' : '$gray4'}
+      bg={isSelected ? '$brand3' : '$color4'}
     >
       <Text 
         fontSize={size / 2.5} 
-        fontWeight="700" 
-        color={isSelected ? '$green11' : '$gray11'}
+        fontFamily="$body" fontWeight="700"
+        color={isSelected ? '$primary' : '$color10'}
       >
         {initials}
       </Text>
@@ -94,7 +103,6 @@ const SportIcon = ({ name, size = 56, isSelected = false }: SportIconProps) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SportTile Component
-// Individual tile for a sport in the grid
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface SportTileProps {
@@ -110,14 +118,13 @@ interface SportTileProps {
 const SportTile = ({ sport, isSelected, onSelect }: SportTileProps) => {
   return (
     <Card
-      // Fill the grid cell width, use aspect ratio for square tiles
       width="100%"
       aspectRatio={1}
-      bg={isSelected ? '$green2' : '$gray2'}
-      borderColor={isSelected ? '$green8' : 'transparent'}
+      bg={isSelected ? '$brand1' : '$surface'}
+      borderColor={isSelected ? '$primary' : 'transparent'}
       borderWidth={2}
-      borderRadius="$4"
-      pressStyle={{ scale: 0.95, opacity: 0.9 }}
+      rounded="$4"
+      pressStyle={{ scale: 0.96, opacity: 0.9 }}
       onPress={onSelect}
       position="relative"
     >
@@ -130,15 +137,15 @@ const SportTile = ({ sport, isSelected, onSelect }: SportTileProps) => {
       >
         <SportIcon 
           name={sport.name} 
-          size={48}
+          size={44}
           isSelected={isSelected} 
         />
         <Text 
-          fontSize="$2" 
-          fontWeight="600" 
-          textAlign="center" 
+          fontSize={12} 
+          fontFamily="$body" fontWeight="600"
+          text="center" 
           numberOfLines={2}
-          color={isSelected ? '$green11' : '$color12'}
+          color={isSelected ? '$primary' : '$color12'}
         >
           {sport.name}
         </Text>
@@ -147,13 +154,13 @@ const SportTile = ({ sport, isSelected, onSelect }: SportTileProps) => {
       {/* Selected indicator */}
       {isSelected && (
         <Circle
-          size={24}
-          bg="$green9"
+          size={22}
+          bg="$primary"
           position="absolute"
-          top={8}
-          right={8}
+          t={6}
+          r={6}
         >
-          <Check size={14} color="white" strokeWidth={3} />
+          <Check size={12} color="white" strokeWidth={3} />
         </Circle>
       )}
     </Card>
@@ -164,41 +171,33 @@ const SportTile = ({ sport, isSelected, onSelect }: SportTileProps) => {
 // Sport Selection Screen
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Sport Selection Screen
- * 
- * Step 1 of intake flow.
- * User selects their primary sport from a visual tile grid.
- * GPP category is determined behind the scenes - not shown to user.
- */
 export default function SportSelectionScreen() {
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedSportId, setSelectedSportId] = useState<Id<"sports"> | null>(null)
 
-  // Get all sports (no categories needed for display)
   const sports = useQuery(api.sports.list, {})
 
-  // Grid gap for tile spacing
-  const GAP = 12 // $3 gap between tiles
+  const GAP = 12
 
   if (!sports) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$green10" />
-        <Text color="$gray11">Loading sports...</Text>
+        <Spinner size="large" color="$primary" />
+        <Text color="$color10" fontFamily="$body">
+          Loading sports...
+        </Text>
       </YStack>
     )
   }
 
-  // Filter sports by search query (flat list, no categories)
   const filteredSports = searchQuery
     ? sports.filter((s) => 
         s.name.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : sports
 
-  // Sort alphabetically for consistent ordering
   const sortedSports = [...filteredSports].sort((a, b) => 
     a.name.localeCompare(b.name)
   )
@@ -214,48 +213,54 @@ export default function SportSelectionScreen() {
 
   return (
     <YStack flex={1} bg="$background">
-      <ScrollView flex={1}>
+      <ScrollView flex={1} showsVerticalScrollIndicator={false}>
         <YStack
-          gap="$4"
+          gap="$5"
           px="$4"
-          pt="$10"
+          pt={insets.top + 24}
           pb="$8"
           maxW={600}
           width="100%"
-          alignSelf="center"
+          self="center"
         >
           {/* Header */}
-          <YStack gap="$2" items="center">
-            <Target size={48} color="$green10" />
-            <H2 textAlign="center">What's Your Sport?</H2>
-            <Text color="$gray11" textAlign="center" fontSize="$4">
+          <YStack gap="$3" items="center">
+            <YStack bg="$brand2" p="$4" rounded="$10">
+              <Target size={40} color="$primary" />
+            </YStack>
+            <DisplayHeading>WHAT'S YOUR SPORT?</DisplayHeading>
+            <Subtitle>
               Select your primary sport to get a personalized training program
-            </Text>
+            </Subtitle>
           </YStack>
 
           {/* Search */}
           <XStack
-            bg="$gray3"
-            borderRadius="$4"
+            bg="$surface"
+            rounded="$4"
+            borderWidth={1}
+            borderColor="$borderColor"
             px="$3"
-            py="$2"
+            py="$2.5"
             items="center"
             gap="$2"
           >
-            <Search size={20} color="$gray10" />
+            <Search size={20} color="$color10" />
             <Input
               flex={1}
               placeholder="Search sports..."
+              placeholderTextColor="$placeholderColor"
               value={searchQuery}
               onChangeText={setSearchQuery}
               bg="transparent"
               borderWidth={0}
-              fontSize="$4"
-              placeholderTextColor="$gray9"
+              fontSize={15}
+              fontFamily="$body"
+              p={0}
             />
           </XStack>
 
-          {/* Sport Tiles Grid - Using CSS Grid for reliable 3-column layout */}
+          {/* Sport Tiles Grid */}
           <YStack 
             width="100%"
             style={{
@@ -276,12 +281,12 @@ export default function SportSelectionScreen() {
 
           {/* No Results */}
           {sortedSports.length === 0 && searchQuery && (
-            <Card p="$6" bg="$gray2">
+            <Card p="$6" bg="$surface" rounded="$4">
               <YStack items="center" gap="$2">
-                <Text color="$gray10" textAlign="center">
+                <Text color="$color10" text="center" fontFamily="$body">
                   No sports found matching "{searchQuery}"
                 </Text>
-                <Text fontSize="$2" color="$gray9" textAlign="center">
+                <Text fontSize={13} color="$color9" text="center" fontFamily="$body">
                   Try a different search or select "General Fitness"
                 </Text>
               </YStack>
@@ -294,18 +299,21 @@ export default function SportSelectionScreen() {
       <YStack
         px="$4"
         py="$4"
+        pb={insets.bottom + 16}
         borderTopWidth={1}
-        borderTopColor="$gray5"
-        bg="$background"
+        borderTopColor="$borderColor"
+        bg="$surface"
       >
         <Button
           size="$5"
-          bg={selectedSportId ? '$green9' : '$gray6'}
+          bg={selectedSportId ? '$primary' : '$color6'}
           color="white"
           disabled={!selectedSportId}
           onPress={handleContinue}
           iconAfter={ChevronRight}
-          fontWeight="700"
+          fontFamily="$body" fontWeight="700"
+          rounded="$4"
+          pressStyle={selectedSportId ? { opacity: 0.9, scale: 0.98 } : {}}
         >
           Continue
         </Button>

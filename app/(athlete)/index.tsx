@@ -1,9 +1,10 @@
-import { YStack, XStack, H2, H3, Text, Card, Button, ScrollView, Spinner } from 'tamagui'
+import { YStack, XStack, Text, Card, Button, ScrollView, Spinner, styled } from 'tamagui'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
 import { SignOutButton } from '../../components/SignOutButton'
 import { useRouter } from 'expo-router'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { 
   Play, 
   Clock, 
@@ -15,8 +16,76 @@ import {
   Calendar,
   CheckCircle,
   RotateCcw,
+  Zap,
 } from '@tamagui/lucide-icons'
 import { PHASE_NAMES } from '../../types'
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STYLED COMPONENTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Display heading using Bebas Neue
+const DisplayHeading = styled(Text, {
+  fontFamily: '$heading',
+  fontSize: 32,
+  letterSpacing: 1,
+  color: '$color12',
+})
+
+// Section label
+const SectionLabel = styled(Text, {
+  fontFamily: '$body',
+  fontWeight: '600',
+  fontSize: 11,
+  letterSpacing: 1.5,
+  textTransform: 'uppercase',
+  color: '$color10',
+})
+
+// Stat number
+const StatNumber = styled(Text, {
+  fontFamily: '$body',
+  fontWeight: '700',
+  fontSize: 28,
+  color: '$primary',
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INTENSITY BADGE COMPONENT
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface IntensityBadgeProps {
+  intensity?: 'low' | 'medium' | 'high'
+}
+
+function IntensityBadge({ intensity = 'medium' }: IntensityBadgeProps) {
+  const configs = {
+    low: { bg: '$intensityLow6' as const, label: 'LOW', icon: Zap },
+    medium: { bg: '$intensityMed6' as const, label: 'MODERATE', icon: Zap },
+    high: { bg: '$intensityHigh6' as const, label: 'HIGH', icon: Flame },
+  }
+  const config = configs[intensity]
+
+  return (
+    <XStack 
+      bg={config.bg} 
+      px="$2" 
+      py="$1" 
+      rounded="$2" 
+      items="center" 
+      gap="$1"
+    >
+      <config.icon size={12} color="white" />
+      <Text color="white" fontSize={10} fontFamily="$body" fontWeight="700" letterSpacing={0.5}>
+        {config.label}
+      </Text>
+    </XStack>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN COMPONENT
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Athlete Dashboard - "Today" Tab
@@ -25,10 +94,13 @@ import { PHASE_NAMES } from '../../types'
  * - Shows the scheduled "next workout" prominently
  * - Quick access to start the workout
  * - Progress summary at a glance
+ * 
+ * Design: Strava-inspired with Electric Blue primary and Flame Orange accents
  */
 export default function AthleteDashboard() {
   const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
+  const insets = useSafeAreaInsets()
 
   // Get current program state
   const programState = useQuery(
@@ -63,40 +135,61 @@ export default function AthleteDashboard() {
   // Start session mutation
   const startSession = useMutation(api.gppWorkoutSessions.startSession)
 
+  // Loading state
   if (authLoading || programState === undefined) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$green10" />
-        <Text color="$gray11">Loading your program...</Text>
+        <Spinner size="large" color="$primary" />
+        <Text color="$color10" fontFamily="$body">
+          Loading your program...
+        </Text>
       </YStack>
     )
   }
 
+  // Error state
   if (!user) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4" px="$4">
-        <Text>Error loading user data</Text>
+        <Text fontFamily="$body">Error loading user data</Text>
         <SignOutButton />
       </YStack>
     )
   }
 
-  // If no program state, user needs to complete intake
+  // Onboarding state - user needs to complete intake
   if (!programState) {
     return (
-      <YStack flex={1} bg="$background" items="center" justify="center" gap="$4" px="$4">
-        <Target size={48} color="$gray10" />
-        <H3>Complete Your Setup</H3>
-        <Text color="$gray11">
-          Let's get you started with a personalized training program.
-        </Text>
+      <YStack flex={1} bg="$background" items="center" justify="center" gap="$5" px="$4">
+        <YStack 
+          bg="$brand2" 
+          p="$4" 
+          rounded="$10" 
+          items="center" 
+          justify="center"
+        >
+          <Target size={48} color="$primary" />
+        </YStack>
+        <YStack items="center" gap="$2">
+          <DisplayHeading>COMPLETE YOUR SETUP</DisplayHeading>
+          <Text 
+            color="$color10" 
+            text="center" 
+            fontFamily="$body"
+            maxW={280}
+          >
+            Let's get you started with a personalized training program tailored to your sport.
+          </Text>
+        </YStack>
         <Button
-          size="$4"
-          bg="$green9"
+          size="$5"
+          bg="$primary"
           color="white"
+          fontFamily="$body" fontWeight="700"
+          pressStyle={{ opacity: 0.9, scale: 0.98 }}
           onPress={() => router.push('/(intake)/sport')}
         >
-          Start Setup
+          Get Started
         </Button>
       </YStack>
     )
@@ -104,44 +197,72 @@ export default function AthleteDashboard() {
 
   const phaseName = PHASE_NAMES[programState.phase as keyof typeof PHASE_NAMES] || programState.phase
 
+  // Determine workout state
+  const isInProgress = todaySession && 
+    todaySession.status === 'in_progress' && 
+    todayWorkout
+  
+  const isCompleted = todaySession && 
+    todaySession.status === 'completed' &&
+    todayWorkout
+
   return (
     <YStack flex={1} bg="$background">
-      <ScrollView flex={1}>
+      <ScrollView flex={1} showsVerticalScrollIndicator={false}>
         <YStack
-          gap="$4"
+          gap="$5"
           px="$4"
-          pt="$6"
-          pb="$8"
+          pt={insets.top + 16}
+          pb={insets.bottom + 100}
           maxW={800}
           width="100%"
           self="center"
         >
           {/* Header */}
-          <XStack justify="space-between" items="center">
-            <YStack>
-              <H2>Ready to train?</H2>
-              <Text color="$gray11">{user.name}</Text>
-            </YStack>
-          </XStack>
+          <YStack gap="$1">
+            <Text 
+              color="$color10" 
+              fontSize={14} 
+              fontFamily="$body"
+            >
+              Welcome back, {user.name?.split(' ')[0] || 'Athlete'}
+            </Text>
+            <DisplayHeading>READY TO TRAIN?</DisplayHeading>
+          </YStack>
 
           {/* Active Session Alert */}
           {activeSession && activeSession.status === 'in_progress' && (
-            <Card bg="$orange3" borderColor="$orange8" p="$4" borderRadius="$4">
+            <Card 
+              bg="$accent2" 
+              p="$4" 
+              rounded="$4"
+              borderLeftWidth={4}
+              borderLeftColor="$accent"
+            >
               <XStack items="center" gap="$3">
-                <Clock color="$orange11" size={24} />
+                <YStack 
+                  bg="$accent" 
+                  p="$2" 
+                  rounded="$10"
+                >
+                  <Clock color="white" size={20} />
+                </YStack>
                 <YStack flex={1}>
-                  <Text fontWeight="600" color="$orange11">
+                  <Text fontFamily="$body" fontWeight="600" color="$accent7">
                     Workout in Progress
                   </Text>
-                  <Text fontSize="$2" color="$orange10">
+                  <Text fontSize={13} color="$accent6" fontFamily="$body">
                     {activeSession.template?.name || 'Pick up where you left off'}
                   </Text>
                 </YStack>
                 <Button
                   size="$3"
-                  bg="$orange9"
+                  bg="$accent"
                   color="white"
                   icon={RotateCcw}
+                  fontFamily="$body" fontWeight="700"
+                  rounded="$3"
+                  pressStyle={{ opacity: 0.9 }}
                   onPress={() => {
                     router.push({
                       pathname: '/(athlete)/workout/execute/[id]',
@@ -155,198 +276,268 @@ export default function AthleteDashboard() {
             </Card>
           )}
 
-          {/* Scheduled Workout Card */}
-          {(() => {
-            // Determine workout state using todaySession for accurate status
-            const isInProgress = todaySession && 
-              todaySession.status === 'in_progress' && 
-              todayWorkout
-            
-            const isCompleted = todaySession && 
-              todaySession.status === 'completed' &&
-              todayWorkout
-
-            // Pick card styling based on state
-            const cardBg = isCompleted ? '$gray2' : '$green2'
-            const cardBorder = isCompleted ? '$gray6' : '$green7'
-            const textColor = isCompleted ? '$gray11' : '$green11'
-            const titleColor = isCompleted ? '$gray12' : '$green12'
-
-            return (
+          {/* Today's Workout Card */}
           <Card
-                bg={cardBg}
-                borderColor={cardBorder}
-            borderWidth={2}
+            bg={isCompleted ? '$surface' : '$brand1'}
+            borderWidth={isCompleted ? 1 : 0}
+            borderColor="$borderColor"
             p="$5"
-            borderRadius="$6"
-                elevation={isCompleted ? 0 : 2}
+            rounded="$5"
+            elevation={isCompleted ? 0 : 3}
+            shadowColor="$primary"
+            shadowOpacity={isCompleted ? 0 : 0.1}
+            shadowRadius={20}
           >
             <YStack gap="$4">
-              {/* Phase Badge */}
-                  <XStack items="center" gap="$2">
-                    <Card bg={isCompleted ? '$gray8' : '$green9'} px="$3" py="$1" borderRadius="$10">
-                  <Text color="white" fontSize="$2" fontWeight="600">
-                    {programState.phase} • Week {programState.week} • Day {programState.day}
-                  </Text>
-                </Card>
-                    {isCompleted && (
-                      <XStack items="center" gap="$1">
-                        <CheckCircle size={18} color="$green10" />
-                        <Text fontSize="$2" color="$green10" fontWeight="600">
-                          Completed
-                        </Text>
-                      </XStack>
-                    )}
+              {/* Top row: Phase badge + Duration */}
+              <XStack justify="space-between" items="center">
+                <XStack items="center" gap="$2">
+                  <Card 
+                    bg={isCompleted ? '$color6' : '$primary'} 
+                    px="$3" 
+                    py="$1.5" 
+                    rounded="$3"
+                  >
+                    <Text 
+                      color="white" 
+                      fontSize={11} 
+                      fontFamily="$body" fontWeight="700"
+                      letterSpacing={0.5}
+                    >
+                      {programState.phase} W{programState.week}D{programState.day}
+                    </Text>
+                  </Card>
+                  {isCompleted && (
+                    <XStack items="center" gap="$1">
+                      <CheckCircle size={16} color="$success" />
+                      <Text fontSize={12} color="$success" fontFamily="$body" fontWeight="600">
+                        Done
+                      </Text>
+                    </XStack>
+                  )}
+                </XStack>
+                {todayWorkout && !isCompleted && (
+                  <XStack items="center" gap="$1.5" opacity={0.7}>
+                    <Timer size={14} color="$color10" />
+                    <Text fontSize={13} color="$color10" fontFamily="$body">
+                      ~{todayWorkout.estimatedDurationMinutes} min
+                    </Text>
+                  </XStack>
+                )}
               </XStack>
 
               {/* Workout Title */}
               <YStack gap="$1">
-                <Text fontSize="$2" color="$green11" fontWeight="500">
-                  TODAY'S WORKOUT
-                </Text>
-                <H3 color="$green12">
+                <SectionLabel>TODAY'S WORKOUT</SectionLabel>
+                <Text 
+                  fontSize={22} 
+                  fontFamily="$body" fontWeight="700" 
+                  color="$color12"
+                  lineHeight={28}
+                >
                   {todayWorkout?.name || 'Loading...'}
-                </H3>
+                </Text>
                 {todayWorkout?.description && (
-                  <Text color="$green11" fontSize="$3">
+                  <Text 
+                    color="$color10" 
+                    fontSize={14} 
+                    fontFamily="$body"
+                    lineHeight={20}
+                  >
                     {todayWorkout.description}
                   </Text>
                 )}
               </YStack>
 
-              {/* Workout Stats */}
+              {/* Workout Stats Row */}
               {todayWorkout && (
                 <XStack gap="$4" flexWrap="wrap">
                   <XStack items="center" gap="$2">
-                    <Dumbbell size={16} color="$green10" />
-                    <Text fontSize="$3" color="$green11">
+                    <Dumbbell size={16} color="$primary" />
+                    <Text fontSize={14} color="$color11" fontFamily="$body" fontWeight="500">
                       {todayWorkout.exercises.length} exercises
                     </Text>
                   </XStack>
-                  <XStack items="center" gap="$2">
-                    <Timer size={16} color="$green10" />
-                    <Text fontSize="$3" color="$green11">
-                      ~{todayWorkout.estimatedDurationMinutes} min
-                    </Text>
-                  </XStack>
-                  {/* Intensity Badge - show if session has intensity */}
-                  {todaySession?.targetIntensity && (
-                    <XStack items="center" gap="$2">
-                      <Target size={16} color="$green10" />
-                      <Text fontSize="$3" color="$green11">
-                        {todaySession.targetIntensity} intensity
-                      </Text>
-                    </XStack>
-                  )}
+                  {/* Intensity badge - default to medium for now */}
+                  <IntensityBadge intensity="medium" />
                 </XStack>
               )}
 
-                  {/* Action Button - varies by state */}
-                  {isCompleted ? (
-                    <Button
-                      size="$5"
-                      variant="outlined"
-                      borderColor="$gray6"
-                      icon={CheckCircle}
-                      fontWeight="700"
-                      onPress={() => {
-                        if (todayWorkout) {
-                          router.push(`/(athlete)/workout/${todayWorkout._id}`)
-                        }
-                      }}
-                    >
-                      View Workout
-                    </Button>
-                  ) : isInProgress ? (
-                    <Button
-                      size="$5"
-                      bg="$orange9"
-                      color="white"
-                      icon={RotateCcw}
-                      fontWeight="700"
-                      onPress={() => {
-                        router.push({
-                          pathname: '/(athlete)/workout/execute/[id]',
-                          params: { id: todaySession._id },
-                        })
-                      }}
-                    >
-                      Resume Workout
-                    </Button>
-                  ) : (
-              <Button
-                size="$5"
-                bg="$green9"
-                color="white"
-                icon={Play}
-                fontWeight="700"
-                onPress={() => {
-                  if (todayWorkout) {
-                    router.push(`/(athlete)/workout/${todayWorkout._id}`)
-                  }
-                }}
-                disabled={!todayWorkout}
-              >
-                Start Workout
-              </Button>
-                  )}
+              {/* Action Button */}
+              {isCompleted ? (
+                <Button
+                  size="$5"
+                  variant="outlined"
+                  borderColor="$borderColor"
+                  borderWidth={2}
+                  icon={CheckCircle}
+                  fontFamily="$body" fontWeight="700"
+                  color="$color11"
+                  rounded="$4"
+                  onPress={() => {
+                    if (todayWorkout) {
+                      router.push(`/(athlete)/workout/${todayWorkout._id}`)
+                    }
+                  }}
+                >
+                  View Workout
+                </Button>
+              ) : isInProgress ? (
+                <Button
+                  size="$5"
+                  bg="$accent"
+                  color="white"
+                  icon={RotateCcw}
+                  fontFamily="$body" fontWeight="700"
+                  rounded="$4"
+                  pressStyle={{ opacity: 0.9, scale: 0.98 }}
+                  onPress={() => {
+                    router.push({
+                      pathname: '/(athlete)/workout/execute/[id]',
+                      params: { id: todaySession._id },
+                    })
+                  }}
+                >
+                  Resume Workout
+                </Button>
+              ) : (
+                <Button
+                  size="$5"
+                  bg="$primary"
+                  color="white"
+                  icon={Play}
+                  fontFamily="$body" fontWeight="700"
+                  rounded="$4"
+                  pressStyle={{ opacity: 0.9, scale: 0.98 }}
+                  onPress={() => {
+                    if (todayWorkout) {
+                      router.push(`/(athlete)/workout/${todayWorkout._id}`)
+                    }
+                  }}
+                  disabled={!todayWorkout}
+                >
+                  Start Workout
+                </Button>
+              )}
             </YStack>
           </Card>
-            )
-          })()}
 
           {/* Progress Summary */}
           {progress && (
             <YStack gap="$3">
-              <Text fontSize="$5" fontWeight="600">Your Progress</Text>
+              <SectionLabel>YOUR PROGRESS</SectionLabel>
               
               <XStack gap="$3" flexWrap="wrap">
                 {/* Days Completed */}
-                <Card flex={1} minWidth={140} p="$4" bg="$blue2" borderColor="$blue6">
+                <Card 
+                  flex={1} 
+                  minWidth={100} 
+                  p="$4" 
+                  bg="$surface" 
+                  rounded="$4"
+                  borderWidth={1}
+                  borderColor="$borderColor"
+                >
                   <YStack items="center" gap="$2">
-                    <Calendar size={24} color="$blue10" />
-                    <Text fontSize="$7" fontWeight="700" color="$blue11">
+                    <YStack bg="$brand2" p="$2" rounded="$10">
+                      <Calendar size={20} color="$primary" />
+                    </YStack>
+                    <StatNumber color="$primary">
                       {progress.daysCompleted}
+                    </StatNumber>
+                    <Text 
+                      fontSize={11} 
+                      color="$color10" 
+                      text="center"
+                      fontFamily="$body" fontWeight="500"
+                    >
+                      Days{'\n'}Completed
                     </Text>
-                    <Text fontSize="$2" color="$blue10">Days Completed</Text>
                   </YStack>
                 </Card>
 
                 {/* Current Streak */}
-                <Card flex={1} minWidth={140} p="$4" bg="$orange2" borderColor="$orange6">
+                <Card 
+                  flex={1} 
+                  minWidth={100} 
+                  p="$4" 
+                  bg="$surface" 
+                  rounded="$4"
+                  borderWidth={1}
+                  borderColor="$borderColor"
+                >
                   <YStack items="center" gap="$2">
-                    <Flame size={24} color="$orange10" />
-                    <Text fontSize="$7" fontWeight="700" color="$orange11">
+                    <YStack bg="$accent1" p="$2" rounded="$10">
+                      <Flame size={20} color="$accent" />
+                    </YStack>
+                    <StatNumber color="$accent">
                       {progress.currentStreak}
+                    </StatNumber>
+                    <Text 
+                      fontSize={11} 
+                      color="$color10" 
+                      text="center"
+                      fontFamily="$body" fontWeight="500"
+                    >
+                      Day{'\n'}Streak
                     </Text>
-                    <Text fontSize="$2" color="$orange10">Day Streak</Text>
                   </YStack>
                 </Card>
 
                 {/* Exercises Tried */}
-                <Card flex={1} minWidth={140} p="$4" bg="$purple2" borderColor="$purple6">
+                <Card 
+                  flex={1} 
+                  minWidth={100} 
+                  p="$4" 
+                  bg="$surface" 
+                  rounded="$4"
+                  borderWidth={1}
+                  borderColor="$borderColor"
+                >
                   <YStack items="center" gap="$2">
-                    <TrendingUp size={24} color="$purple10" />
-                    <Text fontSize="$7" fontWeight="700" color="$purple11">
+                    <YStack bg="$catPowerLight" p="$2" rounded="$10">
+                      <TrendingUp size={20} color="$catPower" />
+                    </YStack>
+                    <StatNumber color="$catPower">
                       {progress.uniqueExercisesPerformed}
+                    </StatNumber>
+                    <Text 
+                      fontSize={11} 
+                      color="$color10" 
+                      text="center"
+                      fontFamily="$body" fontWeight="500"
+                    >
+                      Exercises{'\n'}Tried
                     </Text>
-                    <Text fontSize="$2" color="$purple10">Exercises Tried</Text>
                   </YStack>
                 </Card>
               </XStack>
             </YStack>
           )}
 
-          {/* Phase Info */}
-          <Card p="$4" bg="$gray2" borderColor="$gray6">
+          {/* Phase Info Card */}
+          <Card 
+            p="$4" 
+            bg="$surface" 
+            rounded="$4"
+            borderWidth={1}
+            borderColor="$borderColor"
+          >
             <YStack gap="$2">
-              <Text fontSize="$2" color="$gray10" fontWeight="500">
-                CURRENT PHASE
-              </Text>
-              <Text fontSize="$5" fontWeight="600">
+              <SectionLabel>CURRENT PHASE</SectionLabel>
+              <Text 
+                fontSize={20} 
+                fontFamily="$body" fontWeight="700"
+                color="$color12"
+              >
                 {phaseName}
               </Text>
-              <Text fontSize="$3" color="$gray11">
+              <Text 
+                fontSize={14} 
+                color="$color10"
+                fontFamily="$body"
+                lineHeight={20}
+              >
                 {programState.phase === 'GPP' && 
                   'Building your foundation with general fitness, movement quality, and work capacity.'}
                 {programState.phase === 'SPP' && 
@@ -361,4 +552,3 @@ export default function AthleteDashboard() {
     </YStack>
   )
 }
-

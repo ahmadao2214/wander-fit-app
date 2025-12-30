@@ -9,6 +9,17 @@ import { SplashScreen, Stack } from 'expo-router'
 import { Provider } from 'components/Provider'
 import { useTheme } from 'tamagui'
 
+// Import Google Fonts
+import {
+  BebasNeue_400Regular,
+} from '@expo-google-fonts/bebas-neue'
+import {
+  PlusJakartaSans_400Regular,
+  PlusJakartaSans_500Medium,
+  PlusJakartaSans_600SemiBold,
+  PlusJakartaSans_700Bold,
+} from '@expo-google-fonts/plus-jakarta-sans'
+
 export {
   // Catch any errors thrown by the Layout component.
   ErrorBoundary,
@@ -23,19 +34,29 @@ export const unstable_settings = {
 SplashScreen.preventAutoHideAsync()
 
 export default function RootLayout() {
-  const [interLoaded, interError] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
+    // Display font - Bebas Neue for headers
+    BebasNeue: BebasNeue_400Regular,
+    
+    // Body font - Plus Jakarta Sans for all UI text
+    PlusJakartaSans: PlusJakartaSans_400Regular,
+    PlusJakartaSansMedium: PlusJakartaSans_500Medium,
+    PlusJakartaSansSemiBold: PlusJakartaSans_600SemiBold,
+    PlusJakartaSansBold: PlusJakartaSans_700Bold,
+    
+    // Keep Inter as fallback for Tamagui internals
     Inter: require('@tamagui/font-inter/otf/Inter-Medium.otf'),
     InterBold: require('@tamagui/font-inter/otf/Inter-Bold.otf'),
   })
 
   useEffect(() => {
-    if (interLoaded || interError) {
+    if (fontsLoaded || fontError) {
       // Hide the splash screen after the fonts have loaded (or an error was returned) and the UI is ready.
       SplashScreen.hideAsync()
     }
-  }, [interLoaded, interError])
+  }, [fontsLoaded, fontError])
 
-  if (!interLoaded && !interError) {
+  if (!fontsLoaded && !fontError) {
     return null
   }
 

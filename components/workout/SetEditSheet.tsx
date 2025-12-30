@@ -165,7 +165,7 @@ export function SetEditSheet({
               max={10}
               step={1}
             >
-              <Slider.Track bg="$gray5" height={8} borderRadius={4}>
+              <Slider.Track bg="$gray5" height={8} rounded={4}>
                 <Slider.TrackActive bg="$green9" />
               </Slider.Track>
               <Slider.Thumb
