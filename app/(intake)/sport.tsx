@@ -261,23 +261,25 @@ export default function SportSelectionScreen() {
           </XStack>
 
           {/* Sport Tiles Grid */}
-          <YStack 
+          <XStack
             width="100%"
-            style={{
-              display: 'grid' as any,
-              gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: GAP,
-            }}
+            flexWrap="wrap"
+            justifyContent="space-between"
           >
             {sortedSports.map((sport) => (
-              <SportTile
+              <YStack
                 key={sport._id}
-                sport={sport}
-                isSelected={selectedSportId === sport._id}
-                onSelect={() => setSelectedSportId(sport._id)}
-              />
+                width="31.5%"
+                mb={GAP}
+              >
+                <SportTile
+                  sport={sport}
+                  isSelected={selectedSportId === sport._id}
+                  onSelect={() => setSelectedSportId(sport._id)}
+                />
+              </YStack>
             ))}
-          </YStack>
+          </XStack>
 
           {/* No Results */}
           {sortedSports.length === 0 && searchQuery && (
