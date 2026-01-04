@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Platform, ScrollView, KeyboardAvoidingView } from 'react-native'
-import { Text, Input, YStack, XStack, Button, RadioGroup, Label, Card, Spinner } from 'tamagui'
+import { Text, Input, YStack, XStack, Button, RadioGroup, Label, Card, Spinner, styled } from 'tamagui'
 import { useSignUp, useSSO, useUser, useClerk } from '@clerk/clerk-expo'
 import { Link, useRouter } from 'expo-router'
 import { useMutation, useQuery } from 'convex/react'
@@ -8,8 +8,48 @@ import { api } from 'convex/_generated/api'
 import * as AuthSession from 'expo-auth-session'
 import { PublicOnlyRoute } from '../../components/AuthGuard'
 import { useAuth } from '../../hooks/useAuth'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Zap, UserPlus } from '@tamagui/lucide-icons'
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STYLED COMPONENTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+const DisplayHeading = styled(Text, {
+  fontFamily: '$heading',
+  fontSize: 36,
+  letterSpacing: 1,
+  color: '$color12',
+  text: 'center',
+})
+
+const Subtitle = styled(Text, {
+  fontFamily: '$body',
+  fontSize: 15,
+  color: '$color10',
+  text: 'center',
+  lineHeight: 22,
+})
+
+const SectionLabel = styled(Text, {
+  fontFamily: '$body',
+  fontWeight: '600',
+  fontSize: 14,
+  color: '$color12',
+})
+
+const Divider = styled(YStack, {
+  height: 1,
+  flex: 1,
+  bg: '$borderColor',
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN COMPONENT
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function SignUpScreen() {
+  const insets = useSafeAreaInsets()
   const { isLoaded, signUp, setActive } = useSignUp()
   const { startSSOFlow } = useSSO()
   const { user: clerkUser } = useUser()
@@ -18,7 +58,6 @@ export default function SignUpScreen() {
   const createUser = useMutation(api.users.createUser)
   const acceptInvitation = useMutation(api.invitations.acceptInvitation)
   
-  // Check if user is already authenticated with Clerk but needs Convex setup
   const { needsSetup, isLoading: isAuthLoading } = useAuth()
 
   const [emailAddress, setEmailAddress] = React.useState('')
@@ -64,7 +103,6 @@ export default function SignUpScreen() {
         clerkId: clerkUser.id,
       })
 
-      // If there's an invitation for this email, accept it
       const userEmail = clerkUser.emailAddresses?.[0]?.emailAddress || emailAddress
       if (invitation && role === 'client' && userEmail) {
         try {
@@ -77,7 +115,6 @@ export default function SignUpScreen() {
         }
       }
 
-      // Navigate based on role - for now, everyone goes through intake
       if (Platform.OS !== 'web') {
         setTimeout(() => {
           router.replace('/')
@@ -119,7 +156,6 @@ export default function SignUpScreen() {
       })
 
       if (createdSessionId) {
-        // User already exists, sign them in
         setActive!({
           session: createdSessionId,
           navigate: async () => {
@@ -133,23 +169,18 @@ export default function SignUpScreen() {
           },
         })
       } else if (signUp) {
-        // New user, complete signup immediately with selected role
-        console.log('New OAuth user, completing signup with role:', role)
-        
         const signUpAttempt = await signUp.create({})
         
         if (signUpAttempt.status === 'complete') {
           await setActive!({ session: signUpAttempt.createdSessionId })
           
-          // Create user in Convex database with the pre-selected role
           await createUser({
             email: signUp.emailAddress!,
             name: `${signUp.firstName || ''} ${signUp.lastName || ''}`.trim() || signUp.emailAddress!,
-            role: role, // Use the role selected in the main form
+            role: role,
             clerkId: signUpAttempt.createdUserId!,
           })
           
-          // Navigate based on role
           if (Platform.OS !== 'web') {
             setTimeout(() => {
               router.replace('/')
@@ -169,34 +200,24 @@ export default function SignUpScreen() {
   const onSignUpPress = async () => {
     if (!isLoaded) return
 
-    // Clear previous errors
     setError('')
 
-    // Validate inputs
     if (!emailAddress || !password || !name) {
       setError('Please fill in all fields')
       return
     }
 
-    // Start sign-up process using email and password provided
     try {
       await signUp.create({
         emailAddress,
         password,
       })
 
-      // Send user an email with verification code
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' })
-
-      // Set 'pendingVerification' to true to display second form
-      // and capture OTP code
       setPendingVerification(true)
     } catch (err: any) {
-      // See https://clerk.com/docs/custom-flows/error-handling
-      // for more info on error handling
       console.error(JSON.stringify(err, null, 2))
       
-      // Extract user-friendly error message from Clerk error
       const clerkError = err?.errors?.[0]
       if (clerkError) {
         if (clerkError.code === 'form_identifier_exists') {
@@ -223,17 +244,13 @@ export default function SignUpScreen() {
     try {
       setIsCreatingUser(true)
 
-      // Use the code the user provided to attempt verification
       const signUpAttempt = await signUp.attemptEmailAddressVerification({
         code,
       })
 
-      // If verification was completed, set the session to active
-      // and create user in Convex
       if (signUpAttempt.status === 'complete') {
         await setActive({ session: signUpAttempt.createdSessionId })
 
-        // Create user in Convex database
         try {
           const userId = await createUser({
             email: emailAddress,
@@ -242,7 +259,6 @@ export default function SignUpScreen() {
             clerkId: signUpAttempt.createdUserId!,
           })
 
-          // If there's an invitation for this email, accept it
           if (invitation && role === 'client') {
             try {
               await acceptInvitation({
@@ -251,11 +267,9 @@ export default function SignUpScreen() {
               })
             } catch (inviteErr) {
               console.error('Failed to accept invitation:', inviteErr)
-              // Continue anyway - user is created
             }
           }
           
-          // Navigate based on role
           if (role === 'trainer') {
             router.replace('/(trainer)')
           } else {
@@ -263,17 +277,12 @@ export default function SignUpScreen() {
           }
         } catch (convexErr) {
           console.error('Failed to create user in Convex:', convexErr)
-          // Still redirect to app, they can try again
           router.replace('/')
         }
       } else {
-        // If the status is not complete, check why. User may need to
-        // complete further steps.
         console.error(JSON.stringify(signUpAttempt, null, 2))
       }
     } catch (err) {
-      // See https://clerk.com/docs/custom-flows/error-handling
-      // for more info on error handling
       console.error(JSON.stringify(err, null, 2))
     } finally {
       setIsCreatingUser(false)
@@ -281,12 +290,12 @@ export default function SignUpScreen() {
   }
 
 
-  // Loading state while determining auth status
+  // Loading state
   if (isAuthLoading) {
     return (
       <YStack flex={1} items="center" justify="center" gap="$4" bg="$background">
-        <Spinner size="large" color="$blue10" />
-        <Text color="$gray11">Loading...</Text>
+        <Spinner size="large" color="$primary" />
+        <Text color="$color10" fontFamily="$body">Loading...</Text>
       </YStack>
     )
   }
@@ -294,263 +303,381 @@ export default function SignUpScreen() {
   // User has Clerk account but needs Convex setup
   if (needsSetup && clerkUser) {
     return (
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
-        <ScrollView 
-          contentContainerStyle={{ flexGrow: 1 }}
-          keyboardShouldPersistTaps="handled"
+      <YStack flex={1} bg="$background">
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
         >
-          <YStack flex={1} justify="center" gap="$4" px="$4" py="$6" maxW={400} mx="auto" width="100%">
-            <YStack gap="$2" items="center">
-              <Text fontSize="$8" fontWeight="bold">Complete Setup</Text>
-              <Text text="center">
-                Welcome! Let's finish setting up your account.
-              </Text>
-              <Text fontSize="$2" color="$gray11" text="center">
-                Signed in as {clerkUser.emailAddresses?.[0]?.emailAddress}
-              </Text>
-            </YStack>
-
-            {/* Error Message */}
-            {error ? (
-              <YStack bg="$red2" p="$3" rounded="$3">
-                <Text color="$red10" text="center">{error}</Text>
-              </YStack>
-            ) : null}
-
-            <YStack gap="$3">
-              {/* Role Selection */}
-              <YStack gap="$2">
-                <Text fontWeight="600">I am a:</Text>
-                <RadioGroup
-                  value={role}
-                  onValueChange={(value) => setRole(value as 'trainer' | 'client')}
+          <ScrollView 
+            contentContainerStyle={{ flexGrow: 1 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <YStack 
+              flex={1} 
+              justify="center" 
+              gap="$5" 
+              px="$5" 
+              pt={insets.top + 40}
+              pb={insets.bottom + 40}
+              maxW={400} 
+              mx="auto" 
+              width="100%"
+            >
+              <YStack gap="$3" items="center">
+                <YStack bg="$brand2" p="$4" rounded="$10">
+                  <UserPlus size={40} color="$primary" />
+                </YStack>
+                <DisplayHeading>COMPLETE SETUP</DisplayHeading>
+                <Subtitle>
+                  Welcome! Let's finish setting up your account.
+                </Subtitle>
+                <Text 
+                  fontSize={13} 
+                  color="$color9" 
+                  fontFamily="$body"
                 >
-                  <XStack gap="$4">
-                    <XStack items="center" gap="$2">
-                      <RadioGroup.Item value="client" id="client-setup" />
-                      <Label htmlFor="client-setup">Client</Label>
-                    </XStack>
-                    <XStack items="center" gap="$2">
-                      <RadioGroup.Item value="trainer" id="trainer-setup" />
-                      <Label htmlFor="trainer-setup">Trainer</Label>
-                    </XStack>
-                  </XStack>
-                </RadioGroup>
-                <Text fontSize="$2">
-                  {role === 'client' 
-                    ? 'I want to follow workouts from my trainer' 
-                    : 'I want to create workouts for my clients'
-                  }
+                  Signed in as {clerkUser.emailAddresses?.[0]?.emailAddress}
                 </Text>
               </YStack>
 
-              {/* Name Input */}
-              <Input
-                value={name}
-                placeholder="Full name"
-                onChangeText={(text) => {
-                  setName(text)
-                  setError('')
-                }}
-                size="$4"
-              />
+              {error ? (
+                <Card bg="$errorLight" p="$3" rounded="$3">
+                  <Text color="$error" text="center" fontSize={14} fontFamily="$body">
+                    {error}
+                  </Text>
+                </Card>
+              ) : null}
 
-              {/* Complete Setup Button */}
-              <Button
-                onPress={onCompleteSetupPress}
-                disabled={isCreatingUser || !name.trim()}
-                theme="blue"
-                fontWeight="600"
-                size="$4"
-                opacity={isCreatingUser ? 0.7 : 1}
-              >
-                {isCreatingUser ? 'Setting up...' : 'Complete Setup'}
-              </Button>
+              <YStack gap="$4">
+                {/* Role Selection */}
+                <YStack gap="$2">
+                  <SectionLabel>I am a:</SectionLabel>
+                  <RadioGroup
+                    value={role}
+                    onValueChange={(value) => setRole(value as 'trainer' | 'client')}
+                  >
+                    <XStack gap="$4">
+                      <XStack items="center" gap="$2">
+                        <RadioGroup.Item value="client" id="client-setup" />
+                        <Label htmlFor="client-setup" fontFamily="$body">Athlete</Label>
+                      </XStack>
+                      <XStack items="center" gap="$2">
+                        <RadioGroup.Item value="trainer" id="trainer-setup" />
+                        <Label htmlFor="trainer-setup" fontFamily="$body">Trainer</Label>
+                      </XStack>
+                    </XStack>
+                  </RadioGroup>
+                  <Text fontSize={13} color="$color10" fontFamily="$body">
+                    {role === 'client' 
+                      ? 'I want to follow a training program' 
+                      : 'I want to create programs for my athletes'
+                    }
+                  </Text>
+                </YStack>
+
+                {/* Name Input */}
+                <Input
+                  value={name}
+                  placeholder="Full name"
+                  onChangeText={(text) => {
+                    setName(text)
+                    setError('')
+                  }}
+                  size="$5"
+                  bg="$surface"
+                  borderWidth={1}
+                  borderColor="$borderColor"
+                  rounded="$4"
+                  fontFamily="$body"
+                  focusStyle={{ borderColor: '$primary', borderWidth: 2 }}
+                />
+
+                {/* Complete Setup Button */}
+                <Button
+                  onPress={onCompleteSetupPress}
+                  disabled={isCreatingUser || !name.trim()}
+                  size="$5"
+                  bg="$primary"
+                  color="white"
+                  fontFamily="$body" fontWeight="700"
+                  rounded="$4"
+                  opacity={isCreatingUser ? 0.7 : 1}
+                  pressStyle={{ opacity: 0.9, scale: 0.98 }}
+                >
+                  {isCreatingUser ? 'Setting up...' : 'Complete Setup'}
+                </Button>
+              </YStack>
+
+              {/* Sign out option */}
+              <XStack justify="center" gap="$2">
+                <Text fontSize={13} color="$color10" fontFamily="$body">
+                  Not you?
+                </Text>
+                <Text 
+                  fontSize={13} 
+                  fontFamily="$body" fontWeight="600"
+                  color="$primary"
+                  onPress={onSignOutPress}
+                >
+                  Sign out
+                </Text>
+              </XStack>
             </YStack>
-
-            {/* Sign out option */}
-            <XStack justify="center" gap="$2">
-              <Text fontSize="$2" color="$gray11">Not you?</Text>
-              <Text 
-                fontSize="$2" 
-                fontWeight="600" 
-                color="$blue10"
-                onPress={onSignOutPress}
-              >
-                Sign out
-              </Text>
-            </XStack>
-          </YStack>
-        </ScrollView>
-      </KeyboardAvoidingView>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </YStack>
     )
   }
 
+  // Verification screen
   if (pendingVerification) {
     return (
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
-        <ScrollView 
-          contentContainerStyle={{ flexGrow: 1 }}
-          keyboardShouldPersistTaps="handled"
+      <YStack flex={1} bg="$background">
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
         >
-          <YStack flex={1} justify="center" gap="$4" px="$4" py="$6" maxW={400} mx="auto" width="100%">
-            <YStack gap="$2" items="center">
-              <Text fontSize="$8" fontWeight="bold">Verify your email</Text>
-              <Text text="center">
-                We sent a verification code to {emailAddress}
-              </Text>
-            </YStack>
+          <ScrollView 
+            contentContainerStyle={{ flexGrow: 1 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <YStack 
+              flex={1} 
+              justify="center" 
+              gap="$5" 
+              px="$5" 
+              pt={insets.top + 40}
+              pb={insets.bottom + 40}
+              maxW={400} 
+              mx="auto" 
+              width="100%"
+            >
+              <YStack gap="$3" items="center">
+                <DisplayHeading>VERIFY EMAIL</DisplayHeading>
+                <Subtitle>
+                  We sent a verification code to{'\n'}{emailAddress}
+                </Subtitle>
+              </YStack>
 
-            <YStack gap="$3">
-              <Input
-                value={code}
-                placeholder="Enter verification code"
-                onChangeText={(code) => setCode(code)}
-                size="$4"
-              />
-              <Button
-                onPress={onVerifyPress}
-                disabled={isCreatingUser}
-                theme="blue"
-                fontWeight="600"
-                size="$4"
-              >
-                {isCreatingUser ? 'Creating account...' : 'Verify & Continue'}
-              </Button>
+              <YStack gap="$4">
+                <Input
+                  value={code}
+                  placeholder="Enter verification code"
+                  onChangeText={(code) => setCode(code)}
+                  size="$5"
+                  bg="$surface"
+                  borderWidth={1}
+                  borderColor="$borderColor"
+                  rounded="$4"
+                  fontFamily="$body"
+                  text="center"
+                  fontSize={20}
+                  letterSpacing={4}
+                  focusStyle={{ borderColor: '$primary', borderWidth: 2 }}
+                />
+                <Button
+                  onPress={onVerifyPress}
+                  disabled={isCreatingUser}
+                  size="$5"
+                  bg="$primary"
+                  color="white"
+                  fontFamily="$body" fontWeight="700"
+                  rounded="$4"
+                  pressStyle={{ opacity: 0.9, scale: 0.98 }}
+                >
+                  {isCreatingUser ? 'Creating account...' : 'Verify & Continue'}
+                </Button>
+              </YStack>
             </YStack>
-          </YStack>
-        </ScrollView>
-      </KeyboardAvoidingView>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </YStack>
     )
   }
 
 
   return (
     <PublicOnlyRoute>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
-        <ScrollView 
-          contentContainerStyle={{ flexGrow: 1 }}
-          keyboardShouldPersistTaps="handled"
+      <YStack flex={1} bg="$background">
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
         >
-          <YStack flex={1} justify="center" gap="$4" px="$4" py="$6" maxW={400} mx="auto" width="100%">
-            <YStack gap="$2" items="center">
-              <Text fontSize="$8" fontWeight="bold">Create Account</Text>
-              <Text text="center">
-                Join WanderFit as a trainer or client
-              </Text>
-            </YStack>
-
-            {/* Error Message */}
-            {error ? (
-              <YStack bg="$red2" p="$3" rounded="$3">
-                <Text color="$red10" text="center">{error}</Text>
+          <ScrollView 
+            contentContainerStyle={{ flexGrow: 1 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <YStack 
+              flex={1} 
+              justify="center" 
+              gap="$5" 
+              px="$5" 
+              pt={insets.top + 20}
+              pb={insets.bottom + 40}
+              maxW={400} 
+              mx="auto" 
+              width="100%"
+            >
+              {/* Header */}
+              <YStack gap="$3" items="center">
+                <YStack bg="$brand2" p="$4" rounded="$10">
+                  <Zap size={40} color="$primary" />
+                </YStack>
+                <DisplayHeading>CREATE ACCOUNT</DisplayHeading>
+                <Subtitle>
+                  Join as an athlete or trainer
+                </Subtitle>
               </YStack>
-            ) : null}
 
-            <YStack gap="$3">
-              {/* Role Selection - Moved to top */}
-              <YStack gap="$2">
-                <Text fontWeight="600">I am a:</Text>
-                <RadioGroup
-                  value={role}
-                  onValueChange={(value) => setRole(value as 'trainer' | 'client')}
+              {/* Error Message */}
+              {error ? (
+                <Card bg="$errorLight" p="$3" rounded="$3">
+                  <Text color="$error" text="center" fontSize={14} fontFamily="$body">
+                    {error}
+                  </Text>
+                </Card>
+              ) : null}
+
+              <YStack gap="$4">
+                {/* Role Selection */}
+                <YStack gap="$2">
+                  <SectionLabel>I am a:</SectionLabel>
+                  <RadioGroup
+                    value={role}
+                    onValueChange={(value) => setRole(value as 'trainer' | 'client')}
+                  >
+                    <XStack gap="$4">
+                      <XStack items="center" gap="$2">
+                        <RadioGroup.Item value="client" id="client" />
+                        <Label htmlFor="client" fontFamily="$body">Athlete</Label>
+                      </XStack>
+                      <XStack items="center" gap="$2">
+                        <RadioGroup.Item value="trainer" id="trainer" />
+                        <Label htmlFor="trainer" fontFamily="$body">Trainer</Label>
+                      </XStack>
+                    </XStack>
+                  </RadioGroup>
+                  <Text fontSize={13} color="$color10" fontFamily="$body">
+                    {role === 'client' 
+                      ? 'I want to follow a training program' 
+                      : 'I want to create programs for my athletes'
+                    }
+                  </Text>
+                </YStack>
+
+                {/* OAuth Section */}
+                <Button
+                  onPress={onOAuthSignUpPress}
+                  size="$5"
+                  bg="$surface"
+                  borderWidth={2}
+                  borderColor="$borderColor"
+                  fontFamily="$body" fontWeight="600"
+                  color="$color12"
+                  rounded="$4"
+                  pressStyle={{ bg: '$surfaceHover' }}
                 >
-                  <XStack gap="$4">
-                    <XStack items="center" gap="$2">
-                      <RadioGroup.Item value="client" id="client" />
-                      <Label htmlFor="client">Client</Label>
-                    </XStack>
-                    <XStack items="center" gap="$2">
-                      <RadioGroup.Item value="trainer" id="trainer" />
-                      <Label htmlFor="trainer">Trainer</Label>
-                    </XStack>
-                  </XStack>
-                </RadioGroup>
-                <Text fontSize="$2">
-                  {role === 'client' 
-                    ? 'I want to follow workouts from my trainer' 
-                    : 'I want to create workouts for my clients'
-                  }
-                </Text>
+                  Continue with Google
+                </Button>
+
+                <XStack items="center" gap="$3">
+                  <Divider />
+                  <Text 
+                    fontSize={12} 
+                    color="$color10" 
+                    fontFamily="$body"
+                    fontWeight="500"
+                    letterSpacing={1}
+                  >
+                    OR
+                  </Text>
+                  <Divider />
+                </XStack>
+
+                {/* Email/Password Section */}
+                <Input
+                  value={name}
+                  placeholder="Full name"
+                  onChangeText={(name) => {
+                    setName(name)
+                    setError('')
+                  }}
+                  size="$5"
+                  bg="$surface"
+                  borderWidth={1}
+                  borderColor="$borderColor"
+                  rounded="$4"
+                  fontFamily="$body"
+                  focusStyle={{ borderColor: '$primary', borderWidth: 2 }}
+                />
+
+                <Input
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  value={emailAddress}
+                  placeholder="Email address"
+                  onChangeText={(email) => {
+                    setEmailAddress(email)
+                    setError('')
+                  }}
+                  size="$5"
+                  bg="$surface"
+                  borderWidth={1}
+                  borderColor="$borderColor"
+                  rounded="$4"
+                  fontFamily="$body"
+                  focusStyle={{ borderColor: '$primary', borderWidth: 2 }}
+                />
+
+                <Input
+                  value={password}
+                  placeholder="Password"
+                  secureTextEntry={true}
+                  onChangeText={(password) => {
+                    setPassword(password)
+                    setError('')
+                  }}
+                  size="$5"
+                  bg="$surface"
+                  borderWidth={1}
+                  borderColor="$borderColor"
+                  rounded="$4"
+                  fontFamily="$body"
+                  focusStyle={{ borderColor: '$primary', borderWidth: 2 }}
+                />
+
+                {/* Sign Up Button */}
+                <Button
+                  onPress={onSignUpPress}
+                  size="$5"
+                  bg="$primary"
+                  color="white"
+                  fontFamily="$body" fontWeight="700"
+                  rounded="$4"
+                  pressStyle={{ opacity: 0.9, scale: 0.98 }}
+                >
+                  Continue with Email
+                </Button>
               </YStack>
 
-              {/* OAuth Section - After role selection */}
-              <Button
-                onPress={onOAuthSignUpPress}
-                theme="red"
-                fontWeight="600"
-                size="$4"
-              >
-                Continue with Google
-              </Button>
-
-              <XStack items="center" gap="$3">
-                <Text fontSize="$3">OR</Text>
+              {/* Sign In Link */}
+              <XStack justify="center" gap="$2">
+                <Text fontFamily="$body" color="$color10">
+                  Already have an account?
+                </Text>
+                <Link href="/sign-in">
+                  <Text fontFamily="$body" fontWeight="600" color="$primary">
+                    Sign in
+                  </Text>
+                </Link>
               </XStack>
-
-              {/* Email/Password Section */}
-              <Input
-                value={name}
-                placeholder="Full name"
-                onChangeText={(name) => {
-                  setName(name)
-                  setError('')
-                }}
-                size="$4"
-              />
-
-              <Input
-                autoCapitalize="none"
-                value={emailAddress}
-                placeholder="Email address"
-                onChangeText={(email) => {
-                  setEmailAddress(email)
-                  setError('')
-                }}
-                size="$4"
-              />
-
-              <Input
-                value={password}
-                placeholder="Password"
-                secureTextEntry={true}
-                onChangeText={(password) => {
-                  setPassword(password)
-                  setError('')
-                }}
-                size="$4"
-              />
-
-              {/* Sign Up Button */}
-              <Button
-                onPress={onSignUpPress}
-                theme="blue"
-                fontWeight="600"
-                size="$4"
-              >
-                Continue with Email
-              </Button>
             </YStack>
-
-            {/* Sign In Link */}
-            <XStack justify="center" gap="$2">
-              <Text>Already have an account?</Text>
-              <Link href="/sign-in">
-                <Text fontWeight="600">Sign in</Text>
-              </Link>
-            </XStack>
-          </YStack>
-        </ScrollView>
-      </KeyboardAvoidingView>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </YStack>
     </PublicOnlyRoute>
   )
 }

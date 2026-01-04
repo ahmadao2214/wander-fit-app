@@ -2,13 +2,14 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { 
   YStack, 
   XStack, 
-  H2,
   Text, 
   Card, 
   Button,
   Spinner,
   AlertDialog,
   ScrollView,
+  styled,
+  Theme,
 } from 'tamagui'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useQuery, useMutation } from 'convex/react'
@@ -20,6 +21,9 @@ import {
   ChevronRight,
   Check,
   Trophy,
+  Zap,
+  Flame,
+  Timer,
 } from '@tamagui/lucide-icons'
 import { ExerciseTypeIcon } from '../../../../components/workout/ExerciseTypeIcon'
 import { SetTracker } from '../../../../components/workout/SetTracker'
@@ -27,18 +31,102 @@ import { InstructionsAccordion } from '../../../../components/workout/Instructio
 import { ExerciseQueue } from '../../../../components/workout/ExerciseQueue'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { PanResponder, Platform, Vibration, Animated } from 'react-native'
+import { IntensityLevel } from '../../../../tamagui.config'
 
-/**
- * Workout Execution Screen
- * 
- * Full-screen single-exercise focus with:
- * - Progress header
- * - Exercise type icon
- * - Set tracking pills (tap to complete, long-press to edit)
- * - Instructions accordion
- * - Navigation controls
- * - Swipe drawer for exercise queue
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// STYLED COMPONENTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+const DisplayHeading = styled(Text, {
+  fontFamily: '$heading',
+  fontSize: 28,
+  letterSpacing: 0.5,
+  color: '$color12',
+  text: 'center',
+})
+
+const TimerDisplay = styled(Text, {
+  fontFamily: '$body',
+  fontWeight: '700',
+  fontSize: 18,
+  letterSpacing: 0.5,
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INTENSITY BADGE
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface IntensityBadgeProps {
+  intensity: IntensityLevel
+  size?: 'small' | 'large'
+}
+
+function IntensityBadge({ intensity, size = 'small' }: IntensityBadgeProps) {
+  const configs = {
+    low: { 
+      bg: '$intensityLow6' as const, 
+      label: 'LOW INTENSITY', 
+      icon: Zap,
+      description: 'Recovery session'
+    },
+    medium: { 
+      bg: '$intensityMed6' as const, 
+      label: 'MODERATE', 
+      icon: Zap,
+      description: 'Building effort'
+    },
+    high: { 
+      bg: '$intensityHigh6' as const, 
+      label: 'HIGH INTENSITY', 
+      icon: Flame,
+      description: 'Peak effort'
+    },
+  }
+  const config = configs[intensity]
+
+  if (size === 'large') {
+    return (
+      <XStack 
+        bg={config.bg} 
+        px="$3" 
+        py="$2" 
+        rounded="$3" 
+        items="center" 
+        gap="$2"
+      >
+        <config.icon size={16} color="white" />
+        <YStack>
+          <Text color="white" fontSize={12} fontFamily="$body" fontWeight="700" letterSpacing={0.5}>
+            {config.label}
+          </Text>
+          <Text color="rgba(255,255,255,0.8)" fontSize={10} fontFamily="$body">
+            {config.description}
+          </Text>
+        </YStack>
+      </XStack>
+    )
+  }
+
+  return (
+    <XStack 
+      bg={config.bg} 
+      px="$2" 
+      py="$1" 
+      rounded="$2" 
+      items="center" 
+      gap="$1"
+    >
+      <config.icon size={12} color="white" />
+      <Text color="white" fontSize={10} fontFamily="$body" fontWeight="700" letterSpacing={0.5}>
+        {config.label}
+      </Text>
+    </XStack>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TYPES
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface SetData {
   repsCompleted?: number
@@ -57,6 +145,22 @@ interface ExerciseCompletion {
   sets: SetData[]
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN COMPONENT
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Workout Execution Screen
+ * 
+ * Full-screen single-exercise focus with:
+ * - Progress header with timer
+ * - Exercise type icon
+ * - Set tracking pills (tap to complete, long-press to edit)
+ * - Instructions accordion
+ * - Navigation controls
+ * - Swipe drawer for exercise queue
+ * - Intensity-based theming (green/yellow/red)
+ */
 export default function WorkoutExecutionScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
@@ -65,7 +169,7 @@ export default function WorkoutExecutionScreen() {
   // State
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0)
   const [exerciseCompletions, setExerciseCompletions] = useState<ExerciseCompletion[]>([])
-  const [exerciseOrder, setExerciseOrder] = useState<number[]>([]) // Indices into template.exercises
+  const [exerciseOrder, setExerciseOrder] = useState<number[]>([])
   const [elapsedTime, setElapsedTime] = useState(0)
   const [showExitDialog, setShowExitDialog] = useState(false)
   const [showCompletionDialog, setShowCompletionDialog] = useState(false)
@@ -89,6 +193,29 @@ export default function WorkoutExecutionScreen() {
   const currentIndexRef = useRef(currentExerciseIndex)
   const exerciseCountRef = useRef(0)
 
+  // Get intensity level - default to medium for now
+  // TODO: Add targetIntensity to session schema when intensity selection is implemented
+  const intensity: IntensityLevel = 'medium'
+
+  // Intensity-based colors - cast as const to satisfy TS
+  const intensityColors = {
+    low: {
+      primary: '$intensityLow6' as const,
+      light: '$intensityLow2' as const,
+      text: '$intensityLow11' as const,
+    },
+    medium: {
+      primary: '$intensityMed6' as const,
+      light: '$intensityMed2' as const,
+      text: '$intensityMed11' as const,
+    },
+    high: {
+      primary: '$intensityHigh6' as const,
+      light: '$intensityHigh2' as const,
+      text: '$intensityHigh11' as const,
+    },
+  }[intensity]
+
   // Keep refs in sync
   useEffect(() => {
     currentIndexRef.current = currentExerciseIndex
@@ -105,7 +232,6 @@ export default function WorkoutExecutionScreen() {
   const slideAnim = useRef(new Animated.Value(0)).current
 
   const animateSlide = useCallback((direction: 'left' | 'right') => {
-    // Quick slide animation
     Animated.sequence([
       Animated.timing(slideAnim, {
         toValue: direction === 'left' ? -30 : 30,
@@ -120,13 +246,12 @@ export default function WorkoutExecutionScreen() {
     ]).start()
   }, [slideAnim])
 
-  // Swipe gesture handler for navigation
+  // Swipe gesture handler
   const panResponder = useMemo(
     () =>
       PanResponder.create({
         onStartShouldSetPanResponder: () => false,
         onMoveShouldSetPanResponder: (_, gestureState) => {
-          // Only respond to horizontal swipes
           return Math.abs(gestureState.dx) > Math.abs(gestureState.dy) && Math.abs(gestureState.dx) > 20
         },
         onPanResponderRelease: (_, gestureState) => {
@@ -134,12 +259,10 @@ export default function WorkoutExecutionScreen() {
           const swipeThreshold = 80
 
           if (dx > swipeThreshold && currentIndexRef.current > 0) {
-            // Swipe right - go to previous
             triggerHaptic()
             animateSlide('right')
             setCurrentExerciseIndex(prev => Math.max(0, prev - 1))
           } else if (dx < -swipeThreshold && currentIndexRef.current < exerciseCountRef.current - 1) {
-            // Swipe left - go to next
             triggerHaptic()
             animateSlide('left')
             setCurrentExerciseIndex(prev => Math.min(exerciseCountRef.current - 1, prev + 1))
@@ -155,20 +278,16 @@ export default function WorkoutExecutionScreen() {
       setExerciseCompletions(session.exercises as ExerciseCompletion[])
       setIsInitialized(true)
       
-      // Update exercise count for swipe navigation
       if (session.template?.exercises) {
         exerciseCountRef.current = session.template.exercises.length
         
-        // Restore exercise order from session if available, otherwise initialize
         if (session.exerciseOrder && session.exerciseOrder.length > 0) {
           setExerciseOrder(session.exerciseOrder)
         } else {
-          // Initialize exercise order (indices 0, 1, 2, ...)
           setExerciseOrder(session.template.exercises.map((_, idx) => idx))
         }
       }
       
-      // Find first incomplete exercise
       const firstIncomplete = session.exercises.findIndex(
         (e) => !e.completed && !e.skipped
       )
@@ -195,7 +314,7 @@ export default function WorkoutExecutionScreen() {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  // Auto-save with debounce (includes exercise order for persistence)
+  // Auto-save with debounce
   const debouncedSave = useCallback(() => {
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current)
@@ -212,10 +331,9 @@ export default function WorkoutExecutionScreen() {
           console.error('Failed to save progress:', error)
         }
       }
-    }, 2000) // 2 second debounce
+    }, 2000)
   }, [sessionId, exerciseCompletions, exerciseOrder, updateProgress])
 
-  // Trigger save when completions or exercise order changes
   useEffect(() => {
     if (isInitialized && exerciseCompletions.length > 0) {
       debouncedSave()
@@ -230,7 +348,6 @@ export default function WorkoutExecutionScreen() {
       exercise.sets = [...exercise.sets]
       exercise.sets[setIndex] = data
       
-      // Check if all sets are completed
       const allSetsCompleted = exercise.sets.every(s => s.completed || s.skipped)
       exercise.completed = allSetsCompleted
       
@@ -241,7 +358,6 @@ export default function WorkoutExecutionScreen() {
 
   // Navigate to next exercise
   const goToNextExercise = async () => {
-    // Save current progress first
     if (sessionId) {
       await updateProgress({
         sessionId: sessionId as Id<"gpp_workout_sessions">,
@@ -252,7 +368,6 @@ export default function WorkoutExecutionScreen() {
     if (currentExerciseIndex < exerciseCompletions.length - 1) {
       setCurrentExerciseIndex(currentExerciseIndex + 1)
     } else {
-      // Last exercise - show completion dialog
       setShowCompletionDialog(true)
     }
   }
@@ -273,11 +388,9 @@ export default function WorkoutExecutionScreen() {
         exerciseOrder: exerciseOrder.length > 0 ? exerciseOrder : undefined,
       })
       setShowCompletionDialog(false)
-      // Navigate to athlete home to see updated today's workout card
       router.replace('/(athlete)')
     } catch (error) {
       console.error('Failed to complete workout:', error)
-      // Even if there's an error, try to navigate back
       router.replace('/(athlete)')
     }
   }
@@ -291,7 +404,6 @@ export default function WorkoutExecutionScreen() {
         exerciseOrder: exerciseOrder.length > 0 ? exerciseOrder : undefined,
       })
       setShowExitDialog(false)
-      // Navigate back to athlete home
       router.replace('/(athlete)')
     } catch (error) {
       console.error('Failed to abandon workout:', error)
@@ -308,12 +420,10 @@ export default function WorkoutExecutionScreen() {
   const handleReorder = (fromIndex: number, toIndex: number) => {
     if (!session?.template?.exercises) return
     
-    // Only allow reordering of upcoming exercises (after current)
     if (fromIndex <= currentExerciseIndex || toIndex <= currentExerciseIndex) return
     if (fromIndex < 0 || toIndex < 0) return
     if (fromIndex >= exerciseCompletions.length || toIndex >= exerciseCompletions.length) return
 
-    // Update exercise order
     setExerciseOrder(prev => {
       const updated = [...prev]
       const [moved] = updated.splice(fromIndex, 1)
@@ -321,7 +431,6 @@ export default function WorkoutExecutionScreen() {
       return updated
     })
 
-    // Swap in exercise completions
     setExerciseCompletions(prev => {
       const updated = [...prev]
       const [moved] = updated.splice(fromIndex, 1)
@@ -329,7 +438,6 @@ export default function WorkoutExecutionScreen() {
       return updated
     })
 
-    // Trigger haptic feedback
     if (Platform.OS !== 'web') {
       Vibration.vibrate(15)
     }
@@ -339,8 +447,8 @@ export default function WorkoutExecutionScreen() {
   if (!session || !session.template) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$green10" />
-        <Text>Loading workout...</Text>
+        <Spinner size="large" color="$primary" />
+        <Text fontFamily="$body" color="$color10">Loading workout...</Text>
       </YStack>
     )
   }
@@ -348,7 +456,6 @@ export default function WorkoutExecutionScreen() {
   const template = session.template
   const templateExercises = template.exercises || []
   
-  // Get exercises in current order (using exerciseOrder for proper reordering)
   const orderedExercises = exerciseOrder.length > 0 
     ? exerciseOrder.map(idx => templateExercises[idx])
     : templateExercises
@@ -359,7 +466,7 @@ export default function WorkoutExecutionScreen() {
   if (!currentExercise) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Text>No exercises found in this workout</Text>
+        <Text fontFamily="$body">No exercises found in this workout</Text>
         <Button onPress={() => router.back()}>Go Back</Button>
       </YStack>
     )
@@ -369,131 +476,182 @@ export default function WorkoutExecutionScreen() {
   const completedCount = exerciseCompletions.filter(e => e.completed).length
   const isLastExercise = currentExerciseIndex === orderedExercises.length - 1
   const isCurrentCompleted = currentCompletion?.completed
+  const progressPercent = Math.round((completedCount / orderedExercises.length) * 100)
 
   return (
     <YStack flex={1} bg="$background" items="center">
       {/* Constrain width for web */}
       <YStack flex={1} width="100%" maxW={600}>
-      {/* Header */}
-      <XStack
-        px="$4"
-        pt={insets.top + 8}
-        pb="$3"
-        items="center"
-        justify="space-between"
-        bg="$background"
-        borderBottomWidth={1}
-        borderBottomColor="$gray5"
-      >
-        <Button
-          size="$3"
-          circular
-          variant="outlined"
-          icon={X}
-          onPress={() => setShowExitDialog(true)}
-        />
-        
-        <YStack items="center">
-          <Text fontSize="$4" fontWeight="600">
-              Exercise {currentExerciseIndex + 1} of {orderedExercises.length}
-          </Text>
-          <Text fontSize="$2" color="$color10">
-            {completedCount} completed
-          </Text>
+        {/* Header with intensity-colored accent */}
+        <YStack>
+          {/* Intensity color bar */}
+          <YStack height={4} bg={intensityColors.primary} />
+          
+          <XStack
+            px="$4"
+            pt={insets.top + 8}
+            pb="$3"
+            items="center"
+            justify="space-between"
+            bg="$surface"
+            borderBottomWidth={1}
+            borderBottomColor="$borderColor"
+          >
+            <Button
+              size="$3"
+              circular
+              bg="$background"
+              borderWidth={1}
+              borderColor="$borderColor"
+              icon={X}
+              pressStyle={{ opacity: 0.8 }}
+              onPress={() => setShowExitDialog(true)}
+            />
+            
+            <YStack items="center" gap="$1">
+              <XStack items="center" gap="$2">
+                <Text 
+                  fontSize={14} 
+                  fontFamily="$body" fontWeight="700"
+                  color="$color12"
+                >
+                  {currentExerciseIndex + 1} / {orderedExercises.length}
+                </Text>
+                <IntensityBadge intensity={intensity} />
+              </XStack>
+              {/* Progress bar */}
+              <XStack width={100} height={4} bg="$borderColor" rounded={2} overflow="hidden">
+                <YStack 
+                  width={`${progressPercent}%`} 
+                  height="100%" 
+                  bg={intensityColors.primary}
+                  rounded={2}
+                />
+              </XStack>
+            </YStack>
+
+            <XStack items="center" gap="$1.5">
+              <Timer size={16} color={intensityColors.primary} />
+              <TimerDisplay color={intensityColors.primary}>
+                {formatTime(elapsedTime)}
+              </TimerDisplay>
+            </XStack>
+          </XStack>
         </YStack>
 
-        <Text fontSize="$4" color="$green10" fontWeight="600">
-          {formatTime(elapsedTime)}
-        </Text>
-      </XStack>
-
-        {/* Main Content - with swipe gesture support */}
+        {/* Main Content */}
         <ScrollView 
           flex={1}
+          showsVerticalScrollIndicator={false}
           {...panResponder.panHandlers}
         >
           <Animated.View style={{ transform: [{ translateX: slideAnim }] }}>
-            <YStack px="$4" py="$4" gap="$4">
-        {/* Exercise Icon */}
-        <YStack items="center" py="$4">
-          <ExerciseTypeIcon 
-            tags={exerciseDetails?.tags || []} 
-            size={48}
-          />
-        </YStack>
+            <YStack px="$4" py="$5" gap="$5">
+              {/* Exercise Icon */}
+              <YStack items="center" py="$3">
+                <YStack 
+                  bg={intensityColors.light} 
+                  p="$4" 
+                  rounded="$10"
+                >
+                  <ExerciseTypeIcon 
+                    tags={exerciseDetails?.tags || []} 
+                    size={48}
+                    color={intensityColors.primary}
+                  />
+                </YStack>
+              </YStack>
 
-        {/* Exercise Name and Prescription */}
-        <YStack items="center" gap="$1">
-              <H2>{exerciseDetails?.name || 'Exercise'}</H2>
-          <Text fontSize="$5" color="$color10">
-            {currentExercise.scaledSets ?? currentExercise.sets} sets × {currentExercise.scaledReps ?? currentExercise.reps}
-          </Text>
-          {currentExercise.tempo && (
-            <Text fontSize="$3" color="$color9">
-              Tempo: {currentExercise.tempo}
-            </Text>
-          )}
-          {currentExercise.targetWeight && (
-            <Text fontSize="$3" color="$green10">
-              Target: {currentExercise.targetWeight} lbs ({currentExercise.percentOf1RM}% 1RM)
-            </Text>
-          )}
-        </YStack>
+              {/* Exercise Name and Prescription */}
+              <YStack items="center" gap="$2">
+                <DisplayHeading>
+                  {exerciseDetails?.name?.toUpperCase() || 'EXERCISE'}
+                </DisplayHeading>
+                <Text 
+                  fontSize={18} 
+                  color="$color10"
+                  fontFamily="$body" fontWeight="500"
+                >
+                  {currentExercise.scaledSets ?? currentExercise.sets} sets × {currentExercise.scaledReps ?? currentExercise.reps}
+                </Text>
+                {currentExercise.tempo && (
+                  <Text fontSize={14} color="$color9" fontFamily="$body">
+                    Tempo: {currentExercise.tempo}
+                  </Text>
+                )}
+                {/* TODO: Add targetWeight display when schema is updated */}
+              </YStack>
 
-        {/* Set Tracker */}
-        {currentCompletion && (
-          <Card p="$4" borderColor="$gray6" borderWidth={1}>
-            <SetTracker
-              sets={currentCompletion.sets}
-              prescribedReps={currentExercise.scaledReps ?? currentExercise.reps}
-              prescribedSets={currentExercise.scaledSets ?? currentExercise.sets}
-              onSetUpdate={handleSetUpdate}
-            />
-          </Card>
-        )}
+              {/* Set Tracker */}
+              {currentCompletion && (
+                <Card 
+                  p="$4" 
+                  bg="$surface"
+                  rounded="$4"
+                  borderWidth={1}
+                  borderColor="$borderColor"
+                >
+                  <SetTracker
+                    sets={currentCompletion.sets}
+                    prescribedReps={currentExercise.scaledReps ?? currentExercise.reps}
+                    prescribedSets={currentExercise.scaledSets ?? currentExercise.sets}
+                    onSetUpdate={handleSetUpdate}
+                    intensityColor={intensityColors.primary}
+                  />
+                </Card>
+              )}
 
-        {/* Instructions Accordion */}
-        <InstructionsAccordion
-          instructions={exerciseDetails?.instructions}
-          equipment={exerciseDetails?.equipment}
-          notes={currentExercise.notes}
-        />
-      </YStack>
+              {/* Instructions Accordion */}
+              <InstructionsAccordion
+                instructions={exerciseDetails?.instructions}
+                equipment={exerciseDetails?.equipment}
+                notes={currentExercise.notes}
+              />
+            </YStack>
           </Animated.View>
         </ScrollView>
 
-      {/* Navigation Controls */}
-      <XStack
-        px="$4"
-        py="$4"
-        pb={insets.bottom + 16}
-        gap="$3"
-        borderTopWidth={1}
-        borderTopColor="$gray5"
-        bg="$background"
-      >
-        <Button
-          flex={1}
-          size="$5"
-          variant="outlined"
-          icon={ChevronLeft}
-          disabled={currentExerciseIndex === 0}
-          onPress={goToPreviousExercise}
+        {/* Navigation Controls */}
+        <XStack
+          px="$4"
+          py="$4"
+          pb={insets.bottom + 16}
+          gap="$3"
+          borderTopWidth={1}
+          borderTopColor="$borderColor"
+          bg="$surface"
         >
-          Previous
-        </Button>
-        
-        <Button
-          flex={1}
-          size="$5"
-          bg={isLastExercise && isCurrentCompleted ? '$green9' : '$green9'}
-          color="white"
-          iconAfter={isLastExercise ? Trophy : ChevronRight}
-          onPress={goToNextExercise}
-        >
-          {isLastExercise ? 'Finish' : 'Next'}
-        </Button>
-      </XStack>
+          <Button
+            flex={1}
+            size="$5"
+            bg="$background"
+            borderWidth={2}
+            borderColor="$borderColor"
+            icon={ChevronLeft}
+            disabled={currentExerciseIndex === 0}
+            opacity={currentExerciseIndex === 0 ? 0.5 : 1}
+            fontFamily="$body" fontWeight="700"
+            color="$color11"
+            rounded="$4"
+            onPress={goToPreviousExercise}
+          >
+            Previous
+          </Button>
+          
+          <Button
+            flex={1}
+            size="$5"
+            bg={intensityColors.primary}
+            color="white"
+            iconAfter={isLastExercise ? Trophy : ChevronRight}
+            fontFamily="$body" fontWeight="700"
+            rounded="$4"
+            pressStyle={{ opacity: 0.9, scale: 0.98 }}
+            onPress={goToNextExercise}
+          >
+            {isLastExercise ? 'Finish' : 'Next'}
+          </Button>
+        </XStack>
       </YStack>
 
       {/* Exercise Queue Drawer */}
@@ -523,7 +681,7 @@ export default function WorkoutExecutionScreen() {
             exitStyle={{ opacity: 0 }}
           />
           <AlertDialog.Content
-            bordered
+            bg="$surface"
             elevate
             key="content"
             animation={[
@@ -542,21 +700,39 @@ export default function WorkoutExecutionScreen() {
             y={0}
             p="$5"
             mx="$4"
+            rounded="$5"
           >
             <YStack gap="$3">
-              <AlertDialog.Title>Exit Workout?</AlertDialog.Title>
-              <AlertDialog.Description>
-                Your progress will be saved. You can resume or abandon this workout later.
+              <AlertDialog.Title fontFamily="$body" fontWeight="700" fontSize={20}>
+                Exit Workout?
+              </AlertDialog.Title>
+              <AlertDialog.Description fontFamily="$body" color="$color10">
+                Your progress will be saved. You can resume this workout later.
               </AlertDialog.Description>
               
               <XStack gap="$3" pt="$2">
                 <AlertDialog.Cancel asChild>
-                  <Button flex={1} variant="outlined">
-                    Continue Workout
+                  <Button 
+                    flex={1} 
+                    bg="$background"
+                    borderWidth={2}
+                    borderColor="$borderColor"
+                    fontFamily="$body" fontWeight="700"
+                    color="$color11"
+                    rounded="$4"
+                  >
+                    Continue
                   </Button>
                 </AlertDialog.Cancel>
                 <AlertDialog.Action asChild>
-                  <Button flex={1} bg="$red9" color="white" onPress={handleAbandonWorkout}>
+                  <Button 
+                    flex={1} 
+                    bg="$error" 
+                    color="white" 
+                    fontFamily="$body" fontWeight="700"
+                    rounded="$4"
+                    onPress={handleAbandonWorkout}
+                  >
                     Exit
                   </Button>
                 </AlertDialog.Action>
@@ -577,7 +753,7 @@ export default function WorkoutExecutionScreen() {
             exitStyle={{ opacity: 0 }}
           />
           <AlertDialog.Content
-            bordered
+            bg="$surface"
             elevate
             key="content"
             animation={[
@@ -594,41 +770,64 @@ export default function WorkoutExecutionScreen() {
             scale={1}
             opacity={1}
             y={0}
-            p="$5"
+            p="$6"
             mx="$4"
+            rounded="$5"
           >
-            <YStack gap="$4" items="center">
-              <Card
+            <YStack gap="$5" items="center">
+              <YStack
                 width={80}
                 height={80}
-                bg="$green3"
-                borderRadius="$10"
+                bg="$success"
+                rounded="$10"
                 items="center"
                 justify="center"
-                borderWidth={0}
               >
-                <Trophy size={40} color="$green10" />
-              </Card>
-              
-              <AlertDialog.Title>
-                Workout Complete!
-              </AlertDialog.Title>
+                <Trophy size={40} color="white" />
+              </YStack>
               
               <YStack items="center" gap="$1">
-                <Text fontSize="$5" fontWeight="700" color="$green10">
-                  {formatTime(elapsedTime)}
+                <Text 
+                  fontFamily="$heading" 
+                  fontSize={32} 
+                  letterSpacing={1}
+                  color="$color12"
+                >
+                  WORKOUT COMPLETE!
                 </Text>
-                <Text color="$color10">
-                  {completedCount} of {orderedExercises.length} exercises completed
+                <Text fontFamily="$body" color="$color10">
+                  Great work today
                 </Text>
               </YStack>
+              
+              <XStack gap="$6">
+                <YStack items="center">
+                  <Text fontFamily="$body" fontWeight="700" fontSize={24} color="$primary">
+                    {formatTime(elapsedTime)}
+                  </Text>
+                  <Text fontSize={12} color="$color10" fontFamily="$body">
+                    Duration
+                  </Text>
+                </YStack>
+                <YStack items="center">
+                  <Text fontFamily="$body" fontWeight="700" fontSize={24} color="$success">
+                    {completedCount}/{orderedExercises.length}
+                  </Text>
+                  <Text fontSize={12} color="$color10" fontFamily="$body">
+                    Exercises
+                  </Text>
+                </YStack>
+              </XStack>
               
               <Button 
                 width="100%"
                 size="$5"
-                bg="$green9" 
+                bg="$primary" 
                 color="white" 
                 icon={Check}
+                fontFamily="$body" fontWeight="700"
+                rounded="$4"
+                pressStyle={{ opacity: 0.9, scale: 0.98 }}
                 onPress={handleCompleteWorkout}
               >
                 Done

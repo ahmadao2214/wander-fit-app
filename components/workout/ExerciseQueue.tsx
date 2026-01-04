@@ -6,6 +6,7 @@ import {
   Card, 
   Button,
   Sheet,
+  styled,
 } from 'tamagui'
 import { 
   Check, 
@@ -20,14 +21,22 @@ import DraggableFlatList, {
   RenderItemParams,
 } from 'react-native-draggable-flatlist'
 
-/**
- * ExerciseQueue - Swipe drawer with exercise list
- * 
- * Shows all exercises in the workout with:
- * - Completed exercises (checkmark, grayed out)
- * - Current exercise (highlighted)
- * - Upcoming exercises (draggable to reorder via grip handle)
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// STYLED COMPONENTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SectionLabel = styled(Text, {
+  fontFamily: '$body',
+  fontWeight: '600',
+  fontSize: 11,
+  letterSpacing: 1.5,
+  textTransform: 'uppercase',
+  color: '$color10',
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TYPES
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface Exercise {
   exerciseId: string
@@ -46,6 +55,18 @@ interface ExerciseQueueProps {
   onReorder: (fromIndex: number, toIndex: number) => void
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN COMPONENT
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * ExerciseQueue - Swipe drawer with exercise list
+ * 
+ * Shows all exercises in the workout with:
+ * - Completed exercises (checkmark, grayed out)
+ * - Current exercise (highlighted)
+ * - Upcoming exercises (draggable to reorder via grip handle)
+ */
 export function ExerciseQueue({
   exercises,
   currentIndex,
@@ -96,10 +117,10 @@ export function ExerciseQueue({
           <Card
             p="$3"
             mb="$2"
-            bg={isActive ? '$green3' : isCurrent ? '$green2' : isCompleted ? '$gray2' : '$background'}
-            borderColor={isActive ? '$green9' : isCurrent ? '$green8' : '$gray6'}
+            bg={isActive ? '$brand2' : isCurrent ? '$brand1' : isCompleted ? '$color3' : '$surface'}
+            borderColor={isActive ? '$primary' : isCurrent ? '$primary' : '$borderColor'}
             borderWidth={isCurrent || isActive ? 2 : 1}
-            borderRadius="$3"
+            rounded="$4"
             opacity={isCompleted && !isCurrent ? 0.7 : 1}
             elevate={isActive}
           >
@@ -122,17 +143,17 @@ export function ExerciseQueue({
               <Card
                 width={28}
                 height={28}
-                borderRadius="$10"
-                bg={isCompleted ? '$green9' : isCurrent ? '$green9' : '$gray5'}
+                rounded="$3"
+                bg={isCompleted ? '$success' : isCurrent ? '$primary' : '$color5'}
                 items="center"
                 justify="center"
               >
                 {isCompleted ? (
-                  <Check size={16} color="white" />
+                  <Check size={16} color="white" strokeWidth={3} />
                 ) : (
                   <Text 
-                    fontSize="$2" 
-                    fontWeight="600" 
+                    fontSize={12} 
+                    fontFamily="$body" fontWeight="700"
                     color={isCurrent ? 'white' : '$color11'}
                   >
                     {index + 1}
@@ -141,29 +162,39 @@ export function ExerciseQueue({
               </Card>
 
               {/* Exercise Info */}
-              <YStack flex={1}>
+              <YStack flex={1} gap="$0.5">
                 <Text 
-                  fontSize="$4" 
+                  fontSize={14} 
+                  fontFamily="$body"
                   fontWeight={isCurrent ? '700' : '500'}
                   color={isCompleted ? '$color10' : '$color12'}
                   textDecorationLine={isCompleted ? 'line-through' : 'none'}
                 >
                   {item.name}
                 </Text>
-                <Text fontSize="$2" color="$color10">
+                <Text 
+                  fontSize={12} 
+                  color="$color10"
+                  fontFamily="$body"
+                >
                   {item.scaledSets ?? item.sets} sets × {item.scaledReps ?? item.reps}
                 </Text>
               </YStack>
 
               {/* Current Badge or Navigation Arrow */}
               {isCurrent ? (
-                <Card bg="$green9" px="$2" py="$1" borderRadius="$2">
-                  <Text fontSize="$1" color="white" fontWeight="600">
+                <Card bg="$primary" px="$2" py="$1" rounded="$2">
+                  <Text 
+                    fontSize={10} 
+                    color="white" 
+                    fontFamily="$body" fontWeight="700"
+                    letterSpacing={0.5}
+                  >
                     CURRENT
                   </Text>
                 </Card>
               ) : !isCompleted && !canDrag ? (
-                <ChevronRight size={18} color="$color10" />
+                <ChevronRight size={18} color="$color9" />
               ) : null}
             </XStack>
           </Card>
@@ -184,12 +215,12 @@ export function ExerciseQueue({
         style={styles.triggerButton}
       >
         <YStack
-          bg="$green9"
+          bg="$primary"
           px="$2"
           py="$4"
           borderTopLeftRadius="$4"
           borderBottomLeftRadius="$4"
-          opacity={0.9}
+          opacity={0.95}
         >
           <List size={20} color="white" />
         </YStack>
@@ -215,18 +246,28 @@ export function ExerciseQueue({
           <YStack flex={1} p="$4">
             {/* Header */}
             <XStack items="center" justify="space-between" pb="$4">
-              <YStack>
-                <Text fontSize="$6" fontWeight="700">
+              <YStack gap="$0.5">
+                <Text 
+                  fontSize={20} 
+                  fontFamily="$body" fontWeight="700"
+                  color="$color12"
+                >
                   Exercise Queue
                 </Text>
-                <Text fontSize="$3" color="$color10">
+                <Text 
+                  fontSize={13} 
+                  color="$color10"
+                  fontFamily="$body"
+                >
                   {completedCount} of {exercises.length} completed
                 </Text>
               </YStack>
               <Button
                 size="$3"
                 circular
-                variant="outlined"
+                bg="$surface"
+                borderWidth={1}
+                borderColor="$borderColor"
                 icon={X}
                 onPress={() => setOpen(false)}
               />
@@ -235,7 +276,11 @@ export function ExerciseQueue({
             {/* Drag hint */}
             <XStack items="center" gap="$2" pb="$3">
               <GripVertical size={14} color="$color9" />
-              <Text fontSize="$2" color="$color9">
+              <Text 
+                fontSize={12} 
+                color="$color9"
+                fontFamily="$body"
+              >
                 Hold and drag upcoming exercises to reorder
               </Text>
             </XStack>

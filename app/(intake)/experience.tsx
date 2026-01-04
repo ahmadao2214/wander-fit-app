@@ -118,7 +118,7 @@ export default function ExperienceScreen() {
                     step={1}
                     width="100%"
                   >
-                    <Slider.Track bg={"$gray5" as any} height={8} borderRadius={4}>
+                    <Slider.Track bg={"$gray5" as any} height={8} rounded={4}>
                       <Slider.TrackActive bg="$green9" />
                     </Slider.Track>
                     <Slider.Thumb
@@ -140,7 +140,7 @@ export default function ExperienceScreen() {
               </YStack>
 
               {/* Skill Level Preview */}
-              <Card bg="$green2" p="$3" borderRadius="$3">
+              <Card bg="$green2" p="$3" rounded="$3">
                 <XStack items="center" gap="$2">
                   <Text fontSize="$3" color="$green11">
                     Skill Level:
@@ -222,7 +222,7 @@ export default function ExperienceScreen() {
                     step={1}
                     width="100%"
                   >
-                    <Slider.Track bg={"$gray5" as any} height={8} borderRadius={4}>
+                    <Slider.Track bg={"$gray5" as any} height={8} rounded={4}>
                       <Slider.TrackActive bg="$orange9" />
                     </Slider.Track>
                     <Slider.Thumb
@@ -244,7 +244,7 @@ export default function ExperienceScreen() {
               </YStack>
 
               {/* Phase Preview */}
-              <Card bg="$orange2" p="$3" borderRadius="$3">
+              <Card bg="$orange2" p="$3" rounded="$3">
                 <XStack items="center" gap="$2">
                   <Text fontSize="$3" color="$orange11">
                     Training Phase:

@@ -28,7 +28,7 @@ export function ExerciseTypeIcon({
       width={size * 1.5}
       height={size * 1.5}
       bg="$green2"
-      borderRadius={size * 0.75}
+      rounded={size * 0.75}
       items="center"
       justify="center"
     >

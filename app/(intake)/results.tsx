@@ -135,11 +135,11 @@ export default function ResultsScreen() {
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$6" px="$4">
         <YStack items="center" gap="$4">
           <Sparkles size={72} color="$green10" />
-          <H2 textAlign="center" color="$green11">Let's Go!</H2>
-          <Text color="$gray11" textAlign="center" fontSize="$4">
+          <H2 text="center" color="$green11">Let's Go!</H2>
+          <Text color="$gray11" text="center" fontSize="$4">
             Your personalized program is ready.
           </Text>
-          <Text color="$gray11" textAlign="center" fontSize="$4">
+          <Text color="$gray11" text="center" fontSize="$4">
             Taking you to your dashboard...
           </Text>
         </YStack>
@@ -158,13 +158,13 @@ export default function ResultsScreen() {
           pb="$8"
           maxW={600}
           width="100%"
-          alignSelf="center"
+          self="center"
         >
           {/* Header */}
           <YStack gap="$2" items="center">
             <CheckCircle size={64} color="$green10" />
-            <H2 textAlign="center">Your Program is Ready!</H2>
-            <Text color="$gray11" textAlign="center" fontSize="$4">
+            <H2 text="center">Your Program is Ready!</H2>
+            <Text color="$gray11" text="center" fontSize="$4">
               Here's what we've designed for you
             </Text>
           </YStack>
@@ -242,7 +242,7 @@ export default function ResultsScreen() {
               
               <YStack gap="$2">
                 <XStack items="center" gap="$2">
-                  <Card bg="$green9" width={24} height={24} borderRadius={12} items="center" justify="center">
+                  <Card bg="$green9" width={24} height={24} rounded={12} items="center" justify="center">
                     <Text color="white" fontSize="$2" fontWeight="700">1</Text>
                   </Card>
                   <YStack flex={1}>
@@ -254,7 +254,7 @@ export default function ResultsScreen() {
                 </XStack>
 
                 <XStack items="center" gap="$2">
-                  <Card bg="$blue9" width={24} height={24} borderRadius={12} items="center" justify="center">
+                  <Card bg="$blue9" width={24} height={24} rounded={12} items="center" justify="center">
                     <Text color="white" fontSize="$2" fontWeight="700">2</Text>
                   </Card>
                   <YStack flex={1}>
@@ -266,7 +266,7 @@ export default function ResultsScreen() {
                 </XStack>
 
                 <XStack items="center" gap="$2">
-                  <Card bg="$purple9" width={24} height={24} borderRadius={12} items="center" justify="center">
+                  <Card bg="$purple9" width={24} height={24} rounded={12} items="center" justify="center">
                     <Text color="white" fontSize="$2" fontWeight="700">3</Text>
                   </Card>
                   <YStack flex={1}>

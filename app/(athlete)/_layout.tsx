@@ -1,6 +1,8 @@
 import { Tabs } from 'expo-router'
+import { useColorScheme } from 'react-native'
 import { Dumbbell, Calendar, User, BookOpen } from '@tamagui/lucide-icons'
 import { AthleteOnlyRoute } from '../../components/AuthGuard'
+import { brandPrimary } from '../../tamagui.config'
 
 /**
  * Athlete Tab Layout
@@ -18,11 +20,30 @@ import { AthleteOnlyRoute } from '../../components/AuthGuard'
  * pattern for stacks inside tabs.
  */
 export default function AthleteLayout() {
+  const colorScheme = useColorScheme()
+  const isDark = colorScheme === 'dark'
+
   return (
     <AthleteOnlyRoute>
       <Tabs
         screenOptions={{
-          tabBarActiveTintColor: '#10B981', // Emerald green for athletic feel
+          // Electric Blue for active tab (brand primary)
+          tabBarActiveTintColor: brandPrimary,
+          // Muted slate for inactive tabs
+          tabBarInactiveTintColor: isDark ? '#64748B' : '#94A3B8',
+          // Tab bar styling
+          tabBarStyle: {
+            backgroundColor: isDark ? '#0F172A' : '#FFFFFF',
+            borderTopColor: isDark ? '#1E293B' : '#E2E8F0',
+            borderTopWidth: 1,
+            paddingTop: 4,
+            height: 60,
+          },
+          tabBarLabelStyle: {
+            fontFamily: 'PlusJakartaSans',
+            fontSize: 11,
+            fontWeight: '600',
+          },
           headerShown: false,
         }}
       >
