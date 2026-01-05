@@ -617,8 +617,6 @@ export default function WorkoutExecutionScreen() {
           py="$4"
           pb={insets.bottom + 16}
           gap="$3"
-          borderTopWidth={1}
-          borderTopColor="$borderColor"
           bg="$surface"
         >
           <Button
