@@ -4,28 +4,39 @@ import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { Id } from '../../convex/_generated/dataModel'
-import { 
+import {
   ChevronRight,
   ChevronLeft,
-  Calendar,
   TrendingUp,
-  Clock,
 } from '@tamagui/lucide-icons'
 import { getSkillLevel, getTrainingPhase } from '../../lib'
 
 /**
+ * Get slider color based on years of experience (intensity gradient)
+ * 0-3 years: Green (Low intensity)
+ * 4-6 years: Amber (Medium intensity)
+ * 7-10+ years: Red (High intensity)
+ */
+const getExperienceSliderColor = (years: number): string => {
+  if (years <= 3) return '$intensityLow6'
+  if (years <= 6) return '$intensityMed6'
+  return '$intensityHigh6'
+}
+
+/**
  * Experience & Training Days Screen
- * 
+ *
  * Step 2 of intake flow.
  * Collects years of sport-specific experience and preferred training days.
  */
 export default function ExperienceScreen() {
   const router = useRouter()
-  const { sportId } = useLocalSearchParams<{ sportId: string }>()
-  
+  const { sportId } = useLocalSearchParams() as { sportId: string }
+
   const [yearsOfExperience, setYearsOfExperience] = useState(1)
   const [trainingDays, setTrainingDays] = useState(3)
   const [weeksUntilSeason, setWeeksUntilSeason] = useState(8)
+  const [scrollEnabled, setScrollEnabled] = useState(true)
 
   // Fetch sport details to display sport name
   const sport = useQuery(
@@ -73,7 +84,7 @@ export default function ExperienceScreen() {
 
   return (
     <YStack flex={1} bg="$background">
-      <ScrollView flex={1}>
+      <ScrollView flex={1} scrollEnabled={scrollEnabled}>
         <YStack
           gap="$6"
           px="$4"
@@ -85,10 +96,10 @@ export default function ExperienceScreen() {
         >
           {/* Header */}
           <YStack gap="$2" items="center">
-            <TrendingUp size={48} color={"$green10" as any} />
-            <H2>Your {sport.name} Experience</H2>
-            <Text color="$color11" fontSize="$4">
-              Tell us about your background in {sport.name}
+            <TrendingUp size={48} color="$primary" />
+            <H2>Build Your Program</H2>
+            <Text color="$color11" fontSize="$4" text="center">
+              Help us personalize your training based on your experience and goals
             </Text>
           </YStack>
 
@@ -105,11 +116,17 @@ export default function ExperienceScreen() {
               </YStack>
 
               <YStack gap="$3" items="center">
-                <Text fontSize="$8" fontWeight="700" color="$green10">
+                <Text fontSize="$8" fontWeight="700" color={getExperienceSliderColor(yearsOfExperience)}>
                   {yearsOfExperience >= 10 ? '10+' : yearsOfExperience} {yearsOfExperience === 1 ? 'year' : 'years'}
                 </Text>
-                
-                <XStack width="100%" px="$2">
+
+                <YStack
+                  width="100%"
+                  py="$3"
+                  onStartShouldSetResponder={() => true}
+                  onResponderGrant={() => setScrollEnabled(false)}
+                  onResponderRelease={() => setScrollEnabled(true)}
+                >
                   <Slider
                     value={[yearsOfExperience]}
                     onValueChange={(val) => setYearsOfExperience(val[0])}
@@ -118,34 +135,37 @@ export default function ExperienceScreen() {
                     step={1}
                     width="100%"
                   >
-                    <Slider.Track bg={"$gray5" as any} height={8} rounded={4}>
-                      <Slider.TrackActive bg="$green9" />
+                    <Slider.Track bg={"$gray5" as any} height={10} rounded={5}>
+                      <Slider.TrackActive bg={getExperienceSliderColor(yearsOfExperience)} />
                     </Slider.Track>
                     <Slider.Thumb
                       index={0}
-                      size={28}
-                      bg="$green9"
-                      borderWidth={3}
+                      size={32}
+                      bg={getExperienceSliderColor(yearsOfExperience)}
+                      borderWidth={4}
                       borderColor="white"
                       circular
                       elevate
+                      shadowColor="rgba(0,0,0,0.3)"
+                      shadowOffset={{ width: 0, height: 2 }}
+                      shadowRadius={4}
                     />
                   </Slider>
-                </XStack>
+                </YStack>
 
-                <XStack width="100%" justify="space-between" px="$2">
+                <XStack width="100%" justify="space-between">
                   <Text fontSize="$2" color="$color9">Beginner</Text>
                   <Text fontSize="$2" color="$color9">10+ years</Text>
                 </XStack>
               </YStack>
 
               {/* Skill Level Preview */}
-              <Card bg="$green2" p="$3" rounded="$3">
+              <Card bg={yearsOfExperience <= 3 ? '$intensityLow1' : yearsOfExperience <= 6 ? '$intensityMed1' : '$intensityHigh1'} p="$3" rounded="$3">
                 <XStack items="center" gap="$2">
-                  <Text fontSize="$3" color="$green11">
+                  <Text fontSize="$3" color={yearsOfExperience <= 3 ? '$intensityLow11' : yearsOfExperience <= 6 ? '$intensityMed11' : '$intensityHigh11'}>
                     Skill Level:
                   </Text>
-                  <Text fontSize="$3" fontWeight="700" color="$green11">
+                  <Text fontSize="$3" fontWeight="700" color={yearsOfExperience <= 3 ? '$intensityLow11' : yearsOfExperience <= 6 ? '$intensityMed11' : '$intensityHigh11'}>
                     {getSkillLevel(yearsOfExperience)}
                   </Text>
                 </XStack>
@@ -166,22 +186,27 @@ export default function ExperienceScreen() {
               </YStack>
 
               <YStack gap="$3" items="center">
-                <Text fontSize="$8" fontWeight="700" color="$blue10">
+                <Text fontSize="$8" fontWeight="700" color="$primary">
                   {trainingDays} days/week
                 </Text>
 
-                <XStack gap="$2" flexWrap="wrap" justify="center">
+                <XStack gap="$2.5" justify="center" width="100%">
                   {[2, 3, 4, 5, 6].map((days) => (
                     <Button
                       key={days}
                       size="$4"
-                      width={60}
-                      bg={(trainingDays === days ? '$blue9' : '$gray3') as any}
-                      color={(trainingDays === days ? 'white' : '$color11') as any}
+                      flex={1}
+                      maxWidth={65}
+                      bg={trainingDays === days ? '$primary' : '$gray3'}
+                      color={trainingDays === days ? 'white' : '$color11'}
                       onPress={() => setTrainingDays(days)}
                       fontWeight="600"
+                      pressStyle={{ scale: 0.95 }}
+                      fontFamily="$body"
                     >
-                      {days}
+                      <Text color={trainingDays === days ? 'white' : '$color11'} fontWeight="600" fontSize="$4">
+                        {days}
+                      </Text>
                     </Button>
                   ))}
                 </XStack>
@@ -197,12 +222,9 @@ export default function ExperienceScreen() {
           <Card p="$5" borderColor={"$gray6" as any} borderWidth={1}>
             <YStack gap="$4">
               <YStack gap="$1">
-                <XStack items="center" gap="$2">
-                  <Clock size={20} color={"$orange10" as any} />
-                  <Text fontSize="$5" fontWeight="600">
-                    Season Timeline
-                  </Text>
-                </XStack>
+                <Text fontSize="$5" fontWeight="600">
+                  Season Timeline
+                </Text>
                 <Text fontSize="$3" color="$color10">
                   How many weeks until your upcoming season?
                 </Text>
@@ -212,8 +234,14 @@ export default function ExperienceScreen() {
                 <Text fontSize="$8" fontWeight="700" color="$orange10">
                   {weeksUntilSeason >= 16 ? '16+' : weeksUntilSeason} weeks
                 </Text>
-                
-                <XStack width="100%" px="$2">
+
+                <YStack
+                  width="100%"
+                  py="$3"
+                  onStartShouldSetResponder={() => true}
+                  onResponderGrant={() => setScrollEnabled(false)}
+                  onResponderRelease={() => setScrollEnabled(true)}
+                >
                   <Slider
                     value={[weeksUntilSeason]}
                     onValueChange={(val) => setWeeksUntilSeason(val[0])}
@@ -222,52 +250,29 @@ export default function ExperienceScreen() {
                     step={1}
                     width="100%"
                   >
-                    <Slider.Track bg={"$gray5" as any} height={8} rounded={4}>
+                    <Slider.Track bg={"$gray5" as any} height={10} rounded={5}>
                       <Slider.TrackActive bg="$orange9" />
                     </Slider.Track>
                     <Slider.Thumb
                       index={0}
-                      size={28}
+                      size={32}
                       bg="$orange9"
-                      borderWidth={3}
+                      borderWidth={4}
                       borderColor="white"
                       circular
                       elevate
+                      shadowColor="rgba(0,0,0,0.3)"
+                      shadowOffset={{ width: 0, height: 2 }}
+                      shadowRadius={4}
                     />
                   </Slider>
-                </XStack>
+                </YStack>
 
-                <XStack width="100%" justify="space-between" px="$2">
+                <XStack width="100%" justify="space-between">
                   <Text fontSize="$2" color="$color9">1 week</Text>
                   <Text fontSize="$2" color="$color9">16+ weeks</Text>
                 </XStack>
               </YStack>
-
-              {/* Phase Preview */}
-              <Card bg="$orange2" p="$3" rounded="$3">
-                <XStack items="center" gap="$2">
-                  <Text fontSize="$3" color="$orange11">
-                    Training Phase:
-                  </Text>
-                  <Text fontSize="$3" fontWeight="700" color="$orange11">
-                    {getTrainingPhase(weeksUntilSeason)}
-                  </Text>
-                </XStack>
-              </Card>
-            </YStack>
-          </Card>
-
-          {/* Info Card */}
-          <Card p="$4" bg="$blue2" borderColor="$blue6">
-            <YStack gap="$2">
-              <Text fontSize="$3" fontWeight="600" color="$blue11">
-                Why does this matter?
-              </Text>
-              <Text fontSize="$3" color="$blue11">
-                Your {sport.name} experience determines the intensity and complexity of your program.
-                Your training commitment helps us schedule workouts with appropriate rest days.
-                Your season timeline shapes the training phases — building strength in the off-season and sharpening performance as the season approaches.
-              </Text>
             </YStack>
           </Card>
         </YStack>
@@ -294,7 +299,7 @@ export default function ExperienceScreen() {
           <Button
             flex={2}
             size="$5"
-            bg="$green9"
+            bg="$primary"
             color="white"
             onPress={handleContinue}
             iconAfter={ChevronRight}
