@@ -555,20 +555,44 @@ export default function WorkoutExecutionScreen() {
               </YStack>
 
               {/* Exercise Name and Prescription */}
-              <YStack items="center" gap="$2">
+              <YStack items="center" gap="$3">
                 <DisplayHeading>
                   {exerciseDetails?.name?.toUpperCase() || 'EXERCISE'}
                 </DisplayHeading>
-                <Text 
-                  fontSize={18} 
-                  color="$color10"
-                  fontFamily="$body" fontWeight="500"
+
+                {/* Prominent sets x reps badge */}
+                <XStack
+                  bg="$color3"
+                  px="$4"
+                  py="$2.5"
+                  rounded="$4"
+                  items="center"
+                  gap="$2"
                 >
-                  {currentExercise.scaledSets ?? currentExercise.sets} sets × {currentExercise.scaledReps ?? currentExercise.reps}
-                </Text>
+                  <Text
+                    fontSize={18}
+                    fontFamily="$body"
+                    fontWeight="700"
+                    color="$color12"
+                  >
+                    {currentExercise.scaledSets ?? currentExercise.sets} sets
+                  </Text>
+                  <Text fontSize={16} color="$color9" fontFamily="$body">
+                    ×
+                  </Text>
+                  <Text
+                    fontSize={18}
+                    fontFamily="$body"
+                    fontWeight="700"
+                    color="$color12"
+                  >
+                    {currentExercise.scaledReps ?? currentExercise.reps}
+                  </Text>
+                </XStack>
+
                 {currentExercise.tempo && (
                   <Text fontSize={14} color="$color9" fontFamily="$body">
-                    Tempo: {currentExercise.tempo}
+                    {currentExercise.tempo} tempo
                   </Text>
                 )}
                 {/* TODO: Add targetWeight display when schema is updated */}
