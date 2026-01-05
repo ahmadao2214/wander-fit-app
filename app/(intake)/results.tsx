@@ -14,6 +14,10 @@ import {
   Calendar,
   Sparkles,
   Clock,
+  Activity,
+  Zap,
+  RefreshCw,
+  Dumbbell,
 } from '@tamagui/lucide-icons'
 import { PHASE_NAMES } from '../../types'
 import { useAuth } from '../../hooks/useAuth'
@@ -40,7 +44,6 @@ export default function ResultsScreen() {
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
-  const [categoryExpanded, setCategoryExpanded] = useState(false)
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set())
 
   // Get sport details
@@ -81,6 +84,17 @@ export default function ResultsScreen() {
       4: '$catStrength',       // Blue
     }
     return colors[categoryId as keyof typeof colors] || '$catEndurance'
+  }
+
+  // Helper: Get category-specific icons
+  const getCategoryIcon = (categoryId: number) => {
+    const icons = {
+      1: Activity,      // Endurance - continuous movement
+      2: Zap,           // Power - explosive energy
+      3: RefreshCw,     // Rotation - rotational movement
+      4: Dumbbell,      // Strength - strength training
+    }
+    return icons[categoryId as keyof typeof icons] || Activity
   }
 
   // Helper: Toggle phase expansion
@@ -214,7 +228,10 @@ export default function ResultsScreen() {
             elevate
           >
             <YStack gap="$4" items="center">
-              <Sparkles size={48} color="white" />
+              {(() => {
+                const CategoryIcon = getCategoryIcon(sport.gppCategoryId)
+                return <CategoryIcon size={48} color="white" />
+              })()}
 
               <YStack gap="$2" items="center">
                 <Text fontSize="$2" color="white" opacity={0.9} fontWeight="600">
@@ -230,30 +247,15 @@ export default function ResultsScreen() {
                 </H2>
               </YStack>
 
-              {/* Category Description - Collapsible */}
-              {categoryExpanded && (
-                <Text
-                  color="white"
-                  opacity={0.95}
-                  fontSize="$3"
-                  text="center"
-                  lineHeight="$4"
-                >
-                  {category.description}
-                </Text>
-              )}
-
-              <Button
-                size="$2"
-                chromeless
-                icon={categoryExpanded ? ChevronUp : ChevronDown}
-                onPress={() => setCategoryExpanded(!categoryExpanded)}
+              {/* Category Description - Always Visible */}
+              <Text
                 color="white"
+                fontSize="$3"
+                text="center"
+                lineHeight="$4"
               >
-                <Text color="white" fontSize="$2" fontWeight="600">
-                  {categoryExpanded ? 'Show Less' : 'Learn More'}
-                </Text>
-              </Button>
+                {category.description}
+              </Text>
             </YStack>
           </Card>
 
