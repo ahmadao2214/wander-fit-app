@@ -4,15 +4,20 @@ import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { Id } from '../../convex/_generated/dataModel'
-import { 
+import {
   ChevronLeft,
+  ChevronDown,
+  ChevronUp,
   CheckCircle,
   Target,
   Trophy,
   Calendar,
-  Zap,
   Sparkles,
   Clock,
+  Activity,
+  Zap,
+  RefreshCw,
+  Dumbbell,
 } from '@tamagui/lucide-icons'
 import { PHASE_NAMES } from '../../types'
 import { useAuth } from '../../hooks/useAuth'
@@ -39,6 +44,7 @@ export default function ResultsScreen() {
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
+  const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set())
 
   // Get sport details
   const sport = useQuery(
@@ -68,6 +74,51 @@ export default function ResultsScreen() {
   // Use extracted pure functions for calculations
   const trainingPhase = getTrainingPhase(weeks)
   const skillLevel = getSkillLevel(years)
+
+  // Helper: Get category-specific colors
+  const getCategoryColor = (categoryId: number) => {
+    const colors = {
+      1: '$catEndurance',      // Teal
+      2: '$catPower',          // Purple
+      3: '$catRotation',       // Orange
+      4: '$catStrength',       // Blue
+    }
+    return colors[categoryId as keyof typeof colors] || '$catEndurance'
+  }
+
+  // Helper: Get category-specific icons
+  const getCategoryIcon = (categoryId: number) => {
+    const icons = {
+      1: Activity,      // Endurance - continuous movement
+      2: Zap,           // Power - explosive energy
+      3: RefreshCw,     // Rotation - rotational movement
+      4: Dumbbell,      // Strength - strength training
+    }
+    return icons[categoryId as keyof typeof icons] || Activity
+  }
+
+  // Helper: Toggle phase expansion
+  const togglePhase = (phase: string) => {
+    setExpandedPhases(prev => {
+      const next = new Set(prev)
+      if (next.has(phase)) {
+        next.delete(phase)
+      } else {
+        next.add(phase)
+      }
+      return next
+    })
+  }
+
+  // Get phase descriptions
+  const getPhaseDescription = (phase: 'GPP' | 'SPP' | 'SSP') => {
+    const descriptions = {
+      GPP: 'Foundation phase focusing on overall fitness, movement quality, and work capacity.',
+      SPP: 'Sport-specific movements that transfer directly to your athletic demands.',
+      SSP: 'Peak performance preparation while maintaining gains and reducing fatigue.',
+    }
+    return descriptions[phase]
+  }
 
   const handleBack = () => {
     router.back()
@@ -117,7 +168,7 @@ export default function ResultsScreen() {
   if (sport === undefined || category === undefined) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$green10" />
+        <Spinner size="large" color="$primary" />
         <Text color="$gray11">Calculating your program...</Text>
       </YStack>
     )
@@ -134,8 +185,8 @@ export default function ResultsScreen() {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$6" px="$4">
         <YStack items="center" gap="$4">
-          <Sparkles size={72} color="$green10" />
-          <H2 text="center" color="$green11">Let's Go!</H2>
+          <Sparkles size={72} color="$primary" />
+          <H2 text="center" color="$color12">Let's Go!</H2>
           <Text color="$gray11" text="center" fontSize="$4">
             Your personalized program is ready.
           </Text>
@@ -143,7 +194,7 @@ export default function ResultsScreen() {
             Taking you to your dashboard...
           </Text>
         </YStack>
-        <Spinner size="large" color="$green10" />
+        <Spinner size="large" color="$primary" />
       </YStack>
     )
   }
@@ -162,47 +213,72 @@ export default function ResultsScreen() {
         >
           {/* Header */}
           <YStack gap="$2" items="center">
-            <CheckCircle size={64} color="$green10" />
+            <CheckCircle size={64} color="$primary" />
             <H2 text="center">Your Program is Ready!</H2>
             <Text color="$gray11" text="center" fontSize="$4">
               Here's what we've designed for you
             </Text>
           </YStack>
 
-          {/* Assignment Card */}
-          <Card p="$5" bg="$green2" borderColor="$green7" borderWidth={2}>
+          {/* Training Category Hero Card */}
+          <Card
+            p="$6"
+            bg={getCategoryColor(sport.gppCategoryId)}
+            borderWidth={0}
+            elevate
+          >
+            <YStack gap="$4" items="center">
+              {(() => {
+                const CategoryIcon = getCategoryIcon(sport.gppCategoryId)
+                return <CategoryIcon size={48} color="white" />
+              })()}
+
+              <YStack gap="$2" items="center">
+                <Text fontSize="$2" color="white" opacity={0.9} fontWeight="600">
+                  Your Training Category
+                </Text>
+                <H2
+                  fontFamily="$heading"
+                  fontSize="$10"
+                  color="white"
+                  letterSpacing={1}
+                >
+                  {category.shortName.toUpperCase()}
+                </H2>
+              </YStack>
+
+              {/* Category Description - Always Visible */}
+              <Text
+                color="white"
+                fontSize="$3"
+                text="center"
+                lineHeight="$4"
+              >
+                {category.description}
+              </Text>
+            </YStack>
+          </Card>
+
+          {/* Program Details Card */}
+          <Card p="$5" bg="$background" borderColor="$borderColor" borderWidth={1}>
             <YStack gap="$4">
               {/* Sport */}
               <XStack items="center" gap="$3">
-                <Target size={24} color="$green10" />
+                <Target size={24} color="$primary" />
                 <YStack flex={1}>
-                  <Text fontSize="$2" color="$green10">Sport</Text>
-                  <Text fontSize="$5" fontWeight="700" color="$green12">
+                  <Text fontSize="$2" color="$color10">Sport</Text>
+                  <Text fontSize="$5" fontWeight="700" color="$color12">
                     {sport.name}
-                  </Text>
-                </YStack>
-              </XStack>
-
-              {/* Category */}
-              <XStack items="center" gap="$3">
-                <Zap size={24} color="$green10" />
-                <YStack flex={1}>
-                  <Text fontSize="$2" color="$green10">Training Category</Text>
-                  <Text fontSize="$5" fontWeight="700" color="$green12">
-                    {category.shortName}
-                  </Text>
-                  <Text fontSize="$3" color="$green11">
-                    {category.name}
                   </Text>
                 </YStack>
               </XStack>
 
               {/* Skill Level */}
               <XStack items="center" gap="$3">
-                <Trophy size={24} color="$green10" />
+                <Trophy size={24} color="$primary" />
                 <YStack flex={1}>
-                  <Text fontSize="$2" color="$green10">Skill Level</Text>
-                  <Text fontSize="$5" fontWeight="700" color="$green12">
+                  <Text fontSize="$2" color="$color10">Skill Level</Text>
+                  <Text fontSize="$5" fontWeight="700" color="$color12">
                     {skillLevel}
                   </Text>
                 </YStack>
@@ -210,10 +286,10 @@ export default function ResultsScreen() {
 
               {/* Training Days */}
               <XStack items="center" gap="$3">
-                <Calendar size={24} color="$green10" />
+                <Calendar size={24} color="$primary" />
                 <YStack flex={1}>
-                  <Text fontSize="$2" color="$green10">Training Schedule</Text>
-                  <Text fontSize="$5" fontWeight="700" color="$green12">
+                  <Text fontSize="$2" color="$color10">Training Schedule</Text>
+                  <Text fontSize="$5" fontWeight="700" color="$color12">
                     {days} days per week
                   </Text>
                 </YStack>
@@ -221,13 +297,13 @@ export default function ResultsScreen() {
 
               {/* Training Phase */}
               <XStack items="center" gap="$3">
-                <Clock size={24} color="$green10" />
+                <Clock size={24} color="$primary" />
                 <YStack flex={1}>
-                  <Text fontSize="$2" color="$green10">Current Phase</Text>
-                  <Text fontSize="$5" fontWeight="700" color="$green12">
+                  <Text fontSize="$2" color="$color10">Current Phase</Text>
+                  <Text fontSize="$5" fontWeight="700" color="$color12">
                     {trainingPhase}
                   </Text>
-                  <Text fontSize="$3" color="$green11">
+                  <Text fontSize="$3" color="$color11">
                     {weeks} weeks until season
                   </Text>
                 </YStack>
@@ -235,62 +311,126 @@ export default function ResultsScreen() {
             </YStack>
           </Card>
 
-          {/* Program Overview */}
-          <Card p="$4" bg="$background" borderColor="$gray6" borderWidth={1}>
+          {/* Training Journey - With Inline Accordions */}
+          <Card p="$4" bg="$background" borderColor="$borderColor" borderWidth={1}>
             <YStack gap="$3">
-              <H3 fontSize="$4">Your Training Journey</H3>
-              
-              <YStack gap="$2">
-                <XStack items="center" gap="$2">
-                  <Card bg="$green9" width={24} height={24} rounded={12} items="center" justify="center">
-                    <Text color="white" fontSize="$2" fontWeight="700">1</Text>
-                  </Card>
-                  <YStack flex={1}>
-                    <Text fontWeight="600">{PHASE_NAMES.GPP}</Text>
-                    <Text fontSize="$2" color="$gray10">
-                      4 weeks • Build your foundation
-                    </Text>
-                  </YStack>
-                </XStack>
+              <H3 fontSize="$5" color="$color12">Your Training Journey</H3>
 
-                <XStack items="center" gap="$2">
-                  <Card bg="$blue9" width={24} height={24} rounded={12} items="center" justify="center">
-                    <Text color="white" fontSize="$2" fontWeight="700">2</Text>
-                  </Card>
-                  <YStack flex={1}>
-                    <Text fontWeight="600">{PHASE_NAMES.SPP}</Text>
-                    <Text fontSize="$2" color="$gray10">
-                      4 weeks • Sport-specific development
-                    </Text>
-                  </YStack>
-                </XStack>
+              <YStack gap="$3">
+                {/* GPP Phase */}
+                <Card
+                  p="$3"
+                  bg="$background"
+                  borderColor="$borderColor"
+                  borderWidth={1}
+                  pressStyle={{ bg: '$backgroundHover' }}
+                  onPress={() => togglePhase('GPP')}
+                >
+                  <YStack gap="$2">
+                    <XStack items="center" gap="$3">
+                      <Card bg="$primary" width={28} height={28} rounded={14} items="center" justify="center">
+                        <Text color="white" fontSize="$2" fontWeight="700">1</Text>
+                      </Card>
+                      <YStack flex={1}>
+                        <Text fontWeight="600" fontSize="$4" color="$color12">
+                          {PHASE_NAMES.GPP}
+                        </Text>
+                        <Text fontSize="$2" color="$color10">
+                          4 weeks • Foundation phase
+                        </Text>
+                      </YStack>
+                      {expandedPhases.has('GPP') ? (
+                        <ChevronUp size={20} color="$color10" />
+                      ) : (
+                        <ChevronDown size={20} color="$color10" />
+                      )}
+                    </XStack>
 
-                <XStack items="center" gap="$2">
-                  <Card bg="$purple9" width={24} height={24} rounded={12} items="center" justify="center">
-                    <Text color="white" fontSize="$2" fontWeight="700">3</Text>
-                  </Card>
-                  <YStack flex={1}>
-                    <Text fontWeight="600">{PHASE_NAMES.SSP}</Text>
-                    <Text fontSize="$2" color="$gray10">
-                      4 weeks • Peak for competition
-                    </Text>
+                    {expandedPhases.has('GPP') && (
+                      <Text fontSize="$3" color="$color11" paddingLeft="$10">
+                        {getPhaseDescription('GPP')}
+                      </Text>
+                    )}
                   </YStack>
-                </XStack>
+                </Card>
+
+                {/* SPP Phase */}
+                <Card
+                  p="$3"
+                  bg="$background"
+                  borderColor="$borderColor"
+                  borderWidth={1}
+                  pressStyle={{ bg: '$backgroundHover' }}
+                  onPress={() => togglePhase('SPP')}
+                >
+                  <YStack gap="$2">
+                    <XStack items="center" gap="$3">
+                      <Card bg="$primary" width={28} height={28} rounded={14} items="center" justify="center">
+                        <Text color="white" fontSize="$2" fontWeight="700">2</Text>
+                      </Card>
+                      <YStack flex={1}>
+                        <Text fontWeight="600" fontSize="$4" color="$color12">
+                          {PHASE_NAMES.SPP}
+                        </Text>
+                        <Text fontSize="$2" color="$color10">
+                          4 weeks • Sport-specific phase
+                        </Text>
+                      </YStack>
+                      {expandedPhases.has('SPP') ? (
+                        <ChevronUp size={20} color="$color10" />
+                      ) : (
+                        <ChevronDown size={20} color="$color10" />
+                      )}
+                    </XStack>
+
+                    {expandedPhases.has('SPP') && (
+                      <Text fontSize="$3" color="$color11" paddingLeft="$10">
+                        {getPhaseDescription('SPP')}
+                      </Text>
+                    )}
+                  </YStack>
+                </Card>
+
+                {/* SSP Phase */}
+                <Card
+                  p="$3"
+                  bg="$background"
+                  borderColor="$borderColor"
+                  borderWidth={1}
+                  pressStyle={{ bg: '$backgroundHover' }}
+                  onPress={() => togglePhase('SSP')}
+                >
+                  <YStack gap="$2">
+                    <XStack items="center" gap="$3">
+                      <Card bg="$primary" width={28} height={28} rounded={14} items="center" justify="center">
+                        <Text color="white" fontSize="$2" fontWeight="700">3</Text>
+                      </Card>
+                      <YStack flex={1}>
+                        <Text fontWeight="600" fontSize="$4" color="$color12">
+                          {PHASE_NAMES.SSP}
+                        </Text>
+                        <Text fontSize="$2" color="$color10">
+                          4 weeks • Peak performance phase
+                        </Text>
+                      </YStack>
+                      {expandedPhases.has('SSP') ? (
+                        <ChevronUp size={20} color="$color10" />
+                      ) : (
+                        <ChevronDown size={20} color="$color10" />
+                      )}
+                    </XStack>
+
+                    {expandedPhases.has('SSP') && (
+                      <Text fontSize="$3" color="$color11" paddingLeft="$10">
+                        {getPhaseDescription('SSP')}
+                      </Text>
+                    )}
+                  </YStack>
+                </Card>
               </YStack>
             </YStack>
           </Card>
 
-          {/* Category Description */}
-          <Card p="$4" bg="$blue2" borderColor="$blue6">
-            <YStack gap="$2">
-              <Text fontSize="$3" fontWeight="600" color="$blue11">
-                About {category.shortName} Training
-              </Text>
-              <Text fontSize="$3" color="$blue11">
-                {category.description}
-              </Text>
-            </YStack>
-          </Card>
         </YStack>
       </ScrollView>
 
@@ -299,13 +439,13 @@ export default function ResultsScreen() {
         px="$4"
         py="$4"
         borderTopWidth={1}
-        borderTopColor="$gray5"
+        borderTopColor="$borderColor"
         bg="$background"
         gap="$3"
       >
         <Button
           size="$5"
-          bg="$green9"
+          bg="$primary"
           color="white"
           onPress={handleConfirm}
           disabled={isSubmitting}
