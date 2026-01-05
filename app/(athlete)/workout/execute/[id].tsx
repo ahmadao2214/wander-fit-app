@@ -29,7 +29,7 @@ import { SetTracker } from '../../../../components/workout/SetTracker'
 import { InstructionsAccordion } from '../../../../components/workout/InstructionsAccordion'
 import { ExerciseQueue } from '../../../../components/workout/ExerciseQueue'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { PanResponder, Platform, Vibration, Animated } from 'react-native'
+import { PanResponder, Platform, Vibration, Animated, useColorScheme } from 'react-native'
 import { IntensityLevel } from '../../../../tamagui.config'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -195,22 +195,26 @@ export default function WorkoutExecutionScreen() {
   // Get intensity level - default to medium for now
   // TODO: Add targetIntensity to session schema when intensity selection is implemented
   const intensity: IntensityLevel = 'medium'
+  const colorScheme = useColorScheme()
+  const isDark = colorScheme === 'dark'
 
-  // Intensity-based colors - cast as const to satisfy TS
+  // Intensity-based colors
+  // In dark mode, the scale is inverted (1-6 dark, 7-12 light)
+  // For backgrounds, we use level 3 in dark mode for visibility, level 2 in light mode
   const intensityColors = {
     low: {
       primary: '$intensityLow6' as const,
-      light: '$intensityLow2' as const,
+      light: (isDark ? '$intensityLow3' : '$intensityLow2') as const,
       text: '$intensityLow11' as const,
     },
     medium: {
       primary: '$intensityMed6' as const,
-      light: '$intensityMed2' as const,
+      light: (isDark ? '$intensityMed3' : '$intensityMed2') as const,
       text: '$intensityMed11' as const,
     },
     high: {
       primary: '$intensityHigh6' as const,
-      light: '$intensityHigh2' as const,
+      light: (isDark ? '$intensityHigh3' : '$intensityHigh2') as const,
       text: '$intensityHigh11' as const,
     },
   }[intensity]
