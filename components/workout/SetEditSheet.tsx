@@ -175,7 +175,7 @@ export function SetEditSheet({
               <Text fontFamily="$body" fontWeight="600" fontSize={14} color="$color11">
                 RPE
               </Text>
-              <Text fontSize={18} fontFamily="$body" fontWeight="700" color="$green10">
+              <Text fontSize={18} fontFamily="$body" fontWeight="700" color="$primary">
                 {rpe}/10
               </Text>
             </XStack>
@@ -187,12 +187,12 @@ export function SetEditSheet({
               step={1}
             >
               <Slider.Track bg="$color4" height={6} rounded={3}>
-                <Slider.TrackActive bg="$green9" />
+                <Slider.TrackActive bg="$primary" />
               </Slider.Track>
               <Slider.Thumb
                 index={0}
                 size={24}
-                bg="$green9"
+                bg="$primary"
                 borderWidth={2}
                 borderColor="white"
                 circular
@@ -221,7 +221,7 @@ export function SetEditSheet({
             <Button
               flex={1}
               size="$4"
-              bg="$green9"
+              bg="$primary"
               color="white"
               icon={Check}
               fontFamily="$body"
