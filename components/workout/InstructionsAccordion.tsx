@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { YStack, XStack, Text, Card } from 'tamagui'
-import { ChevronDown, ChevronUp, Info, Wrench } from '@tamagui/lucide-icons'
+import { YStack, XStack, Text } from 'tamagui'
+import { ChevronDown, ChevronUp } from '@tamagui/lucide-icons'
 import { Pressable } from 'react-native'
 
 /**
  * InstructionsAccordion - Collapsible section showing exercise instructions and equipment
+ *
+ * Minimal, borderless design that flows naturally with the content.
  */
 
 interface InstructionsAccordionProps {
@@ -13,10 +15,10 @@ interface InstructionsAccordionProps {
   notes?: string
 }
 
-export function InstructionsAccordion({ 
-  instructions, 
+export function InstructionsAccordion({
+  instructions,
   equipment,
-  notes 
+  notes
 }: InstructionsAccordionProps) {
   const [isExpanded, setIsExpanded] = useState(false)
 
@@ -26,76 +28,52 @@ export function InstructionsAccordion({
   }
 
   return (
-    <Card borderColor="$gray6" borderWidth={1} overflow="hidden">
+    <YStack>
       <Pressable onPress={() => setIsExpanded(!isExpanded)}>
-        <XStack 
-          px="$4" 
-          py="$3" 
-          items="center" 
-          justify="space-between"
-          bg={isExpanded ? '$gray2' : 'transparent'}
+        <XStack
+          py="$2"
+          items="center"
+          gap="$2"
         >
-          <XStack items="center" gap="$2">
-            <Info size={18} color="$blue10" />
-            <Text fontSize="$4" fontWeight="600" color="$color12">
-              View Instructions
-            </Text>
-          </XStack>
           {isExpanded ? (
-            <ChevronUp size={20} color="$color10" />
+            <ChevronUp size={16} color="$color10" />
           ) : (
-            <ChevronDown size={20} color="$color10" />
+            <ChevronDown size={16} color="$color10" />
           )}
+          <Text fontSize={14} fontFamily="$body" fontWeight="500" color="$color10">
+            How to perform
+          </Text>
         </XStack>
       </Pressable>
 
       {isExpanded && (
-        <YStack px="$4" py="$3" gap="$3" bg="$gray1">
+        <YStack pt="$2" pb="$1" gap="$3">
           {/* Instructions */}
           {instructions && (
-            <YStack gap="$1">
-              <Text fontSize="$2" color="$color10" fontWeight="600">
-                How to perform:
-              </Text>
-              <Text fontSize="$3" color="$color11" lineHeight={22}>
-                {instructions}
-              </Text>
-            </YStack>
+            <Text fontSize={14} fontFamily="$body" color="$color11" lineHeight={22}>
+              {instructions}
+            </Text>
           )}
 
-          {/* Equipment */}
+          {/* Equipment - minimal inline display */}
           {equipment && equipment.length > 0 && (
-            <YStack gap="$1">
-              <XStack items="center" gap="$1">
-                <Wrench size={14} color="$color10" />
-                <Text fontSize="$2" color="$color10" fontWeight="600">
-                  Equipment needed:
-                </Text>
-              </XStack>
-              <XStack gap="$2" flexWrap="wrap">
-                {equipment.map((item) => (
-                  <Card key={item} bg="$gray3" px="$2" py="$1" rounded="$2">
-                    <Text fontSize="$2" color="$color11">
-                      {item}
-                    </Text>
-                  </Card>
-                ))}
-              </XStack>
-            </YStack>
+            <Text fontSize={13} fontFamily="$body" color="$color9">
+              Equipment: {equipment.join(' • ')}
+            </Text>
           )}
 
           {/* Notes */}
           {notes && (
-            <Card bg="$yellow2" p="$3" rounded="$2">
-              <Text fontSize="$2" color="$yellow11">
+            <YStack bg="$yellow2" p="$3" rounded="$2">
+              <Text fontSize={13} fontFamily="$body" color="$yellow11">
                 <Text fontWeight="600">Note: </Text>
                 {notes}
               </Text>
-            </Card>
+            </YStack>
           )}
         </YStack>
       )}
-    </Card>
+    </YStack>
   )
 }
 
