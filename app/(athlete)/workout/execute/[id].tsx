@@ -606,6 +606,7 @@ export default function WorkoutExecutionScreen() {
                   prescribedSets={currentExercise.scaledSets ?? currentExercise.sets}
                   onSetUpdate={handleSetUpdate}
                   intensityColor={intensityColors.primary}
+                  intensityLightColor={intensityColors.light}
                 />
               )}
 
