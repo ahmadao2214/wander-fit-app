@@ -12,6 +12,7 @@ import {
 } from '@tamagui/lucide-icons'
 import { Id } from '../../convex/_generated/dataModel'
 import LottieView from 'lottie-react-native'
+import { getSportInitials } from '../../lib'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
@@ -75,15 +76,8 @@ const SportIcon = ({ name, size = 56, isSelected = false }: SportIconProps) => {
     )
   }
 
-  // Fallback: Extract initials
-  const initials = name
-    .split(/[\s()/]+/)
-    .filter(word => word.length > 0)
-    .map(word => word[0])
-    .filter(char => /[A-Za-z]/.test(char))
-    .join('')
-    .slice(0, 2)
-    .toUpperCase()
+  // Fallback: Extract initials using shared utility
+  const initials = getSportInitials(name)
 
   return (
     <Circle 

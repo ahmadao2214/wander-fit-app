@@ -9,19 +9,7 @@ import {
   ChevronLeft,
   TrendingUp,
 } from '@tamagui/lucide-icons'
-import { getSkillLevel, getTrainingPhase } from '../../lib'
-
-/**
- * Get slider color based on years of experience (intensity gradient)
- * 0-3 years: Green (Low intensity)
- * 4-6 years: Amber (Medium intensity)
- * 7-10+ years: Red (High intensity)
- */
-const getExperienceSliderColor = (years: number): string => {
-  if (years <= 3) return '$intensityLow6'
-  if (years <= 6) return '$intensityMed6'
-  return '$intensityHigh6'
-}
+import { getSkillLevel, getExperienceSliderColor } from '../../lib'
 
 /**
  * Experience & Training Days Screen

@@ -10,6 +10,11 @@ export default defineConfig({
       "convex/__tests__/**/*.test.ts",
       "lib/__tests__/**/*.test.ts",
     ],
+
+    // Allow importing from tamagui.config.ts
+    alias: {
+      "tamagui": "@tamagui/core",
+    },
     
     // Exclude patterns
     exclude: ["node_modules", "dist"],
