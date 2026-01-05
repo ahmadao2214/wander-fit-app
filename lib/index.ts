@@ -9,7 +9,8 @@ export { getSkillLevel, getTrainingPhase } from "./calculations";
 export type { TrainingPhase } from "./calculations";
 
 // Workout utilities
-export { parseReps, isCardioExercise, CARDIO_TAGS } from "./workout";
+export { parseReps, isCardioExercise, CARDIO_TAGS, mapIntensityToLevel } from "./workout";
+export type { IntensityLevel, BackendIntensity } from "./workout";
 
 // Drag reorder logic
 export {
