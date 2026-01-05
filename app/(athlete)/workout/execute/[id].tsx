@@ -474,8 +474,6 @@ export default function WorkoutExecutionScreen() {
   const exerciseDetails = currentExercise.exercise
   const completedCount = exerciseCompletions.filter(e => e.completed).length
   const isLastExercise = currentExerciseIndex === orderedExercises.length - 1
-  const isCurrentCompleted = currentCompletion?.completed
-  const progressPercent = Math.round((completedCount / orderedExercises.length) * 100)
 
   return (
     <YStack flex={1} bg="$background" items="center">
@@ -485,7 +483,7 @@ export default function WorkoutExecutionScreen() {
         <YStack>
           {/* Intensity color bar */}
           <YStack height={4} bg={intensityColors.primary} />
-          
+
           <XStack
             px="$4"
             pt={insets.top + 8}
@@ -493,8 +491,6 @@ export default function WorkoutExecutionScreen() {
             items="center"
             justify="space-between"
             bg="$surface"
-            borderBottomWidth={1}
-            borderBottomColor="$borderColor"
           >
             <Button
               size="$3"
@@ -506,28 +502,25 @@ export default function WorkoutExecutionScreen() {
               pressStyle={{ opacity: 0.8 }}
               onPress={() => setShowExitDialog(true)}
             />
-            
-            <YStack items="center" gap="$1">
-              <XStack items="center" gap="$2">
-                <Text 
-                  fontSize={14} 
-                  fontFamily="$body" fontWeight="700"
-                  color="$color12"
-                >
-                  {currentExerciseIndex + 1} / {orderedExercises.length}
-                </Text>
-                <IntensityBadge intensity={intensity} />
-              </XStack>
-              {/* Progress bar */}
-              <XStack width={100} height={4} bg="$borderColor" rounded={2} overflow="hidden">
-                <YStack 
-                  width={`${progressPercent}%`} 
-                  height="100%" 
-                  bg={intensityColors.primary}
-                  rounded={2}
-                />
-              </XStack>
-            </YStack>
+
+            {/* Dot Stepper Progress */}
+            <XStack items="center" gap="$1.5">
+              {orderedExercises.map((_, idx) => {
+                const isCompleted = exerciseCompletions[idx]?.completed
+                const isCurrent = idx === currentExerciseIndex
+                return (
+                  <YStack
+                    key={idx}
+                    width={isCurrent ? 10 : 8}
+                    height={isCurrent ? 10 : 8}
+                    rounded={100}
+                    bg={isCompleted ? intensityColors.primary : isCurrent ? 'transparent' : '$color5'}
+                    borderWidth={isCurrent ? 2 : 0}
+                    borderColor={isCurrent ? intensityColors.primary : undefined}
+                  />
+                )
+              })}
+            </XStack>
 
             <XStack items="center" gap="$1.5">
               <Timer size={16} color={intensityColors.primary} />
