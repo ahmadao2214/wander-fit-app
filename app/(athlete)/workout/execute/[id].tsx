@@ -30,7 +30,7 @@ import { InstructionsAccordion } from '../../../../components/workout/Instructio
 import { ExerciseQueue } from '../../../../components/workout/ExerciseQueue'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { PanResponder, Platform, Vibration, Animated, useColorScheme } from 'react-native'
-import { IntensityLevel } from '../../../../tamagui.config'
+import { mapIntensityToLevel, IntensityLevel } from '../../../../lib'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
@@ -192,38 +192,35 @@ export default function WorkoutExecutionScreen() {
   const currentIndexRef = useRef(currentExerciseIndex)
   const exerciseCountRef = useRef(0)
 
-  // Map backend intensity ("Low"/"Moderate"/"High") to frontend IntensityLevel
-  const intensity: IntensityLevel = useMemo(() => {
-    const mapping: Record<string, IntensityLevel> = {
-      'Low': 'low',
-      'Moderate': 'medium',
-      'High': 'high',
-    }
-    return mapping[session?.targetIntensity || 'Moderate'] || 'medium'
-  }, [session?.targetIntensity])
+  // Map backend intensity to frontend IntensityLevel
+  const intensity = useMemo(
+    () => mapIntensityToLevel(session?.targetIntensity),
+    [session?.targetIntensity]
+  )
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
 
   // Intensity-based colors
   // In dark mode, the scale is inverted (1-6 dark, 7-12 light)
   // For backgrounds, we use level 3 in dark mode for visibility, level 2 in light mode
-  const intensityColors = {
+  const intensityColorMap = {
     low: {
-      primary: '$intensityLow6' as const,
-      light: (isDark ? '$intensityLow3' : '$intensityLow2') as const,
-      text: '$intensityLow11' as const,
+      primary: '$intensityLow6',
+      light: isDark ? '$intensityLow3' : '$intensityLow2',
+      text: '$intensityLow11',
     },
     medium: {
-      primary: '$intensityMed6' as const,
-      light: (isDark ? '$intensityMed3' : '$intensityMed2') as const,
-      text: '$intensityMed11' as const,
+      primary: '$intensityMed6',
+      light: isDark ? '$intensityMed3' : '$intensityMed2',
+      text: '$intensityMed11',
     },
     high: {
-      primary: '$intensityHigh6' as const,
-      light: (isDark ? '$intensityHigh3' : '$intensityHigh2') as const,
-      text: '$intensityHigh11' as const,
+      primary: '$intensityHigh6',
+      light: isDark ? '$intensityHigh3' : '$intensityHigh2',
+      text: '$intensityHigh11',
     },
-  }[intensity]
+  } as const
+  const intensityColors = intensityColorMap[intensity]
 
   // Keep refs in sync
   useEffect(() => {
