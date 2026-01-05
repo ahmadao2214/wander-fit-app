@@ -192,9 +192,15 @@ export default function WorkoutExecutionScreen() {
   const currentIndexRef = useRef(currentExerciseIndex)
   const exerciseCountRef = useRef(0)
 
-  // Get intensity level - default to medium for now
-  // TODO: Add targetIntensity to session schema when intensity selection is implemented
-  const intensity: IntensityLevel = 'medium'
+  // Map backend intensity ("Low"/"Moderate"/"High") to frontend IntensityLevel
+  const intensity: IntensityLevel = useMemo(() => {
+    const mapping: Record<string, IntensityLevel> = {
+      'Low': 'low',
+      'Moderate': 'medium',
+      'High': 'high',
+    }
+    return mapping[session?.targetIntensity || 'Moderate'] || 'medium'
+  }, [session?.targetIntensity])
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
 
