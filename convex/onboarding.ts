@@ -284,13 +284,10 @@ export const startOnboarding = mutation({
           currentScreen: 0,
           updatedAt: now,
         });
+      } else if (!existingProgress.completedAt && !existingProgress.skippedAt) {
+        // Only update if not completed/skipped - allow resuming in-progress onboarding
+        // Do nothing, return existing progress
       }
-
-      return {
-        progressId: existingProgress._id,
-        currentScreen: args.isRevisit ? 0 : existingProgress.currentScreen,
-        isRevisit: args.isRevisit ?? false,
-      };
     }
 
     // Create new progress record
