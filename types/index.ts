@@ -67,6 +67,75 @@ export type IntakeResponse = Doc<"intake_responses">;
 export type GppWorkoutSession = Doc<"gpp_workout_sessions">;
 export type UserProgress = Doc<"user_progress">;
 export type UserMax = Doc<"user_maxes">;
+export type UserOnboardingProgress = Doc<"user_onboarding_progress">;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Onboarding Education Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Onboarding screen identifiers
+ * Order matches the flow: Welcome → Phase Education → Timeline → How It Works
+ */
+export type OnboardingScreenId =
+  | "welcome"
+  | "assessment-complete"
+  | "what-to-expect"
+  | "phase-gpp"
+  | "phase-spp"
+  | "phase-ssp"
+  | "timeline"
+  | "commitment"
+  | "how-workouts-work"
+  | "ready-to-start";
+
+/**
+ * Onboarding section identifiers
+ */
+export type OnboardingSectionId =
+  | "welcome"
+  | "phaseEducation"
+  | "timeline"
+  | "howItWorks";
+
+/**
+ * Onboarding progress state returned by the hook
+ */
+export interface OnboardingProgressState {
+  hasStarted: boolean;
+  currentScreen: number;
+  currentScreenId: OnboardingScreenId;
+  totalScreens: number;
+  isCompleted: boolean;
+  isSkipped: boolean;
+  screensViewed: OnboardingScreenId[];
+  progress: number; // 0-100 percentage
+  completedAt?: number;
+  skippedAt?: number;
+  revisitCount?: number;
+}
+
+/**
+ * Onboarding screen data for rendering
+ */
+export interface OnboardingScreenData {
+  screenId: OnboardingScreenId;
+  screenIndex: number;
+  totalScreens: number;
+  isFirst: boolean;
+  isLast: boolean;
+  // Personalized data
+  userName: string;
+  sport: string | null;
+  category: {
+    id: number;
+    name: string;
+    shortName: string;
+    description: string;
+  } | null;
+  skillLevel: string | null;
+  trainingDays: number | null;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GPP Exercise Types
