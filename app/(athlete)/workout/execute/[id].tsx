@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { 
-  YStack, 
-  XStack, 
-  Text, 
-  Card, 
+import {
+  YStack,
+  XStack,
+  Text,
   Button,
   Spinner,
   AlertDialog,
@@ -584,21 +583,13 @@ export default function WorkoutExecutionScreen() {
 
               {/* Set Tracker */}
               {currentCompletion && (
-                <Card 
-                  p="$4" 
-                  bg="$surface"
-                  rounded="$4"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                >
-                  <SetTracker
-                    sets={currentCompletion.sets}
-                    prescribedReps={currentExercise.scaledReps ?? currentExercise.reps}
-                    prescribedSets={currentExercise.scaledSets ?? currentExercise.sets}
-                    onSetUpdate={handleSetUpdate}
-                    intensityColor={intensityColors.primary}
-                  />
-                </Card>
+                <SetTracker
+                  sets={currentCompletion.sets}
+                  prescribedReps={currentExercise.scaledReps ?? currentExercise.reps}
+                  prescribedSets={currentExercise.scaledSets ?? currentExercise.sets}
+                  onSetUpdate={handleSetUpdate}
+                  intensityColor={intensityColors.primary}
+                />
               )}
 
               {/* Instructions Accordion */}

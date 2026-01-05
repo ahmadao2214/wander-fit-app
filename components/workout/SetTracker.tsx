@@ -127,7 +127,6 @@ export function SetTracker({
           {sets.map((set, index) => {
             const isCompleted = set.completed
             const isSkipped = set.skipped
-            const isFirst = index === 0 && !sets.some(s => s.completed || s.skipped)
 
             return (
               <TouchableOpacity
@@ -200,17 +199,6 @@ export function SetTracker({
                       </Text>
                     )}
                     
-                    {/* First set hint */}
-                    {isFirst && (
-                      <Text 
-                        fontSize={10} 
-                        color="$color9" 
-                        fontFamily="$body"
-                        mt="$0.5"
-                      >
-                        Tap to complete
-                      </Text>
-                    )}
                   </YStack>
                 </Card>
               </TouchableOpacity>
