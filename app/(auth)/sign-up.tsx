@@ -9,7 +9,10 @@ import * as AuthSession from 'expo-auth-session'
 import { PublicOnlyRoute } from '../../components/AuthGuard'
 import { useAuth } from '../../hooks/useAuth'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Zap, UserPlus } from '@tamagui/lucide-icons'
+import { Zap, UserPlus, User, Users } from '@tamagui/lucide-icons'
+import { RadioButton } from '../../components/RadioButton'
+import { GoogleIcon } from '../../components/GoogleIcon'
+import { VerificationCodeInput } from '../../components/VerificationCodeInput'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
@@ -357,23 +360,27 @@ export default function SignUpScreen() {
                     value={role}
                     onValueChange={(value) => setRole(value as 'trainer' | 'client')}
                   >
-                    <XStack gap="$4">
-                      <XStack items="center" gap="$2">
-                        <RadioGroup.Item value="client" id="client-setup" />
-                        <Label htmlFor="client-setup" fontFamily="$body">Athlete</Label>
-                      </XStack>
-                      <XStack items="center" gap="$2">
-                        <RadioGroup.Item value="trainer" id="trainer-setup" />
-                        <Label htmlFor="trainer-setup" fontFamily="$body">Trainer</Label>
-                      </XStack>
+                    <XStack gap="$3">
+                      <RadioButton
+                        value="client"
+                        id="client-setup"
+                        label="Athlete"
+                        description="Follow a training program"
+                        checked={role === 'client'}
+                        icon={User}
+                        onPress={() => setRole('client')}
+                      />
+                      <RadioButton
+                        value="trainer"
+                        id="trainer-setup"
+                        label="Trainer"
+                        description="Create programs for athletes"
+                        checked={role === 'trainer'}
+                        icon={Users}
+                        onPress={() => setRole('trainer')}
+                      />
                     </XStack>
                   </RadioGroup>
-                  <Text fontSize={13} color="$color10" fontFamily="$body">
-                    {role === 'client' 
-                      ? 'I want to follow a training program' 
-                      : 'I want to create programs for my athletes'
-                    }
-                  </Text>
                 </YStack>
 
                 {/* Name Input */}
@@ -403,7 +410,8 @@ export default function SignUpScreen() {
                   fontFamily="$body" fontWeight="700"
                   rounded="$4"
                   opacity={isCreatingUser ? 0.7 : 1}
-                  pressStyle={{ opacity: 0.9, scale: 0.98 }}
+                  hoverStyle={{ bg: '#1d4ed8', opacity: 0.95 }}
+                  pressStyle={{ bg: '#1e40af', scale: 0.98 }}
                 >
                   {isCreatingUser ? 'Setting up...' : 'Complete Setup'}
                 </Button>
@@ -414,11 +422,13 @@ export default function SignUpScreen() {
                 <Text fontSize={13} color="$color10" fontFamily="$body">
                   Not you?
                 </Text>
-                <Text 
-                  fontSize={13} 
+                <Text
+                  fontSize={13}
                   fontFamily="$body" fontWeight="600"
                   color="$primary"
                   onPress={onSignOutPress}
+                  cursor="pointer"
+                  hoverStyle={{ opacity: 0.8 }}
                 >
                   Sign out
                 </Text>
@@ -462,20 +472,10 @@ export default function SignUpScreen() {
               </YStack>
 
               <YStack gap="$4">
-                <Input
+                <VerificationCodeInput
                   value={code}
-                  placeholder="Enter verification code"
-                  onChangeText={(code) => setCode(code)}
-                  size="$5"
-                  bg="$surface"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                  rounded="$4"
-                  fontFamily="$body"
-                  text="center"
-                  fontSize={20}
-                  letterSpacing={4}
-                  focusStyle={{ borderColor: '$primary', borderWidth: 2 }}
+                  onChange={setCode}
+                  length={6}
                 />
                 <Button
                   onPress={onVerifyPress}
@@ -485,7 +485,8 @@ export default function SignUpScreen() {
                   color="white"
                   fontFamily="$body" fontWeight="700"
                   rounded="$4"
-                  pressStyle={{ opacity: 0.9, scale: 0.98 }}
+                  hoverStyle={{ bg: '#1d4ed8', opacity: 0.95 }}
+                  pressStyle={{ bg: '#1e40af', scale: 0.98 }}
                 >
                   {isCreatingUser ? 'Creating account...' : 'Verify & Continue'}
                 </Button>
@@ -549,36 +550,43 @@ export default function SignUpScreen() {
                     value={role}
                     onValueChange={(value) => setRole(value as 'trainer' | 'client')}
                   >
-                    <XStack gap="$4">
-                      <XStack items="center" gap="$2">
-                        <RadioGroup.Item value="client" id="client" />
-                        <Label htmlFor="client" fontFamily="$body">Athlete</Label>
-                      </XStack>
-                      <XStack items="center" gap="$2">
-                        <RadioGroup.Item value="trainer" id="trainer" />
-                        <Label htmlFor="trainer" fontFamily="$body">Trainer</Label>
-                      </XStack>
+                    <XStack gap="$3">
+                      <RadioButton
+                        value="client"
+                        id="client"
+                        label="Athlete"
+                        description="Follow a training program"
+                        checked={role === 'client'}
+                        icon={User}
+                        onPress={() => setRole('client')}
+                      />
+                      <RadioButton
+                        value="trainer"
+                        id="trainer"
+                        label="Trainer"
+                        description="Create programs for athletes"
+                        checked={role === 'trainer'}
+                        icon={Users}
+                        onPress={() => setRole('trainer')}
+                      />
                     </XStack>
                   </RadioGroup>
-                  <Text fontSize={13} color="$color10" fontFamily="$body">
-                    {role === 'client' 
-                      ? 'I want to follow a training program' 
-                      : 'I want to create programs for my athletes'
-                    }
-                  </Text>
                 </YStack>
 
                 {/* OAuth Section */}
                 <Button
                   onPress={onOAuthSignUpPress}
                   size="$5"
-                  bg="$surface"
-                  borderWidth={2}
-                  borderColor="$borderColor"
-                  fontFamily="$body" fontWeight="600"
-                  color="$color12"
-                  rounded="$4"
-                  pressStyle={{ bg: '$surfaceHover' }}
+                  bg="white"
+                  borderWidth={1}
+                  borderColor="#dadce0"
+                  fontFamily="$body" fontWeight="500"
+                  color="#3c4043"
+                  rounded="$3"
+                  hoverStyle={{ bg: '#f1f3f4', borderColor: '#c0c4c7' }}
+                  pressStyle={{ bg: '#e8eaed', scale: 0.98 }}
+                  icon={<GoogleIcon size={20} />}
+                  iconAfter={false}
                 >
                   Continue with Google
                 </Button>
@@ -657,7 +665,8 @@ export default function SignUpScreen() {
                   color="white"
                   fontFamily="$body" fontWeight="700"
                   rounded="$4"
-                  pressStyle={{ opacity: 0.9, scale: 0.98 }}
+                  hoverStyle={{ bg: '#1d4ed8', opacity: 0.95 }}
+                  pressStyle={{ bg: '#1e40af', scale: 0.98 }}
                 >
                   Continue with Email
                 </Button>
@@ -669,7 +678,7 @@ export default function SignUpScreen() {
                   Already have an account?
                 </Text>
                 <Link href="/sign-in">
-                  <Text fontFamily="$body" fontWeight="600" color="$primary">
+                  <Text fontFamily="$body" fontWeight="600" color="$primary" cursor="pointer" hoverStyle={{ opacity: 0.8 }}>
                     Sign in
                   </Text>
                 </Link>

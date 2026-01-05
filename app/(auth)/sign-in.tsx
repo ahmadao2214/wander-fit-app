@@ -8,6 +8,7 @@ import * as AuthSession from 'expo-auth-session'
 import { PublicOnlyRoute } from '../../components/AuthGuard'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Zap } from '@tamagui/lucide-icons'
+import { GoogleIcon } from '../../components/GoogleIcon'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
@@ -209,13 +210,16 @@ export default function SignInPage() {
                 <Button
                   onPress={onOAuthPress}
                   size="$5"
-                  bg="$surface"
-                  borderWidth={2}
-                  borderColor="$borderColor"
-                  fontFamily="$body" fontWeight="600"
-                  color="$color12"
-                  rounded="$4"
-                  pressStyle={{ bg: '$surfaceHover' }}
+                  bg="white"
+                  borderWidth={1}
+                  borderColor="#dadce0"
+                  fontFamily="$body" fontWeight="500"
+                  color="#3c4043"
+                  rounded="$3"
+                  hoverStyle={{ bg: '#f1f3f4', borderColor: '#c0c4c7' }}
+                  pressStyle={{ bg: '#e8eaed', scale: 0.98 }}
+                  icon={<GoogleIcon size={20} />}
+                  iconAfter={false}
                 >
                   Continue with Google
                 </Button>
@@ -305,7 +309,8 @@ export default function SignInPage() {
                   fontFamily="$body" fontWeight="700"
                   rounded="$4"
                   opacity={isSigningIn ? 0.7 : 1}
-                  pressStyle={{ opacity: 0.9, scale: 0.98 }}
+                  hoverStyle={{ bg: '#1d4ed8', opacity: 0.95 }}
+                  pressStyle={{ bg: '#1e40af', scale: 0.98 }}
                 >
                   {isSigningIn ? 'Signing in...' : 'Sign In'}
                 </Button>
@@ -317,7 +322,7 @@ export default function SignInPage() {
                   Don't have an account?
                 </Text>
                 <Link href="/sign-up">
-                  <Text fontFamily="$body" fontWeight="600" color="$primary">
+                  <Text fontFamily="$body" fontWeight="600" color="$primary" cursor="pointer" hoverStyle={{ opacity: 0.8 }}>
                     Sign up
                   </Text>
                 </Link>
