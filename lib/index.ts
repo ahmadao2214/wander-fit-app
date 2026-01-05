@@ -8,6 +8,10 @@
 export { getSkillLevel, getTrainingPhase } from "./calculations";
 export type { TrainingPhase } from "./calculations";
 
+// Intake UI utilities
+export { getExperienceSliderColor, getSportInitials } from "./intakeUI";
+export type { IntensityColorToken } from "./intakeUI";
+
 // Workout utilities
 export { parseReps, isCardioExercise, CARDIO_TAGS } from "./workout";
 
