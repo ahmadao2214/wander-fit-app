@@ -38,21 +38,21 @@ export function OnboardingButton({
     switch (variant) {
       case 'primary':
         return {
-          bg: '$green10',
-          pressStyle: { bg: '$green11' },
-          textColor: 'white',
+          bg: '$green10' as const,
+          pressStyleBg: '$green11' as const,
+          textColor: 'white' as const,
         }
       case 'secondary':
         return {
-          bg: '$gray4',
-          pressStyle: { bg: '$gray5' },
-          textColor: '$gray12',
+          bg: '$gray4' as const,
+          pressStyleBg: '$gray5' as const,
+          textColor: '$gray12' as const,
         }
       case 'ghost':
         return {
-          bg: 'transparent',
-          pressStyle: { bg: '$gray2' },
-          textColor: '$gray11',
+          bg: '$colorTransparent' as const,
+          pressStyleBg: '$gray2' as const,
+          textColor: '$gray11' as const,
         }
     }
   }
@@ -63,7 +63,7 @@ export function OnboardingButton({
     <Button
       size={size}
       bg={styles.bg}
-      pressStyle={styles.pressStyle}
+      pressStyle={{ bg: styles.pressStyleBg }}
       onPress={onPress}
       disabled={isDisabled}
       opacity={isDisabled ? 0.6 : 1}

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { YStack, Text, Circle } from 'tamagui'
-import { Pressable, Platform } from 'react-native'
+import { Pressable, Platform, Vibration } from 'react-native'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -9,7 +9,6 @@ import Animated, {
   runOnJS,
   Easing,
 } from 'react-native-reanimated'
-import * as Haptics from 'expo-haptics'
 
 interface CommitmentButtonProps {
   /** Called when the button is held for the full duration */
@@ -53,19 +52,20 @@ export function CommitmentButton({
   const holdTimer = useRef<ReturnType<typeof setInterval> | null>(null)
   const startTime = useRef<number>(0)
 
-  // Haptic feedback
+  // Haptic feedback using native Vibration API (fallback without expo-haptics)
   const triggerHaptic = useCallback((type: 'light' | 'medium' | 'success') => {
     if (Platform.OS === 'web') return
 
+    // Use basic vibration patterns as fallback
     switch (type) {
       case 'light':
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+        Vibration.vibrate(10)
         break
       case 'medium':
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+        Vibration.vibrate(20)
         break
       case 'success':
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+        Vibration.vibrate([0, 50, 50, 50])
         break
     }
   }, [])
@@ -132,16 +132,6 @@ export function CommitmentButton({
     }
   }, [])
 
-  // Animated styles for progress ring
-  const progressStyle = useAnimatedStyle(() => {
-    const circumference = Math.PI * (size - 8)
-    const strokeDashoffset = circumference * (1 - progress.value)
-
-    return {
-      strokeDashoffset,
-    }
-  })
-
   const containerStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }))
@@ -176,7 +166,7 @@ export function CommitmentButton({
             position="absolute"
             width={size}
             height={size}
-            br={size / 2}
+            rounded="$10"
             borderWidth={strokeWidth}
             borderColor={isComplete ? '$green10' : '$green8'}
             opacity={isHolding || isComplete ? 1 : 0.3}
@@ -207,7 +197,6 @@ export function CommitmentButton({
       <Text
         fontSize="$3"
         color={isComplete ? '$green11' : '$gray10'}
-        textAlign="center"
       >
         {isComplete ? "You're committed!" : instruction}
       </Text>

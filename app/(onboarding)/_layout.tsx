@@ -26,6 +26,10 @@ export default function OnboardingLayout() {
         }}
       >
         <Stack.Screen name="index" />
+        {/* Section 1: Welcome & Journey Introduction */}
+        <Stack.Screen name="welcome" />
+        <Stack.Screen name="phases-overview" />
+        <Stack.Screen name="why-it-works" />
       </Stack>
     </OnboardingRoute>
   )
