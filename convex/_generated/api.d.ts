@@ -18,6 +18,7 @@ import type * as generateTemplates from "../generateTemplates.js";
 import type * as gppWorkoutSessions from "../gppWorkoutSessions.js";
 import type * as intensityScaling from "../intensityScaling.js";
 import type * as invitations from "../invitations.js";
+import type * as onboarding from "../onboarding.js";
 import type * as programTemplates from "../programTemplates.js";
 import type * as sampleData from "../sampleData.js";
 import type * as scheduleOverrides from "../scheduleOverrides.js";
@@ -44,6 +45,7 @@ declare const fullApi: ApiFromModules<{
   gppWorkoutSessions: typeof gppWorkoutSessions;
   intensityScaling: typeof intensityScaling;
   invitations: typeof invitations;
+  onboarding: typeof onboarding;
   programTemplates: typeof programTemplates;
   sampleData: typeof sampleData;
   scheduleOverrides: typeof scheduleOverrides;
