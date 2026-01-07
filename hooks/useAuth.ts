@@ -142,6 +142,8 @@ export function useAuth() {
     clerkUser,
     // Helper functions
     hasCompletedIntake: !!safeAuthState.user?.intakeCompletedAt,
+    hasCompletedOnboarding: !!safeAuthState.user?.onboardingCompletedAt,
+    needsOnboarding: !!safeAuthState.user?.intakeCompletedAt && !safeAuthState.user?.onboardingCompletedAt,
     isTrainer: safeAuthState.role === 'trainer',
     isAthlete: safeAuthState.role === 'client', // 'client' = athlete in our model
   }
@@ -193,4 +195,21 @@ export function useIsTrainer() {
 export function useIsAthlete() {
   const { role } = useAuth()
   return role === 'client'
+}
+
+/**
+ * Check if user has completed onboarding
+ */
+export function useHasCompletedOnboarding() {
+  const { user } = useAuth()
+  return !!user?.onboardingCompletedAt
+}
+
+/**
+ * Check if user needs to see onboarding
+ * Returns true if intake is complete but onboarding is not
+ */
+export function useNeedsOnboarding() {
+  const { needsOnboarding } = useAuth()
+  return needsOnboarding
 }
