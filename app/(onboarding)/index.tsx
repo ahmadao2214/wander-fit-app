@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useRouter } from 'expo-router'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
@@ -13,21 +13,31 @@ import { analytics } from '../../lib/analytics'
  */
 export default function OnboardingIndex() {
   const router = useRouter()
+  const hasInitialized = useRef(false)
 
   // Get onboarding state
   const onboardingState = useQuery(api.onboarding.getOnboardingState)
   const startOnboarding = useMutation(api.onboarding.startOnboarding)
 
   useEffect(() => {
+    // Wait for query to load
     if (onboardingState === undefined) return
+
+    // Prevent running more than once
+    if (hasInitialized.current) return
+    hasInitialized.current = true
 
     const initAndRedirect = async () => {
       // Track onboarding started
       const isRevisit = onboardingState?.isRevisit ?? false
       analytics.trackOnboardingStarted(10, isRevisit)
 
-      // Initialize onboarding if not started
-      await startOnboarding()
+      // Only initialize if onboarding progress hasn't been set yet
+      // This prevents unnecessary database writes
+      if (onboardingState?.onboardingProgress === undefined ||
+          onboardingState?.onboardingProgress === null) {
+        await startOnboarding()
+      }
 
       // Determine which screen to show based on progress
       const progress = onboardingState?.onboardingProgress ?? 0
@@ -51,7 +61,8 @@ export default function OnboardingIndex() {
     }
 
     initAndRedirect()
-  }, [onboardingState, router, startOnboarding])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onboardingState])
 
   return (
     <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
