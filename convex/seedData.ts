@@ -268,25 +268,32 @@ export const EQUIPMENT_GLOSSARY = [
   "barbell",
   "trap_bar",
   "medicine_ball",
-  
+
   // Benches & Boxes
   "bench",
   "incline_bench",
   "plyo_box",
   "box",
-  
+
   // Racks & Bars
   "rack",
   "pull_up_bar",
-  
+
   // Machines & Cables
   "cable_machine",
-  
+
   // Accessories
   "band",
   "rings",
   "wall",
 
+<<<<<<< HEAD
+=======
+  // Specialty Equipment
+  "sled",
+  "stability_ball",
+
+>>>>>>> fc13339 (feat: Add age groups, phase intensity rules, and template generator for MVP)
   // Bodyweight (no equipment)
   "bodyweight",
 
@@ -1023,6 +1030,94 @@ export const EXERCISES = [
     tags: ["full_body", "conditioning", "warmup", "dynamic", "agility"],
     equipment: ["bodyweight"],
     difficulty: "beginner" as const,
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // ADDITIONAL EXERCISES (From Spreadsheet)
+  // ─────────────────────────────────────────────────────────────────────────────
+  {
+    name: "Glute Bridge",
+    slug: "glute_bridge",
+    tags: ["lower_body", "hinge", "bilateral", "glute", "strength"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+    instructions:
+      "Lie on your back with knees bent and feet flat. Drive through heels to lift hips until body forms a straight line. Hold at top for 2 seconds, then lower with control.",
+  },
+  {
+    name: "Bicycle Crunch",
+    slug: "bicycle_crunch",
+    tags: ["core", "rotation", "conditioning", "dynamic"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+    instructions:
+      "Lie on back with hands behind head. Bring opposite elbow to opposite knee while extending the other leg. Alternate sides in a pedaling motion.",
+  },
+  {
+    name: "Hamstring Curl",
+    slug: "hamstring_curl",
+    tags: ["lower_body", "isolation", "hamstring", "strength"],
+    equipment: ["cable_machine"],
+    difficulty: "beginner" as const,
+    instructions:
+      "Using a leg curl machine, curl heels toward glutes while keeping hips pressed down. Control the weight on the way back.",
+  },
+  {
+    name: "Single Arm Plank",
+    slug: "single_arm_plank",
+    tags: ["core", "anti_rotation", "stability", "isometric"],
+    equipment: ["bodyweight"],
+    difficulty: "intermediate" as const,
+    instructions:
+      "From a standard plank position, lift one arm off the ground and hold. Keep hips level and avoid rotation. Alternate sides.",
+    progressions: {
+      easier: "plank",
+    },
+  },
+  {
+    name: "Shuttle Sprint",
+    slug: "shuttle_sprint",
+    tags: ["conditioning", "power", "agility", "lower_body"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+    instructions:
+      "Set up cones 10-25 yards apart. Sprint to the far cone, touch the ground, sprint back. Focus on quick direction changes and acceleration.",
+  },
+  {
+    name: "Stability Ball Plank",
+    slug: "stability_ball_plank",
+    tags: ["core", "anti_extension", "stability", "isometric"],
+    equipment: ["stability_ball"],
+    difficulty: "intermediate" as const,
+    instructions:
+      "Place forearms on a stability ball and extend legs behind you in a plank position. Hold while keeping the ball stable and core engaged.",
+    progressions: {
+      easier: "plank",
+    },
+  },
+  {
+    name: "Band Woodchop",
+    slug: "band_woodchop",
+    tags: ["core", "rotation", "functional", "power"],
+    equipment: ["band"],
+    difficulty: "beginner" as const,
+    instructions:
+      "Anchor band at shoulder height. Stand perpendicular, grip with both hands. Rotate torso to pull band diagonally across body. Control the return.",
+    progressions: {
+      harder: "cable_woodchop",
+    },
+  },
+  {
+    name: "Plyometric Push-Up",
+    slug: "plyo_push_up",
+    tags: ["upper_body", "push", "plyometric", "power", "explosive", "chest"],
+    equipment: ["bodyweight"],
+    difficulty: "intermediate" as const,
+    instructions:
+      "Perform a push-up but explode up so hands leave the ground. Land softly and immediately go into the next rep. Can clap hands at the top.",
+    progressions: {
+      easier: "push_up",
+    },
   },
 ];
 

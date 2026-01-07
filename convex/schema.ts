@@ -11,6 +11,12 @@ const skillLevelValidator = v.union(
   v.literal("Advanced")
 );
 
+const ageGroupValidator = v.union(
+  v.literal("10-13"),
+  v.literal("14-17"),
+  v.literal("18+")
+);
+
 /**
  * Phase Validator
  * 
@@ -261,25 +267,29 @@ export default defineSchema({
    */
   intake_responses: defineTable({
     userId: v.id("users"),
-    
+
     // Core intake questions
     sportId: v.id("sports"),
     yearsOfExperience: v.number(), // How many years of training
     preferredTrainingDaysPerWeek: v.number(), // 1-7
-    
+
+    // Age group - determines intensity ceiling
+    ageGroup: ageGroupValidator, // "10-13", "14-17", "18+"
+    dateOfBirth: v.optional(v.number()), // Timestamp for auto-calculation
+
     // Time-based intake (for planning)
     weeksUntilSeason: v.optional(v.number()), // How long until their season starts
-    
+
     // Calculated results
     assignedGppCategoryId: v.number(), // Derived from sport
     assignedSkillLevel: skillLevelValidator, // Derived from experience + assessments
-    
+
     // Assessment type
     intakeType: v.union(
       v.literal("initial"),      // First time intake
       v.literal("reassessment")  // After training block completion
     ),
-    
+
     // Meta
     completedAt: v.number(),
   })
@@ -297,6 +307,7 @@ export default defineSchema({
     // Assignment Results (from linked intake)
     gppCategoryId: v.number(), // 1-4
     skillLevel: skillLevelValidator, // "Novice", "Moderate", "Advanced"
+    ageGroup: ageGroupValidator, // "10-13", "14-17", "18+" - affects intensity ceiling
 
     // "Scheduled Workout" pointer
     currentPhase: phaseValidator, // The active phase
