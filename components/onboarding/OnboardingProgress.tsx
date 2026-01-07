@@ -21,7 +21,7 @@ export function OnboardingProgress({ current, total }: OnboardingProgressProps) 
           key={index}
           width={index === current ? 24 : 8}
           height={8}
-          br={4}
+          rounded="$2"
           bg={index <= current ? '$green10' : '$gray5'}
           animation="quick"
         />

@@ -72,7 +72,7 @@ export function PhaseCard({
   return (
     <YStack
       bg={bgColor}
-      br="$4"
+      rounded="$4"
       p="$4"
       borderWidth={2}
       borderColor={borderColor}
@@ -117,7 +117,7 @@ export function PhaseCard({
         <YStack
           width={32}
           height={32}
-          br={16}
+          rounded="$10"
           bg={isCurrent ? '$green4' : '$gray3'}
           items="center"
           justify="center"

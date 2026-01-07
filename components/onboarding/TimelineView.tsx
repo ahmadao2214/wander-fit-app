@@ -46,7 +46,7 @@ export function TimelineView({
             <YStack
               width={40}
               height={40}
-              br={20}
+              rounded="$10"
               bg={phase.isCurrent ? '$green10' : phase.isCompleted ? '$green8' : '$gray4'}
               items="center"
               justify="center"
@@ -74,11 +74,10 @@ export function TimelineView({
             {index < phases.length - 1 && (
               <YStack
                 position="absolute"
-                right={-10}
-                top={20}
                 width={20}
                 height={2}
                 bg={phase.isCompleted ? '$green8' : '$gray4'}
+                style={{ right: -10, top: 20 }}
               />
             )}
           </YStack>
@@ -107,7 +106,7 @@ export function TimelineView({
             <YStack
               width={40}
               height={40}
-              br={20}
+              rounded="$10"
               bg={phase.isCurrent ? '$green10' : phase.isCompleted ? '$green8' : '$gray4'}
               items="center"
               justify="center"
@@ -128,7 +127,7 @@ export function TimelineView({
               <YStack
                 flex={1}
                 width={2}
-                minHeight={16}
+                height={16}
                 bg={phase.isCompleted ? '$green8' : '$gray4'}
               />
             )}
@@ -147,7 +146,7 @@ export function TimelineView({
               </YStack>
 
               {phase.isCurrent && (
-                <YStack bg="$green4" px="$2" py="$1" br="$2">
+                <YStack bg="$green4" px="$2" py="$1" rounded="$2">
                   <Text fontSize="$1" color="$green11" fontWeight="600">
                     CURRENT
                   </Text>
@@ -175,7 +174,7 @@ export function TimelineView({
             <YStack
               width={32}
               height={32}
-              br={16}
+              rounded="$10"
               bg="$blue4"
               items="center"
               justify="center"
