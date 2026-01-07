@@ -274,7 +274,7 @@ export default defineSchema({
     preferredTrainingDaysPerWeek: v.number(), // 1-7
 
     // Age group - determines intensity ceiling
-    ageGroup: ageGroupValidator, // "10-13", "14-17", "18+"
+    ageGroup: v.optional(ageGroupValidator), // "10-13", "14-17", "18+" (optional for migration)
     dateOfBirth: v.optional(v.number()), // Timestamp for auto-calculation
 
     // Time-based intake (for planning)
@@ -307,7 +307,7 @@ export default defineSchema({
     // Assignment Results (from linked intake)
     gppCategoryId: v.number(), // 1-4
     skillLevel: skillLevelValidator, // "Novice", "Moderate", "Advanced"
-    ageGroup: ageGroupValidator, // "10-13", "14-17", "18+" - affects intensity ceiling
+    ageGroup: v.optional(ageGroupValidator), // "10-13", "14-17", "18+" - affects intensity ceiling (optional for migration)
 
     // "Scheduled Workout" pointer
     currentPhase: phaseValidator, // The active phase
