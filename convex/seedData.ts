@@ -287,6 +287,9 @@ export const EQUIPMENT_GLOSSARY = [
   "rings",
   "wall",
 
+  // Specialty Equipment
+  "stability_ball",
+
   // Bodyweight (no equipment)
   "bodyweight",
 
