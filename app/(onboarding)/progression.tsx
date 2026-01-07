@@ -3,6 +3,7 @@ import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { YStack, XStack, Text, Spinner, ScrollView } from 'tamagui'
 import { OnboardingScreen } from '../../components/onboarding'
+import { useOnboardingAnalytics, ONBOARDING_SCREEN_NAMES } from '../../hooks/useOnboardingAnalytics'
 import { Lock, Unlock, TrendingUp, Award } from '@tamagui/lucide-icons'
 
 /**
@@ -21,6 +22,14 @@ export default function ProgressionScreen() {
   const advanceOnboarding = useMutation(api.onboarding.advanceOnboarding)
   const skipOnboarding = useMutation(api.onboarding.skipOnboarding)
 
+  // Analytics tracking
+  const isRevisit = onboardingState?.isRevisit ?? false
+  const { trackScreenComplete, trackSkip } = useOnboardingAnalytics({
+    screenIndex: 8,
+    screenName: ONBOARDING_SCREEN_NAMES[8],
+    isRevisit,
+  })
+
   // Loading state
   if (onboardingState === undefined) {
     return (
@@ -31,11 +40,13 @@ export default function ProgressionScreen() {
   }
 
   const handleContinue = async () => {
+    trackScreenComplete()
     await advanceOnboarding({ screenIndex: 9 })
     router.push('/(onboarding)/first-workout' as any)
   }
 
   const handleSkip = async () => {
+    trackSkip()
     await skipOnboarding()
     router.replace('/(athlete)')
   }

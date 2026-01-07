@@ -49,7 +49,8 @@ export function CommitmentButton({
   const [isComplete, setIsComplete] = useState(false)
   const progress = useSharedValue(0)
   const scale = useSharedValue(1)
-  const holdTimer = useRef<ReturnType<typeof setInterval> | null>(null)
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const hapticInterval = useRef<ReturnType<typeof setInterval> | null>(null)
   const startTime = useRef<number>(0)
 
   // Haptic feedback using native Vibration API (fallback without expo-haptics)
@@ -97,12 +98,20 @@ export function CommitmentButton({
       runOnJS(handleComplete)()
     }, holdDuration)
 
+    // Clear any existing haptic interval
+    if (hapticInterval.current) {
+      clearInterval(hapticInterval.current)
+    }
+
     // Periodic haptic feedback during hold
-    const hapticInterval = setInterval(() => {
+    hapticInterval.current = setInterval(() => {
       if (Date.now() - startTime.current < holdDuration) {
         triggerHaptic('light')
       } else {
-        clearInterval(hapticInterval)
+        if (hapticInterval.current) {
+          clearInterval(hapticInterval.current)
+          hapticInterval.current = null
+        }
       }
     }, 500)
   }, [disabled, isComplete, holdDuration, progress, scale, triggerHaptic, handleComplete])
@@ -112,10 +121,14 @@ export function CommitmentButton({
 
     setIsHolding(false)
 
-    // Clear timer
+    // Clear timers
     if (holdTimer.current) {
       clearTimeout(holdTimer.current)
       holdTimer.current = null
+    }
+    if (hapticInterval.current) {
+      clearInterval(hapticInterval.current)
+      hapticInterval.current = null
     }
 
     // Reset progress
@@ -128,6 +141,9 @@ export function CommitmentButton({
     return () => {
       if (holdTimer.current) {
         clearTimeout(holdTimer.current)
+      }
+      if (hapticInterval.current) {
+        clearInterval(hapticInterval.current)
       }
     }
   }, [])

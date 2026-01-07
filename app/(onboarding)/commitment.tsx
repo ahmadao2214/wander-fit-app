@@ -3,6 +3,8 @@ import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { YStack, XStack, Text, Spinner, ScrollView } from 'tamagui'
 import { OnboardingScreen, CommitmentButton } from '../../components/onboarding'
+import { useOnboardingAnalytics, ONBOARDING_SCREEN_NAMES } from '../../hooks/useOnboardingAnalytics'
+import { analytics } from '../../lib/analytics'
 import { useState } from 'react'
 import { CheckCircle } from '@tamagui/lucide-icons'
 
@@ -24,6 +26,14 @@ export default function CommitmentScreen() {
   const advanceOnboarding = useMutation(api.onboarding.advanceOnboarding)
   const skipOnboarding = useMutation(api.onboarding.skipOnboarding)
 
+  // Analytics tracking
+  const isRevisit = onboardingState?.isRevisit ?? false
+  const { trackScreenComplete, trackSkip } = useOnboardingAnalytics({
+    screenIndex: 7,
+    screenName: ONBOARDING_SCREEN_NAMES[7],
+    isRevisit,
+  })
+
   // Loading state
   if (onboardingState === undefined || onboardingData === undefined) {
     return (
@@ -34,15 +44,18 @@ export default function CommitmentScreen() {
   }
 
   const handleCommit = () => {
+    analytics.trackCommitmentCompleted()
     setHasCommitted(true)
   }
 
   const handleContinue = async () => {
+    trackScreenComplete()
     await advanceOnboarding({ screenIndex: 8 })
     router.push('/(onboarding)/progression' as any)
   }
 
   const handleSkip = async () => {
+    trackSkip()
     await skipOnboarding()
     router.replace('/(athlete)')
   }

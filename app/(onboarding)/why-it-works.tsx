@@ -3,6 +3,7 @@ import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { YStack, XStack, Text, Spinner } from 'tamagui'
 import { OnboardingScreen } from '../../components/onboarding'
+import { useOnboardingAnalytics, ONBOARDING_SCREEN_NAMES } from '../../hooks/useOnboardingAnalytics'
 
 /**
  * Screen 1.3: Why This Works
@@ -20,6 +21,14 @@ export default function WhyItWorksScreen() {
   const advanceOnboarding = useMutation(api.onboarding.advanceOnboarding)
   const skipOnboarding = useMutation(api.onboarding.skipOnboarding)
 
+  // Analytics tracking
+  const isRevisit = onboardingState?.isRevisit ?? false
+  const { trackScreenComplete, trackSkip } = useOnboardingAnalytics({
+    screenIndex: 2,
+    screenName: ONBOARDING_SCREEN_NAMES[2],
+    isRevisit,
+  })
+
   // Loading state
   if (onboardingState === undefined) {
     return (
@@ -30,11 +39,13 @@ export default function WhyItWorksScreen() {
   }
 
   const handleContinue = async () => {
+    trackScreenComplete()
     await advanceOnboarding({ screenIndex: 3 })
     router.push('/(onboarding)/gpp-detail' as any)
   }
 
   const handleSkip = async () => {
+    trackSkip()
     await skipOnboarding()
     router.replace('/(athlete)')
   }
