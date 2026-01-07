@@ -212,6 +212,14 @@ export default defineSchema({
       notes: v.optional(v.string()), // "Focus on depth", "Warmup pace"
       orderIndex: v.number(),
       superset: v.optional(v.string()), // Group ID for supersets: "A", "B"
+      // Basketball program additions
+      intensityPercent: v.optional(v.number()), // e.g., 65 for "65% of 1RM"
+      section: v.optional(v.union(
+        v.literal("warmup"),
+        v.literal("main"),
+        v.literal("circuit"),
+        v.literal("finisher")
+      )), // Workout section grouping
     })),
   })
     .index("by_assignment", ["gppCategoryId", "phase", "skillLevel", "week", "day"])
