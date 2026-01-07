@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { YStack, Spinner, Text } from 'tamagui'
+import { analytics } from '../../lib/analytics'
 
 /**
  * Onboarding Index - Entry Point & Router
@@ -21,6 +22,10 @@ export default function OnboardingIndex() {
     if (onboardingState === undefined) return
 
     const initAndRedirect = async () => {
+      // Track onboarding started
+      const isRevisit = onboardingState?.isRevisit ?? false
+      analytics.trackOnboardingStarted(10, isRevisit)
+
       // Initialize onboarding if not started
       await startOnboarding()
 

@@ -49,12 +49,18 @@ export const getOnboardingState = query({
       return null;
     }
 
+    // Determine if this is a revisit (completed onboarding but progress reset to 0)
+    const isRevisit =
+      user.onboardingCompletedAt != null &&
+      (user.onboardingProgress === 0 || user.onboardingProgress === undefined);
+
     return {
       onboardingCompletedAt: user.onboardingCompletedAt ?? null,
       onboardingProgress: user.onboardingProgress ?? 0,
       onboardingSkipped: user.onboardingSkipped ?? false,
       intakeCompletedAt: user.intakeCompletedAt ?? null,
       totalScreens: TOTAL_ONBOARDING_SCREENS,
+      isRevisit,
     };
   },
 });

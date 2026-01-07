@@ -3,6 +3,7 @@ import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { YStack, XStack, Text, Spinner, ScrollView } from 'tamagui'
 import { OnboardingScreen, PHASE_DATA } from '../../components/onboarding'
+import { useOnboardingAnalytics, ONBOARDING_SCREEN_NAMES } from '../../hooks/useOnboardingAnalytics'
 import { Target, TrendingUp, Activity, Award } from '@tamagui/lucide-icons'
 
 /**
@@ -22,6 +23,14 @@ export default function SppDetailScreen() {
   const advanceOnboarding = useMutation(api.onboarding.advanceOnboarding)
   const skipOnboarding = useMutation(api.onboarding.skipOnboarding)
 
+  // Analytics tracking
+  const isRevisit = onboardingState?.isRevisit ?? false
+  const { trackScreenComplete, trackSkip } = useOnboardingAnalytics({
+    screenIndex: 4,
+    screenName: ONBOARDING_SCREEN_NAMES[4],
+    isRevisit,
+  })
+
   // Loading state
   if (onboardingState === undefined || onboardingData === undefined) {
     return (
@@ -32,11 +41,13 @@ export default function SppDetailScreen() {
   }
 
   const handleContinue = async () => {
+    trackScreenComplete()
     await advanceOnboarding({ screenIndex: 5 })
     router.push('/(onboarding)/ssp-detail' as any)
   }
 
   const handleSkip = async () => {
+    trackSkip()
     await skipOnboarding()
     router.replace('/(athlete)')
   }

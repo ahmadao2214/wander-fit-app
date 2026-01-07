@@ -3,6 +3,8 @@ import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { YStack, XStack, Text, Spinner, ScrollView, Button } from 'tamagui'
 import { OnboardingScreen } from '../../components/onboarding'
+import { useOnboardingAnalytics, ONBOARDING_SCREEN_NAMES } from '../../hooks/useOnboardingAnalytics'
+import { analytics } from '../../lib/analytics'
 import { Play, CheckCircle, Clock, Dumbbell } from '@tamagui/lucide-icons'
 
 /**
@@ -21,6 +23,14 @@ export default function FirstWorkoutScreen() {
   // Mutations
   const completeOnboarding = useMutation(api.onboarding.completeOnboarding)
 
+  // Analytics tracking
+  const isRevisit = onboardingState?.isRevisit ?? false
+  const { trackScreenComplete } = useOnboardingAnalytics({
+    screenIndex: 9,
+    screenName: ONBOARDING_SCREEN_NAMES[9],
+    isRevisit,
+  })
+
   // Loading state
   if (onboardingState === undefined || onboardingData === undefined) {
     return (
@@ -31,11 +41,15 @@ export default function FirstWorkoutScreen() {
   }
 
   const handleStartWorkout = async () => {
+    trackScreenComplete()
+    analytics.trackOnboardingCompleted(isRevisit)
     await completeOnboarding()
     router.replace('/(athlete)')
   }
 
   const handleViewProgram = async () => {
+    trackScreenComplete()
+    analytics.trackOnboardingCompleted(isRevisit)
     await completeOnboarding()
     router.replace('/(athlete)/program' as any)
   }
