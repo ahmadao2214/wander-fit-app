@@ -30,6 +30,10 @@ export default function OnboardingLayout() {
         <Stack.Screen name="welcome" />
         <Stack.Screen name="phases-overview" />
         <Stack.Screen name="why-it-works" />
+        {/* Section 2: Phase Education - GPP/SPP/SSP */}
+        <Stack.Screen name="gpp-detail" />
+        <Stack.Screen name="spp-detail" />
+        <Stack.Screen name="ssp-detail" />
       </Stack>
     </OnboardingRoute>
   )
