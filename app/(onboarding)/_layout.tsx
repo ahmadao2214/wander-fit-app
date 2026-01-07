@@ -34,6 +34,9 @@ export default function OnboardingLayout() {
         <Stack.Screen name="gpp-detail" />
         <Stack.Screen name="spp-detail" />
         <Stack.Screen name="ssp-detail" />
+        {/* Section 3: Personalized Timeline & Commitment */}
+        <Stack.Screen name="personal-timeline" />
+        <Stack.Screen name="commitment" />
       </Stack>
     </OnboardingRoute>
   )
