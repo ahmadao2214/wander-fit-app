@@ -192,6 +192,9 @@ export function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
 /**
  * OnboardingRoute - For authenticated users who completed intake but not onboarding
  * Used by the onboarding flow (educational screens after intake)
+ *
+ * Also allows revisit mode: users who have completed onboarding but have
+ * their progress reset to 0 can revisit the flow.
  */
 export function OnboardingRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading, user, needsSetup, needsOnboarding } = useAuth()
@@ -220,12 +223,16 @@ export function OnboardingRoute({ children }: { children: React.ReactNode }) {
     return <Redirect href="/(intake)/sport" />
   }
 
-  // Already completed onboarding → go to dashboard
-  if (!needsOnboarding) {
+  // Allow revisit mode: completed onboarding but progress is reset to 0
+  const isRevisitMode = user?.onboardingCompletedAt != null &&
+    (user?.onboardingProgress === 0 || user?.onboardingProgress === undefined)
+
+  // Already completed onboarding and not in revisit mode → go to dashboard
+  if (!needsOnboarding && !isRevisitMode) {
     return <Redirect href="/(athlete)" />
   }
 
-  // Show onboarding flow
+  // Show onboarding flow (either first time or revisit)
   return <>{children}</>
 }
 
