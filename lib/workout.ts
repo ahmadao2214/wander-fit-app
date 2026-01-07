@@ -53,3 +53,45 @@ export function isCardioExercise(tags: string[]): boolean {
   );
 }
 
+/**
+ * Frontend intensity levels for UI theming
+ */
+export type IntensityLevel = "low" | "medium" | "high";
+
+/**
+ * Backend intensity values from Convex schema
+ */
+export type BackendIntensity = "Low" | "Moderate" | "High";
+
+/**
+ * Mapping from backend intensity values to frontend IntensityLevel
+ */
+const INTENSITY_MAPPING: Record<BackendIntensity, IntensityLevel> = {
+  Low: "low",
+  Moderate: "medium",
+  High: "high",
+};
+
+/**
+ * Convert backend intensity value to frontend IntensityLevel
+ *
+ * @param backendIntensity - Intensity value from Convex ("Low" | "Moderate" | "High")
+ * @returns IntensityLevel - Frontend-friendly value ("low" | "medium" | "high")
+ *
+ * Examples:
+ * - "Low" → "low"
+ * - "Moderate" → "medium"
+ * - "High" → "high"
+ * - undefined → "medium" (default)
+ * - null → "medium" (default)
+ * - "Invalid" → "medium" (fallback)
+ */
+export function mapIntensityToLevel(
+  backendIntensity: string | undefined | null
+): IntensityLevel {
+  if (!backendIntensity) {
+    return "medium";
+  }
+  return INTENSITY_MAPPING[backendIntensity as BackendIntensity] || "medium";
+}
+

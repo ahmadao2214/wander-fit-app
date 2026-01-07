@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { 
-  YStack, 
-  XStack, 
-  Text, 
-  Card, 
+import {
+  YStack,
+  XStack,
+  Text,
   Button,
   Spinner,
   AlertDialog,
@@ -30,8 +29,8 @@ import { SetTracker } from '../../../../components/workout/SetTracker'
 import { InstructionsAccordion } from '../../../../components/workout/InstructionsAccordion'
 import { ExerciseQueue } from '../../../../components/workout/ExerciseQueue'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { PanResponder, Platform, Vibration, Animated } from 'react-native'
-import { IntensityLevel } from '../../../../tamagui.config'
+import { PanResponder, Platform, Vibration, Animated, useColorScheme } from 'react-native'
+import { mapIntensityToLevel, IntensityLevel } from '../../../../lib'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
@@ -193,28 +192,35 @@ export default function WorkoutExecutionScreen() {
   const currentIndexRef = useRef(currentExerciseIndex)
   const exerciseCountRef = useRef(0)
 
-  // Get intensity level - default to medium for now
-  // TODO: Add targetIntensity to session schema when intensity selection is implemented
-  const intensity: IntensityLevel = 'medium'
+  // Map backend intensity to frontend IntensityLevel
+  const intensity = useMemo(
+    () => mapIntensityToLevel(session?.targetIntensity),
+    [session?.targetIntensity]
+  )
+  const colorScheme = useColorScheme()
+  const isDark = colorScheme === 'dark'
 
-  // Intensity-based colors - cast as const to satisfy TS
-  const intensityColors = {
+  // Intensity-based colors
+  // In dark mode, the scale is inverted (1-6 dark, 7-12 light)
+  // For backgrounds, we use level 3 in dark mode for visibility, level 2 in light mode
+  const intensityColorMap = {
     low: {
-      primary: '$intensityLow6' as const,
-      light: '$intensityLow2' as const,
-      text: '$intensityLow11' as const,
+      primary: '$intensityLow6',
+      light: isDark ? '$intensityLow3' : '$intensityLow2',
+      text: '$intensityLow11',
     },
     medium: {
-      primary: '$intensityMed6' as const,
-      light: '$intensityMed2' as const,
-      text: '$intensityMed11' as const,
+      primary: '$intensityMed6',
+      light: isDark ? '$intensityMed3' : '$intensityMed2',
+      text: '$intensityMed11',
     },
     high: {
-      primary: '$intensityHigh6' as const,
-      light: '$intensityHigh2' as const,
-      text: '$intensityHigh11' as const,
+      primary: '$intensityHigh6',
+      light: isDark ? '$intensityHigh3' : '$intensityHigh2',
+      text: '$intensityHigh11',
     },
-  }[intensity]
+  } as const
+  const intensityColors = intensityColorMap[intensity]
 
   // Keep refs in sync
   useEffect(() => {
@@ -475,8 +481,6 @@ export default function WorkoutExecutionScreen() {
   const exerciseDetails = currentExercise.exercise
   const completedCount = exerciseCompletions.filter(e => e.completed).length
   const isLastExercise = currentExerciseIndex === orderedExercises.length - 1
-  const isCurrentCompleted = currentCompletion?.completed
-  const progressPercent = Math.round((completedCount / orderedExercises.length) * 100)
 
   return (
     <YStack flex={1} bg="$background" items="center">
@@ -486,7 +490,7 @@ export default function WorkoutExecutionScreen() {
         <YStack>
           {/* Intensity color bar */}
           <YStack height={4} bg={intensityColors.primary} />
-          
+
           <XStack
             px="$4"
             pt={insets.top + 8}
@@ -494,8 +498,6 @@ export default function WorkoutExecutionScreen() {
             items="center"
             justify="space-between"
             bg="$surface"
-            borderBottomWidth={1}
-            borderBottomColor="$borderColor"
           >
             <Button
               size="$3"
@@ -507,28 +509,25 @@ export default function WorkoutExecutionScreen() {
               pressStyle={{ opacity: 0.8 }}
               onPress={() => setShowExitDialog(true)}
             />
-            
-            <YStack items="center" gap="$1">
-              <XStack items="center" gap="$2">
-                <Text 
-                  fontSize={14} 
-                  fontFamily="$body" fontWeight="700"
-                  color="$color12"
-                >
-                  {currentExerciseIndex + 1} / {orderedExercises.length}
-                </Text>
-                <IntensityBadge intensity={intensity} />
-              </XStack>
-              {/* Progress bar */}
-              <XStack width={100} height={4} bg="$borderColor" rounded={2} overflow="hidden">
-                <YStack 
-                  width={`${progressPercent}%`} 
-                  height="100%" 
-                  bg={intensityColors.primary}
-                  rounded={2}
-                />
-              </XStack>
-            </YStack>
+
+            {/* Dot Stepper Progress */}
+            <XStack items="center" gap="$1.5">
+              {orderedExercises.map((_, idx) => {
+                const isCompleted = exerciseCompletions[idx]?.completed
+                const isCurrent = idx === currentExerciseIndex
+                return (
+                  <YStack
+                    key={idx}
+                    width={isCurrent ? 10 : 8}
+                    height={isCurrent ? 10 : 8}
+                    rounded={100}
+                    bg={isCompleted ? intensityColors.primary : isCurrent ? 'transparent' : '$color5'}
+                    borderWidth={isCurrent ? 2 : 0}
+                    borderColor={isCurrent ? intensityColors.primary : undefined}
+                  />
+                )
+              })}
+            </XStack>
 
             <XStack items="center" gap="$1.5">
               <Timer size={16} color={intensityColors.primary} />
@@ -563,20 +562,44 @@ export default function WorkoutExecutionScreen() {
               </YStack>
 
               {/* Exercise Name and Prescription */}
-              <YStack items="center" gap="$2">
+              <YStack items="center" gap="$3">
                 <DisplayHeading>
                   {exerciseDetails?.name?.toUpperCase() || 'EXERCISE'}
                 </DisplayHeading>
-                <Text 
-                  fontSize={18} 
-                  color="$color10"
-                  fontFamily="$body" fontWeight="500"
+
+                {/* Prominent sets x reps badge */}
+                <XStack
+                  bg="$color3"
+                  px="$4"
+                  py="$2.5"
+                  rounded="$4"
+                  items="center"
+                  gap="$2"
                 >
-                  {currentExercise.scaledSets ?? currentExercise.sets} sets × {currentExercise.scaledReps ?? currentExercise.reps}
-                </Text>
+                  <Text
+                    fontSize={18}
+                    fontFamily="$body"
+                    fontWeight="700"
+                    color="$color12"
+                  >
+                    {currentExercise.scaledSets ?? currentExercise.sets} sets
+                  </Text>
+                  <Text fontSize={16} color="$color9" fontFamily="$body">
+                    ×
+                  </Text>
+                  <Text
+                    fontSize={18}
+                    fontFamily="$body"
+                    fontWeight="700"
+                    color="$color12"
+                  >
+                    {currentExercise.scaledReps ?? currentExercise.reps}
+                  </Text>
+                </XStack>
+
                 {currentExercise.tempo && (
                   <Text fontSize={14} color="$color9" fontFamily="$body">
-                    Tempo: {currentExercise.tempo}
+                    {currentExercise.tempo} tempo
                   </Text>
                 )}
                 {/* TODO: Add targetWeight display when schema is updated */}
@@ -584,21 +607,14 @@ export default function WorkoutExecutionScreen() {
 
               {/* Set Tracker */}
               {currentCompletion && (
-                <Card 
-                  p="$4" 
-                  bg="$surface"
-                  rounded="$4"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                >
-                  <SetTracker
-                    sets={currentCompletion.sets}
-                    prescribedReps={currentExercise.scaledReps ?? currentExercise.reps}
-                    prescribedSets={currentExercise.scaledSets ?? currentExercise.sets}
-                    onSetUpdate={handleSetUpdate}
-                    intensityColor={intensityColors.primary}
-                  />
-                </Card>
+                <SetTracker
+                  sets={currentCompletion.sets}
+                  prescribedReps={currentExercise.scaledReps ?? currentExercise.reps}
+                  prescribedSets={currentExercise.scaledSets ?? currentExercise.sets}
+                  onSetUpdate={handleSetUpdate}
+                  intensityColor={intensityColors.primary}
+                  intensityLightColor={intensityColors.light}
+                />
               )}
 
               {/* Instructions Accordion */}
@@ -617,8 +633,6 @@ export default function WorkoutExecutionScreen() {
           py="$4"
           pb={insets.bottom + 16}
           gap="$3"
-          borderTopWidth={1}
-          borderTopColor="$borderColor"
           bg="$surface"
         >
           <Button
