@@ -47,6 +47,9 @@ export const PHASE_NAMES: Record<Phase, string> = {
 // Skill levels
 export type SkillLevel = "Novice" | "Moderate" | "Advanced";
 
+// Age groups - determines intensity ceiling
+export type AgeGroup = "10-13" | "14-17" | "18+";
+
 // Session status
 export type SessionStatus = "in_progress" | "completed" | "abandoned";
 
@@ -101,6 +104,8 @@ export interface IntakeFormData {
   yearsOfExperience: number; // How many years of training
   preferredTrainingDaysPerWeek: number; // 1-7
   weeksUntilSeason?: number; // Optional: for planning phase duration
+  ageGroup: AgeGroup; // Determines intensity ceiling
+  dateOfBirth?: number; // Optional: for auto-calculation
 }
 
 /**
@@ -124,13 +129,14 @@ export interface CurrentProgramState {
   gppCategoryId: GppCategoryId;
   phase: Phase;
   skillLevel: SkillLevel;
+  ageGroup: AgeGroup;
   week: number; // 1-4
   day: number; // 1-7
 }
 
 /**
  * User's progress summary
- * 
+ *
  * Progress defined as:
  * - Completion: days → weeks → training blocks
  * - Coverage: unique exercises performed
@@ -141,13 +147,14 @@ export interface ProgressSummary {
   scheduledPhase: Phase;
   scheduledWeek: number;
   scheduledDay: number;
-  
+
   // Phase access
   unlockedPhases: Phase[];
-  
+
   // Assignment
   category: GppCategoryId;
   skillLevel: SkillLevel;
+  ageGroup: AgeGroup;
   
   // Completion metrics
   daysCompleted: number;

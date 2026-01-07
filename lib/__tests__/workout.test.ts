@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseReps, isCardioExercise, CARDIO_TAGS } from "../workout";
+import { parseReps, isCardioExercise, CARDIO_TAGS, mapIntensityToLevel } from "../workout";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PARSE REPS TESTS
@@ -201,6 +201,70 @@ describe("CARDIO_TAGS", () => {
 
   it("has 8 tags total", () => {
     expect(CARDIO_TAGS).toHaveLength(8);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MAP INTENSITY TO LEVEL TESTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("mapIntensityToLevel", () => {
+  describe("valid backend intensity values", () => {
+    it("maps 'Low' to 'low'", () => {
+      expect(mapIntensityToLevel("Low")).toBe("low");
+    });
+
+    it("maps 'Moderate' to 'medium'", () => {
+      expect(mapIntensityToLevel("Moderate")).toBe("medium");
+    });
+
+    it("maps 'High' to 'high'", () => {
+      expect(mapIntensityToLevel("High")).toBe("high");
+    });
+  });
+
+  describe("default behavior for missing/invalid values", () => {
+    it("returns 'medium' for undefined", () => {
+      expect(mapIntensityToLevel(undefined)).toBe("medium");
+    });
+
+    it("returns 'medium' for null", () => {
+      expect(mapIntensityToLevel(null)).toBe("medium");
+    });
+
+    it("returns 'medium' for empty string", () => {
+      expect(mapIntensityToLevel("")).toBe("medium");
+    });
+
+    it("returns 'medium' for invalid value", () => {
+      expect(mapIntensityToLevel("Invalid")).toBe("medium");
+    });
+
+    it("returns 'medium' for lowercase 'low'", () => {
+      // Backend uses exact casing, lowercase should fallback
+      expect(mapIntensityToLevel("low")).toBe("medium");
+    });
+
+    it("returns 'medium' for lowercase 'moderate'", () => {
+      expect(mapIntensityToLevel("moderate")).toBe("medium");
+    });
+
+    it("returns 'medium' for lowercase 'high'", () => {
+      expect(mapIntensityToLevel("high")).toBe("medium");
+    });
+  });
+
+  describe("type safety", () => {
+    it("returns correct type for all valid inputs", () => {
+      const low = mapIntensityToLevel("Low");
+      const medium = mapIntensityToLevel("Moderate");
+      const high = mapIntensityToLevel("High");
+
+      // Type narrowing - should be one of the three valid values
+      expect(["low", "medium", "high"]).toContain(low);
+      expect(["low", "medium", "high"]).toContain(medium);
+      expect(["low", "medium", "high"]).toContain(high);
+    });
   });
 });
 

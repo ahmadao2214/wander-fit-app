@@ -33,8 +33,10 @@ interface SetTrackerProps {
   prescribedReps: string
   prescribedSets: number
   onSetUpdate: (setIndex: number, data: SetData) => void
-  /** Intensity color for completed sets (from workout screen) */
+  /** Primary intensity color for completed sets (e.g. $intensityMed6) */
   intensityColor?: `$${string}` | string
+  /** Light intensity color for completed pill background (e.g. $intensityMed2) */
+  intensityLightColor?: `$${string}` | string
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -53,7 +55,8 @@ export function SetTracker({
   prescribedReps,
   prescribedSets,
   onSetUpdate,
-  intensityColor = '$success',
+  intensityColor = '$primary',
+  intensityLightColor = '$color3',
 }: SetTrackerProps) {
   const [editingSetIndex, setEditingSetIndex] = useState<number | null>(null)
 
@@ -127,7 +130,6 @@ export function SetTracker({
           {sets.map((set, index) => {
             const isCompleted = set.completed
             const isSkipped = set.skipped
-            const isFirst = index === 0 && !sets.some(s => s.completed || s.skipped)
 
             return (
               <TouchableOpacity
@@ -140,7 +142,7 @@ export function SetTracker({
               >
                 <Card
                   p="$3"
-                  bg={isCompleted ? '$intensityLow2' : isSkipped ? '$color4' : '$background'}
+                  bg={isCompleted ? (intensityLightColor as any) : isSkipped ? '$color4' : '$background'}
                   borderColor={isCompleted ? (intensityColor as any) : isSkipped ? '$borderColor' : '$borderColor'}
                   borderWidth={2}
                   rounded="$4"
@@ -200,17 +202,6 @@ export function SetTracker({
                       </Text>
                     )}
                     
-                    {/* First set hint */}
-                    {isFirst && (
-                      <Text 
-                        fontSize={10} 
-                        color="$color9" 
-                        fontFamily="$body"
-                        mt="$0.5"
-                      >
-                        Tap to complete
-                      </Text>
-                    )}
                   </YStack>
                 </Card>
               </TouchableOpacity>
