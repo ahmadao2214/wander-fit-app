@@ -287,13 +287,9 @@ export const EQUIPMENT_GLOSSARY = [
   "rings",
   "wall",
 
-<<<<<<< HEAD
-=======
   // Specialty Equipment
-  "sled",
   "stability_ball",
 
->>>>>>> fc13339 (feat: Add age groups, phase intensity rules, and template generator for MVP)
   // Bodyweight (no equipment)
   "bodyweight",
 
