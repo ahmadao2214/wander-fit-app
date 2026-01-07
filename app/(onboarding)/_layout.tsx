@@ -37,6 +37,9 @@ export default function OnboardingLayout() {
         {/* Section 3: Personalized Timeline & Commitment */}
         <Stack.Screen name="personal-timeline" />
         <Stack.Screen name="commitment" />
+        {/* Section 4: How It Works & First Workout */}
+        <Stack.Screen name="progression" />
+        <Stack.Screen name="first-workout" />
       </Stack>
     </OnboardingRoute>
   )
