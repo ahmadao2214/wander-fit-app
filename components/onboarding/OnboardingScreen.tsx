@@ -13,7 +13,7 @@ interface OnboardingScreenProps {
   /** Primary action button text */
   primaryButtonText: string
   /** Called when primary button is pressed */
-  onPrimaryPress: () => void
+  onPrimaryPress?: () => void
   /** Called when skip is pressed */
   onSkip: () => void
   /** Whether to show the skip button (default: true) */
@@ -22,6 +22,8 @@ interface OnboardingScreenProps {
   isLoading?: boolean
   /** Whether this is a revisit flow (hides skip, changes behavior) */
   isRevisit?: boolean
+  /** Whether the primary button is disabled */
+  primaryButtonDisabled?: boolean
 }
 
 /**
@@ -43,6 +45,7 @@ export function OnboardingScreen({
   showSkip = true,
   isLoading = false,
   isRevisit = false,
+  primaryButtonDisabled = false,
 }: OnboardingScreenProps) {
   const insets = useSafeAreaInsets()
 
@@ -96,8 +99,8 @@ export function OnboardingScreen({
           bg="$green10"
           pressStyle={{ bg: '$green11' }}
           onPress={onPrimaryPress}
-          disabled={isLoading}
-          opacity={isLoading ? 0.7 : 1}
+          disabled={isLoading || primaryButtonDisabled || !onPrimaryPress}
+          opacity={isLoading || primaryButtonDisabled || !onPrimaryPress ? 0.5 : 1}
         >
           <Text color="white" fontWeight="600">
             {primaryButtonText}
