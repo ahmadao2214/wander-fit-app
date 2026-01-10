@@ -284,13 +284,28 @@ export const startOnboarding = mutation({
           currentScreen: 0,
           updatedAt: now,
         });
+        return {
+          progressId: existingProgress._id,
+          currentScreen: 0,
+          isRevisit: true,
+        };
       } else if (!existingProgress.completedAt && !existingProgress.skippedAt) {
-        // Only update if not completed/skipped - allow resuming in-progress onboarding
-        // Do nothing, return existing progress
+        // Allow resuming in-progress onboarding
+        return {
+          progressId: existingProgress._id,
+          currentScreen: existingProgress.currentScreen,
+          isRevisit: false,
+        };
       }
+      // If completed/skipped, return existing (previous thread question applies here)
+      return {
+        progressId: existingProgress._id,
+        currentScreen: existingProgress.currentScreen,
+        isRevisit: false,
+      };
     }
 
-    // Create new progress record
+    // Create new progress record (only if no existing progress)
     const progressId = await ctx.db.insert("user_onboarding_progress", {
       userId: user._id,
       currentScreen: 0,
@@ -304,7 +319,6 @@ export const startOnboarding = mutation({
       currentScreen: 0,
       isRevisit: false,
     };
-  },
 });
 
 /**
