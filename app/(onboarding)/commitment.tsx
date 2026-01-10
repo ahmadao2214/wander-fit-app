@@ -39,7 +39,7 @@ export default function CommitmentScreen() {
 
   const handleContinue = async () => {
     await advanceOnboarding({ screenIndex: 8 })
-    router.push('/(onboarding)/progression' as any)
+    router.push('/(onboarding)/unlock-progression' as any)
   }
 
   const handleSkip = async () => {
