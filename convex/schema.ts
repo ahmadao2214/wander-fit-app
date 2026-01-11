@@ -56,6 +56,56 @@ const oneRepMaxSourceValidator = v.union(
   v.literal("assessment")      // From dedicated assessment workout
 );
 
+/**
+ * User Role Validator
+ *
+ * athlete - Standard user who completes workouts
+ * parent - Parent/guardian who can manage linked athlete accounts
+ * trainer - Future: Coach/trainer role (same linking pattern as parent)
+ */
+const userRoleValidator = v.union(
+  v.literal("athlete"),
+  v.literal("parent"),
+  v.literal("trainer")
+);
+
+/**
+ * Parent-Athlete Relationship Type Validator
+ */
+const relationshipTypeValidator = v.union(
+  v.literal("parent"),
+  v.literal("guardian")
+);
+
+/**
+ * Parent Permission Level Validator
+ * Full access: Can view and modify athlete schedules
+ * View-only: Can only view athlete progress (future extensibility)
+ */
+const parentPermissionValidator = v.union(
+  v.literal("full"),
+  v.literal("view_only")
+);
+
+/**
+ * Relationship Status Validator
+ */
+const relationshipStatusValidator = v.union(
+  v.literal("active"),
+  v.literal("pending"),
+  v.literal("removed")
+);
+
+/**
+ * Invitation Status Validator
+ */
+const invitationStatusValidator = v.union(
+  v.literal("pending"),
+  v.literal("accepted"),
+  v.literal("expired"),
+  v.literal("revoked")
+);
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // GPP TABLES (MVP)
 // 
@@ -244,6 +294,15 @@ export default defineSchema({
     clerkId: v.string(), // from Clerk authentication
     createdAt: v.number(),
 
+    // User role - determines app experience and permissions
+    // athlete: Completes workouts (default for existing users)
+    // parent: Manages linked athlete accounts
+    // trainer: Future coach/trainer role
+    userRole: v.optional(userRoleValidator), // Optional for migration, defaults to "athlete"
+
+    // For athletes with multi-sport: their primary sport
+    primarySportId: v.optional(v.id("sports")),
+
     // DEPRECATED: Will be removed after migration
     role: v.optional(v.union(v.literal("trainer"), v.literal("client"))),
     trainerId: v.optional(v.id("users")),
@@ -253,7 +312,8 @@ export default defineSchema({
   })
     .index("by_email", ["email"])
     .index("by_clerk", ["clerkId"])
-    .index("by_trainer", ["trainerId"]),
+    .index("by_trainer", ["trainerId"])
+    .index("by_role", ["userRole"]),
 
   /**
    * intake_responses - Stores all intake questionnaire answers
@@ -453,12 +513,12 @@ export default defineSchema({
   user_schedule_overrides: defineTable({
     userId: v.id("users"),
     userProgramId: v.id("user_programs"),
-    
+
     // Today's workout focus (optional)
     // If set, this template is shown as "today's workout" instead of default
     todayFocusTemplateId: v.optional(v.id("program_templates")),
     todayFocusSetAt: v.optional(v.number()), // Timestamp when focus was set
-    
+
     // Slot overrides within phases
     // Each entry maps a specific slot (phase/week/day) to a different template
     // Used for persistent swaps - when you swap A and B, both slots get entries
@@ -468,12 +528,120 @@ export default defineSchema({
       day: v.number(),
       templateId: v.id("program_templates"), // The workout assigned to this slot
     })),
-    
+
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_user", ["userId"])
     .index("by_user_program", ["userProgramId"]),
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // PARENT-ATHLETE RELATIONSHIPS
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * parent_athlete_relationships - Links parent accounts to athlete accounts
+   *
+   * Enables parents/guardians to:
+   * - View their athlete's workout schedules and progress
+   * - Modify athlete schedules (with full permission)
+   * - Coordinate family training calendars
+   *
+   * Architecture designed to support future trainer relationships with same pattern.
+   */
+  parent_athlete_relationships: defineTable({
+    parentUserId: v.id("users"),
+    athleteUserId: v.id("users"),
+
+    // Relationship details
+    relationshipType: relationshipTypeValidator, // "parent" | "guardian"
+    permissions: parentPermissionValidator, // "full" | "view_only"
+
+    // Status tracking
+    status: relationshipStatusValidator, // "active" | "pending" | "removed"
+
+    // Timestamps
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_parent", ["parentUserId"])
+    .index("by_athlete", ["athleteUserId"])
+    .index("by_parent_status", ["parentUserId", "status"])
+    .index("by_athlete_status", ["athleteUserId", "status"]),
+
+  /**
+   * parent_invitations - Invitation codes for parents to link with athletes
+   *
+   * Flow:
+   * 1. Parent creates invitation (generates unique code)
+   * 2. Athlete enters code in their app
+   * 3. Invitation is accepted, relationship is created
+   * 4. Both parent and athlete can see the link
+   *
+   * Invitations expire after a set period (e.g., 7 days).
+   */
+  parent_invitations: defineTable({
+    parentUserId: v.id("users"),
+
+    // Unique invitation code (e.g., "ABC123")
+    inviteCode: v.string(),
+
+    // Optional: Target a specific athlete email for directed invites
+    athleteEmail: v.optional(v.string()),
+
+    // Expiration and acceptance
+    expiresAt: v.number(),
+    acceptedAt: v.optional(v.number()),
+    acceptedByUserId: v.optional(v.id("users")),
+
+    // Status tracking
+    status: invitationStatusValidator, // "pending" | "accepted" | "expired" | "revoked"
+
+    // Timestamps
+    createdAt: v.number(),
+  })
+    .index("by_code", ["inviteCode"])
+    .index("by_parent", ["parentUserId"])
+    .index("by_parent_status", ["parentUserId", "status"]),
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // MULTI-SPORT TRACKING
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * athlete_sports - Tracks multiple sports for each athlete
+   *
+   * Enables:
+   * - Athletes to select multiple sports during intake
+   * - One sport designated as "primary" (creates the active program)
+   * - Browsing workouts for non-primary sports (read-only preview)
+   * - Future: Season-based sport switching
+   *
+   * Design:
+   * - Each athlete can have multiple sports
+   * - Exactly one sport should be marked as isPrimary=true
+   * - Primary sport determines the active user_programs record
+   */
+  athlete_sports: defineTable({
+    userId: v.id("users"),
+    sportId: v.id("sports"),
+
+    // Primary sport flag - only one per user should be true
+    isPrimary: v.boolean(),
+
+    // When this sport was added to the athlete's profile
+    addedAt: v.number(),
+
+    // Optional: Season information for calendar planning
+    seasonStart: v.optional(v.number()), // Timestamp for season start
+    seasonEnd: v.optional(v.number()), // Timestamp for season end
+
+    // Timestamps
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_sport", ["userId", "sportId"])
+    .index("by_user_primary", ["userId", "isPrimary"]),
 
   // ═══════════════════════════════════════════════════════════════════════════════
   // LEGACY TABLES (Kept for backward compatibility during migration)
