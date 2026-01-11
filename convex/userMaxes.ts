@@ -535,11 +535,13 @@ export const setMultipleMaxes = mutation({
       if (!oneRepMax || oneRepMax === 0) {
         results.push({ slug: exerciseSlug, action: "skipped_empty" });
         continue;
+      // Skip if no value provided or unreasonable
+      if (!oneRepMax || oneRepMax <= 0) {
+        results.push({ slug: exerciseSlug, action: "skipped", reason: "empty" });
+        continue;
       }
-
-      // Skip if value is invalid (negative or over limit)
-      if (oneRepMax < 0 || oneRepMax > 2000) {
-        results.push({ slug: exerciseSlug, action: "skipped_invalid" });
+      if (oneRepMax > 2000) {
+        results.push({ slug: exerciseSlug, action: "skipped", reason: "invalid_max" });
         continue;
       }
 
