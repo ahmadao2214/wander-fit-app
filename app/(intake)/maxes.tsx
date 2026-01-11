@@ -103,29 +103,34 @@ export default function MaxesScreen() {
     // Build maxes array, filtering out empty values
     const maxes = Object.entries(maxValues)
       .filter(([_, value]) => value && parseFloat(value) > 0)
-      .map(([slug, value]) => ({
-        exerciseSlug: slug,
-        oneRepMax: parseFloat(value),
-      }))
-
-    // Try to save maxes first (non-blocking - we continue even if this fails)
-    if (maxes.length > 0) {
-      try {
-        await setMultipleMaxes({ maxes })
-      } catch (error) {
-        // Log but don't block program creation
-        console.warn('Failed to save maxes, continuing with program creation:', error)
-      }
-    }
-
-    // Always try to complete intake - this is the critical path
+  const handleContinue = async () => {
+    setIsSubmitting(true)
     try {
+      // Save any entered maxes (non-blocking - don't fail if this errors)
+      const maxes = Object.entries(maxValues)
+        .filter(([_, value]) => value && parseFloat(value) > 0)
+        .map(([slug, value]) => ({
+          exerciseSlug: slug,
+          oneRepMax: parseFloat(value),
+        }))
+
+      if (maxes.length > 0) {
+        try {
+          await setMultipleMaxes({ maxes })
+        } catch (maxError) {
+          console.error('Failed to save maxes (continuing with intake):', maxError)
+          // Don't block intake completion if maxes fail to save
+        }
+      }
+
+      // Complete intake regardless of maxes save status
       await completeIntake({
         sportId: sportId as Id<"sports">,
         yearsOfExperience: years,
         preferredTrainingDaysPerWeek: days,
         weeksUntilSeason: weeks,
       })
+
       setIsSuccess(true)
     } catch (error) {
       console.error('Failed to complete intake:', error)
