@@ -201,6 +201,7 @@ export const getAthleteDetails = query({
         : null,
       sports: sportsWithDetails,
       relationship: {
+        _id: relationship._id,
         type: relationship.relationshipType,
         permissions: relationship.permissions,
         linkedAt: relationship.createdAt,

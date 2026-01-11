@@ -1,4 +1,4 @@
-import { YStack, XStack, Text, Card, Button, ScrollView, styled } from 'tamagui'
+import { YStack, XStack, Text, Card, Button, ScrollView, Spinner, styled } from 'tamagui'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { useRouter } from 'expo-router'
@@ -8,8 +8,10 @@ import {
   UserPlus,
   Heart,
   Link as LinkIcon,
+  Plus,
 } from '@tamagui/lucide-icons'
 import { useAuth } from '../../hooks/useAuth'
+import { AthleteCard } from '../../components/parent/AthleteCard'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
@@ -132,11 +134,20 @@ export default function ParentDashboardScreen() {
   const router = useRouter()
   const { user } = useAuth()
 
-  // TODO: Query linked athletes once PR 4 is implemented
-  // const linkedAthletes = useQuery(api.parentRelationships.getLinkedAthletes, {})
+  // Query linked athletes
+  const linkedAthletes = useQuery(api.parentRelationships.getLinkedAthletes, {})
 
-  // For now, always show empty state
-  const linkedAthletes: any[] = []
+  // Loading state
+  if (linkedAthletes === undefined) {
+    return (
+      <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
+        <Spinner size="large" color="$primary" />
+        <Text color="$color10" fontFamily="$body">Loading athletes...</Text>
+      </YStack>
+    )
+  }
+
+  const hasAthletes = linkedAthletes && linkedAthletes.length > 0
 
   return (
     <YStack flex={1} bg="$background">
@@ -152,25 +163,43 @@ export default function ParentDashboardScreen() {
           minHeight="100%"
         >
           {/* Header */}
-          <YStack gap="$1" mb="$4">
-            <Text fontSize={14} fontFamily="$body" color="$color10">
-              Welcome back,
-            </Text>
-            <Text fontSize={24} fontFamily="$heading" color="$color12">
-              {user?.name || 'Parent'}
-            </Text>
-          </YStack>
+          <XStack items="center" justify="space-between" mb="$4">
+            <YStack gap="$1">
+              <Text fontSize={14} fontFamily="$body" color="$color10">
+                Welcome back,
+              </Text>
+              <Text fontSize={24} fontFamily="$heading" color="$color12">
+                {user?.name || 'Parent'}
+              </Text>
+            </YStack>
+
+            {hasAthletes && (
+              <Button
+                size="$3"
+                bg="$primary"
+                circular
+                icon={Plus}
+                onPress={() => router.push('/(parent)/add-athlete')}
+              />
+            )}
+          </XStack>
 
           {/* Content */}
-          {linkedAthletes.length === 0 ? (
+          {!hasAthletes ? (
             <EmptyState />
           ) : (
-            // TODO: Implement athlete cards list once PR 5 is ready
             <YStack gap="$4">
+              {/* Athletes Count */}
+              <XStack items="center" gap="$2">
+                <Users size={16} color="$color10" />
+                <Text fontSize={14} fontFamily="$body" fontWeight="600" color="$color10">
+                  {linkedAthletes.length} Athlete{linkedAthletes.length !== 1 ? 's' : ''}
+                </Text>
+              </XStack>
+
+              {/* Athlete Cards */}
               {linkedAthletes.map((athlete) => (
-                <Card key={athlete._id} p="$4" bg="$surface" rounded="$4">
-                  <Text>{athlete.name}</Text>
-                </Card>
+                <AthleteCard key={athlete._id} athlete={athlete as any} />
               ))}
             </YStack>
           )}
