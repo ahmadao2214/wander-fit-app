@@ -4,11 +4,13 @@ import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { 
+import {
   Search,
   ChevronRight,
   Target,
   Check,
+  Star,
+  X,
 } from '@tamagui/lucide-icons'
 import { Id } from '../../convex/_generated/dataModel'
 import LottieView from 'lottie-react-native'
@@ -96,7 +98,7 @@ const SportIcon = ({ name, size = 56, isSelected = false }: SportIconProps) => {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SportTile Component
+// SportTile Component (Multi-select with Primary indicator)
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface SportTileProps {
@@ -106,50 +108,64 @@ interface SportTileProps {
     description?: string
   }
   isSelected: boolean
+  isPrimary: boolean
   onSelect: () => void
 }
 
-const SportTile = ({ sport, isSelected, onSelect }: SportTileProps) => {
+const SportTile = ({ sport, isSelected, isPrimary, onSelect }: SportTileProps) => {
   return (
     <Card
       width="100%"
       aspectRatio={1}
-      bg={isSelected ? '$brand1' : '$surface'}
-      borderColor={isSelected ? '$primary' : 'transparent'}
+      bg={isSelected ? (isPrimary ? '$brand2' : '$brand1') : '$surface'}
+      borderColor={isSelected ? (isPrimary ? '$primary' : '$color8') : 'transparent'}
       borderWidth={2}
       rounded="$4"
       pressStyle={{ scale: 0.96, opacity: 0.9 }}
       onPress={onSelect}
       position="relative"
     >
-      <YStack 
-        flex={1} 
-        items="center" 
-        justify="center" 
-        gap="$2" 
+      <YStack
+        flex={1}
+        items="center"
+        justify="center"
+        gap="$2"
         p="$2"
       >
-        <SportIcon 
-          name={sport.name} 
+        <SportIcon
+          name={sport.name}
           size={44}
-          isSelected={isSelected} 
+          isSelected={isSelected}
         />
-        <Text 
-          fontSize={12} 
+        <Text
+          fontSize={12}
           fontFamily="$body" fontWeight="600"
-          text="center" 
+          text="center"
           numberOfLines={2}
           color={isSelected ? '$primary' : '$color12'}
         >
           {sport.name}
         </Text>
       </YStack>
-      
-      {/* Selected indicator */}
-      {isSelected && (
+
+      {/* Primary indicator (star) */}
+      {isPrimary && (
         <Circle
           size={22}
-          bg="$primary"
+          bg="$yellow9"
+          position="absolute"
+          t={6}
+          r={6}
+        >
+          <Star size={12} color="white" fill="white" strokeWidth={2} />
+        </Circle>
+      )}
+
+      {/* Selected but not primary indicator (checkmark) */}
+      {isSelected && !isPrimary && (
+        <Circle
+          size={22}
+          bg="$color8"
           position="absolute"
           t={6}
           r={6}
@@ -162,18 +178,89 @@ const SportTile = ({ sport, isSelected, onSelect }: SportTileProps) => {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Sport Selection Screen
+// SelectedSportChip Component (for displaying selected sports)
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface SelectedSportChipProps {
+  sport: {
+    _id: Id<"sports">
+    name: string
+  }
+  isPrimary: boolean
+  onSetPrimary: () => void
+  onRemove: () => void
+}
+
+const SelectedSportChip = ({ sport, isPrimary, onSetPrimary, onRemove }: SelectedSportChipProps) => {
+  return (
+    <XStack
+      bg={isPrimary ? '$brand2' : '$surface'}
+      borderColor={isPrimary ? '$primary' : '$borderColor'}
+      borderWidth={1}
+      rounded="$3"
+      px="$3"
+      py="$2"
+      items="center"
+      gap="$2"
+    >
+      {isPrimary && (
+        <Star size={14} color="$yellow9" fill="$yellow9" />
+      )}
+      <Text
+        fontSize={14}
+        fontFamily="$body"
+        fontWeight={isPrimary ? '700' : '500'}
+        color={isPrimary ? '$primary' : '$color12'}
+      >
+        {sport.name}
+      </Text>
+      {!isPrimary && (
+        <Button
+          size="$1"
+          circular
+          bg="transparent"
+          p={0}
+          onPress={onSetPrimary}
+          pressStyle={{ opacity: 0.7 }}
+        >
+          <Star size={14} color="$color9" />
+        </Button>
+      )}
+      <Button
+        size="$1"
+        circular
+        bg="transparent"
+        p={0}
+        onPress={onRemove}
+        pressStyle={{ opacity: 0.7 }}
+      >
+        <X size={14} color="$color9" />
+      </Button>
+    </XStack>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sport Selection Screen (Multi-Sport with Primary)
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function SportSelectionScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedSportId, setSelectedSportId] = useState<Id<"sports"> | null>(null)
+  // Multi-sport selection: first sport is primary, rest are additional
+  const [selectedSportIds, setSelectedSportIds] = useState<Id<"sports">[]>([])
 
   const sports = useQuery(api.sports.list, {})
 
   const GAP = 12
+
+  // Primary sport is the first one in the array
+  const primarySportId = selectedSportIds[0] || null
+  const additionalSportIds = selectedSportIds.slice(1)
+
+  // Get full sport objects for selected sports (for chip display)
+  const selectedSports = sports?.filter(s => selectedSportIds.includes(s._id)) || []
 
   if (!sports) {
     return (
@@ -187,20 +274,50 @@ export default function SportSelectionScreen() {
   }
 
   const filteredSports = searchQuery
-    ? sports.filter((s) => 
+    ? sports.filter((s) =>
         s.name.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : sports
 
-  const sortedSports = [...filteredSports].sort((a, b) => 
+  const sortedSports = [...filteredSports].sort((a, b) =>
     a.name.localeCompare(b.name)
   )
 
+  // Handle sport selection toggle
+  const handleSportToggle = (sportId: Id<"sports">) => {
+    setSelectedSportIds(prev => {
+      if (prev.includes(sportId)) {
+        // Remove sport (but don't allow removing if it's the last one)
+        const newSelection = prev.filter(id => id !== sportId)
+        return newSelection
+      } else {
+        // Add sport to selection
+        return [...prev, sportId]
+      }
+    })
+  }
+
+  // Set a sport as primary (move to front of array)
+  const handleSetPrimary = (sportId: Id<"sports">) => {
+    setSelectedSportIds(prev => {
+      const filtered = prev.filter(id => id !== sportId)
+      return [sportId, ...filtered]
+    })
+  }
+
+  // Remove a sport from selection
+  const handleRemoveSport = (sportId: Id<"sports">) => {
+    setSelectedSportIds(prev => prev.filter(id => id !== sportId))
+  }
+
   const handleContinue = () => {
-    if (selectedSportId) {
+    if (primarySportId) {
       router.push({
         pathname: '/(intake)/experience',
-        params: { sportId: selectedSportId },
+        params: {
+          primarySportId,
+          additionalSportIds: additionalSportIds.join(','),
+        },
       })
     }
   }
@@ -224,9 +341,51 @@ export default function SportSelectionScreen() {
             </YStack>
             <DisplayHeading>WHAT'S YOUR SPORT?</DisplayHeading>
             <Subtitle>
-              Select your primary sport to get a personalized training program
+              Select your sports. The first one you pick will be your primary sport for training.
             </Subtitle>
           </YStack>
+
+          {/* Selected Sports Summary */}
+          {selectedSports.length > 0 && (
+            <Card p="$4" bg="$background" borderColor="$borderColor" borderWidth={1} rounded="$4">
+              <YStack gap="$3">
+                <XStack items="center" justify="space-between">
+                  <Text fontSize={14} fontFamily="$body" fontWeight="600" color="$color11">
+                    Selected Sports ({selectedSports.length})
+                  </Text>
+                  <XStack items="center" gap="$1">
+                    <Star size={12} color="$yellow9" fill="$yellow9" />
+                    <Text fontSize={12} color="$color10" fontFamily="$body">
+                      = Primary
+                    </Text>
+                  </XStack>
+                </XStack>
+                <XStack flexWrap="wrap" gap="$2">
+                  {selectedSports
+                    .sort((a, b) => {
+                      // Sort primary first, then by selection order
+                      if (a._id === primarySportId) return -1
+                      if (b._id === primarySportId) return 1
+                      return selectedSportIds.indexOf(a._id) - selectedSportIds.indexOf(b._id)
+                    })
+                    .map((sport) => (
+                      <SelectedSportChip
+                        key={sport._id}
+                        sport={sport}
+                        isPrimary={sport._id === primarySportId}
+                        onSetPrimary={() => handleSetPrimary(sport._id)}
+                        onRemove={() => handleRemoveSport(sport._id)}
+                      />
+                    ))}
+                </XStack>
+                {additionalSportIds.length > 0 && (
+                  <Text fontSize={12} color="$color9" fontFamily="$body">
+                    Tap the star icon to change your primary sport
+                  </Text>
+                )}
+              </YStack>
+            </Card>
+          )}
 
           {/* Search */}
           <XStack
@@ -268,8 +427,9 @@ export default function SportSelectionScreen() {
               >
                 <SportTile
                   sport={sport}
-                  isSelected={selectedSportId === sport._id}
-                  onSelect={() => setSelectedSportId(sport._id)}
+                  isSelected={selectedSportIds.includes(sport._id)}
+                  isPrimary={sport._id === primarySportId}
+                  onSelect={() => handleSportToggle(sport._id)}
                 />
               </YStack>
             ))}
@@ -299,17 +459,24 @@ export default function SportSelectionScreen() {
         borderTopWidth={1}
         borderTopColor="$borderColor"
         bg="$surface"
+        gap="$2"
       >
+        {primarySportId && (
+          <Text fontSize={13} color="$color10" text="center" fontFamily="$body">
+            Primary: {sports.find(s => s._id === primarySportId)?.name}
+            {additionalSportIds.length > 0 && ` + ${additionalSportIds.length} more`}
+          </Text>
+        )}
         <Button
           size="$5"
-          bg={selectedSportId ? '$primary' : '$color6'}
+          bg={primarySportId ? '$primary' : '$color6'}
           color="white"
-          disabled={!selectedSportId}
+          disabled={!primarySportId}
           onPress={handleContinue}
           iconAfter={ChevronRight}
           fontFamily="$body" fontWeight="700"
           rounded="$4"
-          pressStyle={selectedSportId ? { opacity: 0.9, scale: 0.98 } : {}}
+          pressStyle={primarySportId ? { opacity: 0.9, scale: 0.98 } : {}}
         >
           Continue
         </Button>

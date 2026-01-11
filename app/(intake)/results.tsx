@@ -18,6 +18,8 @@ import {
   Zap,
   RefreshCw,
   Dumbbell,
+  Star,
+  Plus,
 } from '@tamagui/lucide-icons'
 import { PHASE_NAMES } from '../../types'
 import { useAuth } from '../../hooks/useAuth'
@@ -25,32 +27,49 @@ import { getSkillLevel, getTrainingPhase } from '../../lib'
 
 /**
  * Results Screen
- * 
+ *
  * Step 3 of intake flow.
  * Shows the calculated assignment and confirms to create the program.
- * 
+ * Supports multi-sport selection with primary + additional sports.
+ *
  * After intake completion, the IntakeOnlyRoute wrapper automatically
  * redirects to the athlete dashboard when intakeCompletedAt is set.
  */
 export default function ResultsScreen() {
   const router = useRouter()
   const { hasCompletedIntake } = useAuth()
-  const { sportId, yearsOfExperience, trainingDays, weeksUntilSeason } = useLocalSearchParams<{
-    sportId: string
+  // Support both old (sportId) and new (primarySportId) param names
+  const params = useLocalSearchParams<{
+    sportId?: string
+    primarySportId?: string
+    additionalSportIds?: string
     yearsOfExperience: string
     trainingDays: string
     weeksUntilSeason: string
   }>()
 
+  // Use primarySportId if available, fall back to sportId for backwards compatibility
+  const primarySportId = params.primarySportId || params.sportId
+  const additionalSportIdsString = params.additionalSportIds || ''
+  const { yearsOfExperience, trainingDays, weeksUntilSeason } = params
+
+  // Parse additional sport IDs from comma-separated string
+  const additionalSportIds = additionalSportIdsString
+    ? additionalSportIdsString.split(',').filter(id => id.trim())
+    : []
+
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set())
 
-  // Get sport details
+  // Get primary sport details
   const sport = useQuery(
     api.sports.getById,
-    sportId ? { sportId: sportId as Id<"sports"> } : "skip"
+    primarySportId ? { sportId: primarySportId as Id<"sports"> } : "skip"
   )
+
+  // Get all sports to display additional sport names
+  const allSports = useQuery(api.sports.list, {})
 
   // Get category details
   const category = useQuery(
@@ -62,7 +81,7 @@ export default function ResultsScreen() {
   const completeIntake = useMutation(api.userPrograms.completeIntake)
 
   // Redirect back if missing params
-  if (!sportId || !yearsOfExperience || !trainingDays || !weeksUntilSeason) {
+  if (!primarySportId || !yearsOfExperience || !trainingDays || !weeksUntilSeason) {
     router.replace('/(intake)/sport')
     return null
   }
@@ -70,6 +89,11 @@ export default function ResultsScreen() {
   const years = parseInt(yearsOfExperience, 10)
   const days = parseInt(trainingDays, 10)
   const weeks = parseInt(weeksUntilSeason, 10)
+
+  // Get names of additional sports for display
+  const additionalSportNames = allSports
+    ?.filter(s => additionalSportIds.includes(s._id))
+    .map(s => s.name) || []
 
   // Use extracted pure functions for calculations
   const trainingPhase = getTrainingPhase(weeks)
@@ -128,10 +152,14 @@ export default function ResultsScreen() {
     setIsSubmitting(true)
     try {
       await completeIntake({
-        sportId: sportId as Id<"sports">,
+        sportId: primarySportId as Id<"sports">,
+        additionalSportIds: additionalSportIds.length > 0
+          ? additionalSportIds as Id<"sports">[]
+          : undefined,
         yearsOfExperience: years,
         preferredTrainingDaysPerWeek: days,
         weeksUntilSeason: weeks,
+        ageGroup: "18+", // TODO: Add age group selection to intake form
       })
 
       // Show success state - IntakeOnlyRoute will handle redirect
@@ -165,7 +193,7 @@ export default function ResultsScreen() {
   }, [isSuccess, router])
 
   // Show loading while fetching sport/category (undefined = still loading)
-  if (sport === undefined || category === undefined) {
+  if (sport === undefined || category === undefined || allSports === undefined) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
         <Spinner size="large" color="$primary" />
@@ -262,16 +290,35 @@ export default function ResultsScreen() {
           {/* Program Details Card */}
           <Card p="$5" bg="$background" borderColor="$borderColor" borderWidth={1}>
             <YStack gap="$4">
-              {/* Sport */}
+              {/* Primary Sport */}
               <XStack items="center" gap="$3">
                 <Target size={24} color="$primary" />
                 <YStack flex={1}>
-                  <Text fontSize="$2" color="$color10">Sport</Text>
+                  <XStack items="center" gap="$1">
+                    <Text fontSize="$2" color="$color10">Primary Sport</Text>
+                    <Star size={12} color="$yellow9" fill="$yellow9" />
+                  </XStack>
                   <Text fontSize="$5" fontWeight="700" color="$color12">
                     {sport.name}
                   </Text>
                 </YStack>
               </XStack>
+
+              {/* Additional Sports (if any) */}
+              {additionalSportNames.length > 0 && (
+                <XStack items="center" gap="$3">
+                  <Plus size={24} color="$color8" />
+                  <YStack flex={1}>
+                    <Text fontSize="$2" color="$color10">Also Training For</Text>
+                    <Text fontSize="$4" fontWeight="600" color="$color11">
+                      {additionalSportNames.join(', ')}
+                    </Text>
+                    <Text fontSize="$2" color="$color9" marginTop="$1">
+                      Browse these workouts in preview mode
+                    </Text>
+                  </YStack>
+                </XStack>
+              )}
 
               {/* Skill Level */}
               <XStack items="center" gap="$3">

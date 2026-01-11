@@ -16,24 +16,34 @@ import { getSkillLevel, getExperienceSliderColor } from '../../lib'
  *
  * Step 2 of intake flow.
  * Collects years of sport-specific experience and preferred training days.
+ * Uses the PRIMARY sport for experience questions.
  */
 export default function ExperienceScreen() {
   const router = useRouter()
-  const { sportId } = useLocalSearchParams() as { sportId: string }
+  // Support both old (sportId) and new (primarySportId) param names for backwards compatibility
+  const params = useLocalSearchParams() as {
+    sportId?: string
+    primarySportId?: string
+    additionalSportIds?: string
+  }
+
+  // Use primarySportId if available, fall back to sportId for backwards compatibility
+  const primarySportId = params.primarySportId || params.sportId
+  const additionalSportIds = params.additionalSportIds || ''
 
   const [yearsOfExperience, setYearsOfExperience] = useState(1)
   const [trainingDays, setTrainingDays] = useState(3)
   const [weeksUntilSeason, setWeeksUntilSeason] = useState(8)
   const [scrollEnabled, setScrollEnabled] = useState(true)
 
-  // Fetch sport details to display sport name
+  // Fetch primary sport details to display sport name
   const sport = useQuery(
     api.sports.getById,
-    sportId ? { sportId: sportId as Id<"sports"> } : "skip"
+    primarySportId ? { sportId: primarySportId as Id<"sports"> } : "skip"
   )
 
   // Redirect back if no sport selected
-  if (!sportId) {
+  if (!primarySportId) {
     router.replace('/(intake)/sport')
     return null
   }
@@ -58,7 +68,8 @@ export default function ExperienceScreen() {
     router.push({
       pathname: '/(intake)/results',
       params: {
-        sportId,
+        primarySportId,
+        additionalSportIds,
         yearsOfExperience: yearsOfExperience.toString(),
         trainingDays: trainingDays.toString(),
         weeksUntilSeason: weeksUntilSeason.toString(),

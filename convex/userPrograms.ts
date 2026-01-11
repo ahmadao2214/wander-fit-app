@@ -315,19 +315,25 @@ export const getIntakeHistory = query({
 
 /**
  * Complete intake and create user program
- * 
+ *
  * Creates:
  * 1. intake_responses record (preserved for history/re-assessment)
  * 2. user_programs record (active state)
- * 
+ * 3. athlete_sports records for multi-sport tracking
+ *
  * Intake data is stored separately to:
  * - Preserve intake history even if program is reset
  * - Enable re-assessment intakes (multiple over time)
  * - Track how athletes progress through assessments
+ *
+ * Multi-sport support:
+ * - sportId is the PRIMARY sport (creates the active program)
+ * - additionalSportIds are secondary sports (browse-only, preview mode)
  */
 export const completeIntake = mutation({
   args: {
     sportId: v.id("sports"),
+    additionalSportIds: v.optional(v.array(v.id("sports"))), // Additional sports for multi-sport
     yearsOfExperience: v.number(),
     preferredTrainingDaysPerWeek: v.number(), // 1-7
     weeksUntilSeason: v.optional(v.number()),
@@ -414,10 +420,46 @@ export const completeIntake = mutation({
         updatedAt: now,
       });
 
-      // Update user to mark intake as complete
+      // Update user to mark intake as complete and set primary sport
       await ctx.db.patch(user._id, {
         intakeCompletedAt: now,
+        primarySportId: args.sportId,
+        userRole: user.userRole || "athlete", // Ensure role is set
       });
+
+      // 3. Create athlete_sports records for multi-sport tracking
+      // First, delete any existing athlete_sports records for this user
+      const existingSports = await ctx.db
+        .query("athlete_sports")
+        .withIndex("by_user", (q) => q.eq("userId", user._id))
+        .collect();
+
+      for (const existingSport of existingSports) {
+        await ctx.db.delete(existingSport._id);
+      }
+
+      // Create record for primary sport
+      await ctx.db.insert("athlete_sports", {
+        userId: user._id,
+        sportId: args.sportId,
+        isPrimary: true,
+        addedAt: now,
+      });
+
+      // Create records for additional sports (if any)
+      if (args.additionalSportIds && args.additionalSportIds.length > 0) {
+        for (const additionalSportId of args.additionalSportIds) {
+          // Skip if it's the same as primary (shouldn't happen, but safety check)
+          if (additionalSportId === args.sportId) continue;
+
+          await ctx.db.insert("athlete_sports", {
+            userId: user._id,
+            sportId: additionalSportId,
+            isPrimary: false,
+            addedAt: now,
+          });
+        }
+      }
     } else {
       throw new Error("User already has a program. Use reassessment for updates.");
     }
@@ -427,8 +469,9 @@ export const completeIntake = mutation({
       intakeResponseId,
       gppCategoryId: sport.gppCategoryId,
       skillLevel,
-      message: intakeType === "initial" 
-        ? "Program created successfully" 
+      additionalSportsCount: args.additionalSportIds?.length ?? 0,
+      message: intakeType === "initial"
+        ? "Program created successfully"
         : "Skill level updated via re-assessment",
     };
   },
