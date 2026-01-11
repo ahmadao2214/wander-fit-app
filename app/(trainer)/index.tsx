@@ -202,7 +202,7 @@ export default function TrainerDashboard() {
                 color="$color11"
                 rounded="$3"
                 pressStyle={{ bg: '$surfaceHover' }}
-                onPress={() => router.push('/add-client')}
+                onPress={() => router.push('/(trainer)/add-athlete')}
               >
                 Add
               </Button>
@@ -300,7 +300,7 @@ export default function TrainerDashboard() {
                     fontFamily="$body" fontWeight="700"
                     rounded="$4"
                     pressStyle={{ opacity: 0.9, scale: 0.98 }}
-                    onPress={() => router.push('/add-client')}
+                    onPress={() => router.push('/(trainer)/add-athlete')}
                   >
                     Add Your First Athlete
                   </Button>

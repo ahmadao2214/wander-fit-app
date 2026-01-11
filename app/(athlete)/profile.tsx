@@ -1,9 +1,11 @@
-import { YStack, XStack, Text, Card, Button, ScrollView, Spinner, styled } from 'tamagui'
-import { useQuery } from 'convex/react'
+import { useState } from 'react'
+import { YStack, XStack, Text, Card, Button, ScrollView, Spinner, styled, AlertDialog } from 'tamagui'
+import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
 import { SignOutButton } from '../../components/SignOutButton'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useRouter } from 'expo-router'
 import {
   User,
   Trophy,
@@ -12,6 +14,9 @@ import {
   TrendingUp,
   Settings,
   ChevronRight,
+  UserPlus,
+  UserMinus,
+  Users,
 } from '@tamagui/lucide-icons'
 import { PHASE_NAMES } from '../../types'
 
@@ -48,6 +53,9 @@ const StatNumber = styled(Text, {
 export default function ProfilePage() {
   const { user, isLoading: authLoading } = useAuth()
   const insets = useSafeAreaInsets()
+  const router = useRouter()
+  const [showUnlinkDialog, setShowUnlinkDialog] = useState(false)
+  const [isUnlinking, setIsUnlinking] = useState(false)
 
   const programState = useQuery(
     api.userPrograms.getCurrentProgramState,
@@ -63,6 +71,31 @@ export default function ProfilePage() {
     api.userPrograms.getIntakeHistory,
     user ? {} : "skip"
   )
+
+  // Trainer relationship queries
+  const trainerRelationship = useQuery(
+    api.trainerRelationships.getAthleteTrainer,
+    user ? { athleteUserId: user._id } : "skip"
+  )
+
+  const removeRelationship = useMutation(api.trainerRelationships.removeRelationship)
+
+  const handleUnlinkTrainer = async () => {
+    if (!user || !trainerRelationship) return
+
+    setIsUnlinking(true)
+    try {
+      await removeRelationship({
+        relationshipId: trainerRelationship.relationshipId,
+        requestingUserId: user._id,
+      })
+      setShowUnlinkDialog(false)
+    } catch (err) {
+      console.error('Error unlinking trainer:', err)
+    } finally {
+      setIsUnlinking(false)
+    }
+  }
 
   if (authLoading) {
     return (
@@ -319,6 +352,191 @@ export default function ProfilePage() {
             </YStack>
           )}
 
+          {/* Trainer Section */}
+          <YStack gap="$3">
+            <SectionLabel>MY TRAINER</SectionLabel>
+
+            {trainerRelationship ? (
+              <Card
+                p="$4"
+                bg="$surface"
+                rounded="$4"
+                borderWidth={1}
+                borderColor="$borderColor"
+              >
+                <YStack gap="$4">
+                  <XStack items="center" gap="$3">
+                    <YStack
+                      width={48}
+                      height={48}
+                      rounded="$10"
+                      bg="$brand2"
+                      items="center"
+                      justify="center"
+                    >
+                      <Users size={24} color="$primary" />
+                    </YStack>
+                    <YStack flex={1} gap="$0.5">
+                      <Text
+                        fontFamily="$body"
+                        fontWeight="600"
+                        color="$color12"
+                        fontSize={16}
+                      >
+                        {trainerRelationship.trainerName}
+                      </Text>
+                      <Text
+                        fontSize={13}
+                        color="$color10"
+                        fontFamily="$body"
+                      >
+                        {trainerRelationship.trainerEmail}
+                      </Text>
+                      <Text
+                        fontSize={11}
+                        color="$color9"
+                        fontFamily="$body"
+                      >
+                        Linked {new Date(trainerRelationship.linkedAt).toLocaleDateString()}
+                      </Text>
+                    </YStack>
+                  </XStack>
+                  <Button
+                    size="$3"
+                    bg="$red3"
+                    color="$red11"
+                    fontFamily="$body"
+                    fontWeight="600"
+                    rounded="$3"
+                    icon={UserMinus}
+                    onPress={() => setShowUnlinkDialog(true)}
+                  >
+                    Unlink Trainer
+                  </Button>
+                </YStack>
+              </Card>
+            ) : (
+              <Card
+                p="$5"
+                bg="$surface"
+                rounded="$4"
+                borderWidth={1}
+                borderColor="$borderColor"
+              >
+                <YStack items="center" gap="$4">
+                  <YStack bg="$brand2" p="$3" rounded="$10">
+                    <UserPlus size={24} color="$primary" />
+                  </YStack>
+                  <YStack items="center" gap="$1">
+                    <Text
+                      fontFamily="$body"
+                      fontWeight="600"
+                      color="$color12"
+                      fontSize={15}
+                    >
+                      No Trainer Linked
+                    </Text>
+                    <Text
+                      text="center"
+                      color="$color10"
+                      fontFamily="$body"
+                      fontSize={13}
+                    >
+                      Link with a trainer to get personalized workout guidance
+                    </Text>
+                  </YStack>
+                  <Button
+                    size="$4"
+                    bg="$primary"
+                    color="white"
+                    icon={UserPlus}
+                    fontFamily="$body"
+                    fontWeight="700"
+                    rounded="$4"
+                    pressStyle={{ opacity: 0.9, scale: 0.98 }}
+                    onPress={() => router.push('/(athlete)/accept-trainer-invite')}
+                  >
+                    Enter Invite Code
+                  </Button>
+                </YStack>
+              </Card>
+            )}
+          </YStack>
+
+          {/* Unlink Confirmation Dialog */}
+          <AlertDialog open={showUnlinkDialog} onOpenChange={setShowUnlinkDialog}>
+            <AlertDialog.Portal>
+              <AlertDialog.Overlay
+                key="overlay"
+                animation="quick"
+                opacity={0.5}
+                enterStyle={{ opacity: 0 }}
+                exitStyle={{ opacity: 0 }}
+              />
+              <AlertDialog.Content
+                bordered
+                elevate
+                key="content"
+                animation={[
+                  'quick',
+                  {
+                    opacity: {
+                      overshootClamping: true,
+                    },
+                  },
+                ]}
+                enterStyle={{ x: 0, y: -20, opacity: 0, scale: 0.9 }}
+                exitStyle={{ x: 0, y: 10, opacity: 0, scale: 0.95 }}
+                x={0}
+                scale={1}
+                opacity={1}
+                y={0}
+                p="$5"
+                bg="$background"
+                rounded="$5"
+                maxWidth={400}
+                mx="$4"
+              >
+                <YStack gap="$4">
+                  <AlertDialog.Title fontFamily="$body" fontWeight="700" fontSize={18}>
+                    Unlink Trainer?
+                  </AlertDialog.Title>
+                  <AlertDialog.Description fontFamily="$body" color="$color10" fontSize={14}>
+                    Are you sure you want to unlink from {trainerRelationship?.trainerName}?
+                    They will no longer be able to view your progress or modify your workouts.
+                  </AlertDialog.Description>
+                  <XStack gap="$3" justifyContent="flex-end">
+                    <AlertDialog.Cancel asChild>
+                      <Button
+                        bg="$surface"
+                        borderWidth={1}
+                        borderColor="$borderColor"
+                        fontFamily="$body"
+                        fontWeight="600"
+                        color="$color11"
+                      >
+                        Cancel
+                      </Button>
+                    </AlertDialog.Cancel>
+                    <AlertDialog.Action asChild>
+                      <Button
+                        bg="$red9"
+                        color="white"
+                        fontFamily="$body"
+                        fontWeight="700"
+                        onPress={handleUnlinkTrainer}
+                        disabled={isUnlinking}
+                        icon={isUnlinking ? Spinner : undefined}
+                      >
+                        {isUnlinking ? 'Unlinking...' : 'Unlink'}
+                      </Button>
+                    </AlertDialog.Action>
+                  </XStack>
+                </YStack>
+              </AlertDialog.Content>
+            </AlertDialog.Portal>
+          </AlertDialog>
+
           {/* Settings Section */}
           <YStack gap="$3">
             <SectionLabel>SETTINGS</SectionLabel>
@@ -338,8 +556,8 @@ export default function ProfilePage() {
                 <YStack bg="$color4" p="$2" rounded="$10">
                   <Settings size={18} color="$color10" />
                 </YStack>
-                <Text 
-                  flex={1} 
+                <Text
+                  flex={1}
                   fontSize={15}
                   fontFamily="$body" fontWeight="500"
                   color="$color12"
