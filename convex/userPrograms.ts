@@ -491,57 +491,40 @@ export const advanceToNextDay = mutation({
 
     // Check if we need to advance phase (4 weeks per phase)
     if (currentWeek > 4) {
-      currentWeek = 1;
-
       const phaseOrder: ("GPP" | "SPP" | "SSP")[] = ["GPP", "SPP", "SSP"];
       const currentPhaseIndex = phaseOrder.indexOf(currentPhase);
+      const isFullCycleComplete = currentPhaseIndex >= phaseOrder.length - 1;
+      const nextPhase = isFullCycleComplete ? "GPP" : phaseOrder[currentPhaseIndex + 1];
 
-      if (currentPhaseIndex < phaseOrder.length - 1) {
-        // Advance to next phase and UNLOCK it (Sequential Access)
-        const newPhase = phaseOrder[currentPhaseIndex + 1];
-        
-        // Determine which unlock field to set
-        const unlockField = currentPhase === "GPP" ? "sppUnlockedAt" : "sspUnlockedAt";
+      // ═══════════════════════════════════════════════════════════════════════════
+      // REASSESSMENT REQUIRED
+      // Instead of immediately advancing to next phase, set pending reassessment flag.
+      // User must complete reassessment flow before continuing.
+      // ═══════════════════════════════════════════════════════════════════════════
 
-        await ctx.db.patch(args.programId, {
-          currentPhase: newPhase,
-          currentWeek: 1,
-          currentDay: 1,
-          phaseStartDate: now,
-          lastWorkoutDate: now,
-          [unlockField]: now,
-          updatedAt: now,
-        });
+      await ctx.db.patch(args.programId, {
+        // Keep user at last position (don't advance yet)
+        currentWeek: 4,
+        currentDay: preferredDays,
+        lastWorkoutDate: now,
+        // Set reassessment pending flag - this blocks further progression
+        reassessmentPendingForPhase: currentPhase,
+        updatedAt: now,
+      });
 
-        return {
-          advanced: true,
-          currentPhase: newPhase,
-          currentWeek: 1,
-          currentDay: 1,
-          phaseComplete: true,
-          phaseUnlocked: newPhase,
-          programComplete: false,
-          // FUTURE: Trigger re-assessment prompt here
-          triggerReassessment: true,
-        };
-      } else {
-        // All phases complete - stay on SSP for maintenance
-        await ctx.db.patch(args.programId, {
-          currentWeek: 1,
-          currentDay: 1,
-          lastWorkoutDate: now,
-          updatedAt: now,
-        });
-
-        return {
-          advanced: true,
-          currentPhase: "SSP",
-          currentWeek: 1,
-          currentDay: 1,
-          phaseComplete: true,
-          programComplete: true,
-        };
-      }
+      return {
+        advanced: false, // Did NOT advance to next phase
+        currentPhase,
+        currentWeek: 4,
+        currentDay: preferredDays,
+        phaseComplete: true,
+        programComplete: false,
+        // Reassessment trigger info
+        reassessmentRequired: true,
+        completedPhase: currentPhase,
+        nextPhase,
+        isFullCycleComplete,
+      };
     }
 
     // Normal day/week advancement
@@ -807,5 +790,345 @@ export const updateSkillLevel = mutation({
     });
 
     return { success: true };
+  },
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REASSESSMENT FUNCTIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Get current reassessment status
+ *
+ * Returns information about pending reassessment and data needed for the flow:
+ * - Whether reassessment is pending
+ * - Which phase was completed
+ * - Completion stats from the phase
+ * - Current maxes for re-testing
+ * - Whether skill upgrade is possible
+ */
+export const getReassessmentStatus = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) return null;
+
+    const program = await ctx.db
+      .query("user_programs")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .first();
+
+    if (!program) return null;
+
+    const isPending = !!program.reassessmentPendingForPhase;
+
+    // Get completion stats for the phase
+    const sessions = await ctx.db
+      .query("gpp_workout_sessions")
+      .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
+      .collect();
+
+    // Get linked intake for training days preference
+    const intake = program.intakeResponseId
+      ? await ctx.db.get(program.intakeResponseId)
+      : null;
+    const preferredDays = intake?.preferredTrainingDaysPerWeek ?? 4;
+
+    // Calculate completion for current/pending phase
+    const completedPhase = program.reassessmentPendingForPhase ?? program.currentPhase;
+    const phaseSessions = sessions.filter(
+      (s) => s.status === "completed" && s.templateSnapshot?.phase === completedPhase
+    );
+
+    // Expected workouts = 4 weeks × preferred days per week
+    const expectedWorkouts = 4 * preferredDays;
+    const completedWorkouts = phaseSessions.length;
+    const completionRate = expectedWorkouts > 0
+      ? Math.round((completedWorkouts / expectedWorkouts) * 100)
+      : 0;
+
+    // Determine if skill upgrade is possible
+    const skillLevelOrder = ["Novice", "Moderate", "Advanced"] as const;
+    const currentSkillIndex = skillLevelOrder.indexOf(program.skillLevel);
+    const canUpgrade = currentSkillIndex < skillLevelOrder.length - 1;
+    const nextSkillLevel = canUpgrade ? skillLevelOrder[currentSkillIndex + 1] : null;
+
+    // Determine next phase
+    const phaseOrder: ("GPP" | "SPP" | "SSP")[] = ["GPP", "SPP", "SSP"];
+    const completedPhaseIndex = phaseOrder.indexOf(completedPhase);
+    const isFullCycleComplete = completedPhaseIndex >= phaseOrder.length - 1;
+    const nextPhase = isFullCycleComplete ? "GPP" : phaseOrder[completedPhaseIndex + 1];
+
+    return {
+      // Status
+      reassessmentPending: isPending,
+      pendingForPhase: program.reassessmentPendingForPhase ?? null,
+
+      // Phase info
+      completedPhase,
+      nextPhase,
+      isFullCycleComplete,
+
+      // Completion stats
+      completionStats: {
+        completed: completedWorkouts,
+        expected: expectedWorkouts,
+        rate: completionRate,
+      },
+
+      // Skill level info
+      currentSkillLevel: program.skillLevel,
+      canUpgradeSkillLevel: canUpgrade,
+      nextSkillLevel,
+
+      // Program info for context
+      programId: program._id,
+      gppCategoryId: program.gppCategoryId,
+      ageGroup: program.ageGroup,
+    };
+  },
+});
+
+/**
+ * Complete reassessment flow
+ *
+ * Called when user finishes the reassessment screens.
+ * Updates skill level if warranted, creates intake record, advances to next phase.
+ */
+export const completeReassessment = mutation({
+  args: {
+    // Self-assessment data
+    phaseDifficulty: v.union(
+      v.literal("too_easy"),
+      v.literal("just_right"),
+      v.literal("challenging"),
+      v.literal("too_hard")
+    ),
+    energyLevel: v.optional(v.union(
+      v.literal("low"),
+      v.literal("moderate"),
+      v.literal("high")
+    )),
+    notes: v.optional(v.string()),
+
+    // Whether maxes were updated (done separately via setMultipleMaxes)
+    maxesUpdated: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const program = await ctx.db
+      .query("user_programs")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .first();
+
+    if (!program) {
+      throw new Error("Program not found");
+    }
+
+    if (!program.reassessmentPendingForPhase) {
+      throw new Error("No reassessment pending");
+    }
+
+    const now = Date.now();
+    const completedPhase = program.reassessmentPendingForPhase;
+    const previousSkillLevel = program.skillLevel;
+
+    // Get completion stats for skill upgrade calculation
+    const sessions = await ctx.db
+      .query("gpp_workout_sessions")
+      .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
+      .collect();
+
+    const intake = program.intakeResponseId
+      ? await ctx.db.get(program.intakeResponseId)
+      : null;
+    const preferredDays = intake?.preferredTrainingDaysPerWeek ?? 4;
+
+    const phaseSessions = sessions.filter(
+      (s) => s.status === "completed" && s.templateSnapshot?.phase === completedPhase
+    );
+    const expectedWorkouts = 4 * preferredDays;
+    const completedWorkouts = phaseSessions.length;
+    const completionRate = expectedWorkouts > 0
+      ? Math.round((completedWorkouts / expectedWorkouts) * 100)
+      : 0;
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SKILL LEVEL UPGRADE LOGIC
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Criteria:
+    // - Novice → Moderate: "too_easy" or "just_right" + 75%+ completion
+    // - Moderate → Advanced: "too_easy" or "just_right" + 80%+ completion
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    let newSkillLevel = previousSkillLevel;
+    let skillLevelChanged = false;
+
+    const difficultyAllowsUpgrade =
+      args.phaseDifficulty === "too_easy" || args.phaseDifficulty === "just_right";
+
+    if (difficultyAllowsUpgrade) {
+      if (previousSkillLevel === "Novice" && completionRate >= 75) {
+        newSkillLevel = "Moderate";
+        skillLevelChanged = true;
+      } else if (previousSkillLevel === "Moderate" && completionRate >= 80) {
+        newSkillLevel = "Advanced";
+        skillLevelChanged = true;
+      }
+    }
+
+    // Determine next phase
+    const phaseOrder: ("GPP" | "SPP" | "SSP")[] = ["GPP", "SPP", "SSP"];
+    const completedPhaseIndex = phaseOrder.indexOf(completedPhase);
+    const isFullCycleComplete = completedPhaseIndex >= phaseOrder.length - 1;
+    const nextPhase = isFullCycleComplete ? "GPP" : phaseOrder[completedPhaseIndex + 1];
+
+    // Create intake_responses record for this reassessment
+    const intakeResponseId = await ctx.db.insert("intake_responses", {
+      userId: user._id,
+      sportId: intake?.sportId ?? ("" as any), // Keep same sport
+      yearsOfExperience: intake?.yearsOfExperience ?? 0,
+      preferredTrainingDaysPerWeek: preferredDays,
+      ageGroup: program.ageGroup,
+      weeksUntilSeason: intake?.weeksUntilSeason,
+      assignedGppCategoryId: program.gppCategoryId,
+      assignedSkillLevel: newSkillLevel,
+      intakeType: "reassessment",
+      // Reassessment-specific fields
+      selfAssessment: {
+        phaseDifficulty: args.phaseDifficulty,
+        energyLevel: args.energyLevel,
+        completionRate,
+        notes: args.notes,
+      },
+      previousSkillLevel,
+      skillLevelChanged,
+      completedPhase,
+      maxesUpdated: args.maxesUpdated,
+      completedAt: now,
+    });
+
+    // Determine reassessment completion timestamp field
+    const reassessmentTimestampField =
+      completedPhase === "GPP" ? "gppReassessmentCompletedAt" :
+      completedPhase === "SPP" ? "sppReassessmentCompletedAt" :
+      "sspReassessmentCompletedAt";
+
+    // Determine unlock field for next phase
+    const unlockField =
+      completedPhase === "GPP" ? "sppUnlockedAt" :
+      completedPhase === "SPP" ? "sspUnlockedAt" :
+      null; // SSP doesn't unlock anything new
+
+    // Build update object
+    const programUpdate: Record<string, any> = {
+      intakeResponseId, // Link to new intake
+      skillLevel: newSkillLevel,
+      currentPhase: nextPhase,
+      currentWeek: 1,
+      currentDay: 1,
+      phaseStartDate: now,
+      reassessmentPendingForPhase: undefined, // Clear pending flag
+      [reassessmentTimestampField]: now,
+      updatedAt: now,
+    };
+
+    // Set unlock timestamp if advancing to new phase (not full cycle reset)
+    if (unlockField && !isFullCycleComplete) {
+      programUpdate[unlockField] = now;
+    }
+
+    // If full cycle complete, reset phase unlocks for new cycle
+    if (isFullCycleComplete) {
+      programUpdate.sppUnlockedAt = undefined;
+      programUpdate.sspUnlockedAt = undefined;
+    }
+
+    await ctx.db.patch(program._id, programUpdate);
+
+    return {
+      success: true,
+      // Phase transition info
+      completedPhase,
+      nextPhase,
+      isFullCycleComplete,
+      // Skill level info
+      previousSkillLevel,
+      newSkillLevel,
+      skillLevelChanged,
+      // Stats
+      completionRate,
+      intakeResponseId,
+    };
+  },
+});
+
+/**
+ * Trigger manual reassessment from settings
+ *
+ * Allows user to retake assessment without completing a phase.
+ * Sets pending flag for current phase.
+ */
+export const triggerManualReassessment = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const program = await ctx.db
+      .query("user_programs")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .first();
+
+    if (!program) {
+      throw new Error("Program not found");
+    }
+
+    if (program.reassessmentPendingForPhase) {
+      throw new Error("Reassessment already pending");
+    }
+
+    const now = Date.now();
+
+    await ctx.db.patch(program._id, {
+      reassessmentPendingForPhase: program.currentPhase,
+      updatedAt: now,
+    });
+
+    return {
+      success: true,
+      pendingForPhase: program.currentPhase,
+    };
   },
 });

@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { YStack, XStack, Text, Card, Button, ScrollView, Spinner, styled } from 'tamagui'
-import { useQuery } from 'convex/react'
+import { YStack, XStack, Text, Card, Button, ScrollView, Spinner, styled, AlertDialog } from 'tamagui'
+import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
 import { SignOutButton } from '../../components/SignOutButton'
 import { OneRepMaxSheet } from '../../components/OneRepMaxSheet'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useRouter } from 'expo-router'
 import {
   User,
   Trophy,
@@ -17,6 +18,7 @@ import {
   Dumbbell,
   Check,
   Circle,
+  RefreshCw,
 } from '@tamagui/lucide-icons'
 import { PHASE_NAMES } from '../../types'
 
@@ -53,6 +55,7 @@ const StatNumber = styled(Text, {
 export default function ProfilePage() {
   const { user, isLoading: authLoading } = useAuth()
   const insets = useSafeAreaInsets()
+  const router = useRouter()
 
   // Sheet state for editing 1RM
   const [maxSheetOpen, setMaxSheetOpen] = useState(false)
@@ -62,6 +65,11 @@ export default function ProfilePage() {
     slug: string
     currentMax: number | null
   } | null>(null)
+
+  // Reassessment state
+  const [showReassessmentDialog, setShowReassessmentDialog] = useState(false)
+  const [isTriggering, setIsTriggering] = useState(false)
+  const triggerManualReassessment = useMutation(api.userPrograms.triggerManualReassessment)
 
   const programState = useQuery(
     api.userPrograms.getCurrentProgramState,
@@ -418,6 +426,37 @@ export default function ProfilePage() {
           <YStack gap="$3">
             <SectionLabel>SETTINGS</SectionLabel>
 
+            {/* Retake Assessment */}
+            <Card
+              p="$4"
+              bg="$surface"
+              rounded="$4"
+              borderWidth={1}
+              borderColor="$borderColor"
+              pressStyle={{ bg: '$surfaceHover' }}
+              onPress={() => setShowReassessmentDialog(true)}
+            >
+              <XStack items="center" gap="$3">
+                <YStack bg="$brand2" p="$2" rounded="$10">
+                  <RefreshCw size={18} color="$primary" />
+                </YStack>
+                <YStack flex={1}>
+                  <Text
+                    fontSize={15}
+                    fontFamily="$body" fontWeight="500"
+                    color="$color12"
+                  >
+                    Retake Assessment
+                  </Text>
+                  <Text fontSize={12} fontFamily="$body" color="$color10">
+                    Update skill level and training preferences
+                  </Text>
+                </YStack>
+                <ChevronRight size={20} color="$color9" />
+              </XStack>
+            </Card>
+
+            {/* App Settings */}
             <Card
               p="$4"
               bg="$surface"
@@ -433,8 +472,8 @@ export default function ProfilePage() {
                 <YStack bg="$color4" p="$2" rounded="$10">
                   <Settings size={18} color="$color10" />
                 </YStack>
-                <Text 
-                  flex={1} 
+                <Text
+                  flex={1}
                   fontSize={15}
                   fontFamily="$body" fontWeight="500"
                   color="$color12"
@@ -463,6 +502,81 @@ export default function ProfilePage() {
           onComplete={() => setSelectedExercise(null)}
         />
       )}
+
+      {/* Reassessment Confirmation Dialog */}
+      <AlertDialog open={showReassessmentDialog} onOpenChange={setShowReassessmentDialog}>
+        <AlertDialog.Portal>
+          <AlertDialog.Overlay
+            key="overlay"
+            animation="quick"
+            opacity={0.5}
+            enterStyle={{ opacity: 0 }}
+            exitStyle={{ opacity: 0 }}
+          />
+          <AlertDialog.Content
+            bordered
+            elevate
+            key="content"
+            animation={[
+              'quick',
+              {
+                opacity: {
+                  overshootClamping: true,
+                },
+              },
+            ]}
+            enterStyle={{ x: 0, y: -20, opacity: 0, scale: 0.9 }}
+            exitStyle={{ x: 0, y: 10, opacity: 0, scale: 0.95 }}
+            x={0}
+            scale={1}
+            opacity={1}
+            y={0}
+            maxW={400}
+            mx="$4"
+          >
+            <YStack gap="$4">
+              <AlertDialog.Title fontSize={20} fontWeight="700">
+                Retake Assessment?
+              </AlertDialog.Title>
+              <AlertDialog.Description fontSize={15} color="$color11" lineHeight={22}>
+                This will take you through a quick check-in to update your skill level
+                and training preferences. Your current progress will be preserved.
+              </AlertDialog.Description>
+
+              <XStack gap="$3" justify="flex-end">
+                <AlertDialog.Cancel asChild>
+                  <Button variant="outlined" disabled={isTriggering}>
+                    Cancel
+                  </Button>
+                </AlertDialog.Cancel>
+                <AlertDialog.Action asChild>
+                  <Button
+                    bg="$primary"
+                    color="white"
+                    disabled={isTriggering}
+                    onPress={async () => {
+                      setIsTriggering(true)
+                      try {
+                        await triggerManualReassessment({})
+                        setShowReassessmentDialog(false)
+                        // Router will auto-redirect due to AthleteOnlyRoute guard
+                        router.replace('/(reassessment)/celebration')
+                      } catch (error) {
+                        console.error('Failed to trigger reassessment:', error)
+                        alert('Failed to start assessment. Please try again.')
+                      } finally {
+                        setIsTriggering(false)
+                      }
+                    }}
+                  >
+                    {isTriggering ? 'Starting...' : 'Start Assessment'}
+                  </Button>
+                </AlertDialog.Action>
+              </XStack>
+            </YStack>
+          </AlertDialog.Content>
+        </AlertDialog.Portal>
+      </AlertDialog>
     </YStack>
   )
 }
