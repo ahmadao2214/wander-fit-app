@@ -199,7 +199,7 @@ export default function SportSelectionScreen() {
   const handleContinue = () => {
     if (selectedSportId) {
       router.push({
-        pathname: '/(intake)/experience',
+        pathname: '/(intake)/age-group',
         params: { sportId: selectedSportId },
       })
     }

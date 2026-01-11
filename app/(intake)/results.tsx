@@ -24,6 +24,7 @@ import {
 import { PHASE_NAMES, AgeGroup } from '../../types'
 import { useAuth } from '../../hooks/useAuth'
 import { getSkillLevel, getTrainingPhase } from '../../lib'
+import { IntakeProgressDots, INTAKE_SCREENS } from '../../components/IntakeProgressDots'
 
 /**
  * Results Screen
@@ -206,12 +207,17 @@ export default function ResultsScreen() {
         <YStack
           gap="$6"
           px="$4"
-          pt="$10"
+          pt={insets.top + 16}
           pb="$8"
           maxW={600}
           width="100%"
           self="center"
         >
+          {/* Progress Dots */}
+          <YStack items="center" mb="$2">
+            <IntakeProgressDots total={7} current={INTAKE_SCREENS.RESULTS} />
+          </YStack>
+
           {/* Header */}
           <YStack gap="$2" items="center">
             <CheckCircle size={64} color="$primary" />
