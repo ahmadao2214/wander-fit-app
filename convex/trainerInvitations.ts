@@ -1,6 +1,10 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+
 // Generate a random 6-character invite code
 function generateInviteCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // Exclude similar chars (0, O, I, 1)
@@ -11,54 +15,38 @@ function generateInviteCode(): string {
   return code;
 }
 
+// Validate email format
+function isValidEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
 /**
- * Create a trainer invitation with unique invite code
- * Optionally restrict to specific athlete email
+ * Check if a user is a trainer.
+ * Uses role field if set, otherwise checks if they have any athletes linked.
+ * This provides backwards compatibility during migration from role-based to relationship-based.
  */
-export const createInvitation = mutation({
-  args: {
-    trainerId: v.id("users"),
-    athleteEmail: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    // Verify the trainer exists and has the right role
-    const trainer = await ctx.db.get(args.trainerId);
-    if (!trainer || trainer.role !== "trainer") {
-      throw new Error("Only trainers can create invitations");
-    }
+async function isTrainer(ctx: any, userId: string): Promise<boolean> {
+  const user = await ctx.db.get(userId);
+  if (!user) return false;
 
-    // Generate a unique invite code
-    let inviteCode: string;
-    let isUnique = false;
-    let attempts = 0;
-    const maxAttempts = 10;
+  // Check role field first (backwards compatibility)
+  if (user.role === "trainer") return true;
 
-    do {
-      inviteCode = generateInviteCode();
-      const existingCode = await ctx.db
-        .query("trainer_invitations")
-        .withIndex("by_code", (q) => q.eq("inviteCode", inviteCode))
-        .first();
-      isUnique = !existingCode;
-      attempts++;
-    } while (!isUnique && attempts < maxAttempts);
+  // Check if user has any athletes (relationship-based check)
+  const hasAthletes = await ctx.db
+    .query("trainer_athlete_relationships")
+    .withIndex("by_trainer_status", (q: any) =>
+      q.eq("trainerId", userId).eq("status", "active")
+    )
+    .first();
 
-    if (!isUnique) {
-      throw new Error("Failed to generate unique invite code. Please try again.");
-    }
+  return !!hasAthletes;
+}
 
-    const invitationId = await ctx.db.insert("trainer_invitations", {
-      trainerId: args.trainerId,
-      inviteCode,
-      athleteEmail: args.athleteEmail,
-      status: "pending",
-      expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
-      createdAt: Date.now(),
-    });
-
-    return { invitationId, inviteCode };
-  },
-});
+// ─────────────────────────────────────────────────────────────────────────────
+// QUERIES
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Get all invitations for a trainer
@@ -96,9 +84,15 @@ export const getPendingInvitations = query({
 export const validateInviteCode = query({
   args: { inviteCode: v.string() },
   handler: async (ctx, args) => {
+    const code = args.inviteCode.trim().toUpperCase();
+
+    if (code.length !== 6) {
+      return { valid: false, error: "Invalid invitation code format" };
+    }
+
     const invitation = await ctx.db
       .query("trainer_invitations")
-      .withIndex("by_code", (q) => q.eq("inviteCode", args.inviteCode.toUpperCase()))
+      .withIndex("by_code", (q) => q.eq("inviteCode", code))
       .first();
 
     if (!invitation) {
@@ -129,9 +123,76 @@ export const validateInviteCode = query({
   },
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// MUTATIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Create a trainer invitation with unique invite code
+ * Optionally restrict to specific athlete email
+ */
+export const createInvitation = mutation({
+  args: {
+    trainerId: v.id("users"),
+    athleteEmail: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Verify the trainer exists and is a trainer
+    const trainerCheck = await isTrainer(ctx, args.trainerId);
+    if (!trainerCheck) {
+      throw new Error("Only trainers can create invitations");
+    }
+
+    // Validate email if provided
+    if (args.athleteEmail) {
+      const email = args.athleteEmail.trim().toLowerCase();
+      if (!isValidEmail(email)) {
+        throw new Error("Invalid email format");
+      }
+    }
+
+    // Generate a unique invite code
+    let inviteCode: string;
+    let isUnique = false;
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    do {
+      inviteCode = generateInviteCode();
+      const existingCode = await ctx.db
+        .query("trainer_invitations")
+        .withIndex("by_code", (q) => q.eq("inviteCode", inviteCode))
+        .first();
+      isUnique = !existingCode;
+      attempts++;
+    } while (!isUnique && attempts < maxAttempts);
+
+    if (!isUnique) {
+      throw new Error("Failed to generate unique invite code. Please try again.");
+    }
+
+    const invitationId = await ctx.db.insert("trainer_invitations", {
+      trainerId: args.trainerId,
+      inviteCode,
+      athleteEmail: args.athleteEmail?.trim().toLowerCase(),
+      status: "pending",
+      expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
+      createdAt: Date.now(),
+    });
+
+    return { invitationId, inviteCode };
+  },
+});
+
 /**
  * Accept a trainer invitation
- * Enforces one-trainer-per-athlete limit
+ * Uses atomic check-and-insert to prevent race conditions.
+ *
+ * The strategy:
+ * 1. Mark invitation as "accepted" first (optimistic lock)
+ * 2. Check for existing relationships
+ * 3. If conflict found, revert invitation to "pending" and fail
+ * 4. Otherwise, create relationship
  */
 export const acceptInvitation = mutation({
   args: {
@@ -139,16 +200,19 @@ export const acceptInvitation = mutation({
     athleteUserId: v.id("users"),
   },
   handler: async (ctx, args) => {
+    const code = args.inviteCode.trim().toUpperCase();
+
     // Get the invitation
     const invitation = await ctx.db
       .query("trainer_invitations")
-      .withIndex("by_code", (q) => q.eq("inviteCode", args.inviteCode.toUpperCase()))
+      .withIndex("by_code", (q) => q.eq("inviteCode", code))
       .first();
 
     if (!invitation) {
       throw new Error("Invalid invitation code");
     }
 
+    // Check invitation status - fail fast if not pending
     if (invitation.status !== "pending") {
       throw new Error("This invitation is no longer valid");
     }
@@ -164,12 +228,25 @@ export const acceptInvitation = mutation({
       throw new Error("Athlete not found");
     }
 
-    // If invitation is restricted to specific email, verify it matches
-    if (invitation.athleteEmail && invitation.athleteEmail !== athlete.email) {
-      throw new Error("This invitation is for a different email address");
+    // Validate email restriction if present
+    if (invitation.athleteEmail) {
+      const athleteEmailLower = athlete.email?.toLowerCase();
+      const inviteEmailLower = invitation.athleteEmail.toLowerCase();
+      if (athleteEmailLower !== inviteEmailLower) {
+        throw new Error("This invitation is for a different email address");
+      }
     }
 
-    // Check if athlete already has a trainer (one-trainer limit)
+    // ATOMIC SECTION: Mark invitation as accepted FIRST to claim it
+    // This prevents race conditions where two requests try to use the same invitation
+    await ctx.db.patch(invitation._id, {
+      status: "accepted",
+      acceptedAt: Date.now(),
+      acceptedByUserId: args.athleteUserId,
+    });
+
+    // Now check for existing trainer relationships
+    // If athlete already has a trainer, we need to rollback
     const existingRelationship = await ctx.db
       .query("trainer_athlete_relationships")
       .withIndex("by_athlete_status", (q) =>
@@ -178,7 +255,27 @@ export const acceptInvitation = mutation({
       .first();
 
     if (existingRelationship) {
+      // Rollback: revert invitation status
+      await ctx.db.patch(invitation._id, {
+        status: "pending",
+        acceptedAt: undefined,
+        acceptedByUserId: undefined,
+      });
       throw new Error("You already have a trainer linked. Please unlink your current trainer first.");
+    }
+
+    // Check if this exact relationship already exists (idempotency)
+    const existingWithSameTrainer = await ctx.db
+      .query("trainer_athlete_relationships")
+      .withIndex("by_trainer_status", (q) =>
+        q.eq("trainerId", invitation.trainerId).eq("status", "active")
+      )
+      .filter((q) => q.eq(q.field("athleteUserId"), args.athleteUserId))
+      .first();
+
+    if (existingWithSameTrainer) {
+      // Already linked to this trainer, just return success
+      return { trainerId: invitation.trainerId };
     }
 
     // Create the trainer-athlete relationship
@@ -188,13 +285,6 @@ export const acceptInvitation = mutation({
       status: "active",
       createdAt: Date.now(),
       updatedAt: Date.now(),
-    });
-
-    // Mark invitation as accepted
-    await ctx.db.patch(invitation._id, {
-      status: "accepted",
-      acceptedAt: Date.now(),
-      acceptedByUserId: args.athleteUserId,
     });
 
     return { trainerId: invitation.trainerId };

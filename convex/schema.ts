@@ -535,6 +535,51 @@ export default defineSchema({
     .index("by_trainer", ["trainerId"])
     .index("by_trainer_status", ["trainerId", "status"]),
 
+  /**
+   * trainer_workout_customizations - Per-athlete workout exercise customizations
+   *
+   * When a trainer modifies an athlete's workout, the full customized exercise
+   * list is stored here. This allows:
+   * - Adding new exercises
+   * - Removing exercises
+   * - Modifying exercise parameters (sets, reps, rest, notes, tempo)
+   * - Reordering exercises
+   *
+   * DESIGN:
+   * - One record per athlete per template
+   * - Stores the full customized exercise list (not diffs)
+   * - When athlete does workout, system checks for customization first
+   */
+  trainer_workout_customizations: defineTable({
+    trainerId: v.id("users"),
+    athleteUserId: v.id("users"),
+    templateId: v.id("program_templates"),
+
+    // Customized exercise list - replaces template's exercises when present
+    exercises: v.array(v.object({
+      exerciseId: v.id("exercises"),
+      sets: v.number(),
+      reps: v.string(),
+      tempo: v.optional(v.string()),
+      restSeconds: v.number(),
+      notes: v.optional(v.string()),
+      orderIndex: v.number(),
+      superset: v.optional(v.string()),
+      intensityPercent: v.optional(v.number()),
+      section: v.optional(v.union(
+        v.literal("warmup"),
+        v.literal("main"),
+        v.literal("circuit"),
+        v.literal("finisher")
+      )),
+    })),
+
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_trainer_athlete", ["trainerId", "athleteUserId"])
+    .index("by_athlete_template", ["athleteUserId", "templateId"]),
+
   // ═══════════════════════════════════════════════════════════════════════════════
   // LEGACY TABLES (Kept for backward compatibility during migration)
   // ═══════════════════════════════════════════════════════════════════════════════

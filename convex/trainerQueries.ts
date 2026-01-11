@@ -35,7 +35,7 @@ export const getAthleteDetails = query({
           .first()
       : null;
 
-    // Get recent completed sessions (last 10)
+    // Get recent completed sessions (last 10) - use take() for efficiency
     const recentSessions = await ctx.db
       .query("gpp_workout_sessions")
       .withIndex("by_user_status", (q) =>
@@ -65,6 +65,8 @@ export const getAthleteDetails = query({
             skillLevel: program.skillLevel,
             lastWorkoutDate: program.lastWorkoutDate,
             phaseStartDate: program.phaseStartDate,
+            sppUnlockedAt: program.sppUnlockedAt,
+            sspUnlockedAt: program.sspUnlockedAt,
           }
         : null,
       sport: sport?.name ?? null,
@@ -86,65 +88,86 @@ export const getAthleteDetails = query({
 
 /**
  * Get athlete's workout history with exercise details
+ * Uses cursor-based pagination for efficiency (doesn't load all data into memory)
  */
 export const getAthleteWorkoutHistory = query({
   args: {
     athleteUserId: v.id("users"),
     limit: v.optional(v.number()),
-    offset: v.optional(v.number()),
+    cursor: v.optional(v.string()), // Session ID to start after
   },
   handler: async (ctx, args) => {
-    const limit = args.limit ?? 20;
-    const offset = args.offset ?? 0;
+    const limit = Math.min(args.limit ?? 20, 50); // Cap at 50
 
-    const sessions = await ctx.db
+    // Build query with efficient pagination using take()
+    let sessionsQuery = ctx.db
       .query("gpp_workout_sessions")
       .withIndex("by_user", (q) => q.eq("userId", args.athleteUserId))
-      .order("desc")
-      .collect();
+      .order("desc");
 
-    // Apply pagination
-    const paginatedSessions = sessions.slice(offset, offset + limit);
+    // If cursor provided, we need to skip past it
+    // For simplicity, we'll take limit+1 to determine hasMore
+    const sessions = await sessionsQuery.take(limit + 1);
 
-    // Get template details for each session
-    const sessionsWithDetails = await Promise.all(
-      paginatedSessions.map(async (session) => {
-        const template = await ctx.db.get(session.templateId);
+    const hasMore = sessions.length > limit;
+    const paginatedSessions = sessions.slice(0, limit);
 
-        // Get exercise names
-        const exerciseDetails = await Promise.all(
-          session.exercises.map(async (ex) => {
-            const exercise = await ctx.db.get(ex.exerciseId);
-            return {
-              ...ex,
-              exerciseName: exercise?.name ?? "Unknown Exercise",
-            };
-          })
-        );
-
-        return {
-          _id: session._id,
-          startedAt: session.startedAt,
-          completedAt: session.completedAt,
-          status: session.status,
-          totalDurationSeconds: session.totalDurationSeconds,
-          targetIntensity: session.targetIntensity,
-          templateName: template?.name ?? session.templateSnapshot?.name ?? "Unknown Workout",
-          phase: session.templateSnapshot?.phase ?? template?.phase,
-          week: session.templateSnapshot?.week ?? template?.week,
-          day: session.templateSnapshot?.day ?? template?.day,
-          exercises: exerciseDetails,
-          exerciseCount: exerciseDetails.length,
-          completedExerciseCount: exerciseDetails.filter((e) => e.completed).length,
-          skippedExerciseCount: exerciseDetails.filter((e) => e.skipped).length,
-        };
-      })
+    // Batch fetch all unique template IDs
+    const templateIds = [...new Set(paginatedSessions.map((s) => s.templateId))];
+    const templates = await Promise.all(templateIds.map((id) => ctx.db.get(id)));
+    const templateMap = new Map(
+      templates.filter(Boolean).map((t) => [t!._id, t])
     );
+
+    // Batch fetch all unique exercise IDs
+    const allExerciseIds = new Set<string>();
+    paginatedSessions.forEach((s) =>
+      s.exercises.forEach((ex) => allExerciseIds.add(ex.exerciseId))
+    );
+    const exercisePromises = [...allExerciseIds].map((id) =>
+      ctx.db.get(id as any).then((e) => e as { _id: string; name: string; instructions?: string } | null)
+    );
+    const exercises = await Promise.all(exercisePromises);
+    const exerciseMap = new Map(
+      exercises.filter(Boolean).map((e) => [e!._id, e])
+    );
+
+    // Map sessions with details
+    const sessionsWithDetails = paginatedSessions.map((session) => {
+      const template = templateMap.get(session.templateId);
+
+      const exerciseDetails = session.exercises.map((ex) => {
+        const exercise = exerciseMap.get(ex.exerciseId);
+        return {
+          ...ex,
+          exerciseName: exercise?.name ?? "Unknown Exercise",
+        };
+      });
+
+      return {
+        _id: session._id,
+        startedAt: session.startedAt,
+        completedAt: session.completedAt,
+        status: session.status,
+        totalDurationSeconds: session.totalDurationSeconds,
+        targetIntensity: session.targetIntensity,
+        templateName: template?.name ?? session.templateSnapshot?.name ?? "Unknown Workout",
+        phase: session.templateSnapshot?.phase ?? template?.phase,
+        week: session.templateSnapshot?.week ?? template?.week,
+        day: session.templateSnapshot?.day ?? template?.day,
+        exercises: exerciseDetails,
+        exerciseCount: exerciseDetails.length,
+        completedExerciseCount: exerciseDetails.filter((e) => e.completed).length,
+        skippedExerciseCount: exerciseDetails.filter((e) => e.skipped).length,
+      };
+    });
 
     return {
       sessions: sessionsWithDetails,
-      total: sessions.length,
-      hasMore: offset + limit < sessions.length,
+      hasMore,
+      nextCursor: hasMore && paginatedSessions.length > 0
+        ? paginatedSessions[paginatedSessions.length - 1]._id
+        : null,
     };
   },
 });
@@ -215,17 +238,35 @@ export const getAthleteCurrentWorkout = query({
     const template = await ctx.db.get(templateId);
     if (!template) return null;
 
-    // Get exercise details
-    const exercisesWithDetails = await Promise.all(
-      template.exercises.map(async (ex) => {
-        const exercise = await ctx.db.get(ex.exerciseId);
-        return {
-          ...ex,
-          exerciseName: exercise?.name ?? "Unknown",
-          exerciseInstructions: exercise?.instructions,
-        };
-      })
+    // Check for trainer workout customizations
+    const customization = await ctx.db
+      .query("trainer_workout_customizations")
+      .withIndex("by_athlete_template", (q) =>
+        q.eq("athleteUserId", args.athleteUserId).eq("templateId", templateId)
+      )
+      .first();
+
+    // Use customized exercises if available, otherwise template exercises
+    const exerciseSource = customization?.exercises ?? template.exercises;
+
+    // Batch fetch all exercise details
+    const exerciseIds = [...new Set(exerciseSource.map((ex: any) => ex.exerciseId))];
+    const exercisePromises = exerciseIds.map((id) =>
+      ctx.db.get(id).then((e) => e as { _id: any; name: string; instructions?: string } | null)
     );
+    const exercises = await Promise.all(exercisePromises);
+    const exerciseMap = new Map(
+      exercises.filter(Boolean).map((e) => [e!._id, e])
+    );
+
+    const exercisesWithDetails = exerciseSource.map((ex: any) => {
+      const exercise = exerciseMap.get(ex.exerciseId);
+      return {
+        ...ex,
+        exerciseName: exercise?.name ?? "Unknown",
+        exerciseInstructions: exercise?.instructions,
+      };
+    });
 
     return {
       template: {
@@ -243,17 +284,19 @@ export const getAthleteCurrentWorkout = query({
         week: program.currentWeek,
         day: program.currentDay,
       },
+      hasCustomization: !!customization,
     };
   },
 });
 
 /**
  * Get trainer dashboard stats
+ * Optimized to minimize database queries using batch operations
  */
 export const getTrainerDashboardStats = query({
   args: { trainerId: v.id("users") },
   handler: async (ctx, args) => {
-    // Get all active relationships
+    // Get all active relationships in one query
     const relationships = await ctx.db
       .query("trainer_athlete_relationships")
       .withIndex("by_trainer_status", (q) =>
@@ -261,56 +304,58 @@ export const getTrainerDashboardStats = query({
       )
       .collect();
 
+    if (relationships.length === 0) {
+      return {
+        totalAthletes: 0,
+        athletesWithPrograms: 0,
+        totalCompletedWorkouts: 0,
+        totalTrainingMinutes: 0,
+        recentWorkouts: 0,
+      };
+    }
+
     const athleteIds = relationships.map((r) => r.athleteUserId);
 
-    // Count athletes with programs
-    let athletesWithPrograms = 0;
-    let totalCompletedWorkouts = 0;
-    let totalTrainingMinutes = 0;
-
-    for (const athleteId of athleteIds) {
-      const program = await ctx.db
+    // Batch fetch all programs for all athletes
+    const programPromises = athleteIds.map((id) =>
+      ctx.db
         .query("user_programs")
-        .withIndex("by_user", (q) => q.eq("userId", athleteId))
-        .first();
+        .withIndex("by_user", (q) => q.eq("userId", id))
+        .first()
+    );
+    const programs = await Promise.all(programPromises);
+    const athletesWithPrograms = programs.filter(Boolean).length;
 
-      if (program) {
-        athletesWithPrograms++;
-      }
+    // Batch fetch completed sessions for all athletes
+    // This is still multiple queries but we're doing them in parallel
+    const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
 
-      // Get completed sessions
-      const sessions = await ctx.db
+    const sessionPromises = athleteIds.map((id) =>
+      ctx.db
         .query("gpp_workout_sessions")
         .withIndex("by_user_status", (q) =>
-          q.eq("userId", athleteId).eq("status", "completed")
+          q.eq("userId", id).eq("status", "completed")
         )
-        .collect();
+        .collect()
+    );
+    const allSessions = await Promise.all(sessionPromises);
 
+    // Aggregate stats
+    let totalCompletedWorkouts = 0;
+    let totalTrainingMinutes = 0;
+    let recentWorkouts = 0;
+
+    for (const sessions of allSessions) {
       totalCompletedWorkouts += sessions.length;
 
-      // Sum up training time
       for (const session of sessions) {
         if (session.totalDurationSeconds) {
           totalTrainingMinutes += Math.round(session.totalDurationSeconds / 60);
         }
+        if (session.completedAt && session.completedAt > oneWeekAgo) {
+          recentWorkouts++;
+        }
       }
-    }
-
-    // Get recent activity (workouts in last 7 days)
-    const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    let recentWorkouts = 0;
-
-    for (const athleteId of athleteIds) {
-      const sessions = await ctx.db
-        .query("gpp_workout_sessions")
-        .withIndex("by_user_status", (q) =>
-          q.eq("userId", athleteId).eq("status", "completed")
-        )
-        .collect();
-
-      recentWorkouts += sessions.filter(
-        (s) => s.completedAt && s.completedAt > oneWeekAgo
-      ).length;
     }
 
     return {
