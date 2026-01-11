@@ -18,6 +18,9 @@
   "jest": {
     "preset": "jest-expo"
   },
+  "overrides": {
+    "esbuild": "0.25.4"
+  },
   "dependencies": {
     "@clerk/clerk-expo": "^2.15.0",
     "@clerk/clerk-react": "^5.47.0",

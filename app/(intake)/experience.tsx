@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { YStack, XStack, H2, H3, Text, Card, Button, ScrollView, Slider, Spinner } from 'tamagui'
 import { useRouter, useLocalSearchParams } from 'expo-router'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { Id } from '../../convex/_generated/dataModel'
@@ -10,6 +11,7 @@ import {
   TrendingUp,
 } from '@tamagui/lucide-icons'
 import { getSkillLevel, getExperienceSliderColor } from '../../lib'
+import type { AgeGroup } from '../../types'
 
 /**
  * Experience & Training Days Screen
@@ -19,11 +21,13 @@ import { getSkillLevel, getExperienceSliderColor } from '../../lib'
  */
 export default function ExperienceScreen() {
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   const { sportId } = useLocalSearchParams() as { sportId: string }
 
   const [yearsOfExperience, setYearsOfExperience] = useState(1)
   const [trainingDays, setTrainingDays] = useState(3)
   const [weeksUntilSeason, setWeeksUntilSeason] = useState(8)
+  const [ageGroup, setAgeGroup] = useState<AgeGroup>('18+')
   const [scrollEnabled, setScrollEnabled] = useState(true)
 
   // Fetch sport details to display sport name
@@ -56,12 +60,13 @@ export default function ExperienceScreen() {
 
   const handleContinue = () => {
     router.push({
-      pathname: '/(intake)/results',
+      pathname: '/(intake)/maxes',
       params: {
         sportId,
         yearsOfExperience: yearsOfExperience.toString(),
         trainingDays: trainingDays.toString(),
         weeksUntilSeason: weeksUntilSeason.toString(),
+        ageGroup,
       },
     })
   }
@@ -158,6 +163,40 @@ export default function ExperienceScreen() {
                   </Text>
                 </XStack>
               </Card>
+            </YStack>
+          </Card>
+
+          {/* Age Group */}
+          <Card p="$5" borderColor={"$gray6" as any} borderWidth={1}>
+            <YStack gap="$4">
+              <YStack gap="$1">
+                <Text fontSize="$5" fontWeight="600">
+                  Age Group
+                </Text>
+                <Text fontSize="$3" color="$color10">
+                  Select your age range for appropriate training intensity
+                </Text>
+              </YStack>
+
+              <XStack gap="$2.5" justify="center" width="100%">
+                {(['10-13', '14-17', '18+'] as const).map((age) => (
+                  <Button
+                    key={age}
+                    size="$4"
+                    flex={1}
+                    bg={ageGroup === age ? '$primary' : '$gray3'}
+                    color={ageGroup === age ? 'white' : '$color11'}
+                    onPress={() => setAgeGroup(age)}
+                    fontWeight="600"
+                    pressStyle={{ scale: 0.95 }}
+                    fontFamily="$body"
+                  >
+                    <Text color={ageGroup === age ? 'white' : '$color11'} fontWeight="600" fontSize="$4">
+                      {age}
+                    </Text>
+                  </Button>
+                ))}
+              </XStack>
             </YStack>
           </Card>
 
@@ -269,7 +308,8 @@ export default function ExperienceScreen() {
       {/* Bottom Actions */}
       <YStack
         px="$4"
-        py="$4"
+        pt="$4"
+        pb={16 + insets.bottom}
         borderTopWidth={1}
         borderTopColor={"$gray5" as any}
         bg="$background"

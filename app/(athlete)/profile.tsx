@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { YStack, XStack, Text, Card, Button, ScrollView, Spinner, styled } from 'tamagui'
 import { useQuery } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
 import { SignOutButton } from '../../components/SignOutButton'
+import { OneRepMaxSheet } from '../../components/OneRepMaxSheet'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   User,
@@ -12,6 +14,9 @@ import {
   TrendingUp,
   Settings,
   ChevronRight,
+  Dumbbell,
+  Check,
+  Circle,
 } from '@tamagui/lucide-icons'
 import { PHASE_NAMES } from '../../types'
 
@@ -49,6 +54,15 @@ export default function ProfilePage() {
   const { user, isLoading: authLoading } = useAuth()
   const insets = useSafeAreaInsets()
 
+  // Sheet state for editing 1RM
+  const [maxSheetOpen, setMaxSheetOpen] = useState(false)
+  const [selectedExercise, setSelectedExercise] = useState<{
+    _id: string
+    name: string
+    slug: string
+    currentMax: number | null
+  } | null>(null)
+
   const programState = useQuery(
     api.userPrograms.getCurrentProgramState,
     user ? {} : "skip"
@@ -61,6 +75,12 @@ export default function ProfilePage() {
 
   const intakeHistory = useQuery(
     api.userPrograms.getIntakeHistory,
+    user ? {} : "skip"
+  )
+
+  // Core lift exercises with user's maxes
+  const coreLiftExercises = useQuery(
+    api.userMaxes.getCoreLiftExercises,
     user ? {} : "skip"
   )
 
@@ -277,6 +297,81 @@ export default function ProfilePage() {
             </YStack>
           )}
 
+          {/* My Maxes */}
+          {coreLiftExercises && coreLiftExercises.length > 0 && (
+            <YStack gap="$3">
+              <SectionLabel>MY MAXES</SectionLabel>
+
+              <Card
+                p="$4"
+                bg="$surface"
+                rounded="$4"
+                borderWidth={1}
+                borderColor="$borderColor"
+              >
+                <YStack gap="$3">
+                  {coreLiftExercises.map((exercise, index) => (
+                    <Card
+                      key={exercise.slug}
+                      p="$3"
+                      bg="$background"
+                      rounded="$3"
+                      borderWidth={1}
+                      borderColor="$borderColor"
+                      pressStyle={{ bg: '$surfaceHover' }}
+                      onPress={() => {
+                        setSelectedExercise({
+                          _id: exercise._id,
+                          name: exercise.name,
+                          slug: exercise.slug,
+                          currentMax: exercise.currentMax,
+                        })
+                        setMaxSheetOpen(true)
+                      }}
+                    >
+                      <XStack items="center" gap="$3">
+                        <YStack
+                          width={32}
+                          height={32}
+                          rounded="$10"
+                          bg={exercise.currentMax ? '$green3' : '$color4'}
+                          items="center"
+                          justify="center"
+                        >
+                          {exercise.currentMax ? (
+                            <Check size={16} color="$green10" />
+                          ) : (
+                            <Dumbbell size={16} color="$color9" />
+                          )}
+                        </YStack>
+                        <YStack flex={1}>
+                          <Text
+                            fontSize={14}
+                            fontFamily="$body"
+                            fontWeight="600"
+                            color="$color12"
+                          >
+                            {exercise.name}
+                          </Text>
+                          {exercise.currentMax ? (
+                            <Text fontSize={12} fontFamily="$body" color="$color10">
+                              {exercise.currentMax} lbs
+                            </Text>
+                          ) : (
+                            <Text fontSize={12} fontFamily="$body" color="$color9">
+                              Not set
+                            </Text>
+                          )}
+                        </YStack>
+                        <ChevronRight size={18} color="$color9" />
+                      </XStack>
+                    </Card>
+                  ))}
+                </YStack>
+              </Card>
+            </YStack>
+          )}
+
           {/* Assessment History */}
           {latestIntake && (
             <YStack gap="$3">
@@ -357,6 +452,17 @@ export default function ProfilePage() {
           </YStack>
         </YStack>
       </ScrollView>
+
+      {/* 1RM Edit Sheet */}
+      {selectedExercise && (
+        <OneRepMaxSheet
+          open={maxSheetOpen}
+          onOpenChange={setMaxSheetOpen}
+          mode="single"
+          exercise={selectedExercise}
+          onComplete={() => setSelectedExercise(null)}
+        />
+      )}
     </YStack>
   )
 }

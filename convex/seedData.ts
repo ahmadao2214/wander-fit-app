@@ -197,6 +197,8 @@ export const TAGS_GLOSSARY = {
     "plyometric",
     "stability",
     "isometric",
+    "agility",        // Quick directional change movements
+    "isolation",      // Single-joint/muscle exercises
   ],
   
   // Muscle Emphasis (specific muscle focus)
@@ -242,6 +244,12 @@ export const TAGS_GLOSSARY = {
   equipmentContext: [
     "bodyweight",     // No equipment needed
   ],
+
+  // Sport-Specific
+  sportSpecific: [
+    "sport_specific", // Sport-specific skill drills
+    "basketball",     // Basketball-specific exercises
+  ],
 };
 
 // Flat list of all valid tags (for validation)
@@ -260,27 +268,38 @@ export const EQUIPMENT_GLOSSARY = [
   "barbell",
   "trap_bar",
   "medicine_ball",
-  
+
   // Benches & Boxes
   "bench",
   "incline_bench",
   "plyo_box",
   "box",
-  
+
   // Racks & Bars
   "rack",
   "pull_up_bar",
-  
+
   // Machines & Cables
   "cable_machine",
-  
+
   // Accessories
   "band",
   "rings",
   "wall",
-  
+
+  // Specialty Equipment
+  "stability_ball",
+
   // Bodyweight (no equipment)
   "bodyweight",
+
+  // Basketball program additions
+  "sled",        // Weighted sled for push/pull conditioning
+  "ez_bar",      // EZ curl bar for isolation exercises
+  "trx",         // TRX suspension trainer
+  "tank",        // Tank/prowler push-pull device
+  "basketball",  // Basketball for sport-specific drills
+  "bar",         // Fixed bar for inverted rows
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -484,6 +503,21 @@ export const EXERCISES = [
     tags: ["upper_body", "push", "horizontal", "strength", "chest", "bilateral"],
     equipment: ["dumbbell", "bench"],
     difficulty: "beginner" as const,
+    progressions: {
+      harder: "bench_press",
+    },
+  },
+  {
+    name: "Bench Press",
+    slug: "bench_press",
+    tags: ["upper_body", "push", "horizontal", "strength", "chest", "bilateral", "compound"],
+    equipment: ["barbell", "bench", "rack"],
+    difficulty: "intermediate" as const,
+    instructions: "Lie on bench with feet flat on floor. Grip bar slightly wider than shoulder-width. Lower bar to chest with control, then press up to full lockout.",
+    progressions: {
+      easier: "db_bench_press",
+      harder: "incline_bench_press",
+    },
   },
   {
     name: "Incline Dumbbell Press",
@@ -734,6 +768,367 @@ export const EXERCISES = [
     tags: ["mobility", "thoracic", "rotation", "warmup"],
     equipment: ["bodyweight"],
     difficulty: "beginner" as const,
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // BASKETBALL PROGRAM EXERCISES
+  // Added for trial user (Category 2: Explosive/Vertical)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  // Mobility / Warmup
+  {
+    name: "Lateral Lean",
+    slug: "lateral_lean",
+    tags: ["lower_body", "mobility", "frontal", "hip", "warmup"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+  },
+  {
+    name: "Lateral Skip",
+    slug: "lateral_skip",
+    tags: ["lower_body", "warmup", "agility", "frontal", "conditioning"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+  },
+  {
+    name: "Jumping Jacks",
+    slug: "jumping_jacks",
+    tags: ["full_body", "warmup", "conditioning", "dynamic"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+  },
+
+  // Plyometric / Power
+  {
+    name: "Skater Hops",
+    slug: "skater_hops",
+    tags: ["lower_body", "plyometric", "explosive", "frontal", "conditioning", "agility"],
+    equipment: ["bodyweight"],
+    difficulty: "intermediate" as const,
+    progressions: {
+      easier: "lateral_lunge",
+    },
+  },
+  {
+    name: "Sprint",
+    slug: "sprint",
+    tags: ["full_body", "conditioning", "explosive", "power"],
+    equipment: ["bodyweight"],
+    difficulty: "intermediate" as const,
+  },
+
+  // Conditioning Equipment
+  {
+    name: "Sled Push",
+    slug: "sled_push",
+    tags: ["full_body", "conditioning", "strength", "posterior_chain"],
+    equipment: ["sled"],
+    difficulty: "intermediate" as const,
+    progressions: {
+      easier: "bear_crawl",
+    },
+  },
+  {
+    name: "Sled Pull",
+    slug: "sled_pull",
+    tags: ["full_body", "conditioning", "pull", "posterior_chain"],
+    equipment: ["sled"],
+    difficulty: "intermediate" as const,
+    progressions: {
+      easier: "reverse_bear_crawl",
+    },
+  },
+  {
+    name: "Tank Push",
+    slug: "tank_push",
+    tags: ["full_body", "conditioning", "strength", "posterior_chain"],
+    equipment: ["tank"],
+    difficulty: "intermediate" as const,
+    progressions: {
+      easier: "bear_crawl",
+    },
+  },
+  {
+    name: "Tank Pull",
+    slug: "tank_pull",
+    tags: ["full_body", "conditioning", "pull", "posterior_chain"],
+    equipment: ["tank"],
+    difficulty: "intermediate" as const,
+    progressions: {
+      easier: "reverse_bear_crawl",
+    },
+  },
+
+  // Upper Body - Power
+  {
+    name: "Medicine Ball Chest Pass",
+    slug: "med_ball_chest_pass",
+    tags: ["upper_body", "power", "push", "explosive", "chest"],
+    equipment: ["medicine_ball"],
+    difficulty: "beginner" as const,
+    progressions: {
+      easier: "explosive_pushup",
+    },
+  },
+  {
+    name: "Medicine Ball Overhead Pass",
+    slug: "med_ball_overhead_pass",
+    tags: ["full_body", "power", "explosive", "shoulder"],
+    equipment: ["medicine_ball"],
+    difficulty: "beginner" as const,
+    progressions: {
+      easier: "burpee",
+    },
+  },
+
+  // Upper Body - Isolation
+  {
+    name: "EZ Curl Skullcrusher",
+    slug: "ez_curl_skullcrusher",
+    tags: ["upper_body", "push", "isolation"],
+    equipment: ["ez_bar"],
+    difficulty: "intermediate" as const,
+    progressions: {
+      easier: "diamond_pushup",
+    },
+  },
+  {
+    name: "Dumbbell Lateral Raise",
+    slug: "db_lateral_raise",
+    tags: ["upper_body", "shoulder", "isolation", "frontal"],
+    equipment: ["dumbbell"],
+    difficulty: "beginner" as const,
+    progressions: {
+      easier: "arm_circles",
+    },
+  },
+  {
+    name: "Pike Push-Up",
+    slug: "pike_pushup",
+    tags: ["upper_body", "push", "shoulder", "bodyweight"],
+    equipment: ["bodyweight"],
+    difficulty: "intermediate" as const,
+    progressions: {
+      easier: "push_up",
+    },
+  },
+
+  // Upper Body - Pull
+  {
+    name: "TRX Row",
+    slug: "trx_row",
+    tags: ["upper_body", "pull", "back", "horizontal"],
+    equipment: ["trx"],
+    difficulty: "beginner" as const,
+    progressions: {
+      easier: "inverted_row",
+    },
+  },
+  {
+    name: "Inverted Bar Row",
+    slug: "bar_row",
+    tags: ["upper_body", "pull", "back", "horizontal"],
+    equipment: ["bar"],
+    difficulty: "beginner" as const,
+    progressions: {
+      easier: "inverted_row",
+    },
+  },
+
+  // Core
+  {
+    name: "Reverse Plank",
+    slug: "reverse_plank",
+    tags: ["core", "isometric", "posterior_chain", "glute"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+  },
+  {
+    name: "Elbow Side Plank",
+    slug: "elbow_side_plank",
+    tags: ["core", "isometric", "anti_lateral_flexion", "frontal"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+    progressions: {
+      easier: "side_plank",
+    },
+  },
+  {
+    name: "Mountain Climbers",
+    slug: "mountain_climbers",
+    tags: ["core", "conditioning", "dynamic", "full_body"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+  },
+  {
+    name: "Ab Bicycle",
+    slug: "ab_bicycle",
+    tags: ["core", "dynamic", "rotation"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+  },
+
+  // Sport-Specific
+  {
+    name: "Aggressive Dribble",
+    slug: "aggressive_dribble",
+    tags: ["conditioning", "basketball", "sport_specific", "agility"],
+    equipment: ["basketball"],
+    difficulty: "beginner" as const,
+    progressions: {
+      easier: "high_knees",
+    },
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // BODYWEIGHT ALTERNATIVES
+  // For athletes without specialized equipment
+  // ─────────────────────────────────────────────────────────────────────────────
+  {
+    name: "Bear Crawl",
+    slug: "bear_crawl",
+    tags: ["full_body", "conditioning", "strength", "dynamic", "core"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+  },
+  {
+    name: "Reverse Bear Crawl",
+    slug: "reverse_bear_crawl",
+    tags: ["full_body", "conditioning", "pull", "dynamic", "core"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+  },
+  {
+    name: "Explosive Push-Up",
+    slug: "explosive_pushup",
+    tags: ["upper_body", "power", "push", "explosive", "chest", "plyometric"],
+    equipment: ["bodyweight"],
+    difficulty: "intermediate" as const,
+    progressions: {
+      easier: "push_up",
+    },
+  },
+  {
+    name: "Burpee",
+    slug: "burpee",
+    tags: ["full_body", "conditioning", "explosive", "power", "plyometric"],
+    equipment: ["bodyweight"],
+    difficulty: "intermediate" as const,
+    progressions: {
+      easier: "squat_thrust",
+    },
+  },
+  {
+    name: "Diamond Push-Up",
+    slug: "diamond_pushup",
+    tags: ["upper_body", "push", "chest", "isolation"],
+    equipment: ["bodyweight"],
+    difficulty: "intermediate" as const,
+    progressions: {
+      easier: "push_up",
+    },
+  },
+  {
+    name: "Arm Circles",
+    slug: "arm_circles",
+    tags: ["upper_body", "warmup", "shoulder", "mobility"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+  },
+  {
+    name: "High Knees",
+    slug: "high_knees",
+    tags: ["full_body", "conditioning", "warmup", "dynamic", "agility"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // ADDITIONAL EXERCISES (From Spreadsheet)
+  // ─────────────────────────────────────────────────────────────────────────────
+  {
+    name: "Glute Bridge",
+    slug: "glute_bridge",
+    tags: ["lower_body", "hinge", "bilateral", "glute", "strength"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+    instructions:
+      "Lie on your back with knees bent and feet flat. Drive through heels to lift hips until body forms a straight line. Hold at top for 2 seconds, then lower with control.",
+  },
+  {
+    name: "Bicycle Crunch",
+    slug: "bicycle_crunch",
+    tags: ["core", "rotation", "conditioning", "dynamic"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+    instructions:
+      "Lie on back with hands behind head. Bring opposite elbow to opposite knee while extending the other leg. Alternate sides in a pedaling motion.",
+  },
+  {
+    name: "Hamstring Curl",
+    slug: "hamstring_curl",
+    tags: ["lower_body", "isolation", "hamstring", "strength"],
+    equipment: ["cable_machine"],
+    difficulty: "beginner" as const,
+    instructions:
+      "Using a leg curl machine, curl heels toward glutes while keeping hips pressed down. Control the weight on the way back.",
+  },
+  {
+    name: "Single Arm Plank",
+    slug: "single_arm_plank",
+    tags: ["core", "anti_rotation", "stability", "isometric"],
+    equipment: ["bodyweight"],
+    difficulty: "intermediate" as const,
+    instructions:
+      "From a standard plank position, lift one arm off the ground and hold. Keep hips level and avoid rotation. Alternate sides.",
+    progressions: {
+      easier: "plank",
+    },
+  },
+  {
+    name: "Shuttle Sprint",
+    slug: "shuttle_sprint",
+    tags: ["conditioning", "power", "agility", "lower_body"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+    instructions:
+      "Set up cones 10-25 yards apart. Sprint to the far cone, touch the ground, sprint back. Focus on quick direction changes and acceleration.",
+  },
+  {
+    name: "Stability Ball Plank",
+    slug: "stability_ball_plank",
+    tags: ["core", "anti_extension", "stability", "isometric"],
+    equipment: ["stability_ball"],
+    difficulty: "intermediate" as const,
+    instructions:
+      "Place forearms on a stability ball and extend legs behind you in a plank position. Hold while keeping the ball stable and core engaged.",
+    progressions: {
+      easier: "plank",
+    },
+  },
+  {
+    name: "Band Woodchop",
+    slug: "band_woodchop",
+    tags: ["core", "rotation", "functional", "power"],
+    equipment: ["band"],
+    difficulty: "beginner" as const,
+    instructions:
+      "Anchor band at shoulder height. Stand perpendicular, grip with both hands. Rotate torso to pull band diagonally across body. Control the return.",
+    progressions: {
+      harder: "cable_woodchop",
+    },
+  },
+  {
+    name: "Plyometric Push-Up",
+    slug: "plyo_push_up",
+    tags: ["upper_body", "push", "plyometric", "power", "explosive", "chest"],
+    equipment: ["bodyweight"],
+    difficulty: "intermediate" as const,
+    instructions:
+      "Perform a push-up but explode up so hands leave the ground. Land softly and immediately go into the next rep. Can clap hands at the top.",
+    progressions: {
+      easier: "push_up",
+    },
   },
 ];
 

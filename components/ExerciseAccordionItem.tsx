@@ -51,6 +51,8 @@ interface ExerciseAccordionItemProps {
   onToggle: () => void
   drag?: () => void
   isActive?: boolean
+  /** Intensity color token (e.g., "$intensityLow6", "$intensityMed6", "$intensityHigh6") */
+  intensityColor?: string
 }
 
 /**
@@ -68,19 +70,20 @@ export function ExerciseAccordionItem({
   onToggle,
   drag,
   isActive,
+  intensityColor = "$primary",
 }: ExerciseAccordionItemProps) {
   const exerciseDetails = exercise.exercise
-  
+
   // Use scaled values if available, otherwise fall back to base values
   const displaySets = exercise.scaledSets ?? exercise.sets
   const displayReps = exercise.scaledReps ?? exercise.reps
   const displayRest = exercise.scaledRestSeconds ?? exercise.restSeconds
 
   return (
-    <Card 
-      borderColor={isActive ? "$green8" : "$gray6"} 
+    <Card
+      borderColor={isActive ? intensityColor : "$borderColor"}
       borderWidth={isActive ? 2 : 1}
-      bg={isActive ? "$green2" : "$background"}
+      bg={isActive ? "$color2" : "$background"}
       elevation={isActive ? 4 : 0}
       mb="$2"
     >
@@ -102,7 +105,7 @@ export function ExerciseAccordionItem({
               styles.dragHandleInner,
               isActive && styles.dragHandleActive
             ]}>
-              <GripVertical size={20} color={isActive ? "$green9" : "$color9"} />
+              <GripVertical size={20} color={isActive ? intensityColor : "$color9"} />
             </View>
           </Pressable>
         ) : (
@@ -113,7 +116,7 @@ export function ExerciseAccordionItem({
         <Card
           width={28}
           height={28}
-          bg="$green9"
+          bg={intensityColor}
           rounded="$10"
           items="center"
           justify="center"
@@ -154,16 +157,19 @@ export function ExerciseAccordionItem({
       {/* Expanded Content */}
       {isExpanded && (
         <YStack gap="$3" px="$4" pb="$4">
-          {/* Tags */}
-          {exerciseDetails?.tags && exerciseDetails.tags.length > 0 && (
+          {/* Tags - filter out warm_up and cool_down */}
+          {exerciseDetails?.tags && exerciseDetails.tags.filter(t => t !== 'warm_up' && t !== 'cool_down').length > 0 && (
             <XStack gap="$1" flexWrap="wrap">
-              {exerciseDetails.tags.slice(0, 3).map((tag) => (
-                <Card key={tag} bg="$gray3" px="$2" py="$0.5" rounded="$2">
-                  <Text fontSize="$1" color="$color10">
-                    {tag.replace(/_/g, ' ')}
-                  </Text>
-                </Card>
-              ))}
+              {exerciseDetails.tags
+                .filter(tag => tag !== 'warm_up' && tag !== 'cool_down')
+                .slice(0, 3)
+                .map((tag) => (
+                  <Card key={tag} bg="$gray3" px="$2" py="$0.5" rounded="$2">
+                    <Text fontSize="$1" color="$color10">
+                      {tag.replace(/_/g, ' ')}
+                    </Text>
+                  </Card>
+                ))}
             </XStack>
           )}
 
@@ -179,9 +185,18 @@ export function ExerciseAccordionItem({
             {exercise.targetWeight && (
               <XStack items="center" gap="$2">
                 <Text fontSize="$3" color="$color11">
-                  @ {exercise.targetWeight} lbs
+                  Target: {Math.round(exercise.targetWeight)} lbs
                 </Text>
               </XStack>
+            )}
+
+            {/* Show hint for weighted exercises without 1RM */}
+            {!exercise.isBodyweight && !exercise.hasOneRepMax && (
+              <Card bg="$blue2" px="$2" py="$1" rounded="$2">
+                <Text fontSize="$2" color="$blue10" fontWeight="500">
+                  Set 1RM in Profile
+                </Text>
+              </Card>
             )}
 
             {exercise.tempo && (

@@ -488,10 +488,232 @@ export const seedAllSkillLevelTemplates = mutation({
   },
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// BASKETBALL PROGRAM SEEDING (PRE-34)
+// Category 2: Explosive/Vertical - Trial User Program
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Seed basketball program templates for trial user
+ * Week 1, Days 1-3 for Category 2 (Explosive/Vertical), Moderate skill level
+ *
+ * Uses new schema fields:
+ * - intensityPercent: for "@ 65%" prescriptions
+ * - section: for warmup/main/circuit/finisher grouping
+ */
+export const seedBasketballProgram = mutation({
+  args: {},
+  handler: async (ctx) => {
+    // Helper to get exercise ID by slug
+    const getExerciseId = async (slug: string): Promise<Id<"exercises">> => {
+      const exercise = await ctx.db
+        .query("exercises")
+        .withIndex("by_slug", (q) => q.eq("slug", slug))
+        .first();
+
+      if (!exercise) {
+        throw new Error(`Exercise not found: ${slug}. Run seedExercises first.`);
+      }
+
+      return exercise._id;
+    };
+
+    const results = { created: 0, skipped: 0 };
+
+    // Basketball is Category 2 (Explosive/Vertical)
+    const gppCategoryId = 2;
+    const phase = "GPP" as const;
+    const skillLevel = "Moderate" as const;
+    const week = 1;
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // DAY 1: Lower Push
+    // ─────────────────────────────────────────────────────────────────────────
+    const day1Exercises = [
+      // WARMUP
+      { slug: "goblet_squat", sets: 3, reps: "12", restSeconds: 60, section: "warmup" as const, intensityPercent: 65, orderIndex: 0 },
+      { slug: "walking_lunge", sets: 3, reps: "16 steps", restSeconds: 45, section: "warmup" as const, orderIndex: 1 },
+      { slug: "lateral_lean", sets: 3, reps: "8", restSeconds: 30, section: "warmup" as const, orderIndex: 2 },
+      // CIRCUIT 3x
+      { slug: "plank", sets: 3, reps: "40 sec", restSeconds: 0, section: "circuit" as const, superset: "A", orderIndex: 3 },
+      { slug: "lateral_skip", sets: 3, reps: "20 yards", restSeconds: 0, section: "circuit" as const, superset: "A", orderIndex: 4 },
+      { slug: "skater_hops", sets: 3, reps: "20 sec", restSeconds: 60, section: "circuit" as const, superset: "A", notes: "Rest after completing circuit", orderIndex: 5 },
+      // FINISHER
+      { slug: "sled_push", sets: 3, reps: "20 sec", restSeconds: 90, section: "finisher" as const, orderIndex: 6 },
+    ];
+
+    const day1ExercisesWithIds = await Promise.all(
+      day1Exercises.map(async (e) => ({
+        exerciseId: await getExerciseId(e.slug),
+        sets: e.sets,
+        reps: e.reps,
+        restSeconds: e.restSeconds,
+        section: e.section,
+        intensityPercent: "intensityPercent" in e ? e.intensityPercent : undefined,
+        superset: "superset" in e ? e.superset : undefined,
+        notes: "notes" in e ? e.notes : undefined,
+        orderIndex: e.orderIndex,
+      }))
+    );
+
+    // Check and create Day 1
+    const existingDay1 = await ctx.db
+      .query("program_templates")
+      .withIndex("by_assignment", (q) =>
+        q.eq("gppCategoryId", gppCategoryId).eq("phase", phase).eq("skillLevel", skillLevel).eq("week", week).eq("day", 1)
+      )
+      .first();
+
+    if (!existingDay1) {
+      await ctx.db.insert("program_templates", {
+        gppCategoryId,
+        phase,
+        skillLevel,
+        week,
+        day: 1,
+        name: "Lower Push",
+        description: "Basketball-specific lower body push workout with circuit training and sled finisher.",
+        estimatedDurationMinutes: 50,
+        exercises: day1ExercisesWithIds,
+      });
+      results.created++;
+    } else {
+      results.skipped++;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // DAY 2: Upper Push/Pull
+    // ─────────────────────────────────────────────────────────────────────────
+    const day2Exercises = [
+      // WARMUP
+      { slug: "face_pull", sets: 3, reps: "12", restSeconds: 30, section: "warmup" as const, notes: "Light weight, focus on blood flow", orderIndex: 0 },
+      { slug: "med_ball_chest_pass", sets: 3, reps: "8", restSeconds: 30, section: "warmup" as const, notes: "6 lbs", orderIndex: 1 },
+      // MAIN
+      { slug: "push_up", sets: 4, reps: "8-12", restSeconds: 60, section: "main" as const, orderIndex: 2 },
+      { slug: "ez_curl_skullcrusher", sets: 3, reps: "8", restSeconds: 60, section: "main" as const, intensityPercent: 65, orderIndex: 3 },
+      { slug: "lat_pulldown", sets: 3, reps: "10", restSeconds: 60, section: "main" as const, intensityPercent: 65, orderIndex: 4 },
+      { slug: "db_lateral_raise", sets: 3, reps: "10", restSeconds: 45, section: "main" as const, orderIndex: 5 },
+      { slug: "db_row", sets: 3, reps: "8/side", restSeconds: 60, section: "main" as const, intensityPercent: 65, orderIndex: 6 },
+      // CIRCUIT 3x
+      { slug: "pallof_press", sets: 3, reps: "6/side", restSeconds: 0, section: "circuit" as const, superset: "B", notes: "Add rotation", orderIndex: 7 },
+      { slug: "pike_pushup", sets: 3, reps: "8", restSeconds: 0, section: "circuit" as const, superset: "B", orderIndex: 8 },
+      { slug: "reverse_plank", sets: 3, reps: "30 sec", restSeconds: 0, section: "circuit" as const, superset: "B", orderIndex: 9 },
+      { slug: "trx_row", sets: 3, reps: "8", restSeconds: 0, section: "circuit" as const, superset: "B", orderIndex: 10 },
+      { slug: "elbow_side_plank", sets: 3, reps: "30 sec/side", restSeconds: 60, section: "circuit" as const, superset: "B", notes: "Rest after completing circuit", orderIndex: 11 },
+      // FINISHER 2x
+      { slug: "jumping_jacks", sets: 2, reps: "30", restSeconds: 0, section: "finisher" as const, superset: "C", orderIndex: 12 },
+      { slug: "med_ball_overhead_pass", sets: 2, reps: "12", restSeconds: 0, section: "finisher" as const, superset: "C", notes: "8 lbs", orderIndex: 13 },
+      { slug: "aggressive_dribble", sets: 2, reps: "1 min", restSeconds: 60, section: "finisher" as const, superset: "C", notes: "Rest after completing finisher round", orderIndex: 14 },
+    ];
+
+    const day2ExercisesWithIds = await Promise.all(
+      day2Exercises.map(async (e) => ({
+        exerciseId: await getExerciseId(e.slug),
+        sets: e.sets,
+        reps: e.reps,
+        restSeconds: e.restSeconds,
+        section: e.section,
+        intensityPercent: "intensityPercent" in e ? e.intensityPercent : undefined,
+        superset: "superset" in e ? e.superset : undefined,
+        notes: "notes" in e ? e.notes : undefined,
+        orderIndex: e.orderIndex,
+      }))
+    );
+
+    // Check and create Day 2
+    const existingDay2 = await ctx.db
+      .query("program_templates")
+      .withIndex("by_assignment", (q) =>
+        q.eq("gppCategoryId", gppCategoryId).eq("phase", phase).eq("skillLevel", skillLevel).eq("week", week).eq("day", 2)
+      )
+      .first();
+
+    if (!existingDay2) {
+      await ctx.db.insert("program_templates", {
+        gppCategoryId,
+        phase,
+        skillLevel,
+        week,
+        day: 2,
+        name: "Upper Push/Pull",
+        description: "Basketball-specific upper body workout combining push/pull movements with circuit training.",
+        estimatedDurationMinutes: 60,
+        exercises: day2ExercisesWithIds,
+      });
+      results.created++;
+    } else {
+      results.skipped++;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // DAY 3: Lower Hinge
+    // ─────────────────────────────────────────────────────────────────────────
+    const day3Exercises = [
+      // WARMUP
+      { slug: "med_ball_slam", sets: 3, reps: "8", restSeconds: 30, section: "warmup" as const, notes: "Side-to-side and overhead slams", orderIndex: 0 },
+      { slug: "trap_bar_deadlift", sets: 3, reps: "8", restSeconds: 90, section: "warmup" as const, intensityPercent: 65, orderIndex: 1 },
+      { slug: "mountain_climbers", sets: 3, reps: "20 sec", restSeconds: 30, section: "warmup" as const, orderIndex: 2 },
+      { slug: "lateral_lunge", sets: 3, reps: "8/side", restSeconds: 45, section: "warmup" as const, orderIndex: 3 },
+      // CIRCUIT 3x
+      { slug: "ab_bicycle", sets: 3, reps: "20 sec", restSeconds: 0, section: "circuit" as const, superset: "D", orderIndex: 4 },
+      { slug: "lateral_skip", sets: 3, reps: "15 yards", restSeconds: 0, section: "circuit" as const, superset: "D", orderIndex: 5 },
+      { slug: "sprint", sets: 3, reps: "10 yards", restSeconds: 60, section: "circuit" as const, superset: "D", notes: "Rest after completing circuit", orderIndex: 6 },
+      // FINISHER
+      { slug: "sled_push", sets: 3, reps: "20 yards", restSeconds: 30, section: "finisher" as const, superset: "E", orderIndex: 7 },
+      { slug: "sled_pull", sets: 3, reps: "20 yards", restSeconds: 90, section: "finisher" as const, superset: "E", notes: "Alternate push and pull", orderIndex: 8 },
+    ];
+
+    const day3ExercisesWithIds = await Promise.all(
+      day3Exercises.map(async (e) => ({
+        exerciseId: await getExerciseId(e.slug),
+        sets: e.sets,
+        reps: e.reps,
+        restSeconds: e.restSeconds,
+        section: e.section,
+        intensityPercent: "intensityPercent" in e ? e.intensityPercent : undefined,
+        superset: "superset" in e ? e.superset : undefined,
+        notes: "notes" in e ? e.notes : undefined,
+        orderIndex: e.orderIndex,
+      }))
+    );
+
+    // Check and create Day 3
+    const existingDay3 = await ctx.db
+      .query("program_templates")
+      .withIndex("by_assignment", (q) =>
+        q.eq("gppCategoryId", gppCategoryId).eq("phase", phase).eq("skillLevel", skillLevel).eq("week", week).eq("day", 3)
+      )
+      .first();
+
+    if (!existingDay3) {
+      await ctx.db.insert("program_templates", {
+        gppCategoryId,
+        phase,
+        skillLevel,
+        week,
+        day: 3,
+        name: "Lower Hinge",
+        description: "Basketball-specific lower body hinge workout with explosive conditioning.",
+        estimatedDurationMinutes: 45,
+        exercises: day3ExercisesWithIds,
+      });
+      results.created++;
+    } else {
+      results.skipped++;
+    }
+
+    return {
+      message: "Basketball program templates seeded",
+      ...results,
+      details: `Category 2 (Explosive/Vertical), GPP Phase, ${skillLevel} skill level, Week 1, Days 1-3`,
+    };
+  },
+});
+
 /**
  * Seed example user program (for testing)
  * Requires a test user and sports to be seeded first
- * 
+ *
  * Creates:
  * 1. An intake_responses record
  * 2. A user_programs record
@@ -538,6 +760,7 @@ export const seedExampleUserProgram = mutation({
       assignedGppCategoryId: EXAMPLE_INTAKE.assignedGppCategoryId,
       assignedSkillLevel: EXAMPLE_INTAKE.assignedSkillLevel,
       intakeType: EXAMPLE_INTAKE.intakeType,
+      ageGroup: "18+", // Default to adult
       completedAt: now,
     });
 
@@ -547,6 +770,7 @@ export const seedExampleUserProgram = mutation({
       intakeResponseId,
       gppCategoryId: EXAMPLE_INTAKE.assignedGppCategoryId,
       skillLevel: EXAMPLE_INTAKE.assignedSkillLevel,
+      ageGroup: "18+", // Default to adult
       currentPhase: "GPP",
       currentWeek: 1,
       currentDay: 1,

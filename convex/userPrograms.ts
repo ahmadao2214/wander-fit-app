@@ -331,6 +331,7 @@ export const completeIntake = mutation({
     yearsOfExperience: v.number(),
     preferredTrainingDaysPerWeek: v.number(), // 1-7
     weeksUntilSeason: v.optional(v.number()),
+    ageGroup: v.union(v.literal("10-13"), v.literal("14-17"), v.literal("18+")),
     intakeType: v.optional(intakeTypeValidator), // Defaults to "initial"
   },
   handler: async (ctx, args) => {
@@ -376,6 +377,7 @@ export const completeIntake = mutation({
       weeksUntilSeason: args.weeksUntilSeason,
       assignedGppCategoryId: sport.gppCategoryId,
       assignedSkillLevel: skillLevel,
+      ageGroup: args.ageGroup,
       intakeType,
       completedAt: now,
     });
@@ -403,6 +405,7 @@ export const completeIntake = mutation({
         intakeResponseId,
         gppCategoryId: sport.gppCategoryId,
         skillLevel,
+        ageGroup: args.ageGroup,
         currentPhase: "GPP",
         currentWeek: 1,
         currentDay: 1,
