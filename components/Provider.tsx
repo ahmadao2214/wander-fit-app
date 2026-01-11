@@ -9,28 +9,17 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { CurrentToast } from './CurrentToast'
 import { config } from '../tamagui.config'
 
+// Create the Convex client ONCE outside the component to prevent re-creation on every render
+const convexUrl = process.env.EXPO_PUBLIC_CONVEX_URL
+if (!convexUrl) {
+  console.error('❌ EXPO_PUBLIC_CONVEX_URL is not defined!')
+}
+const convexClient = new ConvexReactClient(convexUrl!, {
+  unsavedChangesWarning: false,
+})
+
 export function Provider({ children, ...rest }: Omit<TamaguiProviderProps, 'config'>) {
   const colorScheme = useColorScheme()
-  
-  // Debug logging for environment variables
-  const convexUrl = process.env.EXPO_PUBLIC_CONVEX_URL
-  const clerkKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY
-  
-  if (!convexUrl) {
-    console.error('❌ EXPO_PUBLIC_CONVEX_URL is not defined!')
-  } else {
-    console.log('✅ Convex URL:', convexUrl)
-  }
-  
-  if (!clerkKey) {
-    console.error('❌ EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY is not defined!')
-  } else {
-    console.log('✅ Clerk Key:', clerkKey.substring(0, 20) + '...')
-  }
-  
-  const convexClient = new ConvexReactClient(convexUrl!, {
-    unsavedChangesWarning: false,
-  })
   
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

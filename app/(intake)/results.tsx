@@ -19,7 +19,7 @@ import {
   RefreshCw,
   Dumbbell,
 } from '@tamagui/lucide-icons'
-import { PHASE_NAMES } from '../../types'
+import { PHASE_NAMES, AgeGroup } from '../../types'
 import { useAuth } from '../../hooks/useAuth'
 import { getSkillLevel, getTrainingPhase } from '../../lib'
 
@@ -35,11 +35,12 @@ import { getSkillLevel, getTrainingPhase } from '../../lib'
 export default function ResultsScreen() {
   const router = useRouter()
   const { hasCompletedIntake } = useAuth()
-  const { sportId, yearsOfExperience, trainingDays, weeksUntilSeason } = useLocalSearchParams<{
+  const { sportId, yearsOfExperience, trainingDays, weeksUntilSeason, ageGroup } = useLocalSearchParams<{
     sportId: string
     yearsOfExperience: string
     trainingDays: string
     weeksUntilSeason: string
+    ageGroup: AgeGroup
   }>()
 
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -62,7 +63,7 @@ export default function ResultsScreen() {
   const completeIntake = useMutation(api.userPrograms.completeIntake)
 
   // Redirect back if missing params
-  if (!sportId || !yearsOfExperience || !trainingDays || !weeksUntilSeason) {
+  if (!sportId || !yearsOfExperience || !trainingDays || !weeksUntilSeason || !ageGroup) {
     router.replace('/(intake)/sport')
     return null
   }
@@ -132,6 +133,7 @@ export default function ResultsScreen() {
         yearsOfExperience: years,
         preferredTrainingDaysPerWeek: days,
         weeksUntilSeason: weeks,
+        ageGroup,
       })
 
       // Show success state - IntakeOnlyRoute will handle redirect

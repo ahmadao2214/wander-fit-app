@@ -1,25 +1,36 @@
-import { useState, useCallback } from 'react'
-import { 
-  YStack, 
-  XStack, 
-  Text, 
-  Card, 
+import { useState, useCallback, useRef, useEffect } from 'react'
+import {
+  YStack,
+  XStack,
+  Text,
+  Card,
   Button,
-  Sheet,
   styled,
 } from 'tamagui'
-import { 
-  Check, 
+import {
+  Check,
   ChevronRight,
-  List,
-  X,
+  ChevronLeft,
   GripVertical,
 } from '@tamagui/lucide-icons'
-import { TouchableOpacity, Platform, Vibration, StyleSheet, View } from 'react-native'
-import DraggableFlatList, { 
+import {
+  TouchableOpacity,
+  Platform,
+  Vibration,
+  StyleSheet,
+  View,
+  Animated,
+  Dimensions,
+  Modal,
+  Pressable,
+  PanResponder,
+} from 'react-native'
+import DraggableFlatList, {
   ScaleDecorator,
   RenderItemParams,
 } from 'react-native-draggable-flatlist'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
@@ -53,16 +64,22 @@ interface ExerciseQueueProps {
   currentIndex: number
   onExerciseSelect: (index: number) => void
   onReorder: (fromIndex: number, toIndex: number) => void
+  /** Primary intensity color token (e.g., "$intensityLow6") */
+  intensityColor?: string
 }
+
+const DRAWER_WIDTH = Dimensions.get('window').width * 0.85
+const EDGE_TAB_WIDTH = 14
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * ExerciseQueue - Swipe drawer with exercise list
- * 
- * Shows all exercises in the workout with:
+ * ExerciseQueue - Right-side sliding drawer with exercise list
+ *
+ * - Tap edge tab or swipe left to open
+ * - Swipe right to close
  * - Completed exercises (checkmark, grayed out)
  * - Current exercise (highlighted)
  * - Upcoming exercises (draggable to reorder via grip handle)
@@ -72,8 +89,11 @@ export function ExerciseQueue({
   currentIndex,
   onExerciseSelect,
   onReorder,
+  intensityColor = '$primary',
 }: ExerciseQueueProps) {
   const [open, setOpen] = useState(false)
+  const slideAnim = useRef(new Animated.Value(DRAWER_WIDTH)).current
+  const insets = useSafeAreaInsets()
 
   const completedCount = exercises.filter(e => e.completed).length
 
@@ -83,6 +103,63 @@ export function ExerciseQueue({
       Vibration.vibrate(10)
     }
   }, [])
+
+  // Animate drawer open/close
+  useEffect(() => {
+    Animated.spring(slideAnim, {
+      toValue: open ? 0 : DRAWER_WIDTH,
+      useNativeDriver: true,
+      friction: 20,
+      tension: 70,
+    }).start()
+  }, [open, slideAnim])
+
+  // Pan responder for swipe gestures on the drawer header only
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Only respond to rightward horizontal swipes (to close)
+        return gestureState.dx > 10 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy)
+      },
+      onPanResponderMove: (_, gestureState) => {
+        // Only allow swiping right (to close)
+        if (gestureState.dx > 0) {
+          slideAnim.setValue(gestureState.dx)
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        // Close if swiped more than 1/3 of drawer width
+        if (gestureState.dx > DRAWER_WIDTH / 3 || gestureState.vx > 0.5) {
+          triggerHaptic()
+          setOpen(false)
+        } else {
+          // Snap back open
+          Animated.spring(slideAnim, {
+            toValue: 0,
+            useNativeDriver: true,
+            friction: 20,
+            tension: 70,
+          }).start()
+        }
+      },
+    })
+  ).current
+
+  // Pan responder for edge tab swipe-to-open
+  const edgePanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderRelease: (_, gestureState) => {
+        // Open if swiped left or tapped
+        if (gestureState.dx < -30 || (Math.abs(gestureState.dx) < 10 && Math.abs(gestureState.dy) < 10)) {
+          triggerHaptic()
+          setOpen(true)
+        }
+      },
+    })
+  ).current
 
   // Handle drag end - update the order
   const handleDragEnd = useCallback(({ data, from, to }: { data: Exercise[], from: number, to: number }) => {
@@ -101,7 +178,7 @@ export function ExerciseQueue({
     const isCompleted = item.completed
     const isCurrent = index === currentIndex
     const isUpcoming = index > currentIndex && !isCompleted
-    const canDrag = isUpcoming // Only upcoming exercises can be dragged
+    const canDrag = isUpcoming
 
     return (
       <ScaleDecorator activeScale={1.03}>
@@ -117,8 +194,8 @@ export function ExerciseQueue({
           <Card
             p="$3"
             mb="$2"
-            bg={isActive ? '$brand2' : isCurrent ? '$brand1' : isCompleted ? '$color3' : '$surface'}
-            borderColor={isActive ? '$primary' : isCurrent ? '$primary' : '$borderColor'}
+            bg={isActive ? '$color2' : isCurrent ? '$color2' : isCompleted ? '$color3' : '$surface'}
+            borderColor={isActive ? intensityColor : isCurrent ? intensityColor : '$borderColor'}
             borderWidth={isCurrent || isActive ? 2 : 1}
             rounded="$4"
             opacity={isCompleted && !isCurrent ? 0.7 : 1}
@@ -127,14 +204,14 @@ export function ExerciseQueue({
             <XStack items="center" gap="$3">
               {/* Drag Handle - only for upcoming exercises */}
               {canDrag ? (
-                <TouchableOpacity
+                <Pressable
                   onLongPress={drag}
                   delayLongPress={100}
                   disabled={isActive}
                   style={styles.dragHandle}
                 >
                   <GripVertical size={20} color="$color9" />
-                </TouchableOpacity>
+                </Pressable>
               ) : (
                 <YStack width={28} />
               )}
@@ -144,15 +221,15 @@ export function ExerciseQueue({
                 width={28}
                 height={28}
                 rounded="$3"
-                bg={isCompleted ? '$success' : isCurrent ? '$primary' : '$color5'}
+                bg={isCompleted ? '$success' : isCurrent ? intensityColor : '$color5'}
                 items="center"
                 justify="center"
               >
                 {isCompleted ? (
                   <Check size={16} color="white" strokeWidth={3} />
                 ) : (
-                  <Text 
-                    fontSize={12} 
+                  <Text
+                    fontSize={12}
                     fontFamily="$body" fontWeight="700"
                     color={isCurrent ? 'white' : '$color11'}
                   >
@@ -163,8 +240,8 @@ export function ExerciseQueue({
 
               {/* Exercise Info */}
               <YStack flex={1} gap="$0.5">
-                <Text 
-                  fontSize={14} 
+                <Text
+                  fontSize={14}
                   fontFamily="$body"
                   fontWeight={isCurrent ? '700' : '500'}
                   color={isCompleted ? '$color10' : '$color12'}
@@ -172,25 +249,25 @@ export function ExerciseQueue({
                 >
                   {item.name}
                 </Text>
-                <Text 
-                  fontSize={12} 
+                <Text
+                  fontSize={12}
                   color="$color10"
                   fontFamily="$body"
                 >
-                  {item.scaledSets ?? item.sets} sets × {item.scaledReps ?? item.reps}
+                  {item.scaledSets ?? item.sets} × {item.scaledReps ?? item.reps}
                 </Text>
               </YStack>
 
               {/* Current Badge or Navigation Arrow */}
               {isCurrent ? (
-                <Card bg="$primary" px="$2" py="$1" rounded="$2">
-                  <Text 
-                    fontSize={10} 
-                    color="white" 
+                <Card bg={intensityColor} px="$2" py="$1" rounded="$2">
+                  <Text
+                    fontSize={10}
+                    color="white"
                     fontFamily="$body" fontWeight="700"
                     letterSpacing={0.5}
                   >
-                    CURRENT
+                    NOW
                   </Text>
                 </Card>
               ) : !isCompleted && !canDrag ? (
@@ -201,115 +278,165 @@ export function ExerciseQueue({
         </TouchableOpacity>
       </ScaleDecorator>
     )
-  }, [currentIndex, onExerciseSelect, triggerHaptic])
+  }, [currentIndex, onExerciseSelect, triggerHaptic, intensityColor])
 
-  const keyExtractor = useCallback((item: Exercise, index: number) => 
+  const keyExtractor = useCallback((item: Exercise, index: number) =>
     `${item.exerciseId}-${index}`, [])
 
   return (
     <>
-      {/* Edge Indicator / Trigger Button */}
-      <TouchableOpacity
-        onPress={() => setOpen(true)}
-        activeOpacity={0.7}
-        style={styles.triggerButton}
+      {/* Edge Tab - Samsung Edge style */}
+      <View
+        style={styles.edgeTab}
+        {...edgePanResponder.panHandlers}
       >
         <YStack
-          bg="$primary"
-          px="$2"
-          py="$4"
-          borderTopLeftRadius="$4"
-          borderBottomLeftRadius="$4"
-          opacity={0.95}
+          bg={intensityColor}
+          width={EDGE_TAB_WIDTH}
+          height={80}
+          borderTopLeftRadius={12}
+          borderBottomLeftRadius={12}
+          shadowColor="black"
+          shadowOffset={{ width: -3, height: 0 }}
+          shadowOpacity={0.25}
+          shadowRadius={8}
+          items="center"
+          justify="center"
         >
-          <List size={20} color="white" />
+          <ChevronLeft size={16} color="white" style={{ marginLeft: -2 }} />
         </YStack>
-      </TouchableOpacity>
+      </View>
 
-      {/* Drawer Sheet */}
-      <Sheet
-        modal
-        open={open}
-        onOpenChange={setOpen}
-        snapPoints={[80]}
-        dismissOnSnapToBottom
-        animation="medium"
+      {/* Drawer Modal */}
+      <Modal
+        visible={open}
+        transparent
+        animationType="none"
+        onRequestClose={() => setOpen(false)}
+        statusBarTranslucent
       >
-        <Sheet.Overlay 
-          animation="lazy"
-          enterStyle={{ opacity: 0 }}
-          exitStyle={{ opacity: 0 }}
-        />
-        <Sheet.Frame bg="$background">
-          <Sheet.Handle />
-          
-          <YStack flex={1} p="$4">
-            {/* Header */}
-            <XStack items="center" justify="space-between" pb="$4">
-              <YStack gap="$0.5">
-                <Text 
-                  fontSize={20} 
-                  fontFamily="$body" fontWeight="700"
-                  color="$color12"
-                >
-                  Exercise Queue
-                </Text>
-                <Text 
-                  fontSize={13} 
-                  color="$color10"
-                  fontFamily="$body"
-                >
-                  {completedCount} of {exercises.length} completed
-                </Text>
-              </YStack>
-              <Button
-                size="$3"
-                circular
-                bg="$surface"
-                borderWidth={1}
-                borderColor="$borderColor"
-                icon={X}
-                onPress={() => setOpen(false)}
-              />
-            </XStack>
+        {/* Backdrop */}
+        <Pressable
+          style={styles.backdrop}
+          onPress={() => setOpen(false)}
+        >
+          <Animated.View
+            style={[
+              styles.backdropInner,
+              {
+                opacity: slideAnim.interpolate({
+                  inputRange: [0, DRAWER_WIDTH],
+                  outputRange: [0.5, 0],
+                }),
+              },
+            ]}
+          />
+        </Pressable>
 
-            {/* Drag hint */}
-            <XStack items="center" gap="$2" pb="$3">
-              <GripVertical size={14} color="$color9" />
-              <Text 
-                fontSize={12} 
-                color="$color9"
-                fontFamily="$body"
-              >
-                Hold and drag upcoming exercises to reorder
-              </Text>
-            </XStack>
+        {/* Drawer */}
+        <Animated.View
+          style={[
+            styles.drawer,
+            {
+              width: DRAWER_WIDTH,
+              transform: [{ translateX: slideAnim }],
+              paddingTop: insets.top,
+              paddingBottom: insets.bottom,
+            },
+          ]}
+        >
+          {/* GestureHandlerRootView is required inside Modal for DraggableFlatList to work */}
+          <GestureHandlerRootView style={{ flex: 1 }}>
+            <YStack flex={1} bg="$background">
+              {/* Header - swipe here to close */}
+              <View {...panResponder.panHandlers}>
+                <YStack px="$4" pt="$4" pb="$2">
+                  <XStack items="center" justify="space-between" pb="$3">
+                    <YStack gap="$0.5">
+                      <Text
+                        fontSize={18}
+                        fontFamily="$body" fontWeight="700"
+                        color="$color12"
+                      >
+                        Exercises
+                      </Text>
+                      <Text
+                        fontSize={13}
+                        color="$color10"
+                        fontFamily="$body"
+                      >
+                        {completedCount}/{exercises.length} done
+                      </Text>
+                    </YStack>
+                    <Button
+                      size="$3"
+                      circular
+                      bg="$color3"
+                      icon={ChevronRight}
+                      onPress={() => setOpen(false)}
+                    />
+                  </XStack>
 
-            {/* Draggable Exercise List */}
-            <View style={styles.listContainer}>
-              <DraggableFlatList
-                data={exercises}
-                onDragEnd={handleDragEnd}
-                keyExtractor={keyExtractor}
-                renderItem={renderItem}
-                containerStyle={styles.flatList}
-                activationDistance={10}
-                onDragBegin={() => triggerHaptic()}
-              />
-            </View>
-          </YStack>
-        </Sheet.Frame>
-      </Sheet>
+                  {/* Drag hint */}
+                  <XStack items="center" gap="$2">
+                    <GripVertical size={14} color="$color9" />
+                    <Text
+                      fontSize={12}
+                      color="$color9"
+                      fontFamily="$body"
+                    >
+                      Hold to reorder upcoming
+                    </Text>
+                  </XStack>
+                </YStack>
+              </View>
+
+              {/* Draggable Exercise List - no pan responder here */}
+              <View style={styles.listContainer}>
+                <DraggableFlatList
+                  data={exercises}
+                  onDragEnd={handleDragEnd}
+                  keyExtractor={keyExtractor}
+                  renderItem={renderItem}
+                  containerStyle={styles.flatList}
+                  contentContainerStyle={styles.listContent}
+                  activationDistance={10}
+                  onDragBegin={() => triggerHaptic()}
+                />
+              </View>
+            </YStack>
+          </GestureHandlerRootView>
+        </Animated.View>
+      </Modal>
     </>
   )
 }
 
 const styles = StyleSheet.create({
-  triggerButton: {
+  edgeTab: {
     position: 'absolute',
     right: 0,
     top: '40%',
     zIndex: 100,
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  backdropInner: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'black',
+  },
+  drawer: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: '#0F172A', // Dark background fallback
+    shadowColor: 'black',
+    shadowOffset: { width: -4, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 20,
   },
   dragHandle: {
     padding: 4,
@@ -320,6 +447,10 @@ const styles = StyleSheet.create({
   },
   flatList: {
     flex: 1,
+  },
+  listContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
 })
 
