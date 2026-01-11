@@ -1,12 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { YStack, XStack, H2, H3, Text, Card, Button, Spinner, ScrollView } from 'tamagui'
 import { useRouter, useLocalSearchParams } from 'expo-router'
-import { useQuery } from 'convex/react'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useQuery, useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { Id } from '../../convex/_generated/dataModel'
 import {
   ChevronLeft,
-  ChevronRight,
   ChevronDown,
   ChevronUp,
   CheckCircle,
@@ -18,6 +18,7 @@ import {
   Zap,
   RefreshCw,
   Dumbbell,
+  User,
 } from '@tamagui/lucide-icons'
 
 import { PHASE_NAMES, AgeGroup } from '../../types'
@@ -27,12 +28,13 @@ import { getSkillLevel, getTrainingPhase } from '../../lib'
 /**
  * Results Screen
  *
- * Step 3 of intake flow.
+ * Final step of intake flow.
  * Shows the calculated assignment and previews the program.
- * User then continues to the maxes screen (optional 1RM input).
+ * User confirms to create their program and complete intake.
  */
 export default function ResultsScreen() {
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   const { hasCompletedIntake } = useAuth()
   const { sportId, yearsOfExperience, trainingDays, weeksUntilSeason, ageGroup } = useLocalSearchParams<{
     sportId: string
@@ -43,6 +45,11 @@ export default function ResultsScreen() {
   }>()
 
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set())
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSuccess, setIsSuccess] = useState(false)
+
+  // Mutation to complete intake
+  const completeIntake = useMutation(api.userPrograms.completeIntake)
 
   // Get sport details
   const sport = useQuery(
@@ -55,6 +62,10 @@ export default function ResultsScreen() {
     api.sports.getCategoryById,
     sport ? { categoryId: sport.gppCategoryId } : "skip"
   )
+
+  // Get user's saved maxes for review
+  const coreLiftExercises = useQuery(api.userMaxes.getCoreLiftExercises)
+  const savedMaxes = coreLiftExercises?.filter(ex => ex.currentMax !== null) ?? []
 
   // Redirect back if missing params
   if (!sportId || !yearsOfExperience || !trainingDays || !weeksUntilSeason || !ageGroup) {
@@ -127,11 +138,8 @@ export default function ResultsScreen() {
         yearsOfExperience: years,
         preferredTrainingDaysPerWeek: days,
         weeksUntilSeason: weeks,
-        ageGroup,
+        ageGroup: ageGroup as "10-13" | "14-17" | "18+",
       })
-
-      // Show success state - IntakeOnlyRoute will handle redirect
-      // when it detects intakeCompletedAt is set
       setIsSuccess(true)
     } catch (error) {
       console.error('Failed to complete intake:', error)
@@ -139,6 +147,23 @@ export default function ResultsScreen() {
       setIsSubmitting(false)
     }
   }
+
+  // Navigate to athlete dashboard once intake is marked complete
+  useEffect(() => {
+    if (isSuccess && hasCompletedIntake) {
+      router.replace('/(athlete)')
+    }
+  }, [isSuccess, hasCompletedIntake, router])
+
+  // Fallback navigation after a short delay
+  useEffect(() => {
+    if (isSuccess) {
+      const timeout = setTimeout(() => {
+        router.replace('/(athlete)')
+      }, 2000)
+      return () => clearTimeout(timeout)
+    }
+  }, [isSuccess, router])
 
   // Show loading while fetching sport/category (undefined = still loading)
   if (sport === undefined || category === undefined) {
@@ -154,6 +179,25 @@ export default function ResultsScreen() {
   if (sport === null || category === null) {
     router.replace('/(intake)/sport')
     return null
+  }
+
+  // Show success state while waiting for redirect
+  if (isSuccess) {
+    return (
+      <YStack flex={1} bg="$background" items="center" justify="center" gap="$6" px="$4">
+        <YStack items="center" gap="$4">
+          <Dumbbell size={72} color="$primary" />
+          <H2 text="center" color="$color12">Let's Go!</H2>
+          <Text color="$gray11" text="center" fontSize="$4">
+            Your personalized program is ready.
+          </Text>
+          <Text color="$gray11" text="center" fontSize="$4">
+            Taking you to your dashboard...
+          </Text>
+        </YStack>
+        <Spinner size="large" color="$primary" />
+      </YStack>
+    )
   }
 
   return (
@@ -230,6 +274,17 @@ export default function ResultsScreen() {
                 </YStack>
               </XStack>
 
+              {/* Age Group */}
+              <XStack items="center" gap="$3">
+                <User size={24} color="$primary" />
+                <YStack flex={1}>
+                  <Text fontSize="$2" color="$color10">Age Group</Text>
+                  <Text fontSize="$5" fontWeight="700" color="$color12">
+                    {ageGroup}
+                  </Text>
+                </YStack>
+              </XStack>
+
               {/* Skill Level */}
               <XStack items="center" gap="$3">
                 <Trophy size={24} color="$primary" />
@@ -267,6 +322,37 @@ export default function ResultsScreen() {
               </XStack>
             </YStack>
           </Card>
+
+          {/* Saved Maxes - Only show if user entered any */}
+          {savedMaxes.length > 0 && (
+            <Card p="$5" bg="$background" borderColor="$borderColor" borderWidth={1}>
+              <YStack gap="$4">
+                <XStack items="center" gap="$2">
+                  <Dumbbell size={20} color="$primary" />
+                  <Text fontSize="$5" fontWeight="600" color="$color12">
+                    Your Starting Maxes
+                  </Text>
+                </XStack>
+
+                <YStack gap="$3">
+                  {savedMaxes.map((exercise) => (
+                    <XStack key={exercise.slug} items="center" justify="space-between">
+                      <Text fontSize="$4" color="$color11">
+                        {exercise.name}
+                      </Text>
+                      <Text fontSize="$4" fontWeight="700" color="$color12">
+                        {exercise.currentMax} lbs
+                      </Text>
+                    </XStack>
+                  ))}
+                </YStack>
+
+                <Text fontSize="$2" color="$color9">
+                  These will be used to calculate your workout weights
+                </Text>
+              </YStack>
+            </Card>
+          )}
 
           {/* Training Journey - With Inline Accordions */}
           <Card p="$4" bg="$background" borderColor="$borderColor" borderWidth={1}>
@@ -394,7 +480,8 @@ export default function ResultsScreen() {
       {/* Bottom Actions - Fixed Footer */}
       <YStack
         px="$4"
-        py="$4"
+        pt="$4"
+        pb={16 + insets.bottom}
         borderTopWidth={1}
         borderTopColor="$borderColor"
         bg="$background"
@@ -406,6 +493,7 @@ export default function ResultsScreen() {
             variant="outlined"
             onPress={handleBack}
             icon={ChevronLeft}
+            disabled={isSubmitting}
           >
             Back
           </Button>
@@ -414,11 +502,23 @@ export default function ResultsScreen() {
             size="$5"
             bg="$primary"
             color="white"
-            onPress={handleContinue}
-            iconAfter={ChevronRight}
+            onPress={handleConfirm}
             fontWeight="700"
+            disabled={isSubmitting}
           >
-            Continue
+            <XStack items="center" justify="center" gap="$2">
+              {isSubmitting ? (
+                <>
+                  <Spinner size="small" color="white" />
+                  <Text color="white" fontWeight="700">Creating...</Text>
+                </>
+              ) : (
+                <>
+                  <Text color="white" fontWeight="700">Start My Program</Text>
+                  <CheckCircle size={20} color="white" />
+                </>
+              )}
+            </XStack>
           </Button>
         </XStack>
       </YStack>

@@ -162,8 +162,19 @@ export const getCoreLiftExercises = query({
     const identity = await ctx.auth.getUserIdentity();
 
     // Fetch exercises by slug
+    const exercises = await Promise.all(
+      CORE_LIFT_SLUGS.map((slug) =>
+        ctx.db
+          .query("exercises")
+          .withIndex("by_slug", (q) => q.eq("slug", slug))
+          .first()
+      )
+    );
+
     // Filter out any that weren't found
-    const foundExercises = exercises.filter((e) => e !== null);
+    const foundExercises = exercises.filter(
+      (e): e is NonNullable<typeof e> => e !== null
+    );
     
     // Log warning if any exercises are missing
     if (foundExercises.length < CORE_LIFT_SLUGS.length) {

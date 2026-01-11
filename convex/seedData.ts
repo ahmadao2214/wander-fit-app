@@ -516,6 +516,7 @@ export const EXERCISES = [
     instructions: "Lie on bench with feet flat on floor. Grip bar slightly wider than shoulder-width. Lower bar to chest with control, then press up to full lockout.",
     progressions: {
       easier: "db_bench_press",
+      harder: "incline_bench_press",
     },
   },
   {

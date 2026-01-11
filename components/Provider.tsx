@@ -6,6 +6,7 @@ import { tokenCache } from '@clerk/clerk-expo/token-cache'
 import { ConvexReactClient } from 'convex/react'
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { CurrentToast } from './CurrentToast'
 import { config } from '../tamagui.config'
 
@@ -23,33 +24,35 @@ export function Provider({ children, ...rest }: Omit<TamaguiProviderProps, 'conf
   
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <TamaguiProvider
-        config={config}
-        defaultTheme={colorScheme === 'dark' ? 'dark' : 'light'}
-        {...rest}
-      >
-        <ToastProvider
-          swipeDirection="horizontal"
-          duration={6000}
-          native={
-            [
-              // uncomment the next line to do native toasts on mobile. NOTE: it'll require you making a dev build and won't work with Expo Go
-              // 'mobile'
-            ]
-          }
+      <SafeAreaProvider>
+        <TamaguiProvider
+          config={config}
+          defaultTheme={colorScheme === 'dark' ? 'dark' : 'light'}
+          {...rest}
         >
-          <ClerkProvider 
-            publishableKey={process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!}
-            tokenCache={tokenCache}
+          <ToastProvider
+            swipeDirection="horizontal"
+            duration={6000}
+            native={
+              [
+                // uncomment the next line to do native toasts on mobile. NOTE: it'll require you making a dev build and won't work with Expo Go
+                // 'mobile'
+              ]
+            }
           >
-            <ConvexProviderWithClerk client={convexClient} useAuth={useAuth}>
-              {children}
-            </ConvexProviderWithClerk>
-          </ClerkProvider>
-          <CurrentToast />
-          <ToastViewport top="$8" left={0} right={0} pointerEvents="box-none" />
-        </ToastProvider>
-      </TamaguiProvider>
+            <ClerkProvider 
+              publishableKey={process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!}
+              tokenCache={tokenCache}
+            >
+              <ConvexProviderWithClerk client={convexClient} useAuth={useAuth}>
+                {children}
+              </ConvexProviderWithClerk>
+            </ClerkProvider>
+            <CurrentToast />
+            <ToastViewport top="$8" left={0} right={0} pointerEvents="box-none" />
+          </ToastProvider>
+        </TamaguiProvider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   )
 }

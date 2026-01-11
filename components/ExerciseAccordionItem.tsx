@@ -183,6 +183,12 @@ export function ExerciseAccordionItem({
             </XStack>
 
             {exercise.targetWeight && (
+              <XStack items="center" gap="$2">
+                <Text fontSize="$3" color="$color11">
+                  Target: {Math.round(exercise.targetWeight)} lbs
+                </Text>
+              </XStack>
+            )}
 
             {/* Show hint for weighted exercises without 1RM */}
             {!exercise.isBodyweight && !exercise.hasOneRepMax && (

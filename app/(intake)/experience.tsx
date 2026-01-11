@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { YStack, XStack, H2, H3, Text, Card, Button, ScrollView, Slider, Spinner } from 'tamagui'
 import { useRouter, useLocalSearchParams } from 'expo-router'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { Id } from '../../convex/_generated/dataModel'
@@ -20,6 +21,7 @@ import type { AgeGroup } from '../../types'
  */
 export default function ExperienceScreen() {
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   const { sportId } = useLocalSearchParams() as { sportId: string }
 
   const [yearsOfExperience, setYearsOfExperience] = useState(1)
@@ -58,7 +60,7 @@ export default function ExperienceScreen() {
 
   const handleContinue = () => {
     router.push({
-      pathname: '/(intake)/results',
+      pathname: '/(intake)/maxes',
       params: {
         sportId,
         yearsOfExperience: yearsOfExperience.toString(),
@@ -306,7 +308,8 @@ export default function ExperienceScreen() {
       {/* Bottom Actions */}
       <YStack
         px="$4"
-        py="$4"
+        pt="$4"
+        pb={16 + insets.bottom}
         borderTopWidth={1}
         borderTopColor={"$gray5" as any}
         bg="$background"

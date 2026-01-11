@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { YStack, XStack, H2, Text, Card, Button, ScrollView, Input, Spinner } from 'tamagui'
 import { useRouter, useLocalSearchParams } from 'expo-router'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { Id } from '../../convex/_generated/dataModel'
@@ -10,7 +11,6 @@ import {
   Dumbbell,
   Info,
 } from '@tamagui/lucide-icons'
-import { useAuth } from '../../hooks/useAuth'
 
 const MAX_1RM = 2000
 
@@ -32,16 +32,16 @@ function validateWeight(value: string): string | null {
  */
 export default function MaxesScreen() {
   const router = useRouter()
-  const { hasCompletedIntake } = useAuth()
-  const { sportId, yearsOfExperience, trainingDays, weeksUntilSeason } = useLocalSearchParams<{
+  const insets = useSafeAreaInsets()
+  const { sportId, yearsOfExperience, trainingDays, weeksUntilSeason, ageGroup } = useLocalSearchParams<{
     sportId: string
     yearsOfExperience: string
     trainingDays: string
     weeksUntilSeason: string
+    ageGroup: string
   }>()
 
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isSuccess, setIsSuccess] = useState(false)
   const [maxValues, setMaxValues] = useState<Record<string, string>>({})
   const [errors, setErrors] = useState<Record<string, string | null>>({})
 
@@ -50,10 +50,9 @@ export default function MaxesScreen() {
 
   // Mutations
   const setMultipleMaxes = useMutation(api.userMaxes.setMultipleMaxes)
-  const completeIntake = useMutation(api.userPrograms.completeIntake)
 
   // Redirect back if missing params
-  if (!sportId || !yearsOfExperience || !trainingDays || !weeksUntilSeason) {
+  if (!sportId || !yearsOfExperience || !trainingDays || !weeksUntilSeason || !ageGroup) {
     router.replace('/(intake)/sport')
     return null
   }
@@ -87,23 +86,6 @@ export default function MaxesScreen() {
   const hasErrors = Object.values(errors).some((e) => e !== null)
 
   const handleContinue = async () => {
-    // Validate all fields before submitting
-    const newErrors: Record<string, string | null> = {}
-    for (const [slug, value] of Object.entries(maxValues)) {
-      newErrors[slug] = validateWeight(value)
-    }
-    setErrors(newErrors)
-
-    if (Object.values(newErrors).some((e) => e !== null)) {
-      return // Don't submit if there are validation errors
-    }
-
-    setIsSubmitting(true)
-
-    // Build maxes array, filtering out empty values
-    const maxes = Object.entries(maxValues)
-      .filter(([_, value]) => value && parseFloat(value) > 0)
-  const handleContinue = async () => {
     setIsSubmitting(true)
     try {
       // Save any entered maxes (non-blocking - don't fail if this errors)
@@ -118,62 +100,43 @@ export default function MaxesScreen() {
         try {
           await setMultipleMaxes({ maxes })
         } catch (maxError) {
-          console.error('Failed to save maxes (continuing with intake):', maxError)
-          // Don't block intake completion if maxes fail to save
+          console.error('Failed to save maxes (continuing):', maxError)
+          // Don't block navigation if maxes fail to save
         }
       }
 
-      // Complete intake regardless of maxes save status
-      await completeIntake({
-        sportId: sportId as Id<"sports">,
-        yearsOfExperience: years,
-        preferredTrainingDaysPerWeek: days,
-        weeksUntilSeason: weeks,
+      // Navigate to results screen for final review
+      router.push({
+        pathname: '/(intake)/results',
+        params: {
+          sportId,
+          yearsOfExperience,
+          trainingDays,
+          weeksUntilSeason,
+          ageGroup,
+        },
       })
-
-      setIsSuccess(true)
     } catch (error) {
-      console.error('Failed to complete intake:', error)
-      alert('Failed to create program. Please try again.')
+      console.error('Failed to save maxes:', error)
+      alert('Failed to save. Please try again.')
+    } finally {
       setIsSubmitting(false)
     }
   }
 
-  const handleSkip = async () => {
-    setIsSubmitting(true)
-    try {
-      // Skip maxes, just complete intake
-      await completeIntake({
-        sportId: sportId as Id<"sports">,
-        yearsOfExperience: years,
-        preferredTrainingDaysPerWeek: days,
-        weeksUntilSeason: weeks,
-      })
-
-      setIsSuccess(true)
-    } catch (error) {
-      console.error('Failed to complete intake:', error)
-      alert('Failed to create program. Please try again.')
-      setIsSubmitting(false)
-    }
+  const handleSkip = () => {
+    // Skip maxes, go directly to results
+    router.push({
+      pathname: '/(intake)/results',
+      params: {
+        sportId,
+        yearsOfExperience,
+        trainingDays,
+        weeksUntilSeason,
+        ageGroup,
+      },
+    })
   }
-
-  // Navigate to athlete dashboard once intake is marked complete
-  useEffect(() => {
-    if (isSuccess && hasCompletedIntake) {
-      router.replace('/(athlete)')
-    }
-  }, [isSuccess, hasCompletedIntake, router])
-
-  // Fallback navigation after a short delay
-  useEffect(() => {
-    if (isSuccess) {
-      const timeout = setTimeout(() => {
-        router.replace('/(athlete)')
-      }, 2000)
-      return () => clearTimeout(timeout)
-    }
-  }, [isSuccess, router])
 
   // Check if any maxes have been entered
   const hasAnyMaxes = Object.values(maxValues).some(v => v && parseFloat(v) > 0)
@@ -184,25 +147,6 @@ export default function MaxesScreen() {
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
         <Spinner size="large" color="$primary" />
         <Text color="$gray11">Loading...</Text>
-      </YStack>
-    )
-  }
-
-  // Show success state while waiting for redirect
-  if (isSuccess) {
-    return (
-      <YStack flex={1} bg="$background" items="center" justify="center" gap="$6" px="$4">
-        <YStack items="center" gap="$4">
-          <Dumbbell size={72} color="$primary" />
-          <H2 text="center" color="$color12">Let's Go!</H2>
-          <Text color="$gray11" text="center" fontSize="$4">
-            Your personalized program is ready.
-          </Text>
-          <Text color="$gray11" text="center" fontSize="$4">
-            Taking you to your dashboard...
-          </Text>
-        </YStack>
-        <Spinner size="large" color="$primary" />
       </YStack>
     )
   }
@@ -295,7 +239,8 @@ export default function MaxesScreen() {
       {/* Bottom Actions */}
       <YStack
         px="$4"
-        py="$4"
+        pt="$4"
+        pb={16 + insets.bottom}
         borderTopWidth={1}
         borderTopColor="$gray5"
         bg="$background"
@@ -326,12 +271,12 @@ export default function MaxesScreen() {
             {isSubmitting ? (
               <XStack items="center" gap="$2">
                 <Spinner size="small" color="white" />
-                <Text color="white" fontWeight="700">Creating...</Text>
+                <Text color="white" fontWeight="700">Saving...</Text>
               </XStack>
             ) : hasAnyMaxes ? (
-              'Save & Start'
+              'Save & Continue'
             ) : (
-              'Start My Program'
+              'Continue'
             )}
           </Button>
         </XStack>
