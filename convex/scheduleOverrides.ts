@@ -1,6 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
+import { mapUserWeekToTemplateWeek, DEFAULT_WEEKS_PER_PHASE } from "./weekMapping";
 
 /**
  * Schedule Overrides - User Schedule Customization
@@ -84,6 +85,10 @@ export const getWeekSchedule = query({
 
     if (!program) return null;
 
+    // Map user week to template week (templates only exist for weeks 1-4)
+    const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
+    const templateWeek = mapUserWeekToTemplateWeek(args.week, weeksPerPhase);
+
     // Get default templates for this week
     const defaultTemplates = await ctx.db
       .query("program_templates")
@@ -92,7 +97,7 @@ export const getWeekSchedule = query({
           .eq("gppCategoryId", program.gppCategoryId)
           .eq("phase", args.phase)
           .eq("skillLevel", program.skillLevel)
-          .eq("week", args.week)
+          .eq("week", templateWeek)
       )
       .collect();
 
@@ -249,6 +254,10 @@ export const getTodayWorkout = query({
       // Focus override is completed, fall through to find first incomplete
     }
 
+    // Map user week to template week (templates only exist for weeks 1-4)
+    const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
+    const templateWeek = mapUserWeekToTemplateWeek(program.currentWeek, weeksPerPhase);
+
     // Get all workouts for current week (considering slot overrides)
     const weekWorkouts = await ctx.db
       .query("program_templates")
@@ -257,7 +266,7 @@ export const getTodayWorkout = query({
           .eq("gppCategoryId", program.gppCategoryId)
           .eq("phase", program.currentPhase)
           .eq("skillLevel", program.skillLevel)
-          .eq("week", program.currentWeek)
+          .eq("week", templateWeek)
       )
       .collect();
 
@@ -619,6 +628,9 @@ export const swapWorkouts = mutation({
       .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
       .first();
 
+    // Map user week to template week (templates only exist for weeks 1-4)
+    const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
+
     // Helper to get the current template for a slot (considering existing overrides)
     const getTemplateForSlot = async (slot: { phase: string; week: number; day: number }) => {
       // Check if there's already an override for this slot
@@ -631,6 +643,9 @@ export const swapWorkouts = mutation({
         }
       }
 
+      // Map user week to template week for database lookup
+      const templateWeek = mapUserWeekToTemplateWeek(slot.week, weeksPerPhase);
+
       // Otherwise get the default template
       return await ctx.db
         .query("program_templates")
@@ -639,7 +654,7 @@ export const swapWorkouts = mutation({
             .eq("gppCategoryId", program.gppCategoryId)
             .eq("phase", slot.phase as "GPP" | "SPP" | "SSP")
             .eq("skillLevel", program.skillLevel)
-            .eq("week", slot.week)
+            .eq("week", templateWeek)
             .eq("day", slot.day)
         )
         .first();

@@ -61,6 +61,19 @@ export {
 } from "./scheduleOverride";
 export type { WorkoutSlot, SlotOverride } from "./scheduleOverride";
 
+// Week mapping utilities
+export {
+  calculateWeeksPerPhase,
+  mapUserWeekToTemplateWeek,
+  getWeekFocusLabel,
+  getWeekVolumeMultiplier,
+  generateWeekMapping,
+  DEFAULT_WEEKS_PER_PHASE,
+  MIN_WEEKS_PER_PHASE,
+  MAX_WEEKS_PER_PHASE,
+  NUMBER_OF_PHASES,
+} from "./weekMapping";
+
 // Intensity scaling (re-exported from convex/intensityScaling.ts - single source of truth)
 export {
   INTENSITY_CONFIG,

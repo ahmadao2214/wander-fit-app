@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { calculateWeeksPerPhase, DEFAULT_WEEKS_PER_PHASE } from "./weekMapping";
 
 /**
  * User Programs - Active State Management
@@ -208,8 +209,9 @@ export const getProgressSummary = query({
       .first();
 
     // Calculate weeks and blocks completed
+    const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
     const weeksCompleted = Math.floor(completedSessions.length / program.currentDay) || 0;
-    const blocksCompleted = Math.floor(weeksCompleted / 4);
+    const blocksCompleted = Math.floor(weeksCompleted / weeksPerPhase);
 
     return {
       // Scheduled workout pointer (HYBRID MODEL)
@@ -399,6 +401,10 @@ export const completeIntake = mutation({
       });
       programId = existingProgram._id;
     } else if (!existingProgram) {
+      // Calculate dynamic weeks per phase from intake
+      const totalProgramWeeks = args.weeksUntilSeason ?? 12; // Default to 12 weeks
+      const weeksPerPhase = calculateWeeksPerPhase(totalProgramWeeks);
+
       // Initial intake: Create new program
       programId = await ctx.db.insert("user_programs", {
         userId: user._id,
@@ -406,6 +412,8 @@ export const completeIntake = mutation({
         gppCategoryId: sport.gppCategoryId,
         skillLevel,
         ageGroup: args.ageGroup,
+        totalProgramWeeks,
+        weeksPerPhase,
         currentPhase: "GPP",
         currentWeek: 1,
         currentDay: 1,
@@ -489,8 +497,9 @@ export const advanceToNextDay = mutation({
       currentWeek++;
     }
 
-    // Check if we need to advance phase (4 weeks per phase)
-    if (currentWeek > 4) {
+    // Check if we need to advance phase (dynamic weeks per phase)
+    const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
+    if (currentWeek > weeksPerPhase) {
       currentWeek = 1;
 
       const phaseOrder: ("GPP" | "SPP" | "SSP")[] = ["GPP", "SPP", "SSP"];
