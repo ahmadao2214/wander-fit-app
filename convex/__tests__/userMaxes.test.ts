@@ -103,30 +103,43 @@ describe("1RM Validation Boundaries", () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe("setMultipleMaxes skip logic", () => {
-  const shouldSkip = (oneRepMax: number): boolean => {
-    return !oneRepMax || oneRepMax <= 0 || oneRepMax > 2000;
+  // Matches the logic in setMultipleMaxes handler
+  type SkipAction = "skipped_empty" | "skipped_invalid" | "valid";
+
+  const categorizeValue = (oneRepMax: number): SkipAction => {
+    if (!oneRepMax || oneRepMax === 0) return "skipped_empty";
+    if (oneRepMax < 0 || oneRepMax > 2000) return "skipped_invalid";
+    return "valid";
   };
 
-  it("should skip when oneRepMax is 0", () => {
-    expect(shouldSkip(0)).toBe(true);
+  describe("empty values (skipped_empty)", () => {
+    it("should skip 0 as empty", () => {
+      expect(categorizeValue(0)).toBe("skipped_empty");
+    });
+
+    it("should skip NaN as empty (falsy)", () => {
+      expect(categorizeValue(NaN)).toBe("skipped_empty");
+    });
   });
 
-  it("should skip when oneRepMax is negative", () => {
-    expect(shouldSkip(-100)).toBe(true);
+  describe("invalid values (skipped_invalid)", () => {
+    it("should mark negative values as invalid", () => {
+      expect(categorizeValue(-100)).toBe("skipped_invalid");
+      expect(categorizeValue(-1)).toBe("skipped_invalid");
+    });
+
+    it("should mark values over 2000 as invalid", () => {
+      expect(categorizeValue(2001)).toBe("skipped_invalid");
+      expect(categorizeValue(5000)).toBe("skipped_invalid");
+    });
   });
 
-  it("should skip when oneRepMax is NaN (falsy)", () => {
-    expect(shouldSkip(NaN)).toBe(true);
-  });
-
-  it("should skip when oneRepMax exceeds 2000", () => {
-    expect(shouldSkip(2001)).toBe(true);
-  });
-
-  it("should not skip valid positive values", () => {
-    expect(shouldSkip(135)).toBe(false);
-    expect(shouldSkip(225)).toBe(false);
-    expect(shouldSkip(1)).toBe(false);
-    expect(shouldSkip(2000)).toBe(false);
+  describe("valid values", () => {
+    it("should accept valid positive values", () => {
+      expect(categorizeValue(1)).toBe("valid");
+      expect(categorizeValue(135)).toBe("valid");
+      expect(categorizeValue(225)).toBe("valid");
+      expect(categorizeValue(2000)).toBe("valid");
+    });
   });
 });

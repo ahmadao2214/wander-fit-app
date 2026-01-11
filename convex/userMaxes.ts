@@ -531,14 +531,19 @@ export const setMultipleMaxes = mutation({
     const now = Date.now();
     const results: Array<{
       slug: string;
-      action: "created" | "updated" | "skipped";
+      action: "created" | "updated" | "skipped_empty" | "skipped_invalid" | "skipped_not_found";
     }> = [];
 
     for (const { exerciseSlug, oneRepMax } of args.maxes) {
-      // Skip if no value provided
-      // Skip if no value provided or unreasonable
-      if (!oneRepMax || oneRepMax <= 0 || oneRepMax > 2000) {
-        results.push({ slug: exerciseSlug, action: "skipped" });
+      // Skip if no value provided (empty is fine - user chose not to set this)
+      if (!oneRepMax || oneRepMax === 0) {
+        results.push({ slug: exerciseSlug, action: "skipped_empty" });
+        continue;
+      }
+
+      // Skip if value is invalid (negative or over limit)
+      if (oneRepMax < 0 || oneRepMax > 2000) {
+        results.push({ slug: exerciseSlug, action: "skipped_invalid" });
         continue;
       }
 
@@ -549,7 +554,7 @@ export const setMultipleMaxes = mutation({
         .first();
 
       if (!exercise) {
-        results.push({ slug: exerciseSlug, action: "skipped" });
+        results.push({ slug: exerciseSlug, action: "skipped_not_found" });
         continue;
       }
 
@@ -580,7 +585,20 @@ export const setMultipleMaxes = mutation({
       }
     }
 
-    return { success: true, results };
+    const invalidCount = results.filter((r) => r.action === "skipped_invalid").length;
+
+    return {
+      success: true,
+      results,
+      summary: {
+        created: results.filter((r) => r.action === "created").length,
+        updated: results.filter((r) => r.action === "updated").length,
+        skippedEmpty: results.filter((r) => r.action === "skipped_empty").length,
+        skippedInvalid: invalidCount,
+        skippedNotFound: results.filter((r) => r.action === "skipped_not_found").length,
+      },
+      hasInvalidValues: invalidCount > 0,
+    };
   },
 });
 

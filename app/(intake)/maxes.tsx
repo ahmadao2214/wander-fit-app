@@ -12,6 +12,17 @@ import {
 } from '@tamagui/lucide-icons'
 import { useAuth } from '../../hooks/useAuth'
 
+const MAX_1RM = 2000
+
+function validateWeight(value: string): string | null {
+  if (!value) return null // Empty is valid (will be skipped)
+  const num = parseFloat(value)
+  if (isNaN(num)) return 'Enter a valid number'
+  if (num <= 0) return 'Must be greater than 0'
+  if (num > MAX_1RM) return `Maximum is ${MAX_1RM} lbs`
+  return null
+}
+
 /**
  * Maxes Screen
  *
@@ -32,6 +43,7 @@ export default function MaxesScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [maxValues, setMaxValues] = useState<Record<string, string>>({})
+  const [errors, setErrors] = useState<Record<string, string | null>>({})
 
   // Fetch core lift exercises with any existing maxes
   const coreLiftExercises = useQuery(api.userMaxes.getCoreLiftExercises)
@@ -65,29 +77,55 @@ export default function MaxesScreen() {
     router.back()
   }
 
+  // Validate on input change
+  const handleValueChange = (slug: string, value: string) => {
+    setMaxValues((prev) => ({ ...prev, [slug]: value }))
+    setErrors((prev) => ({ ...prev, [slug]: validateWeight(value) }))
+  }
+
+  // Check if form has any errors
+  const hasErrors = Object.values(errors).some((e) => e !== null)
+
   const handleContinue = async () => {
+    // Validate all fields before submitting
+    const newErrors: Record<string, string | null> = {}
+    for (const [slug, value] of Object.entries(maxValues)) {
+      newErrors[slug] = validateWeight(value)
+    }
+    setErrors(newErrors)
+
+    if (Object.values(newErrors).some((e) => e !== null)) {
+      return // Don't submit if there are validation errors
+    }
+
     setIsSubmitting(true)
-    try {
-      // Save any entered maxes
-      const maxes = Object.entries(maxValues)
-        .filter(([_, value]) => value && parseFloat(value) > 0)
-        .map(([slug, value]) => ({
-          exerciseSlug: slug,
-          oneRepMax: parseFloat(value),
-        }))
 
-      if (maxes.length > 0) {
+    // Build maxes array, filtering out empty values
+    const maxes = Object.entries(maxValues)
+      .filter(([_, value]) => value && parseFloat(value) > 0)
+      .map(([slug, value]) => ({
+        exerciseSlug: slug,
+        oneRepMax: parseFloat(value),
+      }))
+
+    // Try to save maxes first (non-blocking - we continue even if this fails)
+    if (maxes.length > 0) {
+      try {
         await setMultipleMaxes({ maxes })
+      } catch (error) {
+        // Log but don't block program creation
+        console.warn('Failed to save maxes, continuing with program creation:', error)
       }
+    }
 
-      // Complete intake and create program
+    // Always try to complete intake - this is the critical path
+    try {
       await completeIntake({
         sportId: sportId as Id<"sports">,
         yearsOfExperience: years,
         preferredTrainingDaysPerWeek: days,
         weeksUntilSeason: weeks,
       })
-
       setIsSuccess(true)
     } catch (error) {
       console.error('Failed to complete intake:', error)
@@ -207,30 +245,37 @@ export default function MaxesScreen() {
                 Core Lifts
               </Text>
 
-              {coreLiftExercises.map((exercise) => (
-                <YStack key={exercise.slug} gap="$2">
-                  <Text fontWeight="600" fontSize="$4" color="$color12">
-                    {exercise.name}
-                  </Text>
-                  <XStack items="center" gap="$3">
-                    <Input
-                      flex={1}
-                      size="$5"
-                      placeholder="—"
-                      keyboardType="numeric"
-                      value={maxValues[exercise.slug] || ''}
-                      onChangeText={(text) =>
-                        setMaxValues((prev) => ({ ...prev, [exercise.slug]: text }))
-                      }
-                      fontFamily="$body"
-                      fontSize={18}
-                    />
-                    <Text fontSize="$4" color="$color9" width={40}>
-                      lbs
+              {coreLiftExercises.map((exercise) => {
+                const fieldError = errors[exercise.slug]
+                return (
+                  <YStack key={exercise.slug} gap="$2">
+                    <Text fontWeight="600" fontSize="$4" color="$color12">
+                      {exercise.name}
                     </Text>
-                  </XStack>
-                </YStack>
-              ))}
+                    <XStack items="center" gap="$3">
+                      <Input
+                        flex={1}
+                        size="$5"
+                        placeholder="—"
+                        keyboardType="numeric"
+                        value={maxValues[exercise.slug] || ''}
+                        onChangeText={(text) => handleValueChange(exercise.slug, text)}
+                        fontFamily="$body"
+                        fontSize={18}
+                        borderColor={fieldError ? '$red8' : undefined}
+                      />
+                      <Text fontSize="$4" color="$color9" width={40}>
+                        lbs
+                      </Text>
+                    </XStack>
+                    {fieldError && (
+                      <Text fontSize="$2" color="$red10">
+                        {fieldError}
+                      </Text>
+                    )}
+                  </YStack>
+                )
+              })}
 
               {coreLiftExercises.length === 0 && (
                 <Text color="$color10" fontSize="$3">
@@ -265,12 +310,13 @@ export default function MaxesScreen() {
           <Button
             flex={2}
             size="$5"
-            bg="$primary"
+            bg={hasErrors ? '$color6' : '$primary'}
             color="white"
             onPress={handleContinue}
             iconAfter={ChevronRight}
             fontWeight="700"
-            disabled={isSubmitting}
+            disabled={isSubmitting || hasErrors}
+            opacity={hasErrors ? 0.6 : 1}
           >
             {isSubmitting ? (
               <XStack items="center" gap="$2">
