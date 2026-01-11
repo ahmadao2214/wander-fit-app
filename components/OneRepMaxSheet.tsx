@@ -138,7 +138,10 @@ export function OneRepMaxSheet({
 
     setIsSaving(true)
     try {
-      await setMultipleMaxes({ maxes })
+      const result = await setMultipleMaxes({ maxes })
+      if (result.hasInvalidValues) {
+        alert(`Warning: ${result.summary.skippedInvalid} value(s) were skipped (must be 1-2000 lbs)`)
+      }
       onOpenChange(false)
       onComplete?.()
     } catch (error) {
