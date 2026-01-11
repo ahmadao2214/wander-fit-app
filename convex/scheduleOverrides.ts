@@ -788,62 +788,70 @@ export const setTodayFocusWithSwap = mutation({
 
     let newSlotOverrides = existingOverride?.slotOverrides || [];
 
-    // If autoSwap is enabled, find first incomplete slot and swap
+    // If autoSwap is enabled, find first incomplete slot across ALL weeks and swap
     if (args.autoSwap !== false) {
-      // Get current week's workouts
-      const weekWorkouts = await ctx.db
+      // Get ALL workouts in the current phase (not just current week)
+      const allPhaseWorkouts = await ctx.db
         .query("program_templates")
-        .withIndex("by_assignment", (q) =>
+        .withIndex("by_category_phase", (q) =>
           q
             .eq("gppCategoryId", program.gppCategoryId)
             .eq("phase", program.currentPhase)
-            .eq("skillLevel", program.skillLevel)
-            .eq("week", program.currentWeek)
         )
         .collect();
 
-      const sortedDays = [...new Set(weekWorkouts.map((w) => w.day))].sort((a, b) => a - b);
+      // Filter by skill level
+      const phaseWorkouts = allPhaseWorkouts.filter((t) => t.skillLevel === program.skillLevel);
 
-      // Helper to get current template for a slot
-      const getTemplateForSlot = async (day: number) => {
+      // Get unique weeks sorted
+      const weeks = [...new Set(phaseWorkouts.map((w) => w.week))].sort((a, b) => a - b);
+
+      // Helper to get current template for a slot (considering overrides)
+      const getTemplateForSlot = async (week: number, day: number) => {
         const slotOverride = newSlotOverrides.find(
-          (o) => o.phase === program.currentPhase && o.week === program.currentWeek && o.day === day
+          (o) => o.phase === program.currentPhase && o.week === week && o.day === day
         );
         if (slotOverride) {
           return await ctx.db.get(slotOverride.templateId);
         }
-        return weekWorkouts.find((w) => w.day === day) ?? null;
+        return phaseWorkouts.find((w) => w.week === week && w.day === day) ?? null;
       };
 
-      // Find first incomplete slot
-      let firstIncompleteSlot: { day: number; templateId: string } | null = null;
-      for (const day of sortedDays) {
-        const slotTemplate = await getTemplateForSlot(day);
-        if (slotTemplate && !completedTemplateIds.has(slotTemplate._id)) {
-          firstIncompleteSlot = { day, templateId: slotTemplate._id };
-          break;
+      // Find first incomplete slot across ALL weeks (sorted by week then day)
+      let firstIncompleteSlot: { week: number; day: number; templateId: string } | null = null;
+      outerLoop: for (const week of weeks) {
+        const weekDays = [...new Set(phaseWorkouts.filter((w) => w.week === week).map((w) => w.day))].sort((a, b) => a - b);
+        for (const day of weekDays) {
+          const slotTemplate = await getTemplateForSlot(week, day);
+          if (slotTemplate && !completedTemplateIds.has(slotTemplate._id)) {
+            firstIncompleteSlot = { week, day, templateId: slotTemplate._id };
+            break outerLoop;
+          }
         }
       }
 
-      // Find which slot the selected template is currently in
-      let selectedTemplateSlot: { day: number } | null = null;
-      for (const day of sortedDays) {
-        const slotTemplate = await getTemplateForSlot(day);
-        if (slotTemplate && slotTemplate._id === args.templateId) {
-          selectedTemplateSlot = { day };
-          break;
+      // Find which slot the selected template is currently in (search all weeks)
+      let selectedTemplateSlot: { week: number; day: number } | null = null;
+      outerLoop2: for (const week of weeks) {
+        const weekDays = [...new Set(phaseWorkouts.filter((w) => w.week === week).map((w) => w.day))].sort((a, b) => a - b);
+        for (const day of weekDays) {
+          const slotTemplate = await getTemplateForSlot(week, day);
+          if (slotTemplate && slotTemplate._id === args.templateId) {
+            selectedTemplateSlot = { week, day };
+            break outerLoop2;
+          }
         }
       }
 
-      // Perform swap if needed
+      // Perform swap if needed (cross-week swaps are allowed within the same phase)
       if (
         firstIncompleteSlot &&
         selectedTemplateSlot &&
-        firstIncompleteSlot.day !== selectedTemplateSlot.day &&
+        (firstIncompleteSlot.week !== selectedTemplateSlot.week || firstIncompleteSlot.day !== selectedTemplateSlot.day) &&
         firstIncompleteSlot.templateId !== args.templateId
       ) {
-        const templateA = await getTemplateForSlot(selectedTemplateSlot.day);
-        const templateB = await getTemplateForSlot(firstIncompleteSlot.day);
+        const templateA = await getTemplateForSlot(selectedTemplateSlot.week, selectedTemplateSlot.day);
+        const templateB = await getTemplateForSlot(firstIncompleteSlot.week, firstIncompleteSlot.day);
 
         if (templateA && templateB) {
           // Both must be incomplete for swap
@@ -851,20 +859,20 @@ export const setTodayFocusWithSwap = mutation({
             // Remove existing overrides for these slots
             newSlotOverrides = newSlotOverrides.filter(
               (o) =>
-                !(o.phase === program.currentPhase && o.week === program.currentWeek && o.day === selectedTemplateSlot!.day) &&
-                !(o.phase === program.currentPhase && o.week === program.currentWeek && o.day === firstIncompleteSlot!.day)
+                !(o.phase === program.currentPhase && o.week === selectedTemplateSlot!.week && o.day === selectedTemplateSlot!.day) &&
+                !(o.phase === program.currentPhase && o.week === firstIncompleteSlot!.week && o.day === firstIncompleteSlot!.day)
             );
 
-            // Add swap overrides
+            // Add swap overrides (cross-week swap)
             newSlotOverrides.push({
               phase: program.currentPhase,
-              week: program.currentWeek,
+              week: selectedTemplateSlot.week,
               day: selectedTemplateSlot.day,
               templateId: templateB._id,
             });
             newSlotOverrides.push({
               phase: program.currentPhase,
-              week: program.currentWeek,
+              week: firstIncompleteSlot.week,
               day: firstIncompleteSlot.day,
               templateId: templateA._id,
             });

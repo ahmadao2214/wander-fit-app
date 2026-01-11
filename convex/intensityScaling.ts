@@ -20,6 +20,8 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export type Intensity = "Low" | "Moderate" | "High";
+export type AgeGroup = "10-13" | "14-17" | "18+";
+export type Phase = "GPP" | "SPP" | "SSP";
 
 export interface IntensityConfig {
   oneRepMaxPercent: { min: number; max: number };
@@ -60,6 +62,19 @@ export interface ScaledBodyweightPrescription {
   reps: string;
   restSeconds: number;
   rpeTarget: { min: number; max: number };
+}
+
+export interface AgeIntensityRules {
+  maxIntensity: Intensity;
+  oneRepMaxCeiling: number;
+  plyometricAllowed: boolean;
+  maxSetsPerExercise: number;
+  maxRepsMultiplier: number;
+}
+
+export interface PhaseIntensityRange {
+  min: number;
+  max: number;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -123,6 +138,71 @@ export const BODYWEIGHT_INTENSITY_CONFIG: Record<Intensity, { repsMultiplier: nu
     repsMultiplier: 1.33,
     durationMultiplier: 1.33,
   },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AGE-BASED INTENSITY RULES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Age Group Intensity Rules
+ *
+ * These rules modify workout prescriptions based on athlete age:
+ * - maxIntensity: Ceiling for intensity level selection
+ * - oneRepMaxCeiling: Maximum % of 1RM allowed
+ * - plyometricAllowed: Whether explosive movements are permitted
+ * - maxSetsPerExercise: Cap on sets per exercise
+ * - maxRepsMultiplier: Adjustment for rep ranges (higher = more reps, lower weight)
+ *
+ * | Age Group | Max Intensity | 1RM Ceiling | Plyometrics | Max Sets |
+ * |-----------|---------------|-------------|-------------|----------|
+ * | 10-13     | Moderate      | 65%         | Yes         | 3        |
+ * | 14-17     | High          | 85%         | Yes         | 5        |
+ * | 18+       | High          | 90%         | Yes         | 6        |
+ */
+export const AGE_INTENSITY_RULES: Record<AgeGroup, AgeIntensityRules> = {
+  "10-13": {
+    maxIntensity: "Moderate",
+    oneRepMaxCeiling: 0.65,
+    plyometricAllowed: true,
+    maxSetsPerExercise: 3,
+    maxRepsMultiplier: 1.2, // Higher reps, lower weight for younger athletes
+  },
+  "14-17": {
+    maxIntensity: "High",
+    oneRepMaxCeiling: 0.85,
+    plyometricAllowed: true,
+    maxSetsPerExercise: 5,
+    maxRepsMultiplier: 1.0,
+  },
+  "18+": {
+    maxIntensity: "High",
+    oneRepMaxCeiling: 0.90, // Cap at 90%, can push to 95% for peaking
+    plyometricAllowed: true,
+    maxSetsPerExercise: 6,
+    maxRepsMultiplier: 1.0,
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PHASE-BASED INTENSITY RANGES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Phase-Specific 1RM Ranges
+ *
+ * These define the appropriate loading ranges for each training phase:
+ *
+ * | Phase | 1RM Range | Focus |
+ * |-------|-----------|-------|
+ * | GPP   | 60-75%    | Foundation, movement quality, work capacity |
+ * | SPP   | 75-85%    | Sport-specific strength, power development |
+ * | SSP   | 85-90%    | Peaking, maintain gains, competition prep |
+ */
+export const PHASE_INTENSITY_RANGES: Record<Phase, PhaseIntensityRange> = {
+  GPP: { min: 0.60, max: 0.75 },
+  SPP: { min: 0.75, max: 0.85 },
+  SSP: { min: 0.85, max: 0.90 },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -381,4 +461,101 @@ export function getAvgOneRepMaxPercent(intensity: Intensity): number {
  */
 export function getRpeTarget(intensity: Intensity): { min: number; max: number } {
   return INTENSITY_CONFIG[intensity].rpeTarget;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AGE & PHASE MODIFIER UTILITIES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Get the effective 1RM ceiling based on age group and phase.
+ * Takes the minimum of the age ceiling and phase max to ensure safety.
+ */
+export function getEffectiveOneRepMaxCeiling(ageGroup: AgeGroup, phase: Phase): number {
+  const ageRules = AGE_INTENSITY_RULES[ageGroup];
+  const phaseRanges = PHASE_INTENSITY_RANGES[phase];
+  return Math.min(ageRules.oneRepMaxCeiling, phaseRanges.max);
+}
+
+/**
+ * Get the 1RM range for a given age group and phase.
+ * Adjusts the phase range based on age ceiling.
+ */
+export function getOneRepMaxRange(
+  ageGroup: AgeGroup,
+  phase: Phase
+): { min: number; max: number } {
+  const phaseRanges = PHASE_INTENSITY_RANGES[phase];
+  const effectiveCeiling = getEffectiveOneRepMaxCeiling(ageGroup, phase);
+  return {
+    min: phaseRanges.min,
+    max: effectiveCeiling,
+  };
+}
+
+/**
+ * Get the maximum intensity allowed for an age group.
+ */
+export function getMaxIntensityForAge(ageGroup: AgeGroup): Intensity {
+  return AGE_INTENSITY_RULES[ageGroup].maxIntensity;
+}
+
+/**
+ * Cap the intensity based on age group restrictions.
+ */
+export function capIntensityForAge(intensity: Intensity, ageGroup: AgeGroup): Intensity {
+  const maxIntensity = AGE_INTENSITY_RULES[ageGroup].maxIntensity;
+
+  // Intensity ordering: Low < Moderate < High
+  const intensityOrder: Intensity[] = ["Low", "Moderate", "High"];
+  const requestedIndex = intensityOrder.indexOf(intensity);
+  const maxIndex = intensityOrder.indexOf(maxIntensity);
+
+  return intensityOrder[Math.min(requestedIndex, maxIndex)];
+}
+
+/**
+ * Get the maximum sets allowed for an exercise based on age group.
+ */
+export function getMaxSetsForAge(ageGroup: AgeGroup): number {
+  return AGE_INTENSITY_RULES[ageGroup].maxSetsPerExercise;
+}
+
+/**
+ * Apply all age-based modifiers to a prescription.
+ */
+export function applyAgeModifiers(
+  prescription: {
+    sets: number;
+    reps: string;
+    intensity?: Intensity;
+  },
+  ageGroup: AgeGroup,
+  phase: Phase
+): {
+  sets: number;
+  reps: string;
+  intensity: Intensity;
+  oneRepMaxRange: { min: number; max: number };
+} {
+  const ageRules = AGE_INTENSITY_RULES[ageGroup];
+  const cappedIntensity = prescription.intensity
+    ? capIntensityForAge(prescription.intensity, ageGroup)
+    : "Moderate";
+
+  // Cap sets based on age
+  const cappedSets = Math.min(prescription.sets, ageRules.maxSetsPerExercise);
+
+  // Scale reps for younger athletes (they do more reps at lower weight)
+  const scaledReps =
+    ageRules.maxRepsMultiplier !== 1.0
+      ? scaleRepsOrDuration(prescription.reps, ageRules.maxRepsMultiplier)
+      : prescription.reps;
+
+  return {
+    sets: cappedSets,
+    reps: scaledReps,
+    intensity: cappedIntensity,
+    oneRepMaxRange: getOneRepMaxRange(ageGroup, phase),
+  };
 }

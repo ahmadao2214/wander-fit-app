@@ -19,7 +19,9 @@ import {
   RefreshCw,
   Dumbbell,
 } from '@tamagui/lucide-icons'
-import { PHASE_NAMES } from '../../types'
+
+import { PHASE_NAMES, AgeGroup } from '../../types'
+import { useAuth } from '../../hooks/useAuth'
 import { getSkillLevel, getTrainingPhase } from '../../lib'
 
 /**
@@ -31,11 +33,13 @@ import { getSkillLevel, getTrainingPhase } from '../../lib'
  */
 export default function ResultsScreen() {
   const router = useRouter()
-  const { sportId, yearsOfExperience, trainingDays, weeksUntilSeason } = useLocalSearchParams<{
+  const { hasCompletedIntake } = useAuth()
+  const { sportId, yearsOfExperience, trainingDays, weeksUntilSeason, ageGroup } = useLocalSearchParams<{
     sportId: string
     yearsOfExperience: string
     trainingDays: string
     weeksUntilSeason: string
+    ageGroup: AgeGroup
   }>()
 
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set())
@@ -53,7 +57,7 @@ export default function ResultsScreen() {
   )
 
   // Redirect back if missing params
-  if (!sportId || !yearsOfExperience || !trainingDays || !weeksUntilSeason) {
+  if (!sportId || !yearsOfExperience || !trainingDays || !weeksUntilSeason || !ageGroup) {
     router.replace('/(intake)/sport')
     return null
   }
@@ -115,16 +119,25 @@ export default function ResultsScreen() {
     router.back()
   }
 
-  const handleContinue = () => {
-    router.push({
-      pathname: '/(intake)/maxes',
-      params: {
-        sportId,
-        yearsOfExperience,
-        trainingDays,
-        weeksUntilSeason,
-      },
-    })
+  const handleConfirm = async () => {
+    setIsSubmitting(true)
+    try {
+      await completeIntake({
+        sportId: sportId as Id<"sports">,
+        yearsOfExperience: years,
+        preferredTrainingDaysPerWeek: days,
+        weeksUntilSeason: weeks,
+        ageGroup,
+      })
+
+      // Show success state - IntakeOnlyRoute will handle redirect
+      // when it detects intakeCompletedAt is set
+      setIsSuccess(true)
+    } catch (error) {
+      console.error('Failed to complete intake:', error)
+      alert('Failed to create program. Please try again.')
+      setIsSubmitting(false)
+    }
   }
 
   // Show loading while fetching sport/category (undefined = still loading)

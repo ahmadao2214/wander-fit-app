@@ -9,7 +9,7 @@ import * as AuthSession from 'expo-auth-session'
 import { PublicOnlyRoute } from '../../components/AuthGuard'
 import { useAuth } from '../../hooks/useAuth'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Zap, UserPlus, User, Users } from '@tamagui/lucide-icons'
+import { Zap, UserPlus, User, Users, Eye, EyeOff } from '@tamagui/lucide-icons'
 import { RadioButton } from '../../components/RadioButton'
 import { GoogleIcon } from '../../components/GoogleIcon'
 import { VerificationCodeInput } from '../../components/VerificationCodeInput'
@@ -71,6 +71,7 @@ export default function SignUpScreen() {
   const [code, setCode] = React.useState('')
   const [isCreatingUser, setIsCreatingUser] = React.useState(false)
   const [error, setError] = React.useState('')
+  const [showPassword, setShowPassword] = React.useState(false)
 
   // Pre-fill name from Clerk user if they're completing setup
   React.useEffect(() => {
@@ -240,6 +241,27 @@ export default function SignUpScreen() {
     }
   }
 
+  // Auto-submit when code is complete (6 digits)
+  React.useEffect(() => {
+    if (code.length === 6 && pendingVerification && !isCreatingUser) {
+      onVerifyPress()
+    }
+  }, [code, pendingVerification, isCreatingUser])
+
+  // Handle resending verification code
+  const onResendCode = async () => {
+    if (!isLoaded) return
+
+    try {
+      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' })
+      setCode('')
+      setError('')
+    } catch (err: any) {
+      console.error('Failed to resend code:', err)
+      setError('Failed to resend code. Please try again.')
+    }
+  }
+
   // Handle submission of verification form
   const onVerifyPress = async () => {
     if (!isLoaded) return
@@ -293,6 +315,81 @@ export default function SignUpScreen() {
   }
 
 
+  // Verification screen
+  if (pendingVerification) {
+    return (
+      <YStack flex={1} bg="$background">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1 }}
+          enabled={Platform.OS === 'ios'}
+        >
+          <ScrollView
+            contentContainerStyle={{ flexGrow: 1 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <YStack
+              flex={1}
+              justify="center"
+              gap="$5"
+              px="$5"
+              pt={insets.top + 40}
+              pb={insets.bottom + 40}
+              maxW={400}
+              mx="auto"
+              width="100%"
+            >
+              <YStack gap="$3" items="center">
+                <DisplayHeading>VERIFY EMAIL</DisplayHeading>
+                <Subtitle>
+                  We sent a verification code to{'\n'}{emailAddress}
+                </Subtitle>
+              </YStack>
+
+              <YStack gap="$4">
+                <VerificationCodeInput
+                  value={code}
+                  onChange={setCode}
+                  length={6}
+                />
+                <Button
+                  onPress={onVerifyPress}
+                  disabled={isCreatingUser}
+                  size="$5"
+                  bg="$primary"
+                  color="white"
+                  fontFamily="$body" fontWeight="700"
+                  rounded="$4"
+                  hoverStyle={{ bg: '#1d4ed8', opacity: 0.95 }}
+                  pressStyle={{ bg: '#1e40af', scale: 0.98 }}
+                >
+                  {isCreatingUser ? 'Creating account...' : 'Verify & Continue'}
+                </Button>
+              </YStack>
+
+              <XStack justify="center" gap="$2">
+                <Text fontSize={13} color="$color10" fontFamily="$body">
+                  Didn't receive the code?
+                </Text>
+                <Text
+                  fontSize={13}
+                  fontFamily="$body" fontWeight="600"
+                  color="$primary"
+                  onPress={onResendCode}
+                  cursor="pointer"
+                  hoverStyle={{ opacity: 0.8 }}
+                >
+                  Resend
+                </Text>
+              </XStack>
+            </YStack>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </YStack>
+    )
+  }
+
   // Loading state
   if (isAuthLoading) {
     return (
@@ -307,18 +404,18 @@ export default function SignUpScreen() {
   if (needsSetup && clerkUser) {
     return (
       <YStack flex={1} bg="$background">
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={{ flex: 1 }}
         >
-          <ScrollView 
+          <ScrollView
             contentContainerStyle={{ flexGrow: 1 }}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <YStack 
-              flex={1} 
-              justify="center" 
+            <YStack
+              flex={1}
+              justify="center"
               gap="$5" 
               px="$5" 
               pt={insets.top + 40}
@@ -440,81 +537,22 @@ export default function SignUpScreen() {
     )
   }
 
-  // Verification screen
-  if (pendingVerification) {
-    return (
-      <YStack flex={1} bg="$background">
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={{ flex: 1 }}
-        >
-          <ScrollView 
-            contentContainerStyle={{ flexGrow: 1 }}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            <YStack 
-              flex={1} 
-              justify="center" 
-              gap="$5" 
-              px="$5" 
-              pt={insets.top + 40}
-              pb={insets.bottom + 40}
-              maxW={400} 
-              mx="auto" 
-              width="100%"
-            >
-              <YStack gap="$3" items="center">
-                <DisplayHeading>VERIFY EMAIL</DisplayHeading>
-                <Subtitle>
-                  We sent a verification code to{'\n'}{emailAddress}
-                </Subtitle>
-              </YStack>
-
-              <YStack gap="$4">
-                <VerificationCodeInput
-                  value={code}
-                  onChange={setCode}
-                  length={6}
-                />
-                <Button
-                  onPress={onVerifyPress}
-                  disabled={isCreatingUser}
-                  size="$5"
-                  bg="$primary"
-                  color="white"
-                  fontFamily="$body" fontWeight="700"
-                  rounded="$4"
-                  hoverStyle={{ bg: '#1d4ed8', opacity: 0.95 }}
-                  pressStyle={{ bg: '#1e40af', scale: 0.98 }}
-                >
-                  {isCreatingUser ? 'Creating account...' : 'Verify & Continue'}
-                </Button>
-              </YStack>
-            </YStack>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </YStack>
-    )
-  }
-
-
   return (
     <PublicOnlyRoute>
       <YStack flex={1} bg="$background">
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={{ flex: 1 }}
         >
-          <ScrollView 
+          <ScrollView
             contentContainerStyle={{ flexGrow: 1 }}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <YStack 
-              flex={1} 
-              justify="center" 
-              gap="$5" 
+            <YStack
+              flex={1}
+              justify="center"
+              gap="$5"
               px="$5" 
               pt={insets.top + 20}
               pb={insets.bottom + 40}
@@ -640,22 +678,43 @@ export default function SignUpScreen() {
                   focusStyle={{ borderColor: '$primary', borderWidth: 2 }}
                 />
 
-                <Input
-                  value={password}
-                  placeholder="Password"
-                  secureTextEntry={true}
-                  onChangeText={(password) => {
-                    setPassword(password)
-                    setError('')
-                  }}
-                  size="$5"
-                  bg="$surface"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                  rounded="$4"
-                  fontFamily="$body"
-                  focusStyle={{ borderColor: '$primary', borderWidth: 2 }}
-                />
+                <XStack position="relative">
+                  <Input
+                    value={password}
+                    placeholder="Password"
+                    secureTextEntry={!showPassword}
+                    onChangeText={(password) => {
+                      setPassword(password)
+                      setError('')
+                    }}
+                    size="$5"
+                    bg="$surface"
+                    borderWidth={1}
+                    borderColor="$borderColor"
+                    rounded="$4"
+                    fontFamily="$body"
+                    focusStyle={{ borderColor: '$primary', borderWidth: 2 }}
+                    flex={1}
+                    pr="$10"
+                  />
+                  <XStack
+                    position="absolute"
+                    right="$3"
+                    top={0}
+                    bottom={0}
+                    items="center"
+                    justify="center"
+                    onPress={() => setShowPassword(!showPassword)}
+                    cursor="pointer"
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    {showPassword ? (
+                      <EyeOff size={20} color="$color10" />
+                    ) : (
+                      <Eye size={20} color="$color10" />
+                    )}
+                  </XStack>
+                </XStack>
 
                 {/* Sign Up Button */}
                 <Button

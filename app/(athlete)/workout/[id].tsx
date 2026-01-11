@@ -216,6 +216,14 @@ export default function WorkoutDetailScreen() {
     }
   }, [isStarting, template, startSession, router, hasCustomOrder, orderIndices, todayWorkout, setTodayFocus, selectedIntensity])
 
+  // Map selected intensity to color token
+  const intensityColorMap = {
+    Low: "$intensityLow6",
+    Moderate: "$intensityMed6",
+    High: "$intensityHigh6",
+  } as const
+  const intensityColor = intensityColorMap[selectedIntensity]
+
   // Render item for DraggableFlatList
   const renderExerciseItem = useCallback(
     ({ item, drag, isActive, getIndex }: RenderItemParams<ExerciseItem>) => {
@@ -229,11 +237,12 @@ export default function WorkoutDetailScreen() {
             onToggle={() => toggleExpanded(item.exerciseId)}
             drag={canReorder ? drag : undefined}
             isActive={isActive}
+            intensityColor={intensityColor}
           />
         </ScaleDecorator>
       )
     },
-    [expandedExerciseIds, toggleExpanded, canReorder]
+    [expandedExerciseIds, toggleExpanded, canReorder, intensityColor]
   )
 
   // Key extractor for FlatList
@@ -280,7 +289,7 @@ export default function WorkoutDetailScreen() {
 
         {/* Intensity Selector */}
         {isPhaseUnlocked && !isCompleted && (
-          <Card p="$3" bg="$gray2" borderColor="$gray6">
+          <Card p="$3" bg="$color2" borderColor="$borderColor">
             <YStack gap="$3">
               <Text fontSize="$3" fontWeight="600" color="$color12">
                 Workout Intensity
@@ -289,23 +298,23 @@ export default function WorkoutDetailScreen() {
                 <Card
                   flex={1}
                   p="$3"
-                  bg={selectedIntensity === "Low" ? "$green9" : "$gray4"}
-                  borderColor={selectedIntensity === "Low" ? "$green10" : "$gray6"}
+                  bg={selectedIntensity === "Low" ? "$intensityLow6" : "$color4"}
+                  borderColor={selectedIntensity === "Low" ? "$intensityLow7" : "$borderColor"}
                   borderWidth={selectedIntensity === "Low" ? 2 : 1}
                   pressStyle={{ scale: 0.98 }}
                   onPress={() => setSelectedIntensity("Low")}
                   cursor="pointer"
                 >
                   <YStack items="center" gap="$1">
-                    <Text 
-                      fontSize="$4" 
+                    <Text
+                      fontSize="$4"
                       fontWeight={selectedIntensity === "Low" ? "700" : "500"}
                       color={selectedIntensity === "Low" ? "white" : "$color11"}
                     >
                       Low
                     </Text>
-                    <Text 
-                      fontSize="$1" 
+                    <Text
+                      fontSize="$1"
                       color={selectedIntensity === "Low" ? "white" : "$color10"}
                       opacity={selectedIntensity === "Low" ? 0.9 : 0.7}
                     >
@@ -316,25 +325,25 @@ export default function WorkoutDetailScreen() {
                 <Card
                   flex={1}
                   p="$3"
-                  bg={selectedIntensity === "Moderate" ? "$yellow9" : "$gray4"}
-                  borderColor={selectedIntensity === "Moderate" ? "$yellow10" : "$gray6"}
+                  bg={selectedIntensity === "Moderate" ? "$intensityMed6" : "$color4"}
+                  borderColor={selectedIntensity === "Moderate" ? "$intensityMed7" : "$borderColor"}
                   borderWidth={selectedIntensity === "Moderate" ? 2 : 1}
                   pressStyle={{ scale: 0.98 }}
                   onPress={() => setSelectedIntensity("Moderate")}
                   cursor="pointer"
                 >
                   <YStack items="center" gap="$1">
-                    <Text 
-                      fontSize="$4" 
+                    <Text
+                      fontSize="$4"
                       fontWeight={selectedIntensity === "Moderate" ? "700" : "500"}
-                      color={selectedIntensity === "Moderate" ? "black" : "$color11"}
+                      color={selectedIntensity === "Moderate" ? "white" : "$color11"}
                     >
                       Moderate
                     </Text>
-                    <Text 
-                      fontSize="$1" 
-                      color={selectedIntensity === "Moderate" ? "black" : "$color10"}
-                      opacity={selectedIntensity === "Moderate" ? 0.8 : 0.7}
+                    <Text
+                      fontSize="$1"
+                      color={selectedIntensity === "Moderate" ? "white" : "$color10"}
+                      opacity={selectedIntensity === "Moderate" ? 0.9 : 0.7}
                     >
                       RPE 6-7
                     </Text>
@@ -343,23 +352,23 @@ export default function WorkoutDetailScreen() {
                 <Card
                   flex={1}
                   p="$3"
-                  bg={selectedIntensity === "High" ? "$red9" : "$gray4"}
-                  borderColor={selectedIntensity === "High" ? "$red10" : "$gray6"}
+                  bg={selectedIntensity === "High" ? "$intensityHigh6" : "$color4"}
+                  borderColor={selectedIntensity === "High" ? "$intensityHigh7" : "$borderColor"}
                   borderWidth={selectedIntensity === "High" ? 2 : 1}
                   pressStyle={{ scale: 0.98 }}
                   onPress={() => setSelectedIntensity("High")}
                   cursor="pointer"
                 >
                   <YStack items="center" gap="$1">
-                    <Text 
-                      fontSize="$4" 
+                    <Text
+                      fontSize="$4"
                       fontWeight={selectedIntensity === "High" ? "700" : "500"}
                       color={selectedIntensity === "High" ? "white" : "$color11"}
                     >
                       High
                     </Text>
-                    <Text 
-                      fontSize="$1" 
+                    <Text
+                      fontSize="$1"
                       color={selectedIntensity === "High" ? "white" : "$color10"}
                       opacity={selectedIntensity === "High" ? 0.9 : 0.7}
                     >
@@ -464,7 +473,7 @@ export default function WorkoutDetailScreen() {
           {isPhaseUnlocked && !isCompleted && (
             <Button
               size="$4"
-              bg="$green9"
+              bg={intensityColor}
               color="white"
               onPress={startWorkout}
               icon={isStarting ? undefined : Play}

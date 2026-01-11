@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router'
 import { useColorScheme } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Dumbbell, Calendar, User, BookOpen } from '@tamagui/lucide-icons'
 import { AthleteOnlyRoute } from '../../components/AuthGuard'
 import { brandPrimary } from '../../tamagui.config'
@@ -22,6 +23,7 @@ import { brandPrimary } from '../../tamagui.config'
 export default function AthleteLayout() {
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
+  const insets = useSafeAreaInsets()
 
   return (
     <AthleteOnlyRoute>
@@ -31,13 +33,14 @@ export default function AthleteLayout() {
           tabBarActiveTintColor: brandPrimary,
           // Muted slate for inactive tabs
           tabBarInactiveTintColor: isDark ? '#64748B' : '#94A3B8',
-          // Tab bar styling
+          // Tab bar styling - account for Android navigation bar
           tabBarStyle: {
             backgroundColor: isDark ? '#0F172A' : '#FFFFFF',
             borderTopColor: isDark ? '#1E293B' : '#E2E8F0',
             borderTopWidth: 1,
             paddingTop: 4,
-            height: 60,
+            paddingBottom: insets.bottom,
+            height: 60 + insets.bottom,
           },
           tabBarLabelStyle: {
             fontFamily: 'PlusJakartaSans',
