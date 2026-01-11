@@ -113,16 +113,10 @@ export function SetTracker({
   return (
     <>
       <YStack gap="$3">
-        <XStack justify="space-between" items="center">
-          <SectionLabel>
-            SETS
-          </SectionLabel>
-          <Text 
-            fontSize={12} 
-            color="$color10" 
-            fontFamily="$body" fontWeight="500"
-          >
-            {sets.filter(s => s.completed).length} / {prescribedSets} completed
+        <XStack items="center" gap="$2">
+          <SectionLabel>SETS</SectionLabel>
+          <Text fontSize={12} color="$color9" fontFamily="$body">
+            {sets.filter(s => s.completed).length}/{prescribedSets}
           </Text>
         </XStack>
         
@@ -138,16 +132,15 @@ export function SetTracker({
                 onLongPress={() => handleLongPress(index)}
                 delayLongPress={400}
                 activeOpacity={0.8}
-                style={{ minWidth: 85, flex: 1 }}
               >
                 <Card
-                  p="$3"
+                  p="$2.5"
+                  width={72}
                   bg={isCompleted ? (intensityLightColor as any) : isSkipped ? '$color4' : '$background'}
                   borderColor={isCompleted ? (intensityColor as any) : isSkipped ? '$borderColor' : '$borderColor'}
                   borderWidth={2}
-                  rounded="$4"
+                  rounded="$3"
                   opacity={isSkipped ? 0.6 : 1}
-                  pressStyle={{ scale: 0.96 }}
                 >
                   <YStack items="center" gap="$1.5">
                     <Text 

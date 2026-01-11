@@ -630,10 +630,11 @@ export default function WorkoutExecutionScreen() {
         {/* Navigation Controls */}
         <XStack
           px="$4"
-          py="$4"
-          pb={insets.bottom + 16}
+          py="$2"
           gap="$3"
           bg="$surface"
+          borderTopWidth={1}
+          borderTopColor="$borderColor"
         >
           <Button
             flex={1}
@@ -682,6 +683,7 @@ export default function WorkoutExecutionScreen() {
         currentIndex={currentExerciseIndex}
         onExerciseSelect={handleExerciseSelect}
         onReorder={handleReorder}
+        intensityColor={intensityColors.primary}
       />
 
       {/* Exit Confirmation Dialog */}
