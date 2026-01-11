@@ -162,18 +162,14 @@ export const getCoreLiftExercises = query({
     const identity = await ctx.auth.getUserIdentity();
 
     // Fetch exercises by slug
-    const exercises = await Promise.all(
-      CORE_LIFT_SLUGS.map(async (slug) => {
-        const exercise = await ctx.db
-          .query("exercises")
-          .withIndex("by_slug", (q) => q.eq("slug", slug))
-          .first();
-        return exercise;
-      })
-    );
-
     // Filter out any that weren't found
     const foundExercises = exercises.filter((e) => e !== null);
+    
+    // Log warning if any exercises are missing
+    if (foundExercises.length < CORE_LIFT_SLUGS.length) {
+      const missing = CORE_LIFT_SLUGS.filter((slug, i) => exercises[i] === null);
+      console.warn(`Missing core lift exercises: ${missing.join(', ')}`);
+    }
 
     // If not authenticated, return exercises without maxes
     if (!identity) {
