@@ -35,6 +35,7 @@ export const getAthleteTrainer = query({
 
 /**
  * Get all athletes for a trainer
+ * Optimized with batch queries to avoid N+1 performance issues
  */
 export const getTrainerAthletes = query({
   args: { trainerId: v.id("users") },
@@ -46,25 +47,64 @@ export const getTrainerAthletes = query({
       )
       .collect();
 
-    const athletes = await Promise.all(
-      relationships.map(async (rel) => {
-        const athlete = await ctx.db.get(rel.athleteUserId);
+    if (relationships.length === 0) {
+      return [];
+    }
+
+    const athleteIds = relationships.map((r) => r.athleteUserId);
+
+    // Batch fetch all athletes in parallel
+    const athletePromises = athleteIds.map((id) => ctx.db.get(id));
+    const athletes = await Promise.all(athletePromises);
+    const athleteMap = new Map(
+      athletes.filter(Boolean).map((a) => [a!._id, a])
+    );
+
+    // Batch fetch all programs in parallel
+    const programPromises = athleteIds.map((id) =>
+      ctx.db
+        .query("user_programs")
+        .withIndex("by_user", (q) => q.eq("userId", id))
+        .first()
+    );
+    const programs = await Promise.all(programPromises);
+    const programMap = new Map(
+      programs.map((p, i) => [athleteIds[i], p])
+    );
+
+    // Collect all intake IDs that need fetching
+    const intakeIds = programs
+      .filter((p) => p?.intakeResponseId)
+      .map((p) => p!.intakeResponseId);
+
+    // Batch fetch all intakes in parallel
+    const intakePromises = intakeIds.map((id) => ctx.db.get(id));
+    const intakes = await Promise.all(intakePromises);
+    const intakeMap = new Map(
+      intakes.filter(Boolean).map((i) => [i!._id, i])
+    );
+
+    // Collect all sport IDs that need fetching
+    const sportIds = [...new Set(
+      intakes.filter((i) => i?.sportId).map((i) => i!.sportId)
+    )];
+
+    // Batch fetch all sports in parallel
+    const sportPromises = sportIds.map((id) => ctx.db.get(id));
+    const sports = await Promise.all(sportPromises);
+    const sportMap = new Map(
+      sports.filter(Boolean).map((s) => [s!._id, s])
+    );
+
+    // Build result using pre-fetched data
+    const result = relationships
+      .map((rel) => {
+        const athlete = athleteMap.get(rel.athleteUserId);
         if (!athlete) return null;
 
-        // Get athlete's program info
-        const program = await ctx.db
-          .query("user_programs")
-          .withIndex("by_user", (q) => q.eq("userId", rel.athleteUserId))
-          .first();
-
-        // Get athlete's sport if they have a program
-        let sport = null;
-        if (program) {
-          const intake = await ctx.db.get(program.intakeResponseId);
-          if (intake) {
-            sport = await ctx.db.get(intake.sportId);
-          }
-        }
+        const program = programMap.get(rel.athleteUserId);
+        const intake = program ? intakeMap.get(program.intakeResponseId) : null;
+        const sport = intake ? sportMap.get(intake.sportId) : null;
 
         return {
           relationshipId: rel._id,
@@ -80,9 +120,9 @@ export const getTrainerAthletes = query({
           sportName: sport?.name ?? null,
         };
       })
-    );
+      .filter((a): a is NonNullable<typeof a> => a !== null);
 
-    return athletes.filter((a): a is NonNullable<typeof a> => a !== null);
+    return result;
   },
 });
 

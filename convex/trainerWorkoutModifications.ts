@@ -500,6 +500,12 @@ export const reorderExercises = mutation({
       throw new Error("New order array cannot be empty");
     }
 
+    // Check for duplicate indices in newOrder
+    const uniqueIndices = new Set(args.newOrder);
+    if (uniqueIndices.size !== args.newOrder.length) {
+      throw new Error("New order array contains duplicate indices");
+    }
+
     // Get or create customization record
     const { customizationId, exercises } = await getOrCreateCustomization(
       ctx,

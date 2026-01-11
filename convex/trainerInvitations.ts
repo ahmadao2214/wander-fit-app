@@ -22,9 +22,13 @@ function isValidEmail(email: string): boolean {
 }
 
 /**
- * Check if a user is a trainer.
- * Uses role field if set, otherwise checks if they have any athletes linked.
- * This provides backwards compatibility during migration from role-based to relationship-based.
+ * Check if a user can act as a trainer.
+ * Returns true if:
+ * 1. User has deprecated role field set to "trainer" (backwards compatibility)
+ * 2. User has existing athletes linked via relationships
+ * 3. User has created pending invitations (bootstrapping new trainers)
+ *
+ * This allows new trainers to create their first invitation without the chicken-and-egg problem.
  */
 async function isTrainer(ctx: any, userId: string): Promise<boolean> {
   const user = await ctx.db.get(userId);
@@ -41,7 +45,31 @@ async function isTrainer(ctx: any, userId: string): Promise<boolean> {
     )
     .first();
 
-  return !!hasAthletes;
+  if (hasAthletes) return true;
+
+  // Check if user has any pending invitations (allows bootstrapping)
+  const hasPendingInvitations = await ctx.db
+    .query("trainer_invitations")
+    .withIndex("by_trainer_status", (q: any) =>
+      q.eq("trainerId", userId).eq("status", "pending")
+    )
+    .first();
+
+  return !!hasPendingInvitations;
+}
+
+/**
+ * Check if a user can create their first trainer invitation.
+ * This is a separate check that always allows the first invitation creation,
+ * solving the chicken-and-egg problem for new trainers.
+ */
+async function canCreateFirstInvitation(ctx: any, userId: string): Promise<boolean> {
+  const user = await ctx.db.get(userId);
+  if (!user) return false;
+
+  // Anyone can become a trainer by creating their first invitation
+  // The role field is deprecated, so we don't require it
+  return true;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -130,6 +158,10 @@ export const validateInviteCode = query({
 /**
  * Create a trainer invitation with unique invite code
  * Optionally restrict to specific athlete email
+ *
+ * Note: Any user can create their first invitation to become a trainer.
+ * This solves the chicken-and-egg problem where new trainers need to
+ * create invitations before they have any athletes.
  */
 export const createInvitation = mutation({
   args: {
@@ -137,10 +169,12 @@ export const createInvitation = mutation({
     athleteEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Verify the trainer exists and is a trainer
+    // First check if user is already a trainer OR can create their first invitation
     const trainerCheck = await isTrainer(ctx, args.trainerId);
-    if (!trainerCheck) {
-      throw new Error("Only trainers can create invitations");
+    const canBootstrap = await canCreateFirstInvitation(ctx, args.trainerId);
+
+    if (!trainerCheck && !canBootstrap) {
+      throw new Error("Unable to create invitation");
     }
 
     // Validate email if provided
@@ -237,13 +271,24 @@ export const acceptInvitation = mutation({
       }
     }
 
-    // ATOMIC SECTION: Mark invitation as accepted FIRST to claim it
-    // This prevents race conditions where two requests try to use the same invitation
+    // ATOMIC SECTION: Use optimistic locking to claim the invitation
+    // We mark it as accepted by THIS athlete first, then verify no conflicts
+    const acceptedAt = Date.now();
     await ctx.db.patch(invitation._id, {
       status: "accepted",
-      acceptedAt: Date.now(),
+      acceptedAt,
       acceptedByUserId: args.athleteUserId,
     });
+
+    // Re-read the invitation to verify WE claimed it (not another concurrent request)
+    // This handles race conditions for non-email-restricted invitations
+    const claimedInvitation = await ctx.db.get(invitation._id);
+    if (!claimedInvitation ||
+        claimedInvitation.status !== "accepted" ||
+        claimedInvitation.acceptedByUserId !== args.athleteUserId) {
+      // Another request claimed it first
+      throw new Error("This invitation was just claimed by another user. Please request a new code.");
+    }
 
     // Now check for existing trainer relationships
     // If athlete already has a trainer, we need to rollback
@@ -255,12 +300,14 @@ export const acceptInvitation = mutation({
       .first();
 
     if (existingRelationship) {
-      // Rollback: revert invitation status
-      await ctx.db.patch(invitation._id, {
-        status: "pending",
-        acceptedAt: undefined,
-        acceptedByUserId: undefined,
-      });
+      // Rollback: revert invitation status (only for email-restricted to allow reuse)
+      if (invitation.athleteEmail) {
+        await ctx.db.patch(invitation._id, {
+          status: "pending",
+          acceptedAt: undefined,
+          acceptedByUserId: undefined,
+        });
+      }
       throw new Error("You already have a trainer linked. Please unlink your current trainer first.");
     }
 

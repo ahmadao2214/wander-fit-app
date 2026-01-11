@@ -55,6 +55,7 @@ export default function AddAthleteScreen() {
   const [athleteEmail, setAthleteEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [revokeError, setRevokeError] = useState<string | null>(null)
   const [generatedCode, setGeneratedCode] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
@@ -94,6 +95,8 @@ export default function AddAthleteScreen() {
   const handleRevokeInvitation = async (invitationId: string) => {
     if (!user) return
 
+    setRevokeError(null)
+
     try {
       await revokeInvitation({
         invitationId: invitationId as any,
@@ -101,6 +104,9 @@ export default function AddAthleteScreen() {
       })
     } catch (err) {
       console.error('Error revoking invitation:', err)
+      setRevokeError(err instanceof Error ? err.message : 'Failed to revoke invitation')
+      // Clear error after 5 seconds
+      setTimeout(() => setRevokeError(null), 5000)
     }
   }
 
@@ -369,6 +375,15 @@ export default function AddAthleteScreen() {
           {pendingInvitations && pendingInvitations.length > 0 && (
             <YStack gap="$3">
               <SectionLabel>PENDING INVITATIONS</SectionLabel>
+
+              {/* Revoke Error Message */}
+              {revokeError && (
+                <Card p="$3" bg="$red2" borderColor="$red8" borderWidth={1}>
+                  <Text color="$red11" fontSize={14} fontFamily="$body">
+                    {revokeError}
+                  </Text>
+                </Card>
+              )}
               <YStack gap="$2">
                 {pendingInvitations.map((invitation) => (
                   <Card

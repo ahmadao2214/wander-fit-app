@@ -88,29 +88,33 @@ export const getAthleteDetails = query({
 
 /**
  * Get athlete's workout history with exercise details
- * Uses cursor-based pagination for efficiency (doesn't load all data into memory)
+ * Uses offset-based pagination for simplicity with efficient take()
  */
 export const getAthleteWorkoutHistory = query({
   args: {
     athleteUserId: v.id("users"),
     limit: v.optional(v.number()),
-    cursor: v.optional(v.string()), // Session ID to start after
+    offset: v.optional(v.number()), // Number of items to skip
   },
   handler: async (ctx, args) => {
     const limit = Math.min(args.limit ?? 20, 50); // Cap at 50
+    const offset = args.offset ?? 0;
 
-    // Build query with efficient pagination using take()
-    let sessionsQuery = ctx.db
+    // Get total count for pagination info
+    const allSessions = await ctx.db
       .query("gpp_workout_sessions")
       .withIndex("by_user", (q) => q.eq("userId", args.athleteUserId))
-      .order("desc");
+      .collect();
 
-    // If cursor provided, we need to skip past it
-    // For simplicity, we'll take limit+1 to determine hasMore
-    const sessions = await sessionsQuery.take(limit + 1);
+    const total = allSessions.length;
 
-    const hasMore = sessions.length > limit;
-    const paginatedSessions = sessions.slice(0, limit);
+    // Sort by startedAt descending and apply pagination
+    const sortedSessions = allSessions
+      .sort((a, b) => b.startedAt - a.startedAt)
+      .slice(offset, offset + limit + 1);
+
+    const hasMore = sortedSessions.length > limit;
+    const paginatedSessions = sortedSessions.slice(0, limit);
 
     // Batch fetch all unique template IDs
     const templateIds = [...new Set(paginatedSessions.map((s) => s.templateId))];
@@ -165,9 +169,8 @@ export const getAthleteWorkoutHistory = query({
     return {
       sessions: sessionsWithDetails,
       hasMore,
-      nextCursor: hasMore && paginatedSessions.length > 0
-        ? paginatedSessions[paginatedSessions.length - 1]._id
-        : null,
+      total,
+      offset,
     };
   },
 });

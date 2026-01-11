@@ -16,6 +16,7 @@ import { Id } from "./_generated/dataModel";
 /**
  * Check if a user is a trainer.
  * Uses role field if set (backwards compatibility), otherwise checks relationships.
+ * Also checks for pending invitations to support new trainers (bootstrapping).
  */
 async function isTrainer(ctx: any, userId: Id<"users">): Promise<boolean> {
   const user = await ctx.db.get(userId);
@@ -32,7 +33,17 @@ async function isTrainer(ctx: any, userId: Id<"users">): Promise<boolean> {
     )
     .first();
 
-  return !!hasAthletes;
+  if (hasAthletes) return true;
+
+  // Check if user has any pending invitations (trainer bootstrapping)
+  const hasPendingInvitations = await ctx.db
+    .query("trainer_invitations")
+    .withIndex("by_trainer_status", (q: any) =>
+      q.eq("trainerId", userId).eq("status", "pending")
+    )
+    .first();
+
+  return !!hasPendingInvitations;
 }
 
 /**
