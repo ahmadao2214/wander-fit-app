@@ -122,10 +122,10 @@ export function OneRepMaxSheet({
       onComplete?.()
     } catch (error) {
       console.error('Failed to save 1RM:', error)
-      alert('Failed to save. Please try again.')
+      toast.show('Failed to save', {
+        message: error instanceof Error ? error.message : 'Please try again.'
+      })
     } finally {
-      setIsSaving(false)
-    }
   }
 
   const handleSaveBulk = async () => {
