@@ -319,6 +319,7 @@ export const startOnboarding = mutation({
       currentScreen: 0,
       isRevisit: false,
     };
+  },
 });
 
 /**
