@@ -172,6 +172,125 @@ export const upsertBySlug = mutation({
 });
 
 /**
+ * Create exercise as trainer (trainer-only)
+ * Trainers can add new exercises to the shared library
+ */
+export const createAsTrainer = mutation({
+  args: {
+    trainerId: v.id("users"),
+    name: v.string(),
+    instructions: v.optional(v.string()),
+    tags: v.array(v.string()),
+    equipment: v.optional(v.array(v.string())),
+    difficulty: v.optional(
+      v.union(
+        v.literal("beginner"),
+        v.literal("intermediate"),
+        v.literal("advanced")
+      )
+    ),
+    progressions: v.optional(v.object({
+      easier: v.optional(v.string()),
+      harder: v.optional(v.string()),
+    })),
+  },
+  handler: async (ctx, args) => {
+    // Verify trainer role
+    const trainer = await ctx.db.get(args.trainerId);
+    if (!trainer || trainer.role !== "trainer") {
+      throw new Error("Only trainers can create exercises");
+    }
+
+    // Generate slug from name
+    const slug = args.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_|_$/g, "");
+
+    // Check if exercise with this slug already exists
+    const existing = await ctx.db
+      .query("exercises")
+      .withIndex("by_slug", (q) => q.eq("slug", slug))
+      .first();
+
+    if (existing) {
+      throw new Error(`An exercise with a similar name already exists`);
+    }
+
+    const exerciseId = await ctx.db.insert("exercises", {
+      name: args.name,
+      slug,
+      instructions: args.instructions,
+      tags: args.tags,
+      equipment: args.equipment,
+      difficulty: args.difficulty,
+      progressions: args.progressions,
+    });
+
+    return { exerciseId, slug };
+  },
+});
+
+/**
+ * Search exercises with filters
+ */
+export const search = query({
+  args: {
+    query: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+    difficulty: v.optional(
+      v.union(
+        v.literal("beginner"),
+        v.literal("intermediate"),
+        v.literal("advanced")
+      )
+    ),
+    limit: v.optional(v.number()),
+    offset: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    let exercises = await ctx.db.query("exercises").collect();
+
+    // Filter by search query
+    if (args.query) {
+      const searchQuery = args.query.toLowerCase();
+      exercises = exercises.filter(
+        (ex) =>
+          ex.name.toLowerCase().includes(searchQuery) ||
+          ex.slug.toLowerCase().includes(searchQuery) ||
+          ex.tags.some((tag) => tag.toLowerCase().includes(searchQuery)) ||
+          ex.instructions?.toLowerCase().includes(searchQuery)
+      );
+    }
+
+    // Filter by tags (OR logic for flexibility)
+    if (args.tags && args.tags.length > 0) {
+      exercises = exercises.filter((ex) =>
+        args.tags!.some((tag) => ex.tags.includes(tag))
+      );
+    }
+
+    // Filter by difficulty
+    if (args.difficulty) {
+      exercises = exercises.filter((ex) => ex.difficulty === args.difficulty);
+    }
+
+    const total = exercises.length;
+
+    // Apply pagination
+    const offset = args.offset ?? 0;
+    const limit = args.limit ?? 50;
+    exercises = exercises.slice(offset, offset + limit);
+
+    return {
+      exercises,
+      total,
+      hasMore: offset + limit < total,
+    };
+  },
+});
+
+/**
  * Bulk insert exercises (for initial seeding)
  */
 export const bulkInsert = mutation({
