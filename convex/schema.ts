@@ -453,12 +453,12 @@ export default defineSchema({
   user_schedule_overrides: defineTable({
     userId: v.id("users"),
     userProgramId: v.id("user_programs"),
-    
+
     // Today's workout focus (optional)
     // If set, this template is shown as "today's workout" instead of default
     todayFocusTemplateId: v.optional(v.id("program_templates")),
     todayFocusSetAt: v.optional(v.number()), // Timestamp when focus was set
-    
+
     // Slot overrides within phases
     // Each entry maps a specific slot (phase/week/day) to a different template
     // Used for persistent swaps - when you swap A and B, both slots get entries
@@ -468,12 +468,72 @@ export default defineSchema({
       day: v.number(),
       templateId: v.id("program_templates"), // The workout assigned to this slot
     })),
-    
+
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_user", ["userId"])
     .index("by_user_program", ["userProgramId"]),
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // TRAINER-ATHLETE RELATIONSHIPS
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * trainer_athlete_relationships - Links trainers to their athletes
+   *
+   * DESIGN:
+   * - One trainer per athlete (enforced on invite acceptance)
+   * - Either party can de-link (bidirectional removal)
+   * - Status tracks relationship state for soft delete
+   */
+  trainer_athlete_relationships: defineTable({
+    trainerId: v.id("users"),
+    athleteUserId: v.id("users"),
+    status: v.union(
+      v.literal("active"),
+      v.literal("removed")
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_trainer", ["trainerId"])
+    .index("by_athlete", ["athleteUserId"])
+    .index("by_trainer_status", ["trainerId", "status"])
+    .index("by_athlete_status", ["athleteUserId", "status"]),
+
+  /**
+   * trainer_invitations - Invitation system for trainer-athlete linking
+   *
+   * FLOW:
+   * 1. Trainer generates invite code (optionally for specific email)
+   * 2. Athlete enters code in app
+   * 3. System validates code, checks one-trainer limit
+   * 4. If valid, creates relationship and marks invitation accepted
+   *
+   * CONSTRAINTS:
+   * - Athletes can only have ONE trainer (checked on acceptance)
+   * - Invitations expire after set period (default: 7 days)
+   * - Trainer can revoke pending invitations
+   */
+  trainer_invitations: defineTable({
+    trainerId: v.id("users"),
+    inviteCode: v.string(), // Unique code for athlete to enter
+    athleteEmail: v.optional(v.string()), // Optional: restrict to specific email
+    status: v.union(
+      v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("expired"),
+      v.literal("revoked")
+    ),
+    expiresAt: v.number(),
+    acceptedAt: v.optional(v.number()),
+    acceptedByUserId: v.optional(v.id("users")),
+    createdAt: v.number(),
+  })
+    .index("by_code", ["inviteCode"])
+    .index("by_trainer", ["trainerId"])
+    .index("by_trainer_status", ["trainerId", "status"]),
 
   // ═══════════════════════════════════════════════════════════════════════════════
   // LEGACY TABLES (Kept for backward compatibility during migration)
