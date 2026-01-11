@@ -15,6 +15,8 @@ This document outlines the implementation plan for the intake reassessment featu
 | Celebration | **Yes** - Show celebration when phase completes |
 | Phase Transitions | **All three** - GPP→SPP, SPP→SSP, SSP→New Cycle |
 | Manual Trigger | **Yes** - Available from Settings in Profile |
+| Minimum Completion | **No minimum** - Users can proceed even with low completion rate |
+| SSP Phase Access | **Full access** - Athletes on SSP have access to ALL phases |
 
 ---
 
@@ -471,24 +473,109 @@ Add to the existing Settings section in `app/(athlete)/profile.tsx`:
 
 ---
 
-## Open Questions for Discussion
+## Resolved Questions
 
-1. **SSP Completion**: What exactly happens after completing the full 12-week cycle?
-   - Option A: Start new cycle at GPP Week 1 (recommended)
-   - Option B: Stay on SSP maintenance mode
-   - Option C: Offer choice to user
+| Question | Decision |
+|----------|----------|
+| SSP Completion | Athletes on SSP have full access to all phases; can start new cycle |
+| Partial Completion | Allowed - no minimum completion threshold required |
 
-2. **Downgrade Path**: If user consistently says phases are "too hard", should we offer a downgrade after 2+ assessments?
+---
 
-3. **Sport Change**: Should users be able to change their sport during reassessment, or only through full program reset?
+## Sport Change During Reassessment - Risk Analysis
 
-4. **Partial Completion**: If user completed only 50% of workouts, should we still allow them to proceed to next phase?
+### Context
+Should users be able to change their sport during reassessment, or only through full program reset?
+
+### Option A: Allow Sport Change During Reassessment
+
+**Pros:**
+- Better UX for athletes who genuinely switched sports
+- Natural checkpoint to make the change
+- Avoids users needing to "delete and restart"
+
+**Cons/Risks:**
+1. **Data Inconsistency**
+   - Workout history tied to old GPP Category templates
+   - Analytics become harder to interpret (mixing categories)
+   - Progress comparisons don't make sense across different sports
+
+2. **Programming Mismatch**
+   - Sport determines GPP Category (1-4), which determines workout templates
+   - E.g., Basketball (Cat 2: Lateral Power) → Soccer (Cat 1: Linear Speed)
+   - Different movement patterns, exercise selection, periodization focus
+
+3. **Phase Progress Question**
+   - If they're at SPP Week 2 and change sport, do they:
+     - Stay at SPP Week 2 with new sport templates? (confusing)
+     - Reset to GPP Week 1? (loses progress)
+     - Keep completed phases but switch templates? (inconsistent)
+
+4. **Maxes Relevance**
+   - Core lifts (squat, bench, deadlift) stay relevant
+   - But sport-specific accessories differ between categories
+
+5. **Implementation Complexity**
+   - More edge cases to handle
+   - Need clear UX to explain consequences
+   - More testing required
+
+### Option B: Sport Change Only Via Full Program Reset
+
+**Pros:**
+- Clean slate - no data inconsistency
+- Simpler implementation
+- Clear mental model for users
+
+**Cons:**
+- Loses all workout history and progress
+- Frustrating for users who just want to switch
+- May discourage legitimate sport changes
+
+### Option C: Sport Change Only After Full Cycle (SSP Complete)
+
+**Pros:**
+- Natural reset point (starting new 12-week cycle anyway)
+- Preserves completed cycle history
+- Makes sense conceptually ("finished one sport's program, starting another")
+
+**Cons:**
+- Users stuck if they switch sports mid-program
+- Have to wait potentially 8+ weeks
+
+### Recommendation: Option B or C
+
+**For MVP**: Go with **Option B** (full reset only)
+- Keep reassessment focused on skill level and maxes
+- Sport change available in Settings → "Reset Program"
+- Clear messaging: "Changing sport will reset your program"
+
+**Future Enhancement**: Consider Option C
+- After SSP completion, offer sport change as part of "new cycle" flow
+- "Start a new training cycle for a different sport?"
+
+### Implementation Note
+
+If we go with Option B, add to Settings:
+```
+Reset Program
+├── Keep same sport (restart at GPP Week 1)
+└── Change sport (triggers full intake)
+```
+
+---
+
+## Open Questions
+
+1. **Downgrade Path**: If user consistently says phases are "too hard", should we offer a downgrade after 2+ assessments?
+
+2. **Sport Change**: See analysis above - **recommend Option B (full reset only) for now**
 
 ---
 
 ## Next Steps
 
-1. Review this plan and clarify any open questions
+1. Confirm sport change decision (recommend: full reset only for MVP)
 2. Start with Phase 1 (Database & API)
 3. Iterate on screens with design input
-4. Test thoroughly before release
+4. Test all phase transitions thoroughly
