@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { YStack, XStack, Text, Button, Card, Spinner, ScrollView, styled } from 'tamagui'
 import { useQuery } from 'convex/react'
 import { api } from '../../../../convex/_generated/api'
@@ -42,6 +42,11 @@ export default function AthleteHistoryPage() {
   const limit = 20
 
   const athleteId = id as Id<"users">
+
+  // Reset offset when athlete changes to prevent showing wrong page
+  useEffect(() => {
+    setOffset(0)
+  }, [id])
 
   // Get athlete details
   const athleteDetails = useQuery(

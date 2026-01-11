@@ -1,12 +1,58 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { Id } from "./_generated/dataModel";
 
 /**
  * Exercise Library Queries & Mutations
- * 
+ *
  * Exercises are static reference data - typically seeded once and rarely modified.
  * These functions support both querying for workout display and seeding.
  */
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Check if a user is a trainer.
+ * Uses role field if set (backwards compatibility), otherwise checks relationships.
+ */
+async function isTrainer(ctx: any, userId: Id<"users">): Promise<boolean> {
+  const user = await ctx.db.get(userId);
+  if (!user) return false;
+
+  // Check deprecated role field first for backwards compatibility
+  if (user.role === "trainer") return true;
+
+  // Check if user has any active athlete relationships (makes them a trainer)
+  const hasAthletes = await ctx.db
+    .query("trainer_athlete_relationships")
+    .withIndex("by_trainer_status", (q: any) =>
+      q.eq("trainerId", userId).eq("status", "active")
+    )
+    .first();
+
+  return !!hasAthletes;
+}
+
+/**
+ * Validate and clean array values (tags, equipment)
+ * Removes empty strings, trims whitespace, removes duplicates
+ */
+function validateStringArray(arr: string[], fieldName: string): string[] {
+  const cleaned = arr
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+
+  // Remove duplicates
+  const unique = [...new Set(cleaned)];
+
+  if (unique.length === 0 && arr.length > 0) {
+    throw new Error(`${fieldName} cannot contain only empty values`);
+  }
+
+  return unique;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // QUERIES
@@ -195,14 +241,34 @@ export const createAsTrainer = mutation({
     })),
   },
   handler: async (ctx, args) => {
-    // Verify trainer role
-    const trainer = await ctx.db.get(args.trainerId);
-    if (!trainer || trainer.role !== "trainer") {
+    // Verify trainer status using relationship check
+    const trainerStatus = await isTrainer(ctx, args.trainerId);
+    if (!trainerStatus) {
       throw new Error("Only trainers can create exercises");
     }
 
+    // Validate name
+    const trimmedName = args.name.trim();
+    if (trimmedName.length === 0) {
+      throw new Error("Exercise name cannot be empty");
+    }
+    if (trimmedName.length > 200) {
+      throw new Error("Exercise name is too long (max 200 characters)");
+    }
+
+    // Validate and clean tags
+    const validatedTags = validateStringArray(args.tags, "Tags");
+    if (validatedTags.length === 0) {
+      throw new Error("At least one tag is required");
+    }
+
+    // Validate and clean equipment (if provided)
+    const validatedEquipment = args.equipment
+      ? validateStringArray(args.equipment, "Equipment")
+      : undefined;
+
     // Generate slug from name
-    const slug = args.name
+    const slug = trimmedName
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "_")
       .replace(/^_|_$/g, "");
@@ -218,11 +284,11 @@ export const createAsTrainer = mutation({
     }
 
     const exerciseId = await ctx.db.insert("exercises", {
-      name: args.name,
+      name: trimmedName,
       slug,
-      instructions: args.instructions,
-      tags: args.tags,
-      equipment: args.equipment,
+      instructions: args.instructions?.trim(),
+      tags: validatedTags,
+      equipment: validatedEquipment,
       difficulty: args.difficulty,
       progressions: args.progressions,
     });
