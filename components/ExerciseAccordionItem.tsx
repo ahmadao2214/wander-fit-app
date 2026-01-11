@@ -182,18 +182,7 @@ export function ExerciseAccordionItem({
               </Text>
             </XStack>
 
-            {exercise.targetWeight && exercise.hasOneRepMax && (
-              <XStack items="center" gap="$2">
-                <Text fontSize="$3" color="$color11">
-                  @ {exercise.targetWeight} lbs
-                  {exercise.percentOf1RM && (
-                    <Text fontSize="$2" color="$color9">
-                      {' '}({exercise.percentOf1RM}%)
-                    </Text>
-                  )}
-                </Text>
-              </XStack>
-            )}
+            {exercise.targetWeight && (
 
             {/* Show hint for weighted exercises without 1RM */}
             {!exercise.isBodyweight && !exercise.hasOneRepMax && (
