@@ -38,6 +38,17 @@ interface OneRepMaxSheetProps {
   onComplete?: () => void
 }
 
+const MAX_1RM = 2000
+
+function validateWeight(value: string): string | null {
+  if (!value) return null // Empty is valid (will be skipped)
+  const num = parseFloat(value)
+  if (isNaN(num)) return 'Enter a valid number'
+  if (num <= 0) return 'Must be greater than 0'
+  if (num > MAX_1RM) return `Maximum is ${MAX_1RM} lbs`
+  return null
+}
+
 export function OneRepMaxSheet({
   open,
   onOpenChange,
@@ -49,6 +60,8 @@ export function OneRepMaxSheet({
   const [weight, setWeight] = useState('')
   const [bulkWeights, setBulkWeights] = useState<Record<string, string>>({})
   const [isSaving, setIsSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [bulkErrors, setBulkErrors] = useState<Record<string, string | null>>({})
 
   const setMaxBySlug = useMutation(api.userMaxes.setMaxBySlug)
   const setMultipleMaxes = useMutation(api.userMaxes.setMultipleMaxes)
@@ -56,6 +69,8 @@ export function OneRepMaxSheet({
   // Reset state when sheet opens
   useEffect(() => {
     if (open) {
+      setError(null)
+      setBulkErrors({})
       if (mode === 'single' && exercise) {
         setWeight(exercise.currentMax?.toString() || '')
       } else if (mode === 'bulk' && exercises) {
@@ -67,6 +82,23 @@ export function OneRepMaxSheet({
       }
     }
   }, [open, mode, exercise, exercises])
+
+  // Validate on weight change (single mode)
+  const handleWeightChange = (value: string) => {
+    setWeight(value)
+    setError(validateWeight(value))
+  }
+
+  // Validate on weight change (bulk mode)
+  const handleBulkWeightChange = (slug: string, value: string) => {
+    setBulkWeights((prev) => ({ ...prev, [slug]: value }))
+    setBulkErrors((prev) => ({ ...prev, [slug]: validateWeight(value) }))
+  }
+
+  // Check if form has any errors
+  const hasErrors = mode === 'single'
+    ? error !== null
+    : Object.values(bulkErrors).some((e) => e !== null)
 
   const handleSaveSingle = async () => {
     if (!exercise) return
@@ -175,49 +207,63 @@ export function OneRepMaxSheet({
                   placeholder="Enter weight"
                   keyboardType="numeric"
                   value={weight}
-                  onChangeText={setWeight}
+                  onChangeText={handleWeightChange}
                   fontFamily="$body"
                   fontSize={18}
+                  borderColor={error ? '$red8' : undefined}
                 />
                 <Text fontFamily="$body" color="$color9" fontSize={16}>
                   lbs
                 </Text>
               </XStack>
-              <Text fontSize={12} fontFamily="$body" color="$color10" pt="$1">
-                Your one rep max for this exercise
-              </Text>
+              {error ? (
+                <Text fontSize={12} fontFamily="$body" color="$red10" pt="$1">
+                  {error}
+                </Text>
+              ) : (
+                <Text fontSize={12} fontFamily="$body" color="$color10" pt="$1">
+                  Your one rep max for this exercise
+                </Text>
+              )}
             </YStack>
           )}
 
           {/* Bulk Mode: Multiple Inputs */}
           {mode === 'bulk' && exercises && (
             <YStack gap="$4">
-              {exercises.map((ex) => (
-                <YStack key={ex.slug} gap="$2">
-                  <XStack items="center" gap="$2">
-                    <Dumbbell size={16} color="$color10" />
-                    <Text fontFamily="$body" fontWeight="600" fontSize={14} color="$color11">
-                      {ex.name}
-                    </Text>
-                  </XStack>
-                  <XStack items="center" gap="$2">
-                    <Input
-                      flex={1}
-                      size="$4"
-                      placeholder="—"
-                      keyboardType="numeric"
-                      value={bulkWeights[ex.slug] || ''}
-                      onChangeText={(text) =>
-                        setBulkWeights((prev) => ({ ...prev, [ex.slug]: text }))
-                      }
-                      fontFamily="$body"
-                    />
-                    <Text fontFamily="$body" color="$color9">
-                      lbs
-                    </Text>
-                  </XStack>
-                </YStack>
-              ))}
+              {exercises.map((ex) => {
+                const fieldError = bulkErrors[ex.slug]
+                return (
+                  <YStack key={ex.slug} gap="$2">
+                    <XStack items="center" gap="$2">
+                      <Dumbbell size={16} color="$color10" />
+                      <Text fontFamily="$body" fontWeight="600" fontSize={14} color="$color11">
+                        {ex.name}
+                      </Text>
+                    </XStack>
+                    <XStack items="center" gap="$2">
+                      <Input
+                        flex={1}
+                        size="$4"
+                        placeholder="—"
+                        keyboardType="numeric"
+                        value={bulkWeights[ex.slug] || ''}
+                        onChangeText={(text) => handleBulkWeightChange(ex.slug, text)}
+                        fontFamily="$body"
+                        borderColor={fieldError ? '$red8' : undefined}
+                      />
+                      <Text fontFamily="$body" color="$color9">
+                        lbs
+                      </Text>
+                    </XStack>
+                    {fieldError && (
+                      <Text fontSize={11} fontFamily="$body" color="$red10">
+                        {fieldError}
+                      </Text>
+                    )}
+                  </YStack>
+                )
+              })}
             </YStack>
           )}
 
@@ -238,13 +284,14 @@ export function OneRepMaxSheet({
             <Button
               flex={2}
               size="$4"
-              bg="$primary"
+              bg={hasErrors ? '$color6' : '$primary'}
               color="white"
               icon={isSaving ? undefined : Check}
               fontFamily="$body"
               fontWeight="600"
               onPress={handleSave}
-              disabled={isSaving}
+              disabled={isSaving || hasErrors}
+              opacity={hasErrors ? 0.6 : 1}
             >
               {isSaving ? <Spinner color="white" /> : 'Save'}
             </Button>
