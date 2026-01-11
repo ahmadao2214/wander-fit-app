@@ -9,7 +9,7 @@ import * as AuthSession from 'expo-auth-session'
 import { PublicOnlyRoute } from '../../components/AuthGuard'
 import { useAuth } from '../../hooks/useAuth'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Zap, UserPlus, User, Users } from '@tamagui/lucide-icons'
+import { Zap, UserPlus, User, Users, Heart } from '@tamagui/lucide-icons'
 import { RadioButton } from '../../components/RadioButton'
 import { GoogleIcon } from '../../components/GoogleIcon'
 import { VerificationCodeInput } from '../../components/VerificationCodeInput'
@@ -66,7 +66,8 @@ export default function SignUpScreen() {
   const [emailAddress, setEmailAddress] = React.useState('')
   const [password, setPassword] = React.useState('')
   const [name, setName] = React.useState('')
-  const [role, setRole] = React.useState<'trainer' | 'client'>('client')
+  // Role type: athlete (default), parent, or trainer
+  const [role, setRole] = React.useState<'athlete' | 'parent' | 'trainer' | 'client'>('athlete')
   const [pendingVerification, setPendingVerification] = React.useState(false)
   const [code, setCode] = React.useState('')
   const [isCreatingUser, setIsCreatingUser] = React.useState(false)
@@ -262,7 +263,7 @@ export default function SignUpScreen() {
             clerkId: signUpAttempt.createdUserId!,
           })
 
-          if (invitation && role === 'client') {
+          if (invitation && (role === 'client' || role === 'athlete')) {
             try {
               await acceptInvitation({
                 email: emailAddress,
@@ -272,11 +273,15 @@ export default function SignUpScreen() {
               console.error('Failed to accept invitation:', inviteErr)
             }
           }
-          
-          if (role === 'trainer') {
+
+          // Route based on role
+          if (role === 'parent') {
+            router.replace('/(parent)')
+          } else if (role === 'trainer') {
             router.replace('/(trainer)')
           } else {
-            router.replace('/(client)')
+            // Athletes go to intake first
+            router.replace('/(intake)/sport')
           }
         } catch (convexErr) {
           console.error('Failed to create user in Convex:', convexErr)
@@ -358,18 +363,29 @@ export default function SignUpScreen() {
                   <SectionLabel>I am a:</SectionLabel>
                   <RadioGroup
                     value={role}
-                    onValueChange={(value) => setRole(value as 'trainer' | 'client')}
+                    onValueChange={(value) => setRole(value as 'athlete' | 'parent' | 'trainer')}
                   >
-                    <XStack gap="$3">
-                      <RadioButton
-                        value="client"
-                        id="client-setup"
-                        label="Athlete"
-                        description="Follow a training program"
-                        checked={role === 'client'}
-                        icon={User}
-                        onPress={() => setRole('client')}
-                      />
+                    <YStack gap="$3">
+                      <XStack gap="$3">
+                        <RadioButton
+                          value="athlete"
+                          id="athlete-setup"
+                          label="Athlete"
+                          description="Follow a training program"
+                          checked={role === 'athlete' || role === 'client'}
+                          icon={User}
+                          onPress={() => setRole('athlete')}
+                        />
+                        <RadioButton
+                          value="parent"
+                          id="parent-setup"
+                          label="Parent"
+                          description="Manage your athlete"
+                          checked={role === 'parent'}
+                          icon={Heart}
+                          onPress={() => setRole('parent')}
+                        />
+                      </XStack>
                       <RadioButton
                         value="trainer"
                         id="trainer-setup"
@@ -379,7 +395,7 @@ export default function SignUpScreen() {
                         icon={Users}
                         onPress={() => setRole('trainer')}
                       />
-                    </XStack>
+                    </YStack>
                   </RadioGroup>
                 </YStack>
 
@@ -548,18 +564,29 @@ export default function SignUpScreen() {
                   <SectionLabel>I am a:</SectionLabel>
                   <RadioGroup
                     value={role}
-                    onValueChange={(value) => setRole(value as 'trainer' | 'client')}
+                    onValueChange={(value) => setRole(value as 'athlete' | 'parent' | 'trainer')}
                   >
-                    <XStack gap="$3">
-                      <RadioButton
-                        value="client"
-                        id="client"
-                        label="Athlete"
-                        description="Follow a training program"
-                        checked={role === 'client'}
-                        icon={User}
-                        onPress={() => setRole('client')}
-                      />
+                    <YStack gap="$3">
+                      <XStack gap="$3">
+                        <RadioButton
+                          value="athlete"
+                          id="athlete"
+                          label="Athlete"
+                          description="Follow a training program"
+                          checked={role === 'athlete' || role === 'client'}
+                          icon={User}
+                          onPress={() => setRole('athlete')}
+                        />
+                        <RadioButton
+                          value="parent"
+                          id="parent"
+                          label="Parent"
+                          description="Manage your athlete"
+                          checked={role === 'parent'}
+                          icon={Heart}
+                          onPress={() => setRole('parent')}
+                        />
+                      </XStack>
                       <RadioButton
                         value="trainer"
                         id="trainer"
@@ -569,7 +596,7 @@ export default function SignUpScreen() {
                         icon={Users}
                         onPress={() => setRole('trainer')}
                       />
-                    </XStack>
+                    </YStack>
                   </RadioGroup>
                 </YStack>
 

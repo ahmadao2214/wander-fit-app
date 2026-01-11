@@ -116,8 +116,50 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 /**
+ * ParentOnlyRoute - For authenticated parent users
+ * Parents don't need to complete intake - they manage athletes instead
+ */
+export function ParentOnlyRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading, user, needsSetup } = useAuth()
+
+  if (isLoading) {
+    return (
+      <YStack flex={1} items="center" justify="center" gap="$4" bg="$background">
+        <Spinner size="large" color="$green10" />
+        <Text color="$gray11">Loading...</Text>
+      </YStack>
+    )
+  }
+
+  // Not authenticated → go to sign in
+  if (!isAuthenticated) {
+    return <Redirect href="/(auth)/sign-in" />
+  }
+
+  // Needs Convex user setup → go to sign up
+  if (needsSetup) {
+    return <Redirect href="/(auth)/sign-up" />
+  }
+
+  // Check if user is a parent (using userRole field)
+  const isParent = user?.userRole === 'parent'
+
+  // Not a parent → go to athlete dashboard or intake
+  if (!isParent) {
+    if (user?.intakeCompletedAt) {
+      return <Redirect href="/(athlete)" />
+    } else {
+      return <Redirect href="/(intake)/sport" />
+    }
+  }
+
+  // User is a parent → show parent content
+  return <>{children}</>
+}
+
+/**
  * PublicOnlyRoute - For unauthenticated users only (sign in, sign up)
- * Redirects to dashboard if already authenticated
+ * Redirects to appropriate dashboard if already authenticated
  */
 export function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading, user, needsSetup } = useAuth()
@@ -136,12 +178,20 @@ export function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
     return <>{children}</>
   }
 
-  // Authenticated without intake → go to intake
+  // Check if user is a parent
+  const isParent = user?.userRole === 'parent'
+
+  // Authenticated parent → go to parent dashboard
+  if (isAuthenticated && isParent) {
+    return <Redirect href="/(parent)" />
+  }
+
+  // Authenticated athlete without intake → go to intake
   if (isAuthenticated && user && !user.intakeCompletedAt) {
     return <Redirect href="/(intake)/sport" />
   }
 
-  // Authenticated with intake → go to dashboard
+  // Authenticated athlete with intake → go to dashboard
   if (isAuthenticated && user?.intakeCompletedAt) {
     return <Redirect href="/(athlete)" />
   }

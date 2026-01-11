@@ -1,14 +1,30 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
+/**
+ * User Role Validator
+ *
+ * athlete - Standard user who completes workouts (formerly "client")
+ * parent - Parent/guardian who manages linked athlete accounts
+ * trainer - Future coach/trainer role
+ *
+ * Note: "client" is deprecated but kept for backwards compatibility
+ */
+const userRoleValidator = v.union(
+  v.literal("athlete"),
+  v.literal("parent"),
+  v.literal("trainer"),
+  v.literal("client") // Deprecated, treated as "athlete"
+);
+
 // Create a new user after Clerk authentication
 export const createUser = mutation({
   args: {
     email: v.string(),
     name: v.string(),
-    role: v.union(v.literal("trainer"), v.literal("client")),
+    role: userRoleValidator,
     clerkId: v.string(),
-    trainerId: v.optional(v.id("users")), // only for clients
+    trainerId: v.optional(v.id("users")), // only for clients (deprecated)
   },
   handler: async (ctx, args) => {
     // Check if user already exists
@@ -21,8 +37,11 @@ export const createUser = mutation({
       throw new Error("User already exists");
     }
 
-    // Validate trainer relationship if client
-    if (args.role === "client" && args.trainerId) {
+    // Normalize role: "client" is treated as "athlete"
+    const normalizedRole = args.role === "client" ? "athlete" : args.role;
+
+    // Validate trainer relationship if client (legacy support)
+    if ((args.role === "client" || args.role === "athlete") && args.trainerId) {
       const trainer = await ctx.db.get(args.trainerId);
       if (!trainer || trainer.role !== "trainer") {
         throw new Error("Invalid trainer ID");
@@ -32,14 +51,15 @@ export const createUser = mutation({
     const userId = await ctx.db.insert("users", {
       email: args.email,
       name: args.name,
-      role: args.role,
+      role: args.role, // Keep original role for backwards compatibility
+      userRole: normalizedRole, // New normalized role field
       clerkId: args.clerkId,
       trainerId: args.trainerId,
       createdAt: Date.now(),
     });
 
-    // If this is a client with a trainer, create the relationship
-    if (args.role === "client" && args.trainerId) {
+    // If this is a client/athlete with a trainer, create the relationship (legacy)
+    if ((args.role === "client" || args.role === "athlete") && args.trainerId) {
       await ctx.db.insert("trainerClientRelationships", {
         trainerId: args.trainerId,
         clientId: userId,
