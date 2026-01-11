@@ -286,9 +286,12 @@ export const setMax = mutation({
       throw new Error("User not found");
     }
 
-    // Validate 1RM is positive
+    // Validate 1RM is positive and reasonable
     if (args.oneRepMax <= 0) {
       throw new Error("1RM must be a positive number");
+    }
+    if (args.oneRepMax > 2000) {
+      throw new Error("1RM value seems unrealistic. Please verify your input.");
     }
 
     // Check if max already exists for this exercise
@@ -361,9 +364,12 @@ export const setMaxBySlug = mutation({
       throw new Error(`Exercise not found: ${args.exerciseSlug}`);
     }
 
-    // Validate 1RM is positive
+    // Validate 1RM is positive and reasonable
     if (args.oneRepMax <= 0) {
       throw new Error("1RM must be a positive number");
+    }
+    if (args.oneRepMax > 2000) {
+      throw new Error("1RM value seems unrealistic. Please verify your input.");
     }
 
     // Check if max already exists
