@@ -1,9 +1,10 @@
 import { YStack, XStack, Text, Card, Button, ScrollView, Spinner, styled } from 'tamagui'
-import { useQuery } from 'convex/react'
+import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
 import { SignOutButton } from '../../components/SignOutButton'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useRouter } from 'expo-router'
 import {
   User,
   Trophy,
@@ -12,6 +13,9 @@ import {
   TrendingUp,
   Settings,
   ChevronRight,
+  Heart,
+  Link as LinkIcon,
+  Unlink,
 } from '@tamagui/lucide-icons'
 import { PHASE_NAMES } from '../../types'
 
@@ -48,6 +52,7 @@ const StatNumber = styled(Text, {
 export default function ProfilePage() {
   const { user, isLoading: authLoading } = useAuth()
   const insets = useSafeAreaInsets()
+  const router = useRouter()
 
   const programState = useQuery(
     api.userPrograms.getCurrentProgramState,
@@ -63,6 +68,15 @@ export default function ProfilePage() {
     api.userPrograms.getIntakeHistory,
     user ? {} : "skip"
   )
+
+  // Get linked parents
+  const linkedParents = useQuery(
+    api.parentRelationships.getLinkedParents,
+    user ? {} : "skip"
+  )
+
+  // Unlink mutation
+  const unlinkRelationship = useMutation(api.parentRelationships.unlinkRelationship)
 
   if (authLoading) {
     return (
@@ -319,6 +333,108 @@ export default function ProfilePage() {
             </YStack>
           )}
 
+          {/* Parent Links Section */}
+          <YStack gap="$3">
+            <SectionLabel>PARENT/GUARDIAN</SectionLabel>
+
+            {linkedParents && linkedParents.length > 0 ? (
+              <YStack gap="$3">
+                {linkedParents.map((parent) => (
+                  <Card
+                    key={parent._id}
+                    p="$4"
+                    bg="$surface"
+                    rounded="$4"
+                    borderWidth={1}
+                    borderColor="$borderColor"
+                  >
+                    <XStack items="center" gap="$3">
+                      <YStack bg="$brand2" p="$2" rounded="$10">
+                        <Heart size={18} color="$primary" />
+                      </YStack>
+                      <YStack flex={1}>
+                        <Text fontSize={15} fontFamily="$body" fontWeight="600" color="$color12">
+                          {parent.name}
+                        </Text>
+                        <Text fontSize={12} color="$color10" fontFamily="$body">
+                          Linked {new Date(parent.linkedAt).toLocaleDateString()}
+                        </Text>
+                      </YStack>
+                      <Button
+                        size="$3"
+                        bg="$color4"
+                        icon={Unlink}
+                        circular
+                        onPress={async () => {
+                          try {
+                            await unlinkRelationship({ relationshipId: parent.relationshipId })
+                          } catch (err) {
+                            console.error('Failed to unlink:', err)
+                          }
+                        }}
+                      />
+                    </XStack>
+                  </Card>
+                ))}
+
+                {/* Add another parent */}
+                <Card
+                  p="$4"
+                  bg="$surface"
+                  rounded="$4"
+                  borderWidth={1}
+                  borderColor="$borderColor"
+                  pressStyle={{ bg: '$surfaceHover' }}
+                  onPress={() => router.push('/(athlete)/accept-invite')}
+                >
+                  <XStack items="center" gap="$3">
+                    <YStack bg="$color4" p="$2" rounded="$10">
+                      <LinkIcon size={18} color="$color10" />
+                    </YStack>
+                    <Text
+                      flex={1}
+                      fontSize={15}
+                      fontFamily="$body" fontWeight="500"
+                      color="$color12"
+                    >
+                      Link Another Parent
+                    </Text>
+                    <ChevronRight size={20} color="$color9" />
+                  </XStack>
+                </Card>
+              </YStack>
+            ) : (
+              <Card
+                p="$4"
+                bg="$surface"
+                rounded="$4"
+                borderWidth={1}
+                borderColor="$borderColor"
+                pressStyle={{ bg: '$surfaceHover' }}
+                onPress={() => router.push('/(athlete)/accept-invite')}
+              >
+                <XStack items="center" gap="$3">
+                  <YStack bg="$brand2" p="$2" rounded="$10">
+                    <LinkIcon size={18} color="$primary" />
+                  </YStack>
+                  <YStack flex={1}>
+                    <Text
+                      fontSize={15}
+                      fontFamily="$body" fontWeight="500"
+                      color="$color12"
+                    >
+                      Link to Parent
+                    </Text>
+                    <Text fontSize={12} color="$color10" fontFamily="$body">
+                      Enter code from your parent
+                    </Text>
+                  </YStack>
+                  <ChevronRight size={20} color="$color9" />
+                </XStack>
+              </Card>
+            )}
+          </YStack>
+
           {/* Settings Section */}
           <YStack gap="$3">
             <SectionLabel>SETTINGS</SectionLabel>
@@ -338,8 +454,8 @@ export default function ProfilePage() {
                 <YStack bg="$color4" p="$2" rounded="$10">
                   <Settings size={18} color="$color10" />
                 </YStack>
-                <Text 
-                  flex={1} 
+                <Text
+                  flex={1}
                   fontSize={15}
                   fontFamily="$body" fontWeight="500"
                   color="$color12"
