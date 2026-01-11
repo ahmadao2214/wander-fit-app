@@ -208,9 +208,15 @@ export const getProgressSummary = query({
       .withIndex("by_program", (q) => q.eq("userProgramId", program._id))
       .first();
 
+    // Get intake record for training days per week
+    const intake = program.intakeResponseId
+      ? await ctx.db.get(program.intakeResponseId)
+      : null;
+    const trainingDaysPerWeek = intake?.preferredTrainingDaysPerWeek ?? 3;
+
     // Calculate weeks and blocks completed
     const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
-    const weeksCompleted = Math.floor(completedSessions.length / program.currentDay) || 0;
+    const weeksCompleted = Math.floor(completedSessions.length / trainingDaysPerWeek) || 0;
     const blocksCompleted = Math.floor(weeksCompleted / weeksPerPhase);
 
     return {
