@@ -223,3 +223,216 @@ export const seedSportsAndCategories = mutation({
     return results;
   },
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SPORT BROWSER QUERIES (Preview Mode)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Get athlete's sports (primary + additional) for browse filtering
+ */
+export const getAthleteSports = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) return null;
+
+    // Get athlete_sports records
+    const athleteSports = await ctx.db
+      .query("athlete_sports")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    // Fetch sport details
+    const sportsWithDetails = await Promise.all(
+      athleteSports.map(async (as) => {
+        const sport = await ctx.db.get(as.sportId);
+        if (!sport) return null;
+
+        const category = await ctx.db
+          .query("gpp_categories")
+          .withIndex("by_category_id", (q) => q.eq("categoryId", sport.gppCategoryId))
+          .first();
+
+        return {
+          ...as,
+          sport,
+          category,
+        };
+      })
+    );
+
+    return sportsWithDetails.filter(Boolean);
+  },
+});
+
+/**
+ * Get browsable sports (sports the athlete is training for, excluding primary)
+ * These are "preview mode" sports where athlete can see but not start workouts
+ */
+export const getBrowsableSports = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) return null;
+
+    // Get athlete's additional sports (not primary)
+    const athleteSports = await ctx.db
+      .query("athlete_sports")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .filter((q) => q.eq(q.field("isPrimary"), false))
+      .collect();
+
+    // Fetch sport details with category info
+    const sportsWithDetails = await Promise.all(
+      athleteSports.map(async (as) => {
+        const sport = await ctx.db.get(as.sportId);
+        if (!sport) return null;
+
+        const category = await ctx.db
+          .query("gpp_categories")
+          .withIndex("by_category_id", (q) => q.eq("categoryId", sport.gppCategoryId))
+          .first();
+
+        return {
+          sportId: sport._id,
+          sportName: sport.name,
+          categoryId: sport.gppCategoryId,
+          categoryName: category?.name ?? "Unknown",
+          categoryShortName: category?.shortName ?? "?",
+          description: sport.description,
+        };
+      })
+    );
+
+    return sportsWithDetails.filter(Boolean);
+  },
+});
+
+/**
+ * Get preview workouts for a browsable sport
+ * Shows workout structure without allowing athlete to start them
+ */
+export const getPreviewWorkouts = query({
+  args: {
+    sportId: v.id("sports"),
+    phase: v.optional(v.union(v.literal("GPP"), v.literal("SPP"), v.literal("SSP"))),
+    week: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) return null;
+
+    // Verify user has this as an additional sport (not primary)
+    const athleteSport = await ctx.db
+      .query("athlete_sports")
+      .withIndex("by_user_sport", (q) =>
+        q.eq("userId", user._id).eq("sportId", args.sportId)
+      )
+      .first();
+
+    if (!athleteSport) {
+      return { error: "Sport not in your training list", workouts: [] };
+    }
+
+    if (athleteSport.isPrimary) {
+      return { error: "Use your main program for primary sport", workouts: [] };
+    }
+
+    // Get the sport's GPP category
+    const sport = await ctx.db.get(args.sportId);
+    if (!sport) {
+      return { error: "Sport not found", workouts: [] };
+    }
+
+    // Get gpp_category document ID
+    const category = await ctx.db
+      .query("gpp_categories")
+      .withIndex("by_category_id", (q) => q.eq("categoryId", sport.gppCategoryId))
+      .first();
+
+    if (!category) {
+      return { error: "Category not found", workouts: [] };
+    }
+
+    // Default to GPP phase week 1 if not specified
+    const phase = args.phase ?? "GPP";
+    const week = args.week ?? 1;
+
+    // Get user's skill level from their program
+    const userProgram = await ctx.db
+      .query("user_programs")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .first();
+
+    const skillLevel = userProgram?.skillLevel ?? "beginner";
+
+    // Fetch templates for preview
+    const templates = await ctx.db
+      .query("program_templates")
+      .withIndex("by_assignment", (q) =>
+        q
+          .eq("gppCategoryId", category._id)
+          .eq("phase", phase)
+          .eq("skillLevel", skillLevel)
+          .eq("week", week)
+      )
+      .collect();
+
+    // Get exercises for each template (limited preview)
+    const workoutsPreview = await Promise.all(
+      templates.map(async (template) => {
+        // Only get first 3 exercises for preview
+        const exercisePreviews = await Promise.all(
+          template.exercises.slice(0, 3).map(async (ex: any) => {
+            const exercise = await ctx.db.get(ex.exerciseId);
+            return {
+              name: exercise?.name ?? "Unknown",
+              sets: ex.sets,
+              reps: ex.reps,
+            };
+          })
+        );
+
+        return {
+          templateId: template._id,
+          day: template.day,
+          focus: template.focus,
+          exerciseCount: template.exercises.length,
+          exercisePreview: exercisePreviews,
+          isPreviewOnly: true,
+        };
+      })
+    );
+
+    return {
+      sportName: sport.name,
+      categoryName: category.name,
+      phase,
+      week,
+      skillLevel,
+      workouts: workoutsPreview.sort((a, b) => a.day - b.day),
+    };
+  },
+});
