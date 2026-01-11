@@ -532,16 +532,15 @@ export const setMultipleMaxes = mutation({
 
     for (const { exerciseSlug, oneRepMax } of args.maxes) {
       // Skip if no value provided (empty is fine - user chose not to set this)
+      // Skip if no value provided (empty is fine - user chose not to set this)
       if (!oneRepMax || oneRepMax === 0) {
         results.push({ slug: exerciseSlug, action: "skipped_empty" });
         continue;
-      // Skip if no value provided or unreasonable
-      if (!oneRepMax || oneRepMax <= 0) {
-        results.push({ slug: exerciseSlug, action: "skipped", reason: "empty" });
-        continue;
       }
+
+      // Skip if unreasonably high (likely typo)
       if (oneRepMax > 2000) {
-        results.push({ slug: exerciseSlug, action: "skipped", reason: "invalid_max" });
+        results.push({ slug: exerciseSlug, action: "skipped_invalid" });
         continue;
       }
 
