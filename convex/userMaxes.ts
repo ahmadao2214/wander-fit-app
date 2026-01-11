@@ -143,6 +143,83 @@ export const getMaxForExerciseBySlug = query({
 });
 
 /**
+ * Core lifts that support 1RM tracking
+ * These are the foundational compound movements used for intensity calculations
+ */
+export const CORE_LIFT_SLUGS = [
+  "back_squat",
+  "bench_press",
+  "trap_bar_deadlift",
+] as const;
+
+/**
+ * Get the core lift exercises that support 1RM tracking
+ * Returns exercise details with current user's 1RM if set
+ */
+export const getCoreLiftExercises = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+
+    // Fetch exercises by slug
+    const exercises = await Promise.all(
+      CORE_LIFT_SLUGS.map(async (slug) => {
+        const exercise = await ctx.db
+          .query("exercises")
+          .withIndex("by_slug", (q) => q.eq("slug", slug))
+          .first();
+        return exercise;
+      })
+    );
+
+    // Filter out any that weren't found
+    const foundExercises = exercises.filter((e) => e !== null);
+
+    // If not authenticated, return exercises without maxes
+    if (!identity) {
+      return foundExercises.map((exercise) => ({
+        ...exercise,
+        currentMax: null,
+        lastUpdated: null,
+      }));
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) {
+      return foundExercises.map((exercise) => ({
+        ...exercise,
+        currentMax: null,
+        lastUpdated: null,
+      }));
+    }
+
+    // Fetch user's maxes for these exercises
+    const enriched = await Promise.all(
+      foundExercises.map(async (exercise) => {
+        const max = await ctx.db
+          .query("user_maxes")
+          .withIndex("by_user_exercise", (q) =>
+            q.eq("userId", user._id).eq("exerciseId", exercise._id)
+          )
+          .first();
+
+        return {
+          ...exercise,
+          currentMax: max?.oneRepMax ?? null,
+          lastUpdated: max?.recordedAt ?? null,
+        };
+      })
+    );
+
+    return enriched;
+  },
+});
+
+/**
  * Get all maxes for a list of exercise IDs (batch query for workout)
  */
 export const getMaxesForExercises = query({
@@ -414,6 +491,89 @@ export const calculateAndSaveMax = mutation({
     });
 
     return { id, action: "created" as const, oneRepMax };
+  },
+});
+
+/**
+ * Set multiple 1RMs at once (for intake flow)
+ * Only sets maxes for exercises with a value > 0
+ */
+export const setMultipleMaxes = mutation({
+  args: {
+    maxes: v.array(
+      v.object({
+        exerciseSlug: v.string(),
+        oneRepMax: v.number(),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const now = Date.now();
+    const results: Array<{
+      slug: string;
+      action: "created" | "updated" | "skipped";
+    }> = [];
+
+    for (const { exerciseSlug, oneRepMax } of args.maxes) {
+      // Skip if no value provided
+      if (!oneRepMax || oneRepMax <= 0) {
+        results.push({ slug: exerciseSlug, action: "skipped" });
+        continue;
+      }
+
+      // Find exercise by slug
+      const exercise = await ctx.db
+        .query("exercises")
+        .withIndex("by_slug", (q) => q.eq("slug", exerciseSlug))
+        .first();
+
+      if (!exercise) {
+        results.push({ slug: exerciseSlug, action: "skipped" });
+        continue;
+      }
+
+      // Check if max already exists
+      const existingMax = await ctx.db
+        .query("user_maxes")
+        .withIndex("by_user_exercise", (q) =>
+          q.eq("userId", user._id).eq("exerciseId", exercise._id)
+        )
+        .first();
+
+      if (existingMax) {
+        await ctx.db.patch(existingMax._id, {
+          oneRepMax,
+          source: "user_input",
+          recordedAt: now,
+        });
+        results.push({ slug: exerciseSlug, action: "updated" });
+      } else {
+        await ctx.db.insert("user_maxes", {
+          userId: user._id,
+          exerciseId: exercise._id,
+          oneRepMax,
+          source: "user_input",
+          recordedAt: now,
+        });
+        results.push({ slug: exerciseSlug, action: "created" });
+      }
+    }
+
+    return { success: true, results };
   },
 });
 

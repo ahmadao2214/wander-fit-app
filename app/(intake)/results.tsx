@@ -1,18 +1,18 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { YStack, XStack, H2, H3, Text, Card, Button, Spinner, ScrollView } from 'tamagui'
 import { useRouter, useLocalSearchParams } from 'expo-router'
-import { useQuery, useMutation } from 'convex/react'
+import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { Id } from '../../convex/_generated/dataModel'
 import {
   ChevronLeft,
+  ChevronRight,
   ChevronDown,
   ChevronUp,
   CheckCircle,
   Target,
   Trophy,
   Calendar,
-  Sparkles,
   Clock,
   Activity,
   Zap,
@@ -20,21 +20,17 @@ import {
   Dumbbell,
 } from '@tamagui/lucide-icons'
 import { PHASE_NAMES } from '../../types'
-import { useAuth } from '../../hooks/useAuth'
 import { getSkillLevel, getTrainingPhase } from '../../lib'
 
 /**
  * Results Screen
- * 
+ *
  * Step 3 of intake flow.
- * Shows the calculated assignment and confirms to create the program.
- * 
- * After intake completion, the IntakeOnlyRoute wrapper automatically
- * redirects to the athlete dashboard when intakeCompletedAt is set.
+ * Shows the calculated assignment and previews the program.
+ * User then continues to the maxes screen (optional 1RM input).
  */
 export default function ResultsScreen() {
   const router = useRouter()
-  const { hasCompletedIntake } = useAuth()
   const { sportId, yearsOfExperience, trainingDays, weeksUntilSeason } = useLocalSearchParams<{
     sportId: string
     yearsOfExperience: string
@@ -42,8 +38,6 @@ export default function ResultsScreen() {
     weeksUntilSeason: string
   }>()
 
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isSuccess, setIsSuccess] = useState(false)
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set())
 
   // Get sport details
@@ -57,9 +51,6 @@ export default function ResultsScreen() {
     api.sports.getCategoryById,
     sport ? { categoryId: sport.gppCategoryId } : "skip"
   )
-
-  // Complete intake mutation
-  const completeIntake = useMutation(api.userPrograms.completeIntake)
 
   // Redirect back if missing params
   if (!sportId || !yearsOfExperience || !trainingDays || !weeksUntilSeason) {
@@ -124,45 +115,17 @@ export default function ResultsScreen() {
     router.back()
   }
 
-  const handleConfirm = async () => {
-    setIsSubmitting(true)
-    try {
-      await completeIntake({
-        sportId: sportId as Id<"sports">,
-        yearsOfExperience: years,
-        preferredTrainingDaysPerWeek: days,
-        weeksUntilSeason: weeks,
-      })
-
-      // Show success state - IntakeOnlyRoute will handle redirect
-      // when it detects intakeCompletedAt is set
-      setIsSuccess(true)
-    } catch (error) {
-      console.error('Failed to complete intake:', error)
-      alert('Failed to create program. Please try again.')
-      setIsSubmitting(false)
-    }
+  const handleContinue = () => {
+    router.push({
+      pathname: '/(intake)/maxes',
+      params: {
+        sportId,
+        yearsOfExperience,
+        trainingDays,
+        weeksUntilSeason,
+      },
+    })
   }
-
-  // Navigate to athlete dashboard once intake is marked complete
-  // This handles the race condition between mutation success and auth state update
-  useEffect(() => {
-    if (isSuccess && hasCompletedIntake) {
-      router.replace('/(athlete)')
-    }
-  }, [isSuccess, hasCompletedIntake, router])
-
-  // Fallback navigation after a short delay if auth state hasn't updated yet
-  // This ensures users aren't stuck on the success screen
-  useEffect(() => {
-    if (isSuccess) {
-      const timeout = setTimeout(() => {
-        // Force navigation after 2 seconds even if auth state hasn't updated
-        router.replace('/(athlete)')
-      }, 2000)
-      return () => clearTimeout(timeout)
-    }
-  }, [isSuccess, router])
 
   // Show loading while fetching sport/category (undefined = still loading)
   if (sport === undefined || category === undefined) {
@@ -178,25 +141,6 @@ export default function ResultsScreen() {
   if (sport === null || category === null) {
     router.replace('/(intake)/sport')
     return null
-  }
-
-  // Show success state while waiting for redirect
-  if (isSuccess) {
-    return (
-      <YStack flex={1} bg="$background" items="center" justify="center" gap="$6" px="$4">
-        <YStack items="center" gap="$4">
-          <Sparkles size={72} color="$primary" />
-          <H2 text="center" color="$color12">Let's Go!</H2>
-          <Text color="$gray11" text="center" fontSize="$4">
-            Your personalized program is ready.
-          </Text>
-          <Text color="$gray11" text="center" fontSize="$4">
-            Taking you to your dashboard...
-          </Text>
-        </YStack>
-        <Spinner size="large" color="$primary" />
-      </YStack>
-    )
   }
 
   return (
@@ -441,35 +385,29 @@ export default function ResultsScreen() {
         borderTopWidth={1}
         borderTopColor="$borderColor"
         bg="$background"
-        gap="$3"
       >
-        <Button
-          size="$5"
-          bg="$primary"
-          color="white"
-          onPress={handleConfirm}
-          disabled={isSubmitting}
-          fontWeight="700"
-        >
-          {isSubmitting ? (
-            <XStack items="center" gap="$2">
-              <Spinner size="small" color="white" />
-              <Text color="white" fontWeight="700">Creating Program...</Text>
-            </XStack>
-          ) : (
-            "Start My Program"
-          )}
-        </Button>
-
-        <Button
-          size="$4"
-          variant="outlined"
-          onPress={handleBack}
-          icon={ChevronLeft}
-          disabled={isSubmitting}
-        >
-          Go Back
-        </Button>
+        <XStack gap="$3">
+          <Button
+            flex={1}
+            size="$5"
+            variant="outlined"
+            onPress={handleBack}
+            icon={ChevronLeft}
+          >
+            Back
+          </Button>
+          <Button
+            flex={2}
+            size="$5"
+            bg="$primary"
+            color="white"
+            onPress={handleContinue}
+            iconAfter={ChevronRight}
+            fontWeight="700"
+          >
+            Continue
+          </Button>
+        </XStack>
       </YStack>
     </YStack>
   )

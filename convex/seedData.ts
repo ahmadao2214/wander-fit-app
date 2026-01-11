@@ -484,6 +484,20 @@ export const EXERCISES = [
     tags: ["upper_body", "push", "horizontal", "strength", "chest", "bilateral"],
     equipment: ["dumbbell", "bench"],
     difficulty: "beginner" as const,
+    progressions: {
+      harder: "bench_press",
+    },
+  },
+  {
+    name: "Bench Press",
+    slug: "bench_press",
+    tags: ["upper_body", "push", "horizontal", "strength", "chest", "bilateral", "compound"],
+    equipment: ["barbell", "bench", "rack"],
+    difficulty: "intermediate" as const,
+    instructions: "Lie on bench with feet flat on floor. Grip bar slightly wider than shoulder-width. Lower bar to chest with control, then press up to full lockout.",
+    progressions: {
+      easier: "db_bench_press",
+    },
   },
   {
     name: "Incline Dumbbell Press",
