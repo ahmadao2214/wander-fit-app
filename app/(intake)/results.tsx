@@ -23,7 +23,7 @@ import {
 
 import { PHASE_NAMES, AgeGroup } from '../../types'
 import { useAuth } from '../../hooks/useAuth'
-import { getSkillLevel, getTrainingPhase } from '../../lib'
+import { getSkillLevel, getTrainingPhase, calculateWeeksPerPhase } from '../../lib'
 
 /**
  * Results Screen
@@ -80,6 +80,7 @@ export default function ResultsScreen() {
   // Use extracted pure functions for calculations
   const trainingPhase = getTrainingPhase(weeks)
   const skillLevel = getSkillLevel(years)
+  const weeksPerPhase = calculateWeeksPerPhase(weeks)
 
   // Helper: Get category-specific colors
   const getCategoryColor = (categoryId: number) => {
@@ -379,7 +380,7 @@ export default function ResultsScreen() {
                           {PHASE_NAMES.GPP}
                         </Text>
                         <Text fontSize="$2" color="$color10">
-                          4 weeks • Foundation phase
+                          {weeksPerPhase} weeks • Foundation phase
                         </Text>
                       </YStack>
                       {expandedPhases.has('GPP') ? (
@@ -416,7 +417,7 @@ export default function ResultsScreen() {
                           {PHASE_NAMES.SPP}
                         </Text>
                         <Text fontSize="$2" color="$color10">
-                          4 weeks • Sport-specific phase
+                          {weeksPerPhase} weeks • Sport-specific phase
                         </Text>
                       </YStack>
                       {expandedPhases.has('SPP') ? (
@@ -453,7 +454,7 @@ export default function ResultsScreen() {
                           {PHASE_NAMES.SSP}
                         </Text>
                         <Text fontSize="$2" color="$color10">
-                          4 weeks • Peak performance phase
+                          {weeksPerPhase} weeks • Peak performance phase
                         </Text>
                       </YStack>
                       {expandedPhases.has('SSP') ? (

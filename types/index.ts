@@ -130,7 +130,7 @@ export interface CurrentProgramState {
   phase: Phase;
   skillLevel: SkillLevel;
   ageGroup: AgeGroup;
-  week: number; // 1-4
+  week: number; // 1 to weeksPerPhase (dynamic based on intake)
   day: number; // 1-7
 }
 
