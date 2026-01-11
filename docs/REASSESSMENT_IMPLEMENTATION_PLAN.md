@@ -17,6 +17,7 @@ This document outlines the implementation plan for the intake reassessment featu
 | Manual Trigger | **Yes** - Available from Settings in Profile |
 | Minimum Completion | **No minimum** - Users can proceed even with low completion rate |
 | SSP Phase Access | **Full access** - Athletes on SSP have access to ALL phases |
+| Sport Change | **Full reset only** - Change sport via Settings → Reset Program (not during reassessment) |
 
 ---
 
@@ -479,6 +480,7 @@ Add to the existing Settings section in `app/(athlete)/profile.tsx`:
 |----------|----------|
 | SSP Completion | Athletes on SSP have full access to all phases; can start new cycle |
 | Partial Completion | Allowed - no minimum completion threshold required |
+| Sport Change | **Option B** - Full reset only; available in Settings → Reset Program |
 
 ---
 
@@ -569,13 +571,10 @@ Reset Program
 
 1. **Downgrade Path**: If user consistently says phases are "too hard", should we offer a downgrade after 2+ assessments?
 
-2. **Sport Change**: See analysis above - **recommend Option B (full reset only) for now**
-
 ---
 
 ## Next Steps
 
-1. Confirm sport change decision (recommend: full reset only for MVP)
-2. Start with Phase 1 (Database & API)
-3. Iterate on screens with design input
-4. Test all phase transitions thoroughly
+1. Start with Phase 1 (Database & API)
+2. Iterate on screens with design input
+3. Test all phase transitions thoroughly
