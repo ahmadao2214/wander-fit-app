@@ -500,11 +500,13 @@ export default defineSchema({
 
   /**
    * user_schedule_overrides - Stores user's schedule customizations
-   * 
+   *
    * Allows athletes to:
    * 1. Set a different workout as "today's focus" (override scheduled workout)
    * 2. Swap/reorder workouts within a phase
-   * 
+   *
+   * Parents can also modify these with full permission.
+   *
    * DESIGN:
    * - One record per user program
    * - todayFocusTemplateId: temporary override for what to work on today
@@ -528,6 +530,10 @@ export default defineSchema({
       day: v.number(),
       templateId: v.id("program_templates"), // The workout assigned to this slot
     })),
+
+    // Parent modification tracking
+    parentModifiedAt: v.optional(v.number()), // Last time a parent modified this
+    parentModifiedBy: v.optional(v.id("users")), // Which parent made the last modification
 
     createdAt: v.number(),
     updatedAt: v.number(),

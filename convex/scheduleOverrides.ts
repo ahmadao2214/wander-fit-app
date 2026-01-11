@@ -951,4 +951,399 @@ export const resetPhaseToDefault = mutation({
   },
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// PARENT-INITIATED SCHEDULE OVERRIDES
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Helper to verify parent has permission to modify athlete's schedule
+ */
+async function verifyParentPermission(
+  ctx: any,
+  parentUserId: Id<"users">,
+  athleteId: Id<"users">
+): Promise<{ hasPermission: boolean; relationship?: any; program?: any }> {
+  // Verify relationship exists with full permissions
+  const relationship = await ctx.db
+    .query("parent_athlete_relationships")
+    .withIndex("by_parent", (q: any) => q.eq("parentUserId", parentUserId))
+    .filter((q: any) =>
+      q.and(
+        q.eq(q.field("athleteUserId"), athleteId),
+        q.eq(q.field("status"), "active")
+      )
+    )
+    .first();
+
+  if (!relationship) {
+    return { hasPermission: false };
+  }
+
+  // Check permissions - must be "full" to modify
+  if (relationship.permissions !== "full") {
+    return { hasPermission: false, relationship };
+  }
+
+  // Get athlete's program
+  const program = await ctx.db
+    .query("user_programs")
+    .withIndex("by_user", (q: any) => q.eq("userId", athleteId))
+    .first();
+
+  if (!program) {
+    return { hasPermission: false, relationship };
+  }
+
+  return { hasPermission: true, relationship, program };
+}
+
+/**
+ * Parent sets today's workout focus for an athlete
+ */
+export const parentSetTodayFocus = mutation({
+  args: {
+    athleteId: v.id("users"),
+    templateId: v.id("program_templates"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user || user.userRole !== "parent") {
+      throw new Error("Only parents can use this function");
+    }
+
+    const { hasPermission, relationship, program } = await verifyParentPermission(
+      ctx,
+      user._id,
+      args.athleteId
+    );
+
+    if (!hasPermission) {
+      throw new Error("You don't have permission to modify this athlete's schedule");
+    }
+
+    // Verify template exists and belongs to athlete's category
+    const template = await ctx.db.get(args.templateId);
+    if (!template) {
+      throw new Error("Template not found");
+    }
+
+    if (template.gppCategoryId !== program.gppCategoryId) {
+      throw new Error("Template does not belong to athlete's program category");
+    }
+
+    // Prevent setting completed workout as today's focus
+    const completedSession = await ctx.db
+      .query("gpp_workout_sessions")
+      .withIndex("by_user", (q) => q.eq("userId", args.athleteId))
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("templateId"), args.templateId),
+          q.eq(q.field("status"), "completed")
+        )
+      )
+      .first();
+
+    if (completedSession) {
+      throw new Error("Cannot set completed workout as today's focus");
+    }
+
+    const now = Date.now();
+
+    // Get or create override record
+    const existingOverride = await ctx.db
+      .query("user_schedule_overrides")
+      .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
+      .first();
+
+    if (existingOverride) {
+      await ctx.db.patch(existingOverride._id, {
+        todayFocusTemplateId: args.templateId,
+        todayFocusSetAt: now,
+        parentModifiedAt: now,
+        parentModifiedBy: user._id,
+        updatedAt: now,
+      });
+    } else {
+      await ctx.db.insert("user_schedule_overrides", {
+        userId: args.athleteId,
+        userProgramId: program._id,
+        todayFocusTemplateId: args.templateId,
+        todayFocusSetAt: now,
+        parentModifiedAt: now,
+        parentModifiedBy: user._id,
+        slotOverrides: [],
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    return { success: true, templateId: args.templateId };
+  },
+});
+
+/**
+ * Parent swaps two workout slots for an athlete
+ */
+export const parentSwapWorkouts = mutation({
+  args: {
+    athleteId: v.id("users"),
+    slotA: v.object({
+      phase: phaseValidator,
+      week: v.number(),
+      day: v.number(),
+    }),
+    slotB: v.object({
+      phase: phaseValidator,
+      week: v.number(),
+      day: v.number(),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    // Enforce same-phase only
+    if (args.slotA.phase !== args.slotB.phase) {
+      throw new Error("Swaps must be within the same phase");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user || user.userRole !== "parent") {
+      throw new Error("Only parents can use this function");
+    }
+
+    const { hasPermission, program } = await verifyParentPermission(
+      ctx,
+      user._id,
+      args.athleteId
+    );
+
+    if (!hasPermission) {
+      throw new Error("You don't have permission to modify this athlete's schedule");
+    }
+
+    // Get current override record
+    const existingOverride = await ctx.db
+      .query("user_schedule_overrides")
+      .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
+      .first();
+
+    // Helper to get the current template for a slot
+    const getTemplateForSlot = async (slot: { phase: string; week: number; day: number }) => {
+      if (existingOverride) {
+        const existingSlotOverride = existingOverride.slotOverrides.find(
+          (o: any) => o.phase === slot.phase && o.week === slot.week && o.day === slot.day
+        );
+        if (existingSlotOverride) {
+          return await ctx.db.get(existingSlotOverride.templateId);
+        }
+      }
+
+      return await ctx.db
+        .query("program_templates")
+        .withIndex("by_assignment", (q) =>
+          q
+            .eq("gppCategoryId", program.gppCategoryId)
+            .eq("phase", slot.phase as "GPP" | "SPP" | "SSP")
+            .eq("skillLevel", program.skillLevel)
+            .eq("week", slot.week)
+            .eq("day", slot.day)
+        )
+        .first();
+    };
+
+    // Get templates currently in each slot
+    const templateA = await getTemplateForSlot(args.slotA);
+    const templateB = await getTemplateForSlot(args.slotB);
+
+    if (!templateA || !templateB) {
+      throw new Error("One or both workout slots are empty (rest days)");
+    }
+
+    // Backend validation: prevent swapping completed workouts
+    const completedSessions = await ctx.db
+      .query("gpp_workout_sessions")
+      .withIndex("by_user", (q) => q.eq("userId", args.athleteId))
+      .filter((q) => q.eq(q.field("status"), "completed"))
+      .collect();
+    const completedTemplateIds = new Set(completedSessions.map((s: any) => s.templateId));
+
+    if (completedTemplateIds.has(templateA._id) || completedTemplateIds.has(templateB._id)) {
+      throw new Error("Cannot swap: one or both workouts are already completed");
+    }
+
+    const now = Date.now();
+
+    // Build new slot overrides
+    let newSlotOverrides = existingOverride?.slotOverrides || [];
+
+    // Remove any existing overrides for these slots
+    newSlotOverrides = newSlotOverrides.filter(
+      (o: any) =>
+        !(o.phase === args.slotA.phase && o.week === args.slotA.week && o.day === args.slotA.day) &&
+        !(o.phase === args.slotB.phase && o.week === args.slotB.week && o.day === args.slotB.day)
+    );
+
+    // Add new overrides
+    newSlotOverrides.push({
+      phase: args.slotA.phase,
+      week: args.slotA.week,
+      day: args.slotA.day,
+      templateId: templateB._id,
+    });
+
+    newSlotOverrides.push({
+      phase: args.slotB.phase,
+      week: args.slotB.week,
+      day: args.slotB.day,
+      templateId: templateA._id,
+    });
+
+    if (existingOverride) {
+      await ctx.db.patch(existingOverride._id, {
+        slotOverrides: newSlotOverrides,
+        parentModifiedAt: now,
+        parentModifiedBy: user._id,
+        updatedAt: now,
+      });
+    } else {
+      await ctx.db.insert("user_schedule_overrides", {
+        userId: args.athleteId,
+        userProgramId: program._id,
+        slotOverrides: newSlotOverrides,
+        parentModifiedAt: now,
+        parentModifiedBy: user._id,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    return { success: true };
+  },
+});
+
+/**
+ * Parent clears today's focus for an athlete
+ */
+export const parentClearTodayFocus = mutation({
+  args: {
+    athleteId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user || user.userRole !== "parent") {
+      throw new Error("Only parents can use this function");
+    }
+
+    const { hasPermission, program } = await verifyParentPermission(
+      ctx,
+      user._id,
+      args.athleteId
+    );
+
+    if (!hasPermission) {
+      throw new Error("You don't have permission to modify this athlete's schedule");
+    }
+
+    const existingOverride = await ctx.db
+      .query("user_schedule_overrides")
+      .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
+      .first();
+
+    if (existingOverride) {
+      await ctx.db.patch(existingOverride._id, {
+        todayFocusTemplateId: undefined,
+        todayFocusSetAt: undefined,
+        parentModifiedAt: Date.now(),
+        parentModifiedBy: user._id,
+        updatedAt: Date.now(),
+      });
+    }
+
+    return { success: true };
+  },
+});
+
+/**
+ * Parent resets athlete's phase to default schedule
+ */
+export const parentResetPhaseToDefault = mutation({
+  args: {
+    athleteId: v.id("users"),
+    phase: phaseValidator,
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user || user.userRole !== "parent") {
+      throw new Error("Only parents can use this function");
+    }
+
+    const { hasPermission, program } = await verifyParentPermission(
+      ctx,
+      user._id,
+      args.athleteId
+    );
+
+    if (!hasPermission) {
+      throw new Error("You don't have permission to modify this athlete's schedule");
+    }
+
+    const existingOverride = await ctx.db
+      .query("user_schedule_overrides")
+      .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
+      .first();
+
+    if (!existingOverride) {
+      return { success: true, message: "No overrides to reset" };
+    }
+
+    // Remove all overrides for this phase
+    const newSlotOverrides = existingOverride.slotOverrides.filter(
+      (o: any) => o.phase !== args.phase
+    );
+
+    await ctx.db.patch(existingOverride._id, {
+      slotOverrides: newSlotOverrides,
+      parentModifiedAt: Date.now(),
+      parentModifiedBy: user._id,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
 

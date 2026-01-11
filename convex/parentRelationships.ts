@@ -301,3 +301,206 @@ export const updatePermissions = mutation({
     return { success: true };
   },
 });
+
+/**
+ * Get family calendar data - all athletes' workout schedules
+ * Returns workout data for a given week across all linked athletes
+ */
+export const getFamilyCalendar = query({
+  args: {
+    weekOffset: v.optional(v.number()), // 0 = current week, 1 = next week, -1 = last week
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user || user.userRole !== "parent") return null;
+
+    // Get active relationships
+    const relationships = await ctx.db
+      .query("parent_athlete_relationships")
+      .withIndex("by_parent_status", (q) =>
+        q.eq("parentUserId", user._id).eq("status", "active")
+      )
+      .collect();
+
+    if (relationships.length === 0) {
+      return { athletes: [], weekStart: Date.now() };
+    }
+
+    const weekOffset = args.weekOffset ?? 0;
+
+    // Calculate week start date
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - dayOfWeek + weekOffset * 7);
+    weekStart.setHours(0, 0, 0, 0);
+
+    // Fetch athlete schedules
+    const athleteSchedules = await Promise.all(
+      relationships.map(async (rel) => {
+        const athlete = await ctx.db.get(rel.athleteUserId);
+        if (!athlete) return null;
+
+        // Get athlete's program
+        const program = await ctx.db
+          .query("user_programs")
+          .withIndex("by_user", (q) => q.eq("userId", rel.athleteUserId))
+          .first();
+
+        if (!program) {
+          return {
+            athleteId: athlete._id,
+            athleteName: athlete.name,
+            hasProgram: false,
+            workouts: [],
+          };
+        }
+
+        // Get primary sport
+        const primarySport = athlete.primarySportId
+          ? await ctx.db.get(athlete.primarySportId)
+          : null;
+
+        // Get workout templates for current week
+        const templates = await ctx.db
+          .query("program_templates")
+          .withIndex("by_assignment", (q) =>
+            q
+              .eq("gppCategoryId", program.gppCategoryId)
+              .eq("phase", program.currentPhase)
+              .eq("skillLevel", program.skillLevel)
+              .eq("week", program.currentWeek)
+          )
+          .collect();
+
+        // Get completed sessions
+        const completedSessions = await ctx.db
+          .query("gpp_workout_sessions")
+          .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
+          .filter((q) => q.eq(q.field("status"), "completed"))
+          .collect();
+
+        const completedTemplateIds = new Set(
+          completedSessions.map((s) => s.templateId.toString())
+        );
+
+        // Get schedule overrides
+        const overrideRecord = await ctx.db
+          .query("user_schedule_overrides")
+          .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
+          .first();
+
+        // Build workout schedule
+        const workouts = templates.map((template) => {
+          // Check for slot override
+          const slotOverride = overrideRecord?.slotOverrides.find(
+            (o) =>
+              o.phase === program.currentPhase &&
+              o.week === program.currentWeek &&
+              o.day === template.day
+          );
+
+          return {
+            templateId: template._id,
+            day: template.day,
+            focus: template.focus,
+            isCompleted: completedTemplateIds.has(template._id.toString()),
+            isOverridden: !!slotOverride,
+            isRestDay: false,
+          };
+        });
+
+        return {
+          athleteId: athlete._id,
+          athleteName: athlete.name,
+          hasProgram: true,
+          currentPhase: program.currentPhase,
+          currentWeek: program.currentWeek,
+          currentDay: program.currentDay,
+          skillLevel: program.skillLevel,
+          primarySport: primarySport?.name,
+          workouts,
+        };
+      })
+    );
+
+    return {
+      athletes: athleteSchedules.filter(Boolean),
+      weekStart: weekStart.getTime(),
+      weekOffset,
+    };
+  },
+});
+
+/**
+ * Get athlete's program state (for parent viewing)
+ * Similar to getCurrentProgramState but for parents viewing an athlete
+ */
+export const getAthleteProgramState = query({
+  args: { athleteId: v.id("users") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user || user.userRole !== "parent") return null;
+
+    // Verify relationship exists
+    const relationship = await ctx.db
+      .query("parent_athlete_relationships")
+      .withIndex("by_parent", (q) => q.eq("parentUserId", user._id))
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("athleteUserId"), args.athleteId),
+          q.eq(q.field("status"), "active")
+        )
+      )
+      .first();
+
+    if (!relationship) {
+      return null; // Not authorized
+    }
+
+    const athlete = await ctx.db.get(args.athleteId);
+    if (!athlete || !athlete.intakeCompletedAt) return null;
+
+    const program = await ctx.db
+      .query("user_programs")
+      .withIndex("by_user", (q) => q.eq("userId", args.athleteId))
+      .first();
+
+    if (!program) return null;
+
+    // Check for schedule overrides
+    const scheduleOverride = await ctx.db
+      .query("user_schedule_overrides")
+      .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
+      .first();
+
+    return {
+      athleteId: args.athleteId,
+      athleteName: athlete.name,
+      gppCategoryId: program.gppCategoryId,
+      phase: program.currentPhase,
+      skillLevel: program.skillLevel,
+      week: program.currentWeek,
+      day: program.currentDay,
+      programId: program._id,
+      todayFocusTemplateId: scheduleOverride?.todayFocusTemplateId,
+      hasTodayFocusOverride: !!scheduleOverride?.todayFocusTemplateId,
+      hasSlotOverrides: (scheduleOverride?.slotOverrides?.length ?? 0) > 0,
+      permissions: relationship.permissions,
+    };
+  },
+});
