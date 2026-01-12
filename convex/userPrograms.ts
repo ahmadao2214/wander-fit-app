@@ -843,8 +843,10 @@ export const getReassessmentStatus = query({
 
     // Calculate completion for current/pending phase
     const completedPhase = program.reassessmentPendingForPhase ?? program.currentPhase;
+    // Include sessions with matching phase in snapshot, or all completed sessions if no snapshot (legacy data)
     const phaseSessions = sessions.filter(
-      (s) => s.status === "completed" && s.templateSnapshot?.phase === completedPhase
+      (s) => s.status === "completed" &&
+        (s.templateSnapshot?.phase === completedPhase || !s.templateSnapshot)
     );
 
     // Expected workouts = 4 weeks × preferred days per week
@@ -962,10 +964,19 @@ export const completeReassessment = mutation({
     const intake = program.intakeResponseId
       ? await ctx.db.get(program.intakeResponseId)
       : null;
-    const preferredDays = intake?.preferredTrainingDaysPerWeek ?? 4;
 
+    // Validate intake exists with sportId
+    if (!intake?.sportId) {
+      throw new Error("Cannot complete reassessment: missing original intake data");
+    }
+
+    const preferredDays = intake.preferredTrainingDaysPerWeek ?? 4;
+
+    // Filter sessions - include those with matching phase in snapshot,
+    // or all completed sessions if no snapshot (legacy data)
     const phaseSessions = sessions.filter(
-      (s) => s.status === "completed" && s.templateSnapshot?.phase === completedPhase
+      (s) => s.status === "completed" &&
+        (s.templateSnapshot?.phase === completedPhase || !s.templateSnapshot)
     );
     const expectedWorkouts = 4 * preferredDays;
     const completedWorkouts = phaseSessions.length;
@@ -973,12 +984,19 @@ export const completeReassessment = mutation({
       ? Math.round((completedWorkouts / expectedWorkouts) * 100)
       : 0;
 
+    // Count completed phase reassessments for Moderate→Advanced requirement
+    const completedPhaseReassessments = [
+      program.gppReassessmentCompletedAt,
+      program.sppReassessmentCompletedAt,
+      program.sspReassessmentCompletedAt,
+    ].filter(Boolean).length;
+
     // ═══════════════════════════════════════════════════════════════════════════
     // SKILL LEVEL UPGRADE LOGIC
     // ═══════════════════════════════════════════════════════════════════════════
     // Criteria:
     // - Novice → Moderate: "too_easy" or "just_right" + 75%+ completion
-    // - Moderate → Advanced: "too_easy" or "just_right" + 80%+ completion
+    // - Moderate → Advanced: "too_easy" or "just_right" + 80%+ completion + 2+ phases completed
     // ═══════════════════════════════════════════════════════════════════════════
 
     let newSkillLevel = previousSkillLevel;
@@ -991,7 +1009,11 @@ export const completeReassessment = mutation({
       if (previousSkillLevel === "Novice" && completionRate >= 75) {
         newSkillLevel = "Moderate";
         skillLevelChanged = true;
-      } else if (previousSkillLevel === "Moderate" && completionRate >= 80) {
+      } else if (
+        previousSkillLevel === "Moderate" &&
+        completionRate >= 80 &&
+        completedPhaseReassessments >= 2
+      ) {
         newSkillLevel = "Advanced";
         skillLevelChanged = true;
       }
@@ -1006,8 +1028,8 @@ export const completeReassessment = mutation({
     // Create intake_responses record for this reassessment
     const intakeResponseId = await ctx.db.insert("intake_responses", {
       userId: user._id,
-      sportId: intake?.sportId ?? ("" as any), // Keep same sport
-      yearsOfExperience: intake?.yearsOfExperience ?? 0,
+      sportId: intake.sportId,
+      yearsOfExperience: intake.yearsOfExperience ?? 0,
       preferredTrainingDaysPerWeek: preferredDays,
       ageGroup: program.ageGroup,
       weeksUntilSeason: intake?.weeksUntilSeason,

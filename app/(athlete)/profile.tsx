@@ -559,14 +559,14 @@ export default function ProfilePage() {
                       try {
                         await triggerManualReassessment({})
                         setShowReassessmentDialog(false)
-                        // Router will auto-redirect due to AthleteOnlyRoute guard
-                        router.replace('/(reassessment)/celebration')
+                        // AthleteOnlyRoute guard will auto-redirect to reassessment flow
+                        // once the query revalidates with the pending flag
                       } catch (error) {
                         console.error('Failed to trigger reassessment:', error)
                         alert('Failed to start assessment. Please try again.')
-                      } finally {
                         setIsTriggering(false)
                       }
+                      // Don't reset isTriggering on success - let redirect happen
                     }}
                   >
                     {isTriggering ? 'Starting...' : 'Start Assessment'}

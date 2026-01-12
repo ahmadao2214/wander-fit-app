@@ -97,8 +97,12 @@ export default function CelebrationScreen() {
   }
 
   const { completedPhase, nextPhase, isFullCycleComplete, completionStats } = reassessmentStatus
-  const phaseName = PHASE_NAMES[completedPhase as keyof typeof PHASE_NAMES]
-  const nextPhaseName = PHASE_NAMES[nextPhase as keyof typeof PHASE_NAMES]
+  const phaseName = PHASE_NAMES[completedPhase as keyof typeof PHASE_NAMES] ?? 'Phase'
+  const nextPhaseName = PHASE_NAMES[nextPhase as keyof typeof PHASE_NAMES] ?? 'Next Phase'
+
+  // Safe access to completionStats with defaults
+  const statsCompleted = completionStats?.completed ?? 0
+  const statsRate = completionStats?.rate ?? 0
 
   const rotate = rotateAnim.interpolate({
     inputRange: [-1, 0, 1],
@@ -197,7 +201,7 @@ export default function CelebrationScreen() {
                   <Target size={24} color="$primary" />
                 </YStack>
                 <Text fontSize={24} fontWeight="700" color="$color12">
-                  {completionStats.completed}
+                  {statsCompleted}
                 </Text>
                 <Text fontSize={12} color="$color10" text="center">
                   Workouts{'\n'}Completed
@@ -217,7 +221,7 @@ export default function CelebrationScreen() {
                   <TrendingUp size={24} color="$green10" />
                 </YStack>
                 <Text fontSize={24} fontWeight="700" color="$color12">
-                  {completionStats.rate}%
+                  {statsRate}%
                 </Text>
                 <Text fontSize={12} color="$color10" text="center">
                   Completion{'\n'}Rate

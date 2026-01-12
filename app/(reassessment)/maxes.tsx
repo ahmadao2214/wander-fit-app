@@ -117,11 +117,15 @@ export default function MaxesScreen() {
           oneRepMax: parseFloat(value),
         }))
 
-      if (maxes.length > 0) {
+      // Track if save actually succeeded
+      let saveSucceeded = false
+      if (maxes.length > 0 && hasAnyUpdates) {
         try {
           await setMultipleMaxes({ maxes })
+          saveSucceeded = true
         } catch (maxError) {
           console.error('Failed to save maxes (continuing):', maxError)
+          // saveSucceeded remains false
         }
       }
 
@@ -132,7 +136,7 @@ export default function MaxesScreen() {
           difficulty,
           energy,
           notes,
-          maxesUpdated: hasAnyUpdates ? 'true' : 'false',
+          maxesUpdated: saveSucceeded ? 'true' : 'false',
         },
       })
     } catch (error) {

@@ -59,9 +59,14 @@ export default function ResultsScreen() {
 
     setIsSubmitting(true)
     try {
+      // Convert empty string to undefined for optional energy param
+      const energyLevel = energy && ['low', 'moderate', 'high'].includes(energy)
+        ? (energy as EnergyLevel)
+        : undefined
+
       const response = await completeReassessment({
         phaseDifficulty: difficulty,
-        energyLevel: energy as EnergyLevel | undefined,
+        energyLevel,
         notes: notes || undefined,
         maxesUpdated: maxesUpdated === 'true',
       })
