@@ -44,6 +44,19 @@ const sessionStatusValidator = v.union(
   v.literal("abandoned")
 );
 
+const phaseDifficultyValidator = v.union(
+  v.literal("too_easy"),
+  v.literal("just_right"),
+  v.literal("challenging"),
+  v.literal("too_hard")
+);
+
+const energyLevelValidator = v.union(
+  v.literal("low"),
+  v.literal("moderate"),
+  v.literal("high")
+);
+
 const intensityValidator = v.union(
   v.literal("Low"),
   v.literal("Moderate"),
@@ -290,6 +303,28 @@ export default defineSchema({
       v.literal("reassessment")  // After training block completion
     ),
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // REASSESSMENT-SPECIFIC FIELDS (only populated for intakeType: "reassessment")
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    // Self-assessment data collected during reassessment
+    selfAssessment: v.optional(v.object({
+      phaseDifficulty: phaseDifficultyValidator, // How did the phase feel?
+      energyLevel: v.optional(energyLevelValidator), // Current energy levels
+      completionRate: v.optional(v.number()), // 0-100% of workouts completed (calculated)
+      notes: v.optional(v.string()), // Optional free-form feedback
+    })),
+
+    // Track skill level changes
+    previousSkillLevel: v.optional(skillLevelValidator), // Skill level before reassessment
+    skillLevelChanged: v.optional(v.boolean()), // Did skill level change?
+
+    // Track which phase triggered this reassessment
+    completedPhase: v.optional(phaseValidator), // The phase that was just completed
+
+    // Maxes tracking
+    maxesUpdated: v.optional(v.boolean()), // Did user update any maxes?
+
     // Meta
     completedAt: v.number(),
   })
@@ -322,6 +357,19 @@ export default defineSchema({
 
     // Phase tracking
     phaseStartDate: v.number(),
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // REASSESSMENT TRACKING
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    // Blocks phase progression until reassessment is complete
+    // Set when a phase completes, cleared when reassessment is submitted
+    reassessmentPendingForPhase: v.optional(phaseValidator), // "GPP" | "SPP" | "SSP"
+
+    // Reassessment completion timestamps (for history/analytics)
+    gppReassessmentCompletedAt: v.optional(v.number()),
+    sppReassessmentCompletedAt: v.optional(v.number()),
+    sspReassessmentCompletedAt: v.optional(v.number()),
 
     // Pause/Freeze (2+ weeks absence = restart)
     pausedAt: v.optional(v.number()),

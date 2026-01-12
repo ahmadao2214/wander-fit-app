@@ -2,6 +2,8 @@ import React from 'react'
 import { Redirect, type Href } from 'expo-router'
 import { YStack, Text, Spinner } from 'tamagui'
 import { useAuth } from '../hooks/useAuth'
+import { useQuery } from 'convex/react'
+import { api } from '../convex/_generated/api'
 
 interface AuthGuardProps {
   children: React.ReactNode
@@ -59,13 +61,59 @@ export function AuthGuard({
 /**
  * AthleteOnlyRoute - For authenticated users with completed intake
  * Used by the main athlete tabs
+ *
+ * Also checks for pending reassessment and redirects if needed
  */
 export function AthleteOnlyRoute({ children }: { children: React.ReactNode }) {
-  return (
-    <AuthGuard requireAuth={true} requireIntake={true}>
-      {children}
-    </AuthGuard>
+  const { isAuthenticated, isLoading, user, needsSetup } = useAuth()
+
+  // Check for pending reassessment
+  const reassessmentStatus = useQuery(
+    api.userPrograms.getReassessmentStatus,
+    isAuthenticated && user?.intakeCompletedAt ? {} : "skip"
   )
+
+  if (isLoading) {
+    return (
+      <YStack flex={1} items="center" justify="center" gap="$4" bg="$background">
+        <Spinner size="large" color="$green10" />
+        <Text color="$gray11">Loading...</Text>
+      </YStack>
+    )
+  }
+
+  // Not authenticated → go to sign in
+  if (!isAuthenticated) {
+    return <Redirect href="/(auth)/sign-in" />
+  }
+
+  // Needs Convex user setup → go to sign up
+  if (needsSetup) {
+    return <Redirect href="/(auth)/sign-up" />
+  }
+
+  // Intake not completed → go to intake
+  if (!user?.intakeCompletedAt) {
+    return <Redirect href="/(intake)/sport" />
+  }
+
+  // Still loading reassessment status
+  if (reassessmentStatus === undefined) {
+    return (
+      <YStack flex={1} items="center" justify="center" gap="$4" bg="$background">
+        <Spinner size="large" color="$green10" />
+        <Text color="$gray11">Loading...</Text>
+      </YStack>
+    )
+  }
+
+  // Reassessment pending → redirect to reassessment flow
+  if (reassessmentStatus?.reassessmentPending) {
+    return <Redirect href="/(reassessment)/celebration" />
+  }
+
+  // All checks passed
+  return <>{children}</>
 }
 
 /**
@@ -113,6 +161,67 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
       {children}
     </AuthGuard>
   )
+}
+
+/**
+ * ReassessmentOnlyRoute - For users with pending reassessment
+ * Used by the reassessment flow screens
+ *
+ * Redirects to:
+ * - Sign in if not authenticated
+ * - Intake if intake not completed
+ * - Dashboard if no reassessment pending
+ */
+export function ReassessmentOnlyRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading, user, needsSetup } = useAuth()
+
+  // Check for pending reassessment
+  const reassessmentStatus = useQuery(
+    api.userPrograms.getReassessmentStatus,
+    isAuthenticated && user?.intakeCompletedAt ? {} : "skip"
+  )
+
+  if (isLoading) {
+    return (
+      <YStack flex={1} items="center" justify="center" gap="$4" bg="$background">
+        <Spinner size="large" color="$green10" />
+        <Text color="$gray11">Loading...</Text>
+      </YStack>
+    )
+  }
+
+  // Not authenticated → go to sign in
+  if (!isAuthenticated) {
+    return <Redirect href="/(auth)/sign-in" />
+  }
+
+  // Needs Convex user setup → go to sign up
+  if (needsSetup) {
+    return <Redirect href="/(auth)/sign-up" />
+  }
+
+  // Intake not completed → go to intake
+  if (!user?.intakeCompletedAt) {
+    return <Redirect href="/(intake)/sport" />
+  }
+
+  // Still loading reassessment status
+  if (reassessmentStatus === undefined) {
+    return (
+      <YStack flex={1} items="center" justify="center" gap="$4" bg="$background">
+        <Spinner size="large" color="$green10" />
+        <Text color="$gray11">Loading...</Text>
+      </YStack>
+    )
+  }
+
+  // No reassessment pending → go to dashboard
+  if (!reassessmentStatus?.reassessmentPending) {
+    return <Redirect href="/(athlete)" />
+  }
+
+  // Reassessment pending → show reassessment flow
+  return <>{children}</>
 }
 
 /**
