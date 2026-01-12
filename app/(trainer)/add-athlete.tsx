@@ -3,6 +3,7 @@ import { YStack, XStack, Text, Input, Button, Card, Spinner, ScrollView, styled 
 import { useRouter } from 'expo-router'
 import { useMutation, useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
+import { Id } from '../../convex/_generated/dataModel'
 import { useAuth } from '../../hooks/useAuth'
 import { ArrowLeft, UserPlus, Copy, Check, RefreshCw, Mail } from '@tamagui/lucide-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -92,14 +93,14 @@ export default function AddAthleteScreen() {
     }
   }
 
-  const handleRevokeInvitation = async (invitationId: string) => {
+  const handleRevokeInvitation = async (invitationId: Id<"trainer_invitations">) => {
     if (!user) return
 
     setRevokeError(null)
 
     try {
       await revokeInvitation({
-        invitationId: invitationId as any,
+        invitationId,
         trainerId: user._id,
       })
     } catch (err) {

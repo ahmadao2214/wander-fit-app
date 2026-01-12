@@ -271,8 +271,15 @@ export const acceptInvitation = mutation({
       }
     }
 
-    // ATOMIC SECTION: Use optimistic locking to claim the invitation
-    // We mark it as accepted by THIS athlete first, then verify no conflicts
+    // ATOMIC SECTION: Use compare-and-swap pattern to claim the invitation
+    // Re-read invitation to get latest state before attempting claim
+    const latestInvitation = await ctx.db.get(invitation._id);
+    if (!latestInvitation || latestInvitation.status !== "pending") {
+      // Another request already claimed or modified this invitation
+      throw new Error("This invitation is no longer valid or was just claimed by another user");
+    }
+
+    // Now claim the invitation - this is atomic within the mutation
     const acceptedAt = Date.now();
     await ctx.db.patch(invitation._id, {
       status: "accepted",
@@ -280,13 +287,12 @@ export const acceptInvitation = mutation({
       acceptedByUserId: args.athleteUserId,
     });
 
-    // Re-read the invitation to verify WE claimed it (not another concurrent request)
-    // This handles race conditions for non-email-restricted invitations
+    // Verify the claim succeeded (defense in depth for concurrent scenarios)
     const claimedInvitation = await ctx.db.get(invitation._id);
     if (!claimedInvitation ||
         claimedInvitation.status !== "accepted" ||
         claimedInvitation.acceptedByUserId !== args.athleteUserId) {
-      // Another request claimed it first
+      // Another request overwrote our claim
       throw new Error("This invitation was just claimed by another user. Please request a new code.");
     }
 
