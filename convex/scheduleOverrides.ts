@@ -1,6 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
+import { applyAgeModifiers } from "./intensityScaling";
 
 /**
  * Schedule Overrides - User Schedule Customization
@@ -102,12 +103,40 @@ export const getWeekSchedule = query({
       .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
       .first();
 
+    // Get user's age group for applying age-based modifications
+    const ageGroup = program.ageGroup || "18+"; // Default to 18+ if not set (for backward compatibility)
+
+    // Helper to apply age modifiers to a template
+    const applyAgeModsToTemplate = (template: any) => ({
+      ...template,
+      exercises: template.exercises.map((prescription: any) => {
+        const modifiedPrescription = applyAgeModifiers(
+          {
+            sets: prescription.sets,
+            reps: prescription.reps,
+            intensity: prescription.intensity,
+          },
+          ageGroup,
+          template.phase
+        );
+        return {
+          ...prescription,
+          sets: modifiedPrescription.sets,
+          reps: modifiedPrescription.reps,
+          intensity: modifiedPrescription.intensity,
+          oneRepMaxRange: modifiedPrescription.oneRepMaxRange,
+        };
+      }),
+    });
+
     if (!overrideRecord || overrideRecord.slotOverrides.length === 0) {
-      // No overrides, return default sorted by day
-      return defaultTemplates.sort((a, b) => a.day - b.day);
+      // No overrides, return default sorted by day with age modifiers applied
+      return defaultTemplates
+        .map(applyAgeModsToTemplate)
+        .sort((a, b) => a.day - b.day);
     }
 
-    // Apply overrides
+    // Apply overrides and age modifiers
     const result = await Promise.all(
       defaultTemplates.map(async (template) => {
         // Check if there's an override for this slot
@@ -123,8 +152,9 @@ export const getWeekSchedule = query({
           const overriddenTemplate = await ctx.db.get(override.templateId);
           if (overriddenTemplate) {
             // Return the overridden template but keep the slot's day position for correct sorting
+            const modifiedTemplate = applyAgeModsToTemplate(overriddenTemplate);
             return {
-              ...overriddenTemplate,
+              ...modifiedTemplate,
               day: template.day, // Use slot position for sorting, not original template's day
               _originalDay: template.day, // Track original slot
               _isOverridden: true,
@@ -133,7 +163,7 @@ export const getWeekSchedule = query({
         }
 
         return {
-          ...template,
+          ...applyAgeModsToTemplate(template),
           _isOverridden: false,
         };
       })
@@ -191,11 +221,35 @@ export const getTodayWorkout = query({
         const exerciseMap = new Map(
           exercises.filter(Boolean).map((ex) => [ex!._id, ex!])
         );
+
+        // Get user's age group for applying age-based modifications
+        const ageGroup = program.ageGroup || "18+"; // Default to 18+ if not set (for backward compatibility)
+        const phase = inProgressTemplate.phase;
+
         return {
           ...inProgressTemplate,
-          exercises: inProgressTemplate.exercises.map((prescription: any) => ({
-            ...prescription,
-            exercise: exerciseMap.get(prescription.exerciseId),
+          exercises: inProgressTemplate.exercises.map((prescription: any) => {
+            // Apply age-based modifications to the prescription
+            const modifiedPrescription = applyAgeModifiers(
+              {
+                sets: prescription.sets,
+                reps: prescription.reps,
+                intensity: prescription.intensity,
+              },
+              ageGroup,
+              phase
+            );
+
+            return {
+              ...prescription,
+              // Override with age-modified values
+              sets: modifiedPrescription.sets,
+              reps: modifiedPrescription.reps,
+              intensity: modifiedPrescription.intensity,
+              oneRepMaxRange: modifiedPrescription.oneRepMaxRange,
+              // Include exercise details
+              exercise: exerciseMap.get(prescription.exerciseId),
+            };
           })),
           _isInProgress: true,
           _isFocusOverride: false,
@@ -219,7 +273,7 @@ export const getTodayWorkout = query({
       .collect();
     const completedTemplateIds = new Set(completedSessions.map((s) => s.templateId));
 
-    // Helper to get template with exercise details
+    // Helper to get template with exercise details and age-based modifications
     const getTemplateWithExercises = async (template: any, flags: { isFocusOverride?: boolean; isSlotOverride?: boolean; isFirstIncomplete?: boolean }) => {
       const exerciseIds = template.exercises.map((e: any) => e.exerciseId);
       const exercises = await Promise.all(
@@ -228,11 +282,35 @@ export const getTodayWorkout = query({
       const exerciseMap = new Map(
         exercises.filter(Boolean).map((ex) => [ex!._id, ex!])
       );
+
+      // Get user's age group for applying age-based modifications
+      const ageGroup = program.ageGroup || "18+"; // Default to 18+ if not set (for backward compatibility)
+      const phase = template.phase;
+
       return {
         ...template,
-        exercises: template.exercises.map((prescription: any) => ({
-          ...prescription,
-          exercise: exerciseMap.get(prescription.exerciseId),
+        exercises: template.exercises.map((prescription: any) => {
+          // Apply age-based modifications to the prescription
+          const modifiedPrescription = applyAgeModifiers(
+            {
+              sets: prescription.sets,
+              reps: prescription.reps,
+              intensity: prescription.intensity,
+            },
+            ageGroup,
+            phase
+          );
+
+          return {
+            ...prescription,
+            // Override with age-modified values
+            sets: modifiedPrescription.sets,
+            reps: modifiedPrescription.reps,
+            intensity: modifiedPrescription.intensity,
+            oneRepMaxRange: modifiedPrescription.oneRepMaxRange,
+            // Include exercise details
+            exercise: exerciseMap.get(prescription.exerciseId),
+          };
         })),
         _isFocusOverride: flags.isFocusOverride ?? false,
         _isSlotOverride: flags.isSlotOverride ?? false,

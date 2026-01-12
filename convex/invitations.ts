@@ -61,12 +61,24 @@ export const getTrainerInvitations = query({
 });
 
 // Get invitation by email (for when client signs up)
+// SECURITY: Requires authentication to prevent enumeration attacks
 export const getInvitationByEmail = query({
   args: { email: v.string() },
   handler: async (ctx, args) => {
+    // Require authentication to prevent unauthorized email enumeration
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    // Verify the authenticated user is querying their own email
+    if (identity.email !== args.email) {
+      throw new Error("Can only query invitations for your own email");
+    }
+
     return await ctx.db
       .query("clientInvitations")
-      .filter((q) => 
+      .filter((q) =>
         q.and(
           q.eq(q.field("email"), args.email),
           q.eq(q.field("status"), "pending")

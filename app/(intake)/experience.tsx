@@ -27,7 +27,7 @@ export default function ExperienceScreen() {
   const [yearsOfExperience, setYearsOfExperience] = useState(1)
   const [trainingDays, setTrainingDays] = useState(3)
   const [weeksUntilSeason, setWeeksUntilSeason] = useState(8)
-  const [ageGroup, setAgeGroup] = useState<AgeGroup>('18+')
+  const [ageGroup, setAgeGroup] = useState<AgeGroup | null>(null)
   const [scrollEnabled, setScrollEnabled] = useState(true)
 
   // Fetch sport details to display sport name
@@ -59,6 +59,10 @@ export default function ExperienceScreen() {
   }
 
   const handleContinue = () => {
+    if (!ageGroup) {
+      alert('Please select your age group to continue.')
+      return
+    }
     router.push({
       pathname: '/(intake)/maxes',
       params: {
@@ -147,18 +151,18 @@ export default function ExperienceScreen() {
                 </YStack>
 
                 <XStack width="100%" justify="space-between">
-                  <Text fontSize="$2" color="$color9">Beginner</Text>
-                  <Text fontSize="$2" color="$color9">10+ years</Text>
+                  <Text fontSize="$2" color="$color9">Novice</Text>
+                  <Text fontSize="$2" color="$color9">Advanced</Text>
                 </XStack>
               </YStack>
 
               {/* Skill Level Preview */}
-              <Card bg={yearsOfExperience <= 3 ? '$intensityLow1' : yearsOfExperience <= 6 ? '$intensityMed1' : '$intensityHigh1'} p="$3" rounded="$3">
+              <Card bg={yearsOfExperience < 1 ? '$intensityLow1' : yearsOfExperience < 3 ? '$intensityMed1' : '$intensityHigh1'} p="$3" rounded="$3">
                 <XStack items="center" gap="$2">
-                  <Text fontSize="$3" color={yearsOfExperience <= 3 ? '$intensityLow11' : yearsOfExperience <= 6 ? '$intensityMed11' : '$intensityHigh11'}>
+                  <Text fontSize="$3" color={yearsOfExperience < 1 ? '$intensityLow11' : yearsOfExperience < 3 ? '$intensityMed11' : '$intensityHigh11'}>
                     Skill Level:
                   </Text>
-                  <Text fontSize="$3" fontWeight="700" color={yearsOfExperience <= 3 ? '$intensityLow11' : yearsOfExperience <= 6 ? '$intensityMed11' : '$intensityHigh11'}>
+                  <Text fontSize="$3" fontWeight="700" color={yearsOfExperience < 1 ? '$intensityLow11' : yearsOfExperience < 3 ? '$intensityMed11' : '$intensityHigh11'}>
                     {getSkillLevel(yearsOfExperience)}
                   </Text>
                 </XStack>
@@ -332,6 +336,8 @@ export default function ExperienceScreen() {
             onPress={handleContinue}
             iconAfter={ChevronRight}
             fontWeight="700"
+            disabled={!ageGroup}
+            opacity={!ageGroup ? 0.5 : 1}
           >
             Continue
           </Button>
