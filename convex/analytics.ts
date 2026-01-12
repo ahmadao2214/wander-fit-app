@@ -17,40 +17,27 @@ import { Id } from "./_generated/dataModel";
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Get the Monday of the week for a given timestamp
+ * Get the Monday of the week for a given timestamp (UTC-based)
+ *
+ * Uses UTC consistently to avoid timezone-related week boundary issues
+ * for international users.
  */
-function getWeekStart(timestamp: number): Date {
+function getWeekStartUTC(timestamp: number): Date {
   const date = new Date(timestamp);
-  const day = date.getDay();
-  const diff = date.getDate() - day + (day === 0 ? -6 : 1); // Monday start
-  const weekStart = new Date(date);
-  weekStart.setDate(diff);
-  weekStart.setHours(0, 0, 0, 0);
+  // Use UTC methods to avoid timezone issues
+  const utcDay = date.getUTCDay();
+  // Calculate days to subtract to get to Monday (0 = Sunday, 1 = Monday, etc.)
+  const daysToMonday = utcDay === 0 ? 6 : utcDay - 1;
+
+  // Create a new date at UTC midnight of that Monday
+  const weekStart = new Date(Date.UTC(
+    date.getUTCFullYear(),
+    date.getUTCMonth(),
+    date.getUTCDate() - daysToMonday,
+    0, 0, 0, 0
+  ));
+
   return weekStart;
-}
-
-/**
- * Calculate RPE trend from weekly data
- */
-function calculateRPETrend(
-  weeks: Array<{ avgRPE: number | null }>
-): "increasing" | "stable" | "decreasing" | null {
-  const validRPEs = weeks
-    .filter((w) => w.avgRPE !== null)
-    .map((w) => w.avgRPE!);
-
-  if (validRPEs.length < 2) return null;
-
-  const firstHalf = validRPEs.slice(0, Math.floor(validRPEs.length / 2));
-  const secondHalf = validRPEs.slice(Math.floor(validRPEs.length / 2));
-
-  const firstAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
-  const secondAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
-
-  const diff = secondAvg - firstAvg;
-  if (diff > 0.5) return "increasing";
-  if (diff < -0.5) return "decreasing";
-  return "stable";
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -152,7 +139,7 @@ export const getWeeklyTrends = query({
     > = {};
 
     for (const session of filteredSessions) {
-      const weekStart = getWeekStart(session.completedAt!);
+      const weekStart = getWeekStartUTC(session.completedAt!);
       const weekKey = weekStart.toISOString();
 
       if (!weeklyData[weekKey]) {

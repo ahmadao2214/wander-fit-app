@@ -73,6 +73,22 @@ export function useCachedQuery<Query extends FunctionReference<'query'>>(
     setHasLoadedCache(true);
   }, [cacheKey, staleTime, skip]);
 
+  // Periodically check for staleness during long sessions
+  // Check every minute if cached data has become stale
+  useEffect(() => {
+    if (skip || cachedAt === null) return;
+
+    const checkStaleness = () => {
+      const isNowStale = Date.now() - cachedAt > staleTime;
+      setIsStale(isNowStale);
+    };
+
+    // Check staleness every 60 seconds
+    const intervalId = setInterval(checkStaleness, 60000);
+
+    return () => clearInterval(intervalId);
+  }, [cachedAt, staleTime, skip]);
+
   // Convex query (live data)
   const liveData = useQuery(query, skip || args === 'skip' ? 'skip' : args);
 

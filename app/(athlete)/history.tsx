@@ -50,6 +50,14 @@ const DisplayHeading = styled(Text, {
 
 type TabValue = 'history' | 'trends' | 'exercises';
 
+// Explicit mapping from date range filter to days count
+// This ensures type safety and avoids implicit defaults
+const DATE_RANGE_DAYS: Record<Exclude<FilterDateRange, 'all'>, number> = {
+  '7d': 7,
+  '30d': 30,
+  '90d': 90,
+} as const;
+
 // Type for enriched workout session from getHistory query
 interface WorkoutSession {
   _id: string;
@@ -140,10 +148,9 @@ export default function HistoryPage() {
         return false;
       }
 
-      // Date range filter
+      // Date range filter - use explicit mapping for type safety
       if (filterDateRange !== 'all') {
-        const days =
-          filterDateRange === '7d' ? 7 : filterDateRange === '30d' ? 30 : 90;
+        const days = DATE_RANGE_DAYS[filterDateRange];
         const startDate = subDays(new Date(), days);
         const sessionDate = new Date(
           session.completedAt ?? session.startedAt
@@ -333,7 +340,11 @@ export default function HistoryPage() {
                     Weekly Workouts
                   </Text>
                 </XStack>
-                {weeklyTrends && weeklyTrends.length > 0 ? (
+                {weeklyTrends === undefined ? (
+                  <YStack height={180} alignItems="center" justifyContent="center">
+                    <Spinner size="small" />
+                  </YStack>
+                ) : weeklyTrends.length > 0 ? (
                   <BarChart
                     data={weeklyTrends.map((w) => ({
                       x: format(new Date(w.weekStart), 'M/d'),
@@ -358,7 +369,11 @@ export default function HistoryPage() {
                     Weekly Duration (min)
                   </Text>
                 </XStack>
-                {weeklyTrends && weeklyTrends.length > 0 ? (
+                {weeklyTrends === undefined ? (
+                  <YStack height={180} alignItems="center" justifyContent="center">
+                    <Spinner size="small" />
+                  </YStack>
+                ) : weeklyTrends.length > 0 ? (
                   <LineChart
                     data={weeklyTrends.map((w) => ({
                       x: new Date(w.weekStart),
