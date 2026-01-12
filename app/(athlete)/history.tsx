@@ -1,15 +1,37 @@
-import { YStack, XStack, Text, Card, ScrollView, Spinner, styled } from 'tamagui'
-import { useQuery } from 'convex/react'
-import { api } from 'convex/_generated/api'
-import { useAuth } from '../../hooks/useAuth'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { 
+import { useState, useMemo } from 'react';
+import {
+  YStack,
+  XStack,
+  Text,
+  Card,
+  Button,
+  Tabs,
+  Spinner,
+  styled,
+} from 'tamagui';
+import { useQuery } from 'convex/react';
+import { api } from 'convex/_generated/api';
+import { subDays, isWithinInterval, format } from 'date-fns';
+import {
   Calendar,
-  Clock,
-  CheckCircle,
-  XCircle,
+  Filter,
+  Flame,
   Dumbbell,
-} from '@tamagui/lucide-icons'
+  TrendingUp,
+  BarChart3,
+} from '@tamagui/lucide-icons';
+
+import { ScreenWrapper } from '@/components/ScreenWrapper';
+import { LineChart, BarChart, ProgressRing } from '@/components/charts';
+import { StatCard, StaleDataBanner } from '@/components/analytics';
+import {
+  WorkoutHistoryCard,
+  FilterSheet,
+  FilterPhase,
+  FilterDateRange,
+} from '@/components/history';
+import { useCachedQuery } from '@/hooks/useCachedQuery';
+import { CACHE_KEYS } from '@/lib/storage';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
@@ -20,200 +42,536 @@ const DisplayHeading = styled(Text, {
   fontSize: 28,
   letterSpacing: 0.5,
   color: '$color12',
-})
+});
 
-const Subtitle = styled(Text, {
-  fontFamily: '$body',
-  fontSize: 14,
-  color: '$color10',
-})
+// ─────────────────────────────────────────────────────────────────────────────
+// TYPES
+// ─────────────────────────────────────────────────────────────────────────────
+
+type TabValue = 'history' | 'trends' | 'exercises';
+
+// Explicit mapping from date range filter to days count
+// This ensures type safety and avoids implicit defaults
+const DATE_RANGE_DAYS: Record<Exclude<FilterDateRange, 'all'>, number> = {
+  '7d': 7,
+  '30d': 30,
+  '90d': 90,
+} as const;
+
+// Type for enriched workout session from getHistory query
+interface WorkoutSession {
+  _id: string;
+  templateSnapshot?: {
+    name?: string;
+    phase?: string;
+    week?: number;
+    day?: number;
+  };
+  templateName?: string;
+  startedAt: number;
+  completedAt?: number;
+  totalDurationSeconds?: number;
+  status: string;
+  targetIntensity?: string;
+  phase?: string;
+  week?: number;
+  day?: number;
+  exercises?: Array<{
+    exerciseId: string;
+    name?: string;
+    completed: boolean;
+    skipped: boolean;
+    sets?: Array<{
+      repsCompleted?: number;
+      weight?: number;
+      rpe?: number;
+      completed: boolean;
+      skipped: boolean;
+    }>;
+  }>;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * History Tab - Completed Workouts Log
- * 
- * Shows all completed workout sessions with:
- * - Date and duration
- * - Workout name and phase
- * - Completion status
+ * History Tab - Enhanced Workout History & Analytics
+ *
+ * Features:
+ * - Workout history with expandable details
+ * - Filtering by phase and date range
+ * - Weekly trends (workouts, duration)
+ * - Exercise breakdown (most performed, highest RPE, skipped)
+ * - Intensity distribution
+ * - Offline support with MMKV caching
  */
 export default function HistoryPage() {
-  const { user, isLoading: authLoading } = useAuth()
-  const insets = useSafeAreaInsets()
+  const [activeTab, setActiveTab] = useState<TabValue>('history');
+  const [filterPhase, setFilterPhase] = useState<FilterPhase>('all');
+  const [filterDateRange, setFilterDateRange] = useState<FilterDateRange>('30d');
+  const [expandedSession, setExpandedSession] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
 
-  const sessions = useQuery(
-    api.workoutSessions.getHistory,
-    user ? {} : "skip"
-  )
+  // Cached queries for offline support
+  const {
+    data: history,
+    isLoading: historyLoading,
+    isFromCache,
+    isStale,
+  } = useCachedQuery(
+    api.gppWorkoutSessions.getHistory,
+    { limit: 50 },
+    { cacheKey: CACHE_KEYS.WORKOUT_HISTORY }
+  );
 
-  if (authLoading) {
+  const { data: progressSummary } = useCachedQuery(
+    api.userPrograms.getProgressSummary,
+    {},
+    { cacheKey: CACHE_KEYS.PROGRESS_SUMMARY }
+  );
+
+  // Analytics queries (not cached - live data preferred)
+  const weeklyTrends = useQuery(api.analytics.getWeeklyTrends, { weeks: 12 });
+  const exerciseBreakdown = useQuery(api.analytics.getExerciseBreakdown, {});
+  const intensityDist = useQuery(api.analytics.getIntensityDistribution, {});
+
+  // Filter history - cast to WorkoutSession[] since useCachedQuery returns generic type
+  const filteredHistory = useMemo((): WorkoutSession[] => {
+    if (!history) return [];
+
+    return (history as WorkoutSession[]).filter((session) => {
+      // Phase filter
+      const sessionPhase =
+        session.templateSnapshot?.phase ?? session.phase;
+      if (filterPhase !== 'all' && sessionPhase !== filterPhase) {
+        return false;
+      }
+
+      // Date range filter - use explicit mapping for type safety
+      if (filterDateRange !== 'all') {
+        const days = DATE_RANGE_DAYS[filterDateRange];
+        const startDate = subDays(new Date(), days);
+        const sessionDate = new Date(
+          session.completedAt ?? session.startedAt
+        );
+        if (
+          !isWithinInterval(sessionDate, {
+            start: startDate,
+            end: new Date(),
+          })
+        ) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [history, filterPhase, filterDateRange]);
+
+  // Loading state
+  if (historyLoading) {
     return (
-      <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$primary" />
-        <Text color="$color10" fontFamily="$body">
+      <ScreenWrapper centered>
+        <Spinner size="large" color="$brand7" />
+        <Text color="$color10" mt="$2">
           Loading history...
         </Text>
-      </YStack>
-    )
+      </ScreenWrapper>
+    );
   }
 
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp)
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-    })
-  }
-
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    return `${mins} min`
-  }
+  const hasActiveFilters = filterPhase !== 'all' || filterDateRange !== 'all';
 
   return (
-    <YStack flex={1} bg="$background">
-      <ScrollView flex={1} showsVerticalScrollIndicator={false}>
-        <YStack
-          gap="$5"
-          px="$4"
-          pt={insets.top + 16}
-          pb={insets.bottom + 100}
-          maxW={800}
-          width="100%"
-          self="center"
-        >
-          {/* Header */}
-          <YStack gap="$1">
-            <DisplayHeading>WORKOUT HISTORY</DisplayHeading>
-            <Subtitle>
-              Your completed training sessions
-            </Subtitle>
-          </YStack>
-
-          {/* Sessions List */}
-          {sessions && sessions.length > 0 ? (
-            <YStack gap="$3">
-              {sessions.map((session: any) => (
-                <Card
-                  key={session._id}
-                  p="$4"
-                  bg="$surface"
-                  rounded="$4"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                  pressStyle={{ bg: '$surfaceHover' }}
-                >
-                  <XStack items="center" gap="$3">
-                    {/* Status Icon */}
-                    <YStack
-                      width={44}
-                      height={44}
-                      rounded="$5"
-                      bg={session.status === 'completed' ? '$intensityLow2' : '$accent1'}
-                      items="center"
-                      justify="center"
-                    >
-                      {session.status === 'completed' ? (
-                        <CheckCircle size={22} color="$success" />
-                      ) : (
-                        <XCircle size={22} color="$accent" />
-                      )}
-                    </YStack>
-
-                    {/* Session Details */}
-                    <YStack flex={1} gap="$1">
-                      <Text 
-                        fontSize={15} 
-                        fontFamily="$body" fontWeight="600"
-                        color="$color12"
-                      >
-                        {session.templateSnapshot?.name || session.workout?.name || 'Workout'}
-                      </Text>
-                      <XStack gap="$3" flexWrap="wrap">
-                        <XStack items="center" gap="$1">
-                          <Calendar size={13} color="$color10" />
-                          <Text fontSize={12} color="$color10" fontFamily="$body">
-                            {formatDate(session.startedAt)}
-                          </Text>
-                        </XStack>
-                        {session.totalDuration && (
-                          <XStack items="center" gap="$1">
-                            <Clock size={13} color="$color10" />
-                            <Text fontSize={12} color="$color10" fontFamily="$body">
-                              {formatDuration(session.totalDuration)}
-                            </Text>
-                          </XStack>
-                        )}
-                        {session.templateSnapshot?.phase && (
-                          <XStack items="center" gap="$1">
-                            <Dumbbell size={13} color="$color10" />
-                            <Text fontSize={12} color="$color10" fontFamily="$body">
-                              {session.templateSnapshot.phase} W{session.templateSnapshot.week}D{session.templateSnapshot.day}
-                            </Text>
-                          </XStack>
-                        )}
-                      </XStack>
-                    </YStack>
-
-                    {/* Status Badge */}
-                    <Card
-                      bg={session.status === 'completed' ? '$intensityLow2' : '$accent1'}
-                      px="$2"
-                      py="$1"
-                      rounded="$2"
-                    >
-                      <Text
-                        fontSize={10}
-                        fontFamily="$body" fontWeight="700"
-                        letterSpacing={0.5}
-                        color={session.status === 'completed' ? '$success' : '$accent'}
-                        textTransform="uppercase"
-                      >
-                        {session.status}
-                      </Text>
-                    </Card>
-                  </XStack>
-                </Card>
-              ))}
-            </YStack>
-          ) : (
-            <Card 
-              p="$6" 
-              bg="$surface" 
-              rounded="$4"
-              borderWidth={1}
-              borderColor="$borderColor"
-            >
-              <YStack items="center" gap="$4">
-                <YStack bg="$color4" p="$4" rounded="$10">
-                  <Calendar size={40} color="$color9" />
-                </YStack>
-                <YStack items="center" gap="$1">
-                  <Text 
-                    fontSize={16} 
-                    fontFamily="$body" fontWeight="600" 
-                    color="$color11"
-                  >
-                    No Workouts Yet
-                  </Text>
-                  <Text 
-                    color="$color10" 
-                    text="center"
-                    fontFamily="$body"
-                    fontSize={14}
-                  >
-                    Complete your first workout to see it here!
-                  </Text>
-                </YStack>
-              </YStack>
-            </Card>
-          )}
+    <ScreenWrapper scrollable paddingBottom={100}>
+      <YStack gap="$4">
+        {/* Header */}
+        <YStack gap="$2">
+          <DisplayHeading>HISTORY</DisplayHeading>
+          <StaleDataBanner isFromCache={isFromCache} isStale={isStale} />
         </YStack>
-      </ScrollView>
-    </YStack>
-  )
+
+        {/* Quick Stats Row */}
+        <XStack gap="$3">
+          <StatCard
+            label="Total Workouts"
+            value={progressSummary?.daysCompleted ?? 0}
+            icon={Dumbbell}
+          />
+          <StatCard
+            label="Current Streak"
+            value={progressSummary?.currentStreak ?? 0}
+            icon={Flame}
+            subtitle={`Best: ${progressSummary?.longestStreak ?? 0}`}
+          />
+        </XStack>
+
+        {/* Tab Navigation */}
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) => setActiveTab(v as TabValue)}
+          orientation="horizontal"
+          flexDirection="column"
+        >
+          <Tabs.List
+            gap="$1"
+            backgroundColor="$backgroundHover"
+            borderRadius="$3"
+            padding="$1"
+          >
+            <Tabs.Tab
+              value="history"
+              flex={1}
+              backgroundColor={activeTab === 'history' ? '$background' : 'transparent'}
+              borderRadius="$2"
+            >
+              <Text
+                fontSize="$3"
+                fontWeight={activeTab === 'history' ? '600' : '400'}
+                color={activeTab === 'history' ? '$color12' : '$color11'}
+              >
+                History
+              </Text>
+            </Tabs.Tab>
+            <Tabs.Tab
+              value="trends"
+              flex={1}
+              backgroundColor={activeTab === 'trends' ? '$background' : 'transparent'}
+              borderRadius="$2"
+            >
+              <Text
+                fontSize="$3"
+                fontWeight={activeTab === 'trends' ? '600' : '400'}
+                color={activeTab === 'trends' ? '$color12' : '$color11'}
+              >
+                Trends
+              </Text>
+            </Tabs.Tab>
+            <Tabs.Tab
+              value="exercises"
+              flex={1}
+              backgroundColor={activeTab === 'exercises' ? '$background' : 'transparent'}
+              borderRadius="$2"
+            >
+              <Text
+                fontSize="$3"
+                fontWeight={activeTab === 'exercises' ? '600' : '400'}
+                color={activeTab === 'exercises' ? '$color12' : '$color11'}
+              >
+                Exercises
+              </Text>
+            </Tabs.Tab>
+          </Tabs.List>
+
+          {/* History Tab */}
+          <Tabs.Content value="history">
+            <YStack gap="$3" pt="$3">
+              {/* Filter Button */}
+              <Button
+                size="$3"
+                backgroundColor={hasActiveFilters ? '$brand2' : '$backgroundHover'}
+                borderColor={hasActiveFilters ? '$brand7' : '$borderColor'}
+                borderWidth={1}
+                borderRadius="$3"
+                onPress={() => setShowFilters(true)}
+                icon={<Filter size={16} />}
+              >
+                <Text color={hasActiveFilters ? '$brand7' : '$color12'}>
+                  {hasActiveFilters
+                    ? `Filtered (${filterPhase !== 'all' ? filterPhase : ''} ${filterDateRange !== 'all' ? filterDateRange : ''})`.trim()
+                    : 'Filter'}
+                </Text>
+              </Button>
+
+              {/* Workout List */}
+              {filteredHistory.length === 0 ? (
+                <Card
+                  padding="$5"
+                  backgroundColor="$backgroundHover"
+                  borderRadius="$4"
+                >
+                  <YStack alignItems="center" gap="$3">
+                    <Calendar size={40} color="$color10" />
+                    <Text textAlign="center" color="$color11">
+                      {hasActiveFilters
+                        ? 'No workouts match your filters'
+                        : 'No workouts completed yet'}
+                    </Text>
+                    {hasActiveFilters && (
+                      <Button
+                        size="$3"
+                        variant="outlined"
+                        onPress={() => {
+                          setFilterPhase('all');
+                          setFilterDateRange('30d');
+                        }}
+                      >
+                        Clear Filters
+                      </Button>
+                    )}
+                  </YStack>
+                </Card>
+              ) : (
+                filteredHistory.map((session) => (
+                  <WorkoutHistoryCard
+                    key={session._id}
+                    session={session}
+                    isExpanded={expandedSession === session._id}
+                    onToggle={() =>
+                      setExpandedSession(
+                        expandedSession === session._id ? null : session._id
+                      )
+                    }
+                  />
+                ))
+              )}
+            </YStack>
+          </Tabs.Content>
+
+          {/* Trends Tab */}
+          <Tabs.Content value="trends">
+            <YStack gap="$4" pt="$3">
+              {/* Weekly Workouts Chart */}
+              <Card padding="$3" borderRadius="$4">
+                <XStack alignItems="center" gap="$2" mb="$2">
+                  <BarChart3 size={16} color="$color11" />
+                  <Text fontSize="$4" fontWeight="600" color="$color12">
+                    Weekly Workouts
+                  </Text>
+                </XStack>
+                {weeklyTrends === undefined ? (
+                  <YStack height={180} alignItems="center" justifyContent="center">
+                    <Spinner size="small" />
+                  </YStack>
+                ) : weeklyTrends.length > 0 ? (
+                  <BarChart
+                    data={weeklyTrends.map((w) => ({
+                      x: format(new Date(w.weekStart), 'M/d'),
+                      y: w.workoutCount,
+                    }))}
+                    height={180}
+                  />
+                ) : (
+                  <YStack height={180} alignItems="center" justifyContent="center">
+                    <Text color="$color11" fontSize="$2">
+                      Complete more workouts to see trends
+                    </Text>
+                  </YStack>
+                )}
+              </Card>
+
+              {/* Duration Trend */}
+              <Card padding="$3" borderRadius="$4">
+                <XStack alignItems="center" gap="$2" mb="$2">
+                  <TrendingUp size={16} color="$color11" />
+                  <Text fontSize="$4" fontWeight="600" color="$color12">
+                    Weekly Duration (min)
+                  </Text>
+                </XStack>
+                {weeklyTrends === undefined ? (
+                  <YStack height={180} alignItems="center" justifyContent="center">
+                    <Spinner size="small" />
+                  </YStack>
+                ) : weeklyTrends.length > 0 ? (
+                  <LineChart
+                    data={weeklyTrends.map((w) => ({
+                      x: new Date(w.weekStart),
+                      y: w.totalDuration,
+                    }))}
+                    height={180}
+                    xAxisFormat={(d) => format(d, 'M/d')}
+                  />
+                ) : (
+                  <YStack height={180} alignItems="center" justifyContent="center">
+                    <Text color="$color11" fontSize="$2">
+                      No duration data yet
+                    </Text>
+                  </YStack>
+                )}
+              </Card>
+
+              {/* Intensity Distribution */}
+              <Card padding="$3" borderRadius="$4">
+                <Text fontSize="$4" fontWeight="600" color="$color12" mb="$3">
+                  Intensity Distribution
+                </Text>
+                {intensityDist ? (
+                  <XStack justifyContent="space-around">
+                    <ProgressRing
+                      progress={intensityDist.Low.percentage}
+                      value={`${intensityDist.Low.count}`}
+                      label="Low"
+                      size={80}
+                      color="$success"
+                    />
+                    <ProgressRing
+                      progress={intensityDist.Moderate.percentage}
+                      value={`${intensityDist.Moderate.count}`}
+                      label="Moderate"
+                      size={80}
+                      color="$warning"
+                    />
+                    <ProgressRing
+                      progress={intensityDist.High.percentage}
+                      value={`${intensityDist.High.count}`}
+                      label="High"
+                      size={80}
+                      color="$error"
+                    />
+                  </XStack>
+                ) : (
+                  <YStack height={100} alignItems="center" justifyContent="center">
+                    <Spinner size="small" />
+                  </YStack>
+                )}
+              </Card>
+            </YStack>
+          </Tabs.Content>
+
+          {/* Exercises Tab */}
+          <Tabs.Content value="exercises">
+            <YStack gap="$4" pt="$3">
+              {exerciseBreakdown ? (
+                <>
+                  {/* Most Performed */}
+                  <Card padding="$3" borderRadius="$4">
+                    <Text fontSize="$4" fontWeight="600" color="$color12" mb="$3">
+                      Most Performed
+                    </Text>
+                    {exerciseBreakdown.mostPerformed.length > 0 ? (
+                      <YStack gap="$2">
+                        {exerciseBreakdown.mostPerformed.slice(0, 5).map((ex, idx) => (
+                          <XStack
+                            key={ex.exerciseId}
+                            justifyContent="space-between"
+                            alignItems="center"
+                            paddingVertical="$1"
+                          >
+                            <XStack alignItems="center" gap="$2" flex={1}>
+                              <Text
+                                fontSize="$2"
+                                color="$color10"
+                                width={20}
+                                textAlign="center"
+                              >
+                                {idx + 1}
+                              </Text>
+                              <Text
+                                fontSize="$3"
+                                color="$color12"
+                                numberOfLines={1}
+                                flex={1}
+                              >
+                                {ex.name}
+                              </Text>
+                            </XStack>
+                            <Text fontSize="$2" color="$color11">
+                              {ex.timesPerformed}x
+                            </Text>
+                          </XStack>
+                        ))}
+                      </YStack>
+                    ) : (
+                      <Text color="$color11" fontSize="$2">
+                        No exercise data yet
+                      </Text>
+                    )}
+                  </Card>
+
+                  {/* Highest RPE */}
+                  {exerciseBreakdown.highestRPE.length > 0 && (
+                    <Card padding="$3" borderRadius="$4">
+                      <Text fontSize="$4" fontWeight="600" color="$color12" mb="$3">
+                        Highest Effort (RPE)
+                      </Text>
+                      <YStack gap="$2">
+                        {exerciseBreakdown.highestRPE.slice(0, 5).map((ex) => (
+                          <XStack
+                            key={ex.exerciseId}
+                            justifyContent="space-between"
+                            alignItems="center"
+                            paddingVertical="$1"
+                          >
+                            <Text
+                              fontSize="$3"
+                              color="$color12"
+                              numberOfLines={1}
+                              flex={1}
+                            >
+                              {ex.name}
+                            </Text>
+                            <XStack
+                              backgroundColor="$errorLight"
+                              paddingHorizontal="$2"
+                              paddingVertical="$1"
+                              borderRadius="$2"
+                            >
+                              <Text fontSize="$2" color="$error" fontWeight="600">
+                                {ex.avgRPE}
+                              </Text>
+                            </XStack>
+                          </XStack>
+                        ))}
+                      </YStack>
+                    </Card>
+                  )}
+
+                  {/* Most Skipped */}
+                  {exerciseBreakdown.mostSkipped.length > 0 && (
+                    <Card padding="$3" borderRadius="$4">
+                      <Text fontSize="$4" fontWeight="600" color="$color12" mb="$3">
+                        Frequently Skipped
+                      </Text>
+                      <YStack gap="$2">
+                        {exerciseBreakdown.mostSkipped.slice(0, 5).map((ex) => (
+                          <XStack
+                            key={ex.exerciseId}
+                            justifyContent="space-between"
+                            alignItems="center"
+                            paddingVertical="$1"
+                          >
+                            <Text
+                              fontSize="$3"
+                              color="$color12"
+                              numberOfLines={1}
+                              flex={1}
+                            >
+                              {ex.name}
+                            </Text>
+                            <Text fontSize="$2" color="$warning">
+                              {ex.timesSkipped}x skipped
+                            </Text>
+                          </XStack>
+                        ))}
+                      </YStack>
+                    </Card>
+                  )}
+                </>
+              ) : (
+                <Card padding="$5" borderRadius="$4">
+                  <YStack alignItems="center" gap="$3">
+                    <Spinner size="small" />
+                    <Text color="$color11" fontSize="$2">
+                      Loading exercise data...
+                    </Text>
+                  </YStack>
+                </Card>
+              )}
+            </YStack>
+          </Tabs.Content>
+        </Tabs>
+
+        {/* Filter Sheet */}
+        <FilterSheet
+          open={showFilters}
+          onOpenChange={setShowFilters}
+          phase={filterPhase}
+          onPhaseChange={setFilterPhase}
+          dateRange={filterDateRange}
+          onDateRangeChange={setFilterDateRange}
+        />
+      </YStack>
+    </ScreenWrapper>
+  );
 }
