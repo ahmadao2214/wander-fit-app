@@ -1,0 +1,32 @@
+import { Stack } from 'expo-router'
+import { OnboardingRoute } from '../../components/AuthGuard'
+
+/**
+ * Onboarding Flow Layout
+ *
+ * Educational screens shown after intake completion:
+ * 1. Welcome & Journey Introduction (3 screens)
+ * 2. Phase Education - GPP/SPP/SSP (3 screens)
+ * 3. Personalized Timeline & Commitment (2 screens)
+ * 4. How It Works & First Workout (2 screens)
+ *
+ * Features:
+ * - Skippable at any point
+ * - Revisitable from settings
+ * - Progress saved for resume
+ */
+export default function OnboardingLayout() {
+  return (
+    <OnboardingRoute>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          animation: 'slide_from_right',
+          gestureEnabled: false, // Disable swipe back during onboarding
+        }}
+      >
+        <Stack.Screen name="index" />
+      </Stack>
+    </OnboardingRoute>
+  )
+}
