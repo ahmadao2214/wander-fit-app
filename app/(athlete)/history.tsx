@@ -50,6 +50,39 @@ const DisplayHeading = styled(Text, {
 
 type TabValue = 'history' | 'trends' | 'exercises';
 
+// Type for enriched workout session from getHistory query
+interface WorkoutSession {
+  _id: string;
+  templateSnapshot?: {
+    name?: string;
+    phase?: string;
+    week?: number;
+    day?: number;
+  };
+  templateName?: string;
+  startedAt: number;
+  completedAt?: number;
+  totalDurationSeconds?: number;
+  status: string;
+  targetIntensity?: string;
+  phase?: string;
+  week?: number;
+  day?: number;
+  exercises?: Array<{
+    exerciseId: string;
+    name?: string;
+    completed: boolean;
+    skipped: boolean;
+    sets?: Array<{
+      repsCompleted?: number;
+      weight?: number;
+      rpe?: number;
+      completed: boolean;
+      skipped: boolean;
+    }>;
+  }>;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
@@ -95,11 +128,11 @@ export default function HistoryPage() {
   const exerciseBreakdown = useQuery(api.analytics.getExerciseBreakdown, {});
   const intensityDist = useQuery(api.analytics.getIntensityDistribution, {});
 
-  // Filter history
-  const filteredHistory = useMemo(() => {
+  // Filter history - cast to WorkoutSession[] since useCachedQuery returns generic type
+  const filteredHistory = useMemo((): WorkoutSession[] => {
     if (!history) return [];
 
-    return history.filter((session: any) => {
+    return (history as WorkoutSession[]).filter((session) => {
       // Phase filter
       const sessionPhase =
         session.templateSnapshot?.phase ?? session.phase;
@@ -273,7 +306,7 @@ export default function HistoryPage() {
                   </YStack>
                 </Card>
               ) : (
-                filteredHistory.map((session: any) => (
+                filteredHistory.map((session) => (
                   <WorkoutHistoryCard
                     key={session._id}
                     session={session}

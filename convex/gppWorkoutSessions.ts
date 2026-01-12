@@ -322,12 +322,25 @@ export const getHistory = query({
       .order("desc")
       .take(limit);
 
-    // Enrich with template names
+    // Enrich with template names and exercise details
     const enriched = await Promise.all(
       sessions.map(async (session) => {
         const template = await ctx.db.get(session.templateId);
+
+        // Enrich exercise data with names
+        const enrichedExercises = await Promise.all(
+          (session.exercises ?? []).map(async (ex) => {
+            const exercise = await ctx.db.get(ex.exerciseId);
+            return {
+              ...ex,
+              name: exercise?.name ?? "Unknown Exercise",
+            };
+          })
+        );
+
         return {
           ...session,
+          exercises: enrichedExercises,
           templateName: template?.name || "Unknown Workout",
           phase: template?.phase,
           week: template?.week,

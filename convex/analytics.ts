@@ -1,5 +1,6 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
+import { Id } from "./_generated/dataModel";
 
 /**
  * Analytics Queries for History Screen
@@ -234,70 +235,66 @@ export const getExerciseBreakdown = query({
 
     const completedSessions = sessions.filter((s) => s.status === "completed");
 
-    // Collect exercise stats
-    const exerciseStats: Record<
-      string,
+    // Collect exercise stats - use Map with Id as key for type safety
+    const exerciseStats = new Map<
+      Id<"exercises">,
       {
-        exerciseId: string;
+        exerciseId: Id<"exercises">;
         timesPerformed: number;
         timesSkipped: number;
         rpeValues: number[];
-        totalWeight: number;
-        totalReps: number;
+        totalVolume: number; // Sum of (weight × reps) per set
       }
-    > = {};
+    >();
 
     for (const session of completedSessions) {
       for (const ex of session.exercises ?? []) {
-        const id = ex.exerciseId.toString();
+        const id = ex.exerciseId;
 
-        if (!exerciseStats[id]) {
-          exerciseStats[id] = {
+        if (!exerciseStats.has(id)) {
+          exerciseStats.set(id, {
             exerciseId: id,
             timesPerformed: 0,
             timesSkipped: 0,
             rpeValues: [],
-            totalWeight: 0,
-            totalReps: 0,
-          };
+            totalVolume: 0,
+          });
         }
 
+        const stats = exerciseStats.get(id)!;
+
         if (ex.skipped) {
-          exerciseStats[id].timesSkipped++;
+          stats.timesSkipped++;
         } else if (ex.completed) {
-          exerciseStats[id].timesPerformed++;
+          stats.timesPerformed++;
 
           for (const set of ex.sets ?? []) {
             if (set.completed) {
-              if (set.rpe) exerciseStats[id].rpeValues.push(set.rpe);
-              if (set.weight) exerciseStats[id].totalWeight += set.weight;
-              if (set.repsCompleted)
-                exerciseStats[id].totalReps += set.repsCompleted;
+              if (set.rpe) stats.rpeValues.push(set.rpe);
+              // Calculate volume per set: weight × reps
+              if (set.weight && set.repsCompleted) {
+                stats.totalVolume += set.weight * set.repsCompleted;
+              }
             }
           }
         }
       }
     }
 
-    // Fetch exercise names
-    const exerciseIds = Object.keys(exerciseStats);
-    const exerciseNames: Record<string, string> = {};
+    // Fetch exercise names using proper Convex IDs
+    const exerciseNames = new Map<Id<"exercises">, string>();
 
-    for (const id of exerciseIds) {
-      try {
-        const exercise = await ctx.db.get(id as any);
-        exerciseNames[id] = exercise?.name ?? "Unknown";
-      } catch {
-        exerciseNames[id] = "Unknown";
-      }
+    for (const id of exerciseStats.keys()) {
+      const exercise = await ctx.db.get(id);
+      exerciseNames.set(id, exercise?.name ?? "Unknown");
     }
 
     // Convert to array with calculated metrics
-    const exercises = Object.entries(exerciseStats).map(([id, stats]) => {
+    const exercises = Array.from(exerciseStats.entries()).map(([id, stats]) => {
       const total = stats.timesPerformed + stats.timesSkipped;
       return {
         exerciseId: id,
-        name: exerciseNames[id],
+        name: exerciseNames.get(id) ?? "Unknown",
         timesPerformed: stats.timesPerformed,
         timesSkipped: stats.timesSkipped,
         completionRate: total > 0 ? stats.timesPerformed / total : 0,
@@ -309,7 +306,7 @@ export const getExerciseBreakdown = query({
                   10
               ) / 10
             : null,
-        totalVolume: stats.totalWeight * stats.totalReps,
+        totalVolume: stats.totalVolume,
       };
     });
 

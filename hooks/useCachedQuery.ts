@@ -76,13 +76,18 @@ export function useCachedQuery<Query extends FunctionReference<'query'>>(
   // Convex query (live data)
   const liveData = useQuery(query, skip || args === 'skip' ? 'skip' : args);
 
-  // Update cache when live data arrives
+  // Track if we've received live data (to distinguish undefined from null)
+  const [hasReceivedLiveData, setHasReceivedLiveData] = useState(false);
+
+  // Update cache when live data arrives (including null responses)
   useEffect(() => {
-    if (liveData !== undefined && liveData !== null && !skip) {
+    // undefined means query is still loading, anything else (including null) is a result
+    if (liveData !== undefined && !skip) {
       mmkvStorage.setWithTimestamp(cacheKey, liveData);
       setCachedData(liveData as ReturnType);
       setCachedAt(Date.now());
       setIsStale(false);
+      setHasReceivedLiveData(true);
     }
   }, [liveData, cacheKey, skip]);
 
@@ -92,20 +97,21 @@ export function useCachedQuery<Query extends FunctionReference<'query'>>(
     setCachedData(null);
     setCachedAt(null);
     setIsStale(false);
+    setHasReceivedLiveData(false);
   }, [cacheKey]);
 
   // Determine the current state
   const hasLiveData = liveData !== undefined;
-  const hasCachedData = cachedData !== null;
+  const hasCachedData = cachedData !== null || hasReceivedLiveData;
 
-  // Use live data if available, otherwise fall back to cache
+  // Use live data if query has completed, otherwise fall back to cache
   const data = hasLiveData ? (liveData as ReturnType) : cachedData;
 
-  // Loading state: no live data AND no cache AND haven't finished loading cache
-  const isLoading = !hasLiveData && !hasCachedData && !hasLoadedCache;
+  // Loading state: query hasn't returned AND no cache AND haven't finished loading cache
+  const isLoading = !hasLiveData && cachedData === null && !hasLoadedCache;
 
   // From cache: we're showing cached data while live data is still loading
-  const isFromCache = !hasLiveData && hasCachedData;
+  const isFromCache = !hasLiveData && cachedData !== null;
 
   return {
     data,

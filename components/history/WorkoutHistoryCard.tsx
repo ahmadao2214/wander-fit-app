@@ -185,10 +185,17 @@ export function WorkoutHistoryCard({
                 {exercise.sets && exercise.completed && (
                   <Text fontSize="$2" color="$color11">
                     {exercise.sets.filter((s) => s.completed).length} sets
-                    {exercise.sets.some((s) => s.weight) &&
-                      ` \u2022 ${Math.max(
-                        ...exercise.sets.map((s) => s.weight ?? 0)
-                      )}lb`}
+                    {(() => {
+                      // Get weights from completed sets, filtering out 0 and undefined
+                      const weights = exercise.sets
+                        .filter((s) => s.completed && s.weight && s.weight > 0)
+                        .map((s) => s.weight!);
+                      // Only show max weight if there are actual weights
+                      if (weights.length > 0) {
+                        return ` \u2022 ${Math.max(...weights)}lb`;
+                      }
+                      return '';
+                    })()}
                   </Text>
                 )}
               </XStack>
