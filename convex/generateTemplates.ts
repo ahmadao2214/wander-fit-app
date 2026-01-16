@@ -250,28 +250,28 @@ const EXERCISE_POOLS: Record<
     },
   },
 
-  // Category 4: General Strength (Football, Wrestling, etc.)
-  // Emphasis: Bilateral strength, work capacity, grip
+  // Category 4: General Strength (Football, Wrestling, Esports, etc.)
+  // Emphasis: Bilateral strength, work capacity, grip, shoulder stability, posture
   4: {
     lower: {
-      basic: ["goblet_squat", "romanian_deadlift", "walking_lunge", "hip_thrust"],
+      basic: ["goblet_squat", "romanian_deadlift", "walking_lunge", "hip_thrust", "wall_sit"],
       moderate: ["back_squat", "trap_bar_deadlift", "walking_lunge", "romanian_deadlift"],
       advanced: ["back_squat", "trap_bar_deadlift", "front_squat", "bulgarian_split_squat"],
     },
     upper: {
-      basic: ["push_up", "inverted_row", "db_shoulder_press", "db_bench_press"],
-      moderate: ["db_bench_press", "db_row", "overhead_press", "pull_up"],
-      advanced: ["db_bench_press", "weighted_pull_up", "overhead_press", "incline_db_press", "db_row"],
+      basic: ["push_up", "inverted_row", "db_shoulder_press", "band_pull_apart", "wrist_curl"],
+      moderate: ["db_bench_press", "db_row", "overhead_press", "external_shoulder_rotation", "farmers_carry"],
+      advanced: ["db_bench_press", "weighted_pull_up", "overhead_press", "ytw_raises", "farmers_carry"],
     },
     power: {
-      basic: ["kettlebell_swing", "med_ball_slam", "broad_jump", "box_jump"],
-      moderate: ["kettlebell_swing", "sled_push", "box_jump", "med_ball_slam"],
-      advanced: ["sled_push", "sled_pull", "kettlebell_swing", "depth_jump", "plyo_push_up"],
+      basic: ["kettlebell_swing", "jump_rope", "shadow_boxing", "broad_jump"],
+      moderate: ["kettlebell_swing", "jump_rope", "rowing_machine", "med_ball_slam"],
+      advanced: ["sled_push", "sled_pull", "kettlebell_swing", "jump_rope", "plyo_push_up"],
     },
     core: {
-      basic: ["plank", "dead_bug", "glute_bridge", "bird_dog"],
-      moderate: ["pallof_press", "plank_shoulder_taps", "side_plank", "hanging_leg_raise"],
-      advanced: ["hanging_leg_raise", "cable_woodchop", "single_arm_plank", "stability_ball_plank"],
+      basic: ["plank", "dead_bug", "bird_dog", "hollow_body_hold"],
+      moderate: ["pallof_press", "plank_shoulder_taps", "side_plank", "hollow_body_hold"],
+      advanced: ["hanging_leg_raise", "copenhagen_plank", "single_arm_plank", "stability_ball_plank"],
     },
   },
 };
