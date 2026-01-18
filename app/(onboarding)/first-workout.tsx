@@ -1,32 +1,40 @@
-import { useRouter } from 'expo-router'
+import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { YStack, XStack, Text, Spinner, ScrollView, Button } from 'tamagui'
 import { OnboardingScreen } from '../../components/onboarding'
 import { useOnboardingAnalytics, ONBOARDING_SCREEN_NAMES } from '../../hooks/useOnboardingAnalytics'
+import { COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT } from '../../components/IntakeProgressDots'
 import { analytics } from '../../lib/analytics'
 import { Play, CheckCircle, Clock, Dumbbell } from '@tamagui/lucide-icons'
 
 /**
- * Screen 4.2: Your First Workout Preview
+ * Screen 11 (Combined Flow): Your First Workout Preview
  *
  * Final onboarding screen showing a preview of the first workout
- * and a CTA to start training.
+ * and a CTA to continue to results.
  */
 export default function FirstWorkoutScreen() {
   const router = useRouter()
+  const { sportId, ageGroup, yearsOfExperience, trainingDays, weeksUntilSeason } = useLocalSearchParams<{
+    sportId: string
+    ageGroup: string
+    yearsOfExperience: string
+    trainingDays: string
+    weeksUntilSeason: string
+  }>()
 
   // Get onboarding state
   const onboardingState = useQuery(api.onboarding.getOnboardingState)
   const onboardingData = useQuery(api.onboarding.getOnboardingData)
 
-  // Mutations
-  const completeOnboarding = useMutation(api.onboarding.completeOnboarding)
+  // Mutations - don't complete onboarding yet, results will do it
+  const advanceOnboarding = useMutation(api.onboarding.advanceOnboarding)
 
   // Analytics tracking
   const isRevisit = onboardingState?.isRevisit ?? false
   const { trackScreenComplete } = useOnboardingAnalytics({
-    screenIndex: 9,
+    screenIndex: COMBINED_FLOW_SCREENS.FIRST_WORKOUT,
     screenName: ONBOARDING_SCREEN_NAMES[9],
     isRevisit,
   })
@@ -40,18 +48,19 @@ export default function FirstWorkoutScreen() {
     )
   }
 
-  const handleStartWorkout = async () => {
+  // Navigate to results screen to finalize
+  const handleContinue = async () => {
     trackScreenComplete()
-    analytics.trackOnboardingCompleted(isRevisit)
-    await completeOnboarding()
-    router.replace('/(athlete)')
-  }
-
-  const handleViewProgram = async () => {
-    trackScreenComplete()
-    analytics.trackOnboardingCompleted(isRevisit)
-    await completeOnboarding()
-    router.replace('/(athlete)/program' as any)
+    router.push({
+      pathname: '/(intake)/results',
+      params: {
+        sportId,
+        ageGroup,
+        yearsOfExperience,
+        trainingDays,
+        weeksUntilSeason,
+      },
+    } as any)
   }
 
   const firstName = onboardingData?.userName?.split(' ')[0] ?? 'Athlete'
@@ -71,12 +80,12 @@ export default function FirstWorkoutScreen() {
 
   return (
     <OnboardingScreen
-      currentScreen={9}
-      totalScreens={onboardingState?.totalScreens ?? 10}
-      primaryButtonText="Start Training"
-      onPrimaryPress={handleStartWorkout}
-      onSkip={handleViewProgram}
-      showSkip={true}
+      currentScreen={COMBINED_FLOW_SCREENS.FIRST_WORKOUT}
+      totalScreens={COMBINED_FLOW_SCREEN_COUNT}
+      primaryButtonText="Continue"
+      onPrimaryPress={handleContinue}
+      onSkip={() => {}}
+      showSkip={false}
     >
       <ScrollView flex={1} showsVerticalScrollIndicator={false}>
         <YStack flex={1} gap="$6" py="$4">
@@ -205,20 +214,6 @@ export default function FirstWorkoutScreen() {
             </YStack>
           </YStack>
 
-          {/* Alternative CTA */}
-          <YStack items="center" gap="$2">
-            <Text fontSize="$2" color="$gray10">
-              Want to see your full program first?
-            </Text>
-            <Button
-              chromeless
-              onPress={handleViewProgram}
-            >
-              <Text color="$green10" fontWeight="600">
-                View Full Program
-              </Text>
-            </Button>
-          </YStack>
         </YStack>
       </ScrollView>
     </OnboardingScreen>

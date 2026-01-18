@@ -4,7 +4,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ChevronRight, ChevronLeft, Minus, Plus, Trophy, Award, Medal } from '@tamagui/lucide-icons'
 import { Vibration } from 'react-native'
-import { IntakeProgressDots, INTAKE_SCREENS } from '../../components/IntakeProgressDots'
+import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT } from '../../components/IntakeProgressDots'
 import { getSkillLevel } from '../../lib'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -296,7 +296,7 @@ export default function ExperienceYearsScreen() {
       >
         {/* Progress Dots */}
         <YStack items="center" mb="$4">
-          <IntakeProgressDots total={7} current={INTAKE_SCREENS.EXPERIENCE_YEARS} />
+          <IntakeProgressDots total={COMBINED_FLOW_SCREEN_COUNT} current={COMBINED_FLOW_SCREENS.EXPERIENCE_YEARS} />
         </YStack>
 
         {/* Header */}

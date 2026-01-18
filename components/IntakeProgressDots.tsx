@@ -86,13 +86,48 @@ export function IntakeProgressDots({
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Total number of screens in the intake flow
- * sport -> age-group -> experience-years -> training-days -> season-timeline -> maxes -> results
+ * Total number of screens in the combined intake + onboarding flow
+ *
+ * Interleaved flow (12 screens):
+ * 1. Sport Selection         ← Intake
+ * 2. Why This Works          ← Onboarding
+ * 3. The Three Phases        ← Onboarding
+ * 4. Age Group               ← Intake
+ * 5. Experience Years        ← Intake
+ * 6. Training Days           ← Intake
+ * 7. Season Timeline         ← Intake
+ * 8. Your Personal Timeline  ← Onboarding
+ * 9. Commitment              ← Onboarding
+ * 10. Maxes                  ← Intake
+ * 11. First Workout Preview  ← Onboarding
+ * 12. Results                ← Intake
  */
+export const COMBINED_FLOW_SCREEN_COUNT = 12
+
+/** @deprecated Use COMBINED_FLOW_SCREEN_COUNT instead */
 export const INTAKE_SCREEN_COUNT = 7
 
 /**
- * Screen indices for easy reference
+ * Screen indices for the combined flow
+ */
+export const COMBINED_FLOW_SCREENS = {
+  SPORT: 0,
+  WHY_IT_WORKS: 1,
+  PHASES_OVERVIEW: 2,
+  AGE_GROUP: 3,
+  EXPERIENCE_YEARS: 4,
+  TRAINING_DAYS: 5,
+  SEASON_TIMELINE: 6,
+  PERSONAL_TIMELINE: 7,
+  COMMITMENT: 8,
+  MAXES: 9,
+  FIRST_WORKOUT: 10,
+  RESULTS: 11,
+} as const
+
+/**
+ * @deprecated Use COMBINED_FLOW_SCREENS instead
+ * Legacy screen indices for backward compatibility
  */
 export const INTAKE_SCREENS = {
   SPORT: 0,

@@ -1,19 +1,27 @@
-import { useRouter } from 'expo-router'
+import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { YStack, XStack, Text, Spinner, ScrollView } from 'tamagui'
 import { OnboardingScreen, TimelineView, createPhaseTimeline } from '../../components/onboarding'
 import { useOnboardingAnalytics, ONBOARDING_SCREEN_NAMES } from '../../hooks/useOnboardingAnalytics'
+import { COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT } from '../../components/IntakeProgressDots'
 import { Calendar, Flag } from '@tamagui/lucide-icons'
 
 /**
- * Screen 3.1: Your Personal Timeline
+ * Screen 8 (Combined Flow): Your Personal Timeline
  *
  * Shows the user's personalized 12-week training timeline
  * based on their intake data (season start, etc.).
  */
 export default function PersonalTimelineScreen() {
   const router = useRouter()
+  const { sportId, ageGroup, yearsOfExperience, trainingDays, weeksUntilSeason: weeksParam } = useLocalSearchParams<{
+    sportId: string
+    ageGroup: string
+    yearsOfExperience: string
+    trainingDays: string
+    weeksUntilSeason: string
+  }>()
 
   // Get onboarding state
   const onboardingState = useQuery(api.onboarding.getOnboardingState)
@@ -26,7 +34,7 @@ export default function PersonalTimelineScreen() {
   // Analytics tracking
   const isRevisit = onboardingState?.isRevisit ?? false
   const { trackScreenComplete, trackSkip } = useOnboardingAnalytics({
-    screenIndex: 6,
+    screenIndex: COMBINED_FLOW_SCREENS.PERSONAL_TIMELINE,
     screenName: ONBOARDING_SCREEN_NAMES[6],
     isRevisit,
   })
@@ -42,8 +50,17 @@ export default function PersonalTimelineScreen() {
 
   const handleContinue = async () => {
     trackScreenComplete()
-    await advanceOnboarding({ screenIndex: 7 })
-    router.push('/(onboarding)/commitment' as any)
+    // Navigate to commitment screen with all params
+    router.push({
+      pathname: '/(onboarding)/commitment',
+      params: {
+        sportId,
+        ageGroup,
+        yearsOfExperience,
+        trainingDays,
+        weeksUntilSeason: weeksParam,
+      },
+    } as any)
   }
 
   const handleSkip = async () => {
@@ -56,8 +73,8 @@ export default function PersonalTimelineScreen() {
   const startDate = new Date()
   const phases = createPhaseTimeline(startDate)
 
-  // Calculate season start date if available
-  const weeksUntilSeason = onboardingData?.weeksUntilSeason
+  // Use weeksParam from route or fallback to onboardingData
+  const weeksUntilSeason = weeksParam ? parseInt(weeksParam, 10) : onboardingData?.weeksUntilSeason
   const seasonStartDate = weeksUntilSeason
     ? new Date(startDate.getTime() + weeksUntilSeason * 7 * 24 * 60 * 60 * 1000)
     : undefined
@@ -66,10 +83,13 @@ export default function PersonalTimelineScreen() {
   const programEndDate = new Date(startDate)
   programEndDate.setDate(programEndDate.getDate() + 12 * 7)
 
+  // Use trainingDays from route params or fallback to onboardingData
+  const preferredDays = trainingDays ? parseInt(trainingDays, 10) : onboardingData?.preferredDays
+
   return (
     <OnboardingScreen
-      currentScreen={6}
-      totalScreens={onboardingState?.totalScreens ?? 10}
+      currentScreen={COMBINED_FLOW_SCREENS.PERSONAL_TIMELINE}
+      totalScreens={COMBINED_FLOW_SCREEN_COUNT}
       primaryButtonText="I'm Ready"
       onPrimaryPress={handleContinue}
       onSkip={handleSkip}
@@ -130,10 +150,10 @@ export default function PersonalTimelineScreen() {
           </XStack>
 
           {/* Training frequency note */}
-          {onboardingData?.preferredDays && (
+          {preferredDays && (
             <YStack bg="$gray2" rounded="$4" p="$4" items="center" gap="$2">
               <Text fontSize="$6" fontWeight="bold" color="$green10">
-                {onboardingData.preferredDays}
+                {preferredDays}
               </Text>
               <Text fontSize="$3" color="$gray11">
                 training days per week

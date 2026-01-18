@@ -24,7 +24,8 @@ import {
 import { PHASE_NAMES, AgeGroup } from '../../types'
 import { useAuth } from '../../hooks/useAuth'
 import { getSkillLevel, getTrainingPhase } from '../../lib'
-import { IntakeProgressDots, INTAKE_SCREENS } from '../../components/IntakeProgressDots'
+import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT } from '../../components/IntakeProgressDots'
+import { analytics } from '../../lib/analytics'
 
 /**
  * Results Screen
@@ -49,8 +50,9 @@ export default function ResultsScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
 
-  // Mutation to complete intake
+  // Mutations to complete intake and onboarding
   const completeIntake = useMutation(api.userPrograms.completeIntake)
+  const completeOnboarding = useMutation(api.onboarding.completeOnboarding)
 
   // Get sport details
   const sport = useQuery(
@@ -134,6 +136,7 @@ export default function ResultsScreen() {
   const handleConfirm = async () => {
     setIsSubmitting(true)
     try {
+      // Complete both intake and onboarding
       await completeIntake({
         sportId: sportId as Id<"sports">,
         yearsOfExperience: years,
@@ -141,6 +144,8 @@ export default function ResultsScreen() {
         weeksUntilSeason: weeks,
         ageGroup: ageGroup as "10-13" | "14-17" | "18+",
       })
+      await completeOnboarding()
+      analytics.trackOnboardingCompleted(false)
       setIsSuccess(true)
     } catch (error) {
       console.error('Failed to complete intake:', error)
@@ -215,7 +220,7 @@ export default function ResultsScreen() {
         >
           {/* Progress Dots */}
           <YStack items="center" mb="$2">
-            <IntakeProgressDots total={7} current={INTAKE_SCREENS.RESULTS} />
+            <IntakeProgressDots total={COMBINED_FLOW_SCREEN_COUNT} current={COMBINED_FLOW_SCREENS.RESULTS} />
           </YStack>
 
           {/* Header */}

@@ -11,7 +11,7 @@ import {
   Dumbbell,
   Info,
 } from '@tamagui/lucide-icons'
-import { IntakeProgressDots, INTAKE_SCREENS } from '../../components/IntakeProgressDots'
+import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT } from '../../components/IntakeProgressDots'
 
 const MAX_1RM = 2000
 
@@ -106,9 +106,9 @@ export default function MaxesScreen() {
         }
       }
 
-      // Navigate to results screen for final review
+      // Navigate to first-workout onboarding screen
       router.push({
-        pathname: '/(intake)/results',
+        pathname: '/(onboarding)/first-workout',
         params: {
           sportId,
           yearsOfExperience,
@@ -116,7 +116,7 @@ export default function MaxesScreen() {
           weeksUntilSeason,
           ageGroup,
         },
-      })
+      } as any)
     } catch (error) {
       console.error('Failed to save maxes:', error)
       alert('Failed to save. Please try again.')
@@ -126,9 +126,9 @@ export default function MaxesScreen() {
   }
 
   const handleSkip = () => {
-    // Skip maxes, go directly to results
+    // Skip maxes, go to first-workout
     router.push({
-      pathname: '/(intake)/results',
+      pathname: '/(onboarding)/first-workout',
       params: {
         sportId,
         yearsOfExperience,
@@ -136,7 +136,7 @@ export default function MaxesScreen() {
         weeksUntilSeason,
         ageGroup,
       },
-    })
+    } as any)
   }
 
   // Check if any maxes have been entered
@@ -171,7 +171,7 @@ export default function MaxesScreen() {
         >
           {/* Progress Dots */}
           <YStack items="center" mb="$2">
-            <IntakeProgressDots total={7} current={INTAKE_SCREENS.MAXES} />
+            <IntakeProgressDots total={COMBINED_FLOW_SCREEN_COUNT} current={COMBINED_FLOW_SCREENS.MAXES} />
           </YStack>
 
           {/* Header */}

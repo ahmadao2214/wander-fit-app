@@ -1,21 +1,29 @@
-import { useRouter } from 'expo-router'
+import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { YStack, XStack, Text, Spinner, ScrollView } from 'tamagui'
 import { OnboardingScreen, CommitmentButton } from '../../components/onboarding'
 import { useOnboardingAnalytics, ONBOARDING_SCREEN_NAMES } from '../../hooks/useOnboardingAnalytics'
+import { COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT } from '../../components/IntakeProgressDots'
 import { analytics } from '../../lib/analytics'
 import { useState } from 'react'
 import { CheckCircle } from '@tamagui/lucide-icons'
 
 /**
- * Screen 3.2: Commitment
+ * Screen 9 (Combined Flow): Commitment
  *
  * YAZIO-style commitment screen with hold-to-confirm button.
  * User commits to their training journey.
  */
 export default function CommitmentScreen() {
   const router = useRouter()
+  const { sportId, ageGroup, yearsOfExperience, trainingDays: trainingDaysParam, weeksUntilSeason } = useLocalSearchParams<{
+    sportId: string
+    ageGroup: string
+    yearsOfExperience: string
+    trainingDays: string
+    weeksUntilSeason: string
+  }>()
   const [hasCommitted, setHasCommitted] = useState(false)
 
   // Get onboarding state
@@ -29,7 +37,7 @@ export default function CommitmentScreen() {
   // Analytics tracking
   const isRevisit = onboardingState?.isRevisit ?? false
   const { trackScreenComplete, trackSkip } = useOnboardingAnalytics({
-    screenIndex: 7,
+    screenIndex: COMBINED_FLOW_SCREENS.COMMITMENT,
     screenName: ONBOARDING_SCREEN_NAMES[7],
     isRevisit,
   })
@@ -50,8 +58,17 @@ export default function CommitmentScreen() {
 
   const handleContinue = async () => {
     trackScreenComplete()
-    await advanceOnboarding({ screenIndex: 8 })
-    router.push('/(onboarding)/progression' as any)
+    // Navigate to maxes intake screen (skip progression screen)
+    router.push({
+      pathname: '/(intake)/maxes',
+      params: {
+        sportId,
+        ageGroup,
+        yearsOfExperience,
+        trainingDays: trainingDaysParam,
+        weeksUntilSeason,
+      },
+    } as any)
   }
 
   const handleSkip = async () => {
@@ -62,7 +79,7 @@ export default function CommitmentScreen() {
 
   const firstName = onboardingData?.userName?.split(' ')[0] ?? 'Athlete'
   const sportName = onboardingData?.sport?.name ?? 'your sport'
-  const trainingDays = onboardingData?.preferredDays ?? 4
+  const trainingDays = trainingDaysParam ? parseInt(trainingDaysParam, 10) : (onboardingData?.preferredDays ?? 4)
 
   const commitments = [
     {
@@ -85,8 +102,8 @@ export default function CommitmentScreen() {
 
   return (
     <OnboardingScreen
-      currentScreen={7}
-      totalScreens={onboardingState?.totalScreens ?? 10}
+      currentScreen={COMBINED_FLOW_SCREENS.COMMITMENT}
+      totalScreens={COMBINED_FLOW_SCREEN_COUNT}
       primaryButtonText={hasCommitted ? "Let's Do This" : 'Make Your Commitment'}
       onPrimaryPress={hasCommitted ? handleContinue : undefined}
       onSkip={handleSkip}

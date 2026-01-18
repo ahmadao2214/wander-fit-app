@@ -1,18 +1,20 @@
-import { useRouter } from 'expo-router'
+import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { YStack, XStack, Text, Spinner } from 'tamagui'
 import { OnboardingScreen } from '../../components/onboarding'
 import { useOnboardingAnalytics, ONBOARDING_SCREEN_NAMES } from '../../hooks/useOnboardingAnalytics'
+import { COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT } from '../../components/IntakeProgressDots'
 
 /**
- * Screen 1.3: Why This Works
+ * Screen 2 (Combined Flow): Why This Works
  *
  * Social proof and education about periodization training.
  * Explains why the GPP→SPP→SSP model is effective.
  */
 export default function WhyItWorksScreen() {
   const router = useRouter()
+  const { sportId } = useLocalSearchParams<{ sportId: string }>()
 
   // Get onboarding state
   const onboardingState = useQuery(api.onboarding.getOnboardingState)
@@ -24,7 +26,7 @@ export default function WhyItWorksScreen() {
   // Analytics tracking
   const isRevisit = onboardingState?.isRevisit ?? false
   const { trackScreenComplete, trackSkip } = useOnboardingAnalytics({
-    screenIndex: 2,
+    screenIndex: COMBINED_FLOW_SCREENS.WHY_IT_WORKS,
     screenName: ONBOARDING_SCREEN_NAMES[2],
     isRevisit,
   })
@@ -40,8 +42,11 @@ export default function WhyItWorksScreen() {
 
   const handleContinue = async () => {
     trackScreenComplete()
-    await advanceOnboarding({ screenIndex: 3 })
-    router.push('/(onboarding)/gpp-detail' as any)
+    // Navigate to phases-overview (skip gpp-detail, spp-detail, ssp-detail)
+    router.push({
+      pathname: '/(onboarding)/phases-overview',
+      params: { sportId },
+    } as any)
   }
 
   const handleSkip = async () => {
@@ -52,8 +57,8 @@ export default function WhyItWorksScreen() {
 
   return (
     <OnboardingScreen
-      currentScreen={2}
-      totalScreens={onboardingState?.totalScreens ?? 10}
+      currentScreen={COMBINED_FLOW_SCREENS.WHY_IT_WORKS}
+      totalScreens={COMBINED_FLOW_SCREEN_COUNT}
       primaryButtonText="Continue"
       onPrimaryPress={handleContinue}
       onSkip={handleSkip}

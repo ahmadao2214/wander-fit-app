@@ -11,7 +11,7 @@ import {
   ArrowRight,
 } from '@tamagui/lucide-icons'
 import { Vibration } from 'react-native'
-import { IntakeProgressDots, INTAKE_SCREENS } from '../../components/IntakeProgressDots'
+import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT } from '../../components/IntakeProgressDots'
 import { getTrainingPhase } from '../../lib'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -355,8 +355,9 @@ export default function SeasonTimelineScreen() {
 
   const handleContinue = () => {
     if (selectedDate) {
+      // Navigate to onboarding personal-timeline screen
       router.push({
-        pathname: '/(intake)/maxes',
+        pathname: '/(onboarding)/personal-timeline',
         params: {
           sportId,
           ageGroup,
@@ -364,7 +365,7 @@ export default function SeasonTimelineScreen() {
           trainingDays,
           weeksUntilSeason: weeks.toString(),
         },
-      })
+      } as any)
     }
   }
 
@@ -381,7 +382,7 @@ export default function SeasonTimelineScreen() {
         >
           {/* Progress Dots */}
           <YStack items="center" mb="$4">
-            <IntakeProgressDots total={7} current={INTAKE_SCREENS.SEASON_TIMELINE} />
+            <IntakeProgressDots total={COMBINED_FLOW_SCREEN_COUNT} current={COMBINED_FLOW_SCREENS.SEASON_TIMELINE} />
           </YStack>
 
           {/* Header */}

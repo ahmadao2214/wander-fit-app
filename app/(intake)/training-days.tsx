@@ -4,7 +4,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ChevronRight, ChevronLeft, Check, X } from '@tamagui/lucide-icons'
 import { Vibration } from 'react-native'
-import { IntakeProgressDots, INTAKE_SCREENS } from '../../components/IntakeProgressDots'
+import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT } from '../../components/IntakeProgressDots'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
@@ -287,7 +287,7 @@ export default function TrainingDaysScreen() {
       >
         {/* Progress Dots */}
         <YStack items="center" mb="$4">
-          <IntakeProgressDots total={7} current={INTAKE_SCREENS.TRAINING_DAYS} />
+          <IntakeProgressDots total={COMBINED_FLOW_SCREEN_COUNT} current={COMBINED_FLOW_SCREENS.TRAINING_DAYS} />
         </YStack>
 
         {/* Header */}

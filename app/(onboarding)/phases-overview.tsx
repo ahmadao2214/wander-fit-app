@@ -1,19 +1,21 @@
-import { useRouter } from 'expo-router'
+import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { YStack, XStack, Text, Spinner, ScrollView } from 'tamagui'
 import { OnboardingScreen, PHASE_DATA } from '../../components/onboarding'
 import { useOnboardingAnalytics, ONBOARDING_SCREEN_NAMES } from '../../hooks/useOnboardingAnalytics'
+import { COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT } from '../../components/IntakeProgressDots'
 import type { Phase } from '../../types'
 
 /**
- * Screen 1.2: The Three Phases
+ * Screen 3 (Combined Flow): The Three Phases
  *
  * Educational overview showing GPP → SPP → SSP timeline
  * with brief descriptions of each phase.
  */
 export default function PhasesOverviewScreen() {
   const router = useRouter()
+  const { sportId } = useLocalSearchParams<{ sportId: string }>()
 
   // Get onboarding state
   const onboardingState = useQuery(api.onboarding.getOnboardingState)
@@ -25,7 +27,7 @@ export default function PhasesOverviewScreen() {
   // Analytics tracking
   const isRevisit = onboardingState?.isRevisit ?? false
   const { trackScreenComplete, trackSkip } = useOnboardingAnalytics({
-    screenIndex: 1,
+    screenIndex: COMBINED_FLOW_SCREENS.PHASES_OVERVIEW,
     screenName: ONBOARDING_SCREEN_NAMES[1],
     isRevisit,
   })
@@ -41,8 +43,11 @@ export default function PhasesOverviewScreen() {
 
   const handleContinue = async () => {
     trackScreenComplete()
-    await advanceOnboarding({ screenIndex: 2 })
-    router.push('/(onboarding)/why-it-works' as any)
+    // Navigate back to intake flow (age-group)
+    router.push({
+      pathname: '/(intake)/age-group',
+      params: { sportId },
+    } as any)
   }
 
   const handleSkip = async () => {
@@ -55,9 +60,9 @@ export default function PhasesOverviewScreen() {
 
   return (
     <OnboardingScreen
-      currentScreen={1}
-      totalScreens={onboardingState?.totalScreens ?? 10}
-      primaryButtonText="Tell Me More"
+      currentScreen={COMBINED_FLOW_SCREENS.PHASES_OVERVIEW}
+      totalScreens={COMBINED_FLOW_SCREEN_COUNT}
+      primaryButtonText="Continue"
       onPrimaryPress={handleContinue}
       onSkip={handleSkip}
     >
