@@ -106,9 +106,9 @@ export default function MaxesScreen() {
         }
       }
 
-      // Navigate to first-workout onboarding screen
+      // Navigate directly to results screen
       router.push({
-        pathname: '/(onboarding)/first-workout',
+        pathname: '/(intake)/results',
         params: {
           sportId,
           yearsOfExperience,
@@ -126,9 +126,9 @@ export default function MaxesScreen() {
   }
 
   const handleSkip = () => {
-    // Skip maxes, go to first-workout
+    // Skip maxes, go directly to results
     router.push({
-      pathname: '/(onboarding)/first-workout',
+      pathname: '/(intake)/results',
       params: {
         sportId,
         yearsOfExperience,

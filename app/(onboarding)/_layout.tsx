@@ -4,16 +4,14 @@ import { OnboardingRoute } from '../../components/AuthGuard'
 /**
  * Onboarding Flow Layout
  *
- * Educational screens shown after intake completion:
- * 1. Welcome & Journey Introduction (3 screens)
- * 2. Phase Education - GPP/SPP/SSP (3 screens)
- * 3. Personalized Timeline & Commitment (2 screens)
- * 4. How It Works & First Workout (2 screens)
+ * Educational screens interleaved with intake flow:
+ * - Why It Works (periodization education)
+ * - Phases Overview (GPP/SPP/SSP)
+ * - Personal Timeline (12-week journey)
+ * - Commitment (hold-to-confirm)
  *
- * Features:
- * - Skippable at any point
- * - Revisitable from settings
- * - Progress saved for resume
+ * Note: Some legacy screens are kept for revisit mode but
+ * not used in the main combined flow.
  */
 export default function OnboardingLayout() {
   return (
@@ -22,24 +20,21 @@ export default function OnboardingLayout() {
         screenOptions={{
           headerShown: false,
           animation: 'slide_from_right',
-          gestureEnabled: false, // Disable swipe back during onboarding
+          gestureEnabled: true, // Enable swipe back for better navigation
         }}
       >
         <Stack.Screen name="index" />
-        {/* Section 1: Welcome & Journey Introduction */}
-        <Stack.Screen name="welcome" />
-        <Stack.Screen name="phases-overview" />
+        {/* Used in combined flow */}
         <Stack.Screen name="why-it-works" />
-        {/* Section 2: Phase Education - GPP/SPP/SSP */}
+        <Stack.Screen name="phases-overview" />
+        <Stack.Screen name="personal-timeline" />
+        <Stack.Screen name="commitment" />
+        {/* Legacy screens for revisit mode */}
+        <Stack.Screen name="welcome" />
         <Stack.Screen name="gpp-detail" />
         <Stack.Screen name="spp-detail" />
         <Stack.Screen name="ssp-detail" />
-        {/* Section 3: Personalized Timeline & Commitment */}
-        <Stack.Screen name="personal-timeline" />
-        <Stack.Screen name="commitment" />
-        {/* Section 4: How It Works & First Workout */}
         <Stack.Screen name="progression" />
-        <Stack.Screen name="first-workout" />
       </Stack>
     </OnboardingRoute>
   )

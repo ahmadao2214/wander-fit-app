@@ -88,7 +88,7 @@ export function IntakeProgressDots({
 /**
  * Total number of screens in the combined intake + onboarding flow
  *
- * Interleaved flow (12 screens):
+ * Interleaved flow (11 screens):
  * 1. Sport Selection         ← Intake
  * 2. Why This Works          ← Onboarding
  * 3. The Three Phases        ← Onboarding
@@ -99,10 +99,9 @@ export function IntakeProgressDots({
  * 8. Your Personal Timeline  ← Onboarding
  * 9. Commitment              ← Onboarding
  * 10. Maxes                  ← Intake
- * 11. First Workout Preview  ← Onboarding
- * 12. Results                ← Intake
+ * 11. Results                ← Intake (Program Ready!)
  */
-export const COMBINED_FLOW_SCREEN_COUNT = 12
+export const COMBINED_FLOW_SCREEN_COUNT = 11
 
 /** @deprecated Use COMBINED_FLOW_SCREEN_COUNT instead */
 export const INTAKE_SCREEN_COUNT = 7
@@ -121,8 +120,7 @@ export const COMBINED_FLOW_SCREENS = {
   PERSONAL_TIMELINE: 7,
   COMMITMENT: 8,
   MAXES: 9,
-  FIRST_WORKOUT: 10,
-  RESULTS: 11,
+  RESULTS: 10,
 } as const
 
 /**

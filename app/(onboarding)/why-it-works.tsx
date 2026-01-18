@@ -1,10 +1,11 @@
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
-import { YStack, XStack, Text, Spinner } from 'tamagui'
-import { OnboardingScreen } from '../../components/onboarding'
+import { YStack, XStack, Text, Spinner, Button, ScrollView } from 'tamagui'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useOnboardingAnalytics, ONBOARDING_SCREEN_NAMES } from '../../hooks/useOnboardingAnalytics'
-import { COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT } from '../../components/IntakeProgressDots'
+import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT } from '../../components/IntakeProgressDots'
+import { ChevronRight, ChevronLeft } from '@tamagui/lucide-icons'
 
 /**
  * Screen 2 (Combined Flow): Why This Works
@@ -14,13 +15,13 @@ import { COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT } from '../../compone
  */
 export default function WhyItWorksScreen() {
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   const { sportId } = useLocalSearchParams<{ sportId: string }>()
 
   // Get onboarding state
   const onboardingState = useQuery(api.onboarding.getOnboardingState)
 
   // Mutations
-  const advanceOnboarding = useMutation(api.onboarding.advanceOnboarding)
   const skipOnboarding = useMutation(api.onboarding.skipOnboarding)
 
   // Analytics tracking
@@ -35,92 +36,139 @@ export default function WhyItWorksScreen() {
   if (onboardingState === undefined) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center">
-        <Spinner size="large" color="$green10" />
+        <Spinner size="large" color="$primary" />
       </YStack>
     )
   }
 
-  const handleContinue = async () => {
+  const handleBack = () => {
+    router.back()
+  }
+
+  const handleContinue = () => {
     trackScreenComplete()
-    // Navigate to phases-overview (skip gpp-detail, spp-detail, ssp-detail)
     router.push({
       pathname: '/(onboarding)/phases-overview',
       params: { sportId },
     } as any)
   }
 
-  const handleSkip = async () => {
-    trackSkip()
-    await skipOnboarding()
-    router.replace('/(athlete)')
-  }
-
   return (
-    <OnboardingScreen
-      currentScreen={COMBINED_FLOW_SCREENS.WHY_IT_WORKS}
-      totalScreens={COMBINED_FLOW_SCREEN_COUNT}
-      primaryButtonText="Continue"
-      onPrimaryPress={handleContinue}
-      onSkip={handleSkip}
-    >
-      <YStack flex={1} justify="center" gap="$8">
-        {/* Header */}
-        <YStack items="center" gap="$2">
-          <Text fontSize="$7" fontWeight="bold" color="$gray12">
-            Science-Backed
-          </Text>
-          <Text fontSize="$7" fontWeight="bold" color="$green10">
-            Training
-          </Text>
-        </YStack>
+    <YStack flex={1} bg="$background">
+      {/* Main Content */}
+      <ScrollView flex={1}>
+        <YStack
+          px="$4"
+          pt={insets.top + 16}
+          pb="$4"
+          maxW={600}
+          width="100%"
+          self="center"
+        >
+          {/* Progress Dots */}
+          <YStack items="center" mb="$4">
+            <IntakeProgressDots total={COMBINED_FLOW_SCREEN_COUNT} current={COMBINED_FLOW_SCREENS.WHY_IT_WORKS} />
+          </YStack>
 
-        {/* Main content */}
-        <YStack gap="$6">
-          {/* Explanation */}
-          <YStack bg="$gray2" rounded="$4" p="$5" gap="$3">
-            <Text fontSize="$4" color="$gray12" fontWeight="600">
-              What is Periodization?
+          {/* Header */}
+          <YStack items="center" gap="$2" mb="$6">
+            <Text fontSize="$8" fontWeight="bold" color="$color12" text="center">
+              Science-Backed
             </Text>
-            <Text fontSize="$3" color="$gray11" lineHeight={22}>
-              Periodization is the systematic planning of athletic training.
-              It involves progressive cycling of various aspects of a training
-              program during a specific period.
-            </Text>
-            <Text fontSize="$3" color="$gray11" lineHeight={22}>
-              This approach is used by Olympic athletes, professional sports
-              teams, and anyone who wants to maximize their performance while
-              minimizing injury risk.
+            <Text fontSize="$8" fontWeight="bold" color="$primary" text="center">
+              Training
             </Text>
           </YStack>
 
-          {/* Stats/proof points */}
-          <XStack gap="$4" justify="center">
-            <StatCard
-              value="12"
-              label="Weeks"
-              sublabel="Full Program"
-            />
-            <StatCard
-              value="3"
-              label="Phases"
-              sublabel="Progressive"
-            />
-            <StatCard
-              value="100%"
-              label="Tailored"
-              sublabel="To Your Sport"
-            />
-          </XStack>
-        </YStack>
+          {/* Main content */}
+          <YStack gap="$6">
+            {/* Explanation */}
+            <YStack bg="$color3" rounded="$4" p="$5" gap="$3">
+              <Text fontSize="$5" color="$color12" fontWeight="600">
+                What is Periodization?
+              </Text>
+              <Text fontSize="$3" color="$color11" lineHeight={22}>
+                Periodization is the systematic planning of athletic training.
+                It involves progressive cycling of various aspects of a training
+                program during a specific period.
+              </Text>
+              <Text fontSize="$3" color="$color11" lineHeight={22}>
+                This approach is used by Olympic athletes, professional sports
+                teams, and anyone who wants to maximize their performance while
+                minimizing injury risk.
+              </Text>
+            </YStack>
 
-        {/* Endorsement */}
-        <YStack items="center" gap="$2">
-          <Text fontSize="$3" color="$gray10">
-            Used by elite athletes and coaches worldwide
-          </Text>
+            {/* Stats/proof points */}
+            <XStack gap="$4" justify="center">
+              <StatCard
+                value="12"
+                label="Weeks"
+                sublabel="Full Program"
+              />
+              <StatCard
+                value="3"
+                label="Phases"
+                sublabel="Progressive"
+              />
+              <StatCard
+                value="100%"
+                label="Tailored"
+                sublabel="To Your Sport"
+              />
+            </XStack>
+
+            {/* Endorsement */}
+            <YStack items="center" gap="$2" py="$4">
+              <Text fontSize="$3" color="$color10" text="center">
+                Used by elite athletes and coaches worldwide
+              </Text>
+            </YStack>
+          </YStack>
         </YStack>
+      </ScrollView>
+
+      {/* Bottom Actions */}
+      <YStack
+        px="$4"
+        py="$4"
+        pb={insets.bottom + 16}
+        borderTopWidth={1}
+        borderTopColor="$borderColor"
+        bg="$surface"
+      >
+        <XStack gap="$3">
+          <Button
+            flex={1}
+            size="$5"
+            bg="$color4"
+            color="$color11"
+            onPress={handleBack}
+            icon={ChevronLeft}
+            fontFamily="$body"
+            fontWeight="600"
+            rounded="$4"
+            pressStyle={{ opacity: 0.9, scale: 0.98 }}
+          >
+            Back
+          </Button>
+          <Button
+            flex={2}
+            size="$5"
+            bg="$primary"
+            color="white"
+            onPress={handleContinue}
+            iconAfter={ChevronRight}
+            fontFamily="$body"
+            fontWeight="700"
+            rounded="$4"
+            pressStyle={{ opacity: 0.9, scale: 0.98 }}
+          >
+            Continue
+          </Button>
+        </XStack>
       </YStack>
-    </OnboardingScreen>
+    </YStack>
   )
 }
 
@@ -142,13 +190,13 @@ function StatCard({ value, label, sublabel }: StatCardProps) {
       borderWidth={1}
       borderColor="$green6"
     >
-      <Text fontSize="$7" fontWeight="bold" color="$green10">
+      <Text fontSize="$7" fontWeight="bold" color="$primary">
         {value}
       </Text>
-      <Text fontSize="$3" fontWeight="600" color="$gray12">
+      <Text fontSize="$3" fontWeight="600" color="$color12">
         {label}
       </Text>
-      <Text fontSize="$2" color="$gray10">
+      <Text fontSize="$2" color="$color10">
         {sublabel}
       </Text>
     </YStack>

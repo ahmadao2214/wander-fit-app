@@ -1,10 +1,12 @@
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
-import { YStack, XStack, Text, Spinner, ScrollView } from 'tamagui'
-import { OnboardingScreen, PHASE_DATA } from '../../components/onboarding'
+import { YStack, XStack, Text, Spinner, ScrollView, Button } from 'tamagui'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { PHASE_DATA } from '../../components/onboarding'
 import { useOnboardingAnalytics, ONBOARDING_SCREEN_NAMES } from '../../hooks/useOnboardingAnalytics'
-import { COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT } from '../../components/IntakeProgressDots'
+import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT } from '../../components/IntakeProgressDots'
+import { ChevronRight, ChevronLeft } from '@tamagui/lucide-icons'
 import type { Phase } from '../../types'
 
 /**
@@ -15,13 +17,13 @@ import type { Phase } from '../../types'
  */
 export default function PhasesOverviewScreen() {
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   const { sportId } = useLocalSearchParams<{ sportId: string }>()
 
   // Get onboarding state
   const onboardingState = useQuery(api.onboarding.getOnboardingState)
 
   // Mutations
-  const advanceOnboarding = useMutation(api.onboarding.advanceOnboarding)
   const skipOnboarding = useMutation(api.onboarding.skipOnboarding)
 
   // Analytics tracking
@@ -36,12 +38,16 @@ export default function PhasesOverviewScreen() {
   if (onboardingState === undefined) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center">
-        <Spinner size="large" color="$green10" />
+        <Spinner size="large" color="$primary" />
       </YStack>
     )
   }
 
-  const handleContinue = async () => {
+  const handleBack = () => {
+    router.back()
+  }
+
+  const handleContinue = () => {
     trackScreenComplete()
     // Navigate back to intake flow (age-group)
     router.push({
@@ -50,30 +56,31 @@ export default function PhasesOverviewScreen() {
     } as any)
   }
 
-  const handleSkip = async () => {
-    trackSkip()
-    await skipOnboarding()
-    router.replace('/(athlete)')
-  }
-
   const phases: Phase[] = ['GPP', 'SPP', 'SSP']
 
   return (
-    <OnboardingScreen
-      currentScreen={COMBINED_FLOW_SCREENS.PHASES_OVERVIEW}
-      totalScreens={COMBINED_FLOW_SCREEN_COUNT}
-      primaryButtonText="Continue"
-      onPrimaryPress={handleContinue}
-      onSkip={handleSkip}
-    >
+    <YStack flex={1} bg="$background">
+      {/* Main Content */}
       <ScrollView flex={1} showsVerticalScrollIndicator={false}>
-        <YStack flex={1} gap="$6" py="$4">
+        <YStack
+          px="$4"
+          pt={insets.top + 16}
+          pb="$4"
+          maxW={600}
+          width="100%"
+          self="center"
+        >
+          {/* Progress Dots */}
+          <YStack items="center" mb="$4">
+            <IntakeProgressDots total={COMBINED_FLOW_SCREEN_COUNT} current={COMBINED_FLOW_SCREENS.PHASES_OVERVIEW} />
+          </YStack>
+
           {/* Header */}
-          <YStack items="center" gap="$2">
-            <Text fontSize="$7" fontWeight="bold" color="$gray12">
+          <YStack items="center" gap="$2" mb="$6">
+            <Text fontSize="$8" fontWeight="bold" color="$color12" text="center">
               Your Training Has
             </Text>
-            <Text fontSize="$7" fontWeight="bold" color="$green10">
+            <Text fontSize="$8" fontWeight="bold" color="$primary" text="center">
               Three Chapters
             </Text>
           </YStack>
@@ -87,14 +94,14 @@ export default function PhasesOverviewScreen() {
                   width={60}
                   height={60}
                   rounded="$10"
-                  bg={index === 0 ? '$green10' : '$gray4'}
+                  bg={index === 0 ? '$primary' : '$color4'}
                   items="center"
                   justify="center"
                 >
                   <Text
                     fontSize="$4"
                     fontWeight="bold"
-                    color={index === 0 ? 'white' : '$gray10'}
+                    color={index === 0 ? 'white' : '$color10'}
                   >
                     {phase}
                   </Text>
@@ -102,7 +109,7 @@ export default function PhasesOverviewScreen() {
 
                 {/* Connector arrow */}
                 {index < phases.length - 1 && (
-                  <Text color="$gray8" fontSize="$5" px="$2">
+                  <Text color="$color8" fontSize="$5" px="$2">
                     →
                   </Text>
                 )}
@@ -115,17 +122,17 @@ export default function PhasesOverviewScreen() {
             {phases.map((phase, index) => (
               <YStack
                 key={phase}
-                bg={index === 0 ? '$green2' : '$gray2'}
+                bg={index === 0 ? '$green2' : '$color3'}
                 rounded="$4"
                 p="$4"
                 gap="$2"
                 borderWidth={index === 0 ? 2 : 1}
-                borderColor={index === 0 ? '$green8' : '$gray5'}
+                borderColor={index === 0 ? '$green8' : '$color5'}
               >
                 <XStack justify="space-between" items="center">
                   <Text
                     fontSize="$2"
-                    color={index === 0 ? '$green11' : '$gray10'}
+                    color={index === 0 ? '$green11' : '$color10'}
                     fontWeight="600"
                     textTransform="uppercase"
                     letterSpacing={1}
@@ -141,11 +148,11 @@ export default function PhasesOverviewScreen() {
                   )}
                 </XStack>
 
-                <Text fontSize="$5" fontWeight="bold" color="$gray12">
+                <Text fontSize="$5" fontWeight="bold" color="$color12">
                   {PHASE_DATA[phase].tagline}
                 </Text>
 
-                <Text fontSize="$3" color="$gray11">
+                <Text fontSize="$3" color="$color11">
                   {getPhaseDescription(phase)}
                 </Text>
               </YStack>
@@ -153,7 +160,48 @@ export default function PhasesOverviewScreen() {
           </YStack>
         </YStack>
       </ScrollView>
-    </OnboardingScreen>
+
+      {/* Bottom Actions */}
+      <YStack
+        px="$4"
+        py="$4"
+        pb={insets.bottom + 16}
+        borderTopWidth={1}
+        borderTopColor="$borderColor"
+        bg="$surface"
+      >
+        <XStack gap="$3">
+          <Button
+            flex={1}
+            size="$5"
+            bg="$color4"
+            color="$color11"
+            onPress={handleBack}
+            icon={ChevronLeft}
+            fontFamily="$body"
+            fontWeight="600"
+            rounded="$4"
+            pressStyle={{ opacity: 0.9, scale: 0.98 }}
+          >
+            Back
+          </Button>
+          <Button
+            flex={2}
+            size="$5"
+            bg="$primary"
+            color="white"
+            onPress={handleContinue}
+            iconAfter={ChevronRight}
+            fontFamily="$body"
+            fontWeight="700"
+            rounded="$4"
+            pressStyle={{ opacity: 0.9, scale: 0.98 }}
+          >
+            Continue
+          </Button>
+        </XStack>
+      </YStack>
+    </YStack>
   )
 }
 

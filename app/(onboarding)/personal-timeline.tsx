@@ -1,11 +1,12 @@
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
-import { YStack, XStack, Text, Spinner, ScrollView } from 'tamagui'
-import { OnboardingScreen, TimelineView, createPhaseTimeline } from '../../components/onboarding'
+import { YStack, XStack, Text, Spinner, ScrollView, Button } from 'tamagui'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { TimelineView, createPhaseTimeline } from '../../components/onboarding'
 import { useOnboardingAnalytics, ONBOARDING_SCREEN_NAMES } from '../../hooks/useOnboardingAnalytics'
-import { COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT } from '../../components/IntakeProgressDots'
-import { Calendar, Flag } from '@tamagui/lucide-icons'
+import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT } from '../../components/IntakeProgressDots'
+import { Calendar, Flag, ChevronRight, ChevronLeft } from '@tamagui/lucide-icons'
 
 /**
  * Screen 8 (Combined Flow): Your Personal Timeline
@@ -15,6 +16,7 @@ import { Calendar, Flag } from '@tamagui/lucide-icons'
  */
 export default function PersonalTimelineScreen() {
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   const { sportId, ageGroup, yearsOfExperience, trainingDays, weeksUntilSeason: weeksParam } = useLocalSearchParams<{
     sportId: string
     ageGroup: string
@@ -28,7 +30,6 @@ export default function PersonalTimelineScreen() {
   const onboardingData = useQuery(api.onboarding.getOnboardingData)
 
   // Mutations
-  const advanceOnboarding = useMutation(api.onboarding.advanceOnboarding)
   const skipOnboarding = useMutation(api.onboarding.skipOnboarding)
 
   // Analytics tracking
@@ -43,12 +44,16 @@ export default function PersonalTimelineScreen() {
   if (onboardingState === undefined || onboardingData === undefined) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center">
-        <Spinner size="large" color="$green10" />
+        <Spinner size="large" color="$primary" />
       </YStack>
     )
   }
 
-  const handleContinue = async () => {
+  const handleBack = () => {
+    router.back()
+  }
+
+  const handleContinue = () => {
     trackScreenComplete()
     // Navigate to commitment screen with all params
     router.push({
@@ -61,12 +66,6 @@ export default function PersonalTimelineScreen() {
         weeksUntilSeason: weeksParam,
       },
     } as any)
-  }
-
-  const handleSkip = async () => {
-    trackSkip()
-    await skipOnboarding()
-    router.replace('/(athlete)')
   }
 
   // Create timeline starting from today
@@ -87,27 +86,34 @@ export default function PersonalTimelineScreen() {
   const preferredDays = trainingDays ? parseInt(trainingDays, 10) : onboardingData?.preferredDays
 
   return (
-    <OnboardingScreen
-      currentScreen={COMBINED_FLOW_SCREENS.PERSONAL_TIMELINE}
-      totalScreens={COMBINED_FLOW_SCREEN_COUNT}
-      primaryButtonText="I'm Ready"
-      onPrimaryPress={handleContinue}
-      onSkip={handleSkip}
-    >
+    <YStack flex={1} bg="$background">
+      {/* Main Content */}
       <ScrollView flex={1} showsVerticalScrollIndicator={false}>
-        <YStack flex={1} gap="$6" py="$4">
+        <YStack
+          px="$4"
+          pt={insets.top + 16}
+          pb="$4"
+          maxW={600}
+          width="100%"
+          self="center"
+        >
+          {/* Progress Dots */}
+          <YStack items="center" mb="$4">
+            <IntakeProgressDots total={COMBINED_FLOW_SCREEN_COUNT} current={COMBINED_FLOW_SCREENS.PERSONAL_TIMELINE} />
+          </YStack>
+
           {/* Header */}
-          <YStack gap="$2" items="center">
-            <Text fontSize="$7" fontWeight="bold" color="$gray12">
+          <YStack gap="$2" items="center" mb="$6">
+            <Text fontSize="$8" fontWeight="bold" color="$color12" text="center">
               Your Personal
             </Text>
-            <Text fontSize="$7" fontWeight="bold" color="$green10">
+            <Text fontSize="$8" fontWeight="bold" color="$primary" text="center">
               Timeline
             </Text>
           </YStack>
 
           {/* Summary cards */}
-          <XStack gap="$3">
+          <XStack gap="$3" mb="$4">
             <YStack
               flex={1}
               bg="$green2"
@@ -123,7 +129,7 @@ export default function PersonalTimelineScreen() {
                   STARTS
                 </Text>
               </XStack>
-              <Text fontSize="$4" fontWeight="bold" color="$gray12">
+              <Text fontSize="$4" fontWeight="bold" color="$color12">
                 {formatDate(startDate)}
               </Text>
             </YStack>
@@ -143,7 +149,7 @@ export default function PersonalTimelineScreen() {
                   ENDS
                 </Text>
               </XStack>
-              <Text fontSize="$4" fontWeight="bold" color="$gray12">
+              <Text fontSize="$4" fontWeight="bold" color="$color12">
                 {formatDate(programEndDate)}
               </Text>
             </YStack>
@@ -151,22 +157,22 @@ export default function PersonalTimelineScreen() {
 
           {/* Training frequency note */}
           {preferredDays && (
-            <YStack bg="$gray2" rounded="$4" p="$4" items="center" gap="$2">
-              <Text fontSize="$6" fontWeight="bold" color="$green10">
+            <YStack bg="$color3" rounded="$4" p="$4" items="center" gap="$2" mb="$4">
+              <Text fontSize="$6" fontWeight="bold" color="$primary">
                 {preferredDays}
               </Text>
-              <Text fontSize="$3" color="$gray11">
+              <Text fontSize="$3" color="$color11">
                 training days per week
               </Text>
-              <Text fontSize="$2" color="$gray10">
+              <Text fontSize="$2" color="$color10">
                 Based on your preferences
               </Text>
             </YStack>
           )}
 
           {/* Timeline visualization */}
-          <YStack gap="$3">
-            <Text fontSize="$4" fontWeight="600" color="$gray12">
+          <YStack gap="$3" mb="$4">
+            <Text fontSize="$4" fontWeight="600" color="$color12">
               Your 12-Week Journey
             </Text>
             <TimelineView
@@ -193,7 +199,48 @@ export default function PersonalTimelineScreen() {
           )}
         </YStack>
       </ScrollView>
-    </OnboardingScreen>
+
+      {/* Bottom Actions */}
+      <YStack
+        px="$4"
+        py="$4"
+        pb={insets.bottom + 16}
+        borderTopWidth={1}
+        borderTopColor="$borderColor"
+        bg="$surface"
+      >
+        <XStack gap="$3">
+          <Button
+            flex={1}
+            size="$5"
+            bg="$color4"
+            color="$color11"
+            onPress={handleBack}
+            icon={ChevronLeft}
+            fontFamily="$body"
+            fontWeight="600"
+            rounded="$4"
+            pressStyle={{ opacity: 0.9, scale: 0.98 }}
+          >
+            Back
+          </Button>
+          <Button
+            flex={2}
+            size="$5"
+            bg="$primary"
+            color="white"
+            onPress={handleContinue}
+            iconAfter={ChevronRight}
+            fontFamily="$body"
+            fontWeight="700"
+            rounded="$4"
+            pressStyle={{ opacity: 0.9, scale: 0.98 }}
+          >
+            I'm Ready
+          </Button>
+        </XStack>
+      </YStack>
+    </YStack>
   )
 }
 

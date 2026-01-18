@@ -1,13 +1,14 @@
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
-import { YStack, XStack, Text, Spinner, ScrollView } from 'tamagui'
-import { OnboardingScreen, CommitmentButton } from '../../components/onboarding'
+import { YStack, XStack, Text, Spinner, ScrollView, Button } from 'tamagui'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { CommitmentButton } from '../../components/onboarding'
 import { useOnboardingAnalytics, ONBOARDING_SCREEN_NAMES } from '../../hooks/useOnboardingAnalytics'
-import { COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT } from '../../components/IntakeProgressDots'
+import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT } from '../../components/IntakeProgressDots'
 import { analytics } from '../../lib/analytics'
 import { useState } from 'react'
-import { CheckCircle } from '@tamagui/lucide-icons'
+import { CheckCircle, ChevronRight, ChevronLeft } from '@tamagui/lucide-icons'
 
 /**
  * Screen 9 (Combined Flow): Commitment
@@ -17,6 +18,7 @@ import { CheckCircle } from '@tamagui/lucide-icons'
  */
 export default function CommitmentScreen() {
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   const { sportId, ageGroup, yearsOfExperience, trainingDays: trainingDaysParam, weeksUntilSeason } = useLocalSearchParams<{
     sportId: string
     ageGroup: string
@@ -31,7 +33,6 @@ export default function CommitmentScreen() {
   const onboardingData = useQuery(api.onboarding.getOnboardingData)
 
   // Mutations
-  const advanceOnboarding = useMutation(api.onboarding.advanceOnboarding)
   const skipOnboarding = useMutation(api.onboarding.skipOnboarding)
 
   // Analytics tracking
@@ -46,7 +47,7 @@ export default function CommitmentScreen() {
   if (onboardingState === undefined || onboardingData === undefined) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center">
-        <Spinner size="large" color="$green10" />
+        <Spinner size="large" color="$primary" />
       </YStack>
     )
   }
@@ -56,9 +57,13 @@ export default function CommitmentScreen() {
     setHasCommitted(true)
   }
 
-  const handleContinue = async () => {
+  const handleBack = () => {
+    router.back()
+  }
+
+  const handleContinue = () => {
     trackScreenComplete()
-    // Navigate to maxes intake screen (skip progression screen)
+    // Navigate to maxes intake screen
     router.push({
       pathname: '/(intake)/maxes',
       params: {
@@ -69,12 +74,6 @@ export default function CommitmentScreen() {
         weeksUntilSeason,
       },
     } as any)
-  }
-
-  const handleSkip = async () => {
-    trackSkip()
-    await skipOnboarding()
-    router.replace('/(athlete)')
   }
 
   const firstName = onboardingData?.userName?.split(' ')[0] ?? 'Athlete'
@@ -101,29 +100,35 @@ export default function CommitmentScreen() {
   ]
 
   return (
-    <OnboardingScreen
-      currentScreen={COMBINED_FLOW_SCREENS.COMMITMENT}
-      totalScreens={COMBINED_FLOW_SCREEN_COUNT}
-      primaryButtonText={hasCommitted ? "Let's Do This" : 'Make Your Commitment'}
-      onPrimaryPress={hasCommitted ? handleContinue : undefined}
-      onSkip={handleSkip}
-      primaryButtonDisabled={!hasCommitted}
-    >
+    <YStack flex={1} bg="$background">
+      {/* Main Content */}
       <ScrollView flex={1} showsVerticalScrollIndicator={false}>
-        <YStack flex={1} gap="$6" py="$4" items="center">
+        <YStack
+          px="$4"
+          pt={insets.top + 16}
+          pb="$4"
+          maxW={600}
+          width="100%"
+          self="center"
+        >
+          {/* Progress Dots */}
+          <YStack items="center" mb="$4">
+            <IntakeProgressDots total={COMBINED_FLOW_SCREEN_COUNT} current={COMBINED_FLOW_SCREENS.COMMITMENT} />
+          </YStack>
+
           {/* Header */}
-          <YStack gap="$2" items="center">
-            <Text fontSize="$7" fontWeight="bold" color="$gray12">
+          <YStack gap="$2" items="center" mb="$6">
+            <Text fontSize="$8" fontWeight="bold" color="$color12" text="center">
               Make Your
             </Text>
-            <Text fontSize="$7" fontWeight="bold" color="$green10">
+            <Text fontSize="$8" fontWeight="bold" color="$primary" text="center">
               Commitment
             </Text>
           </YStack>
 
           {/* Personal message */}
-          <YStack bg="$gray2" rounded="$4" p="$4" width="100%">
-            <Text fontSize="$3" color="$gray11" lineHeight={22}>
+          <YStack bg="$color3" rounded="$4" p="$4" mb="$4">
+            <Text fontSize="$3" color="$color11" lineHeight={22}>
               {firstName}, you're about to start a journey that will transform your
               {' '}{sportName} performance. To get the results you want, we need your
               commitment.
@@ -131,30 +136,30 @@ export default function CommitmentScreen() {
           </YStack>
 
           {/* Commitments list */}
-          <YStack gap="$3" width="100%">
+          <YStack gap="$3" mb="$6">
             {commitments.map((commitment, index) => (
               <XStack
                 key={index}
-                bg={hasCommitted ? '$green1' : '$gray1'}
+                bg={hasCommitted ? '$green1' : '$color2'}
                 rounded="$3"
                 p="$3"
                 gap="$3"
                 items="flex-start"
                 borderWidth={1}
-                borderColor={hasCommitted ? '$green4' : '$gray4'}
+                borderColor={hasCommitted ? '$green4' : '$color4'}
               >
                 <YStack
                   width={24}
                   height={24}
                   rounded="$10"
-                  bg={hasCommitted ? '$green10' : '$gray4'}
+                  bg={hasCommitted ? '$primary' : '$color4'}
                   items="center"
                   justify="center"
                 >
                   {hasCommitted ? (
                     <CheckCircle size={14} color="white" />
                   ) : (
-                    <Text fontSize="$2" color="$gray10" fontWeight="bold">
+                    <Text fontSize="$2" color="$color10" fontWeight="bold">
                       {index + 1}
                     </Text>
                   )}
@@ -163,11 +168,11 @@ export default function CommitmentScreen() {
                   <Text
                     fontSize="$3"
                     fontWeight="600"
-                    color={hasCommitted ? '$green11' : '$gray12'}
+                    color={hasCommitted ? '$green11' : '$color12'}
                   >
                     {commitment.text}
                   </Text>
-                  <Text fontSize="$2" color="$gray10">
+                  <Text fontSize="$2" color="$color10">
                     {commitment.subtext}
                   </Text>
                 </YStack>
@@ -191,7 +196,6 @@ export default function CommitmentScreen() {
               bg="$green2"
               rounded="$4"
               p="$4"
-              width="100%"
               items="center"
               gap="$2"
               borderWidth={2}
@@ -208,6 +212,48 @@ export default function CommitmentScreen() {
           )}
         </YStack>
       </ScrollView>
-    </OnboardingScreen>
+
+      {/* Bottom Actions */}
+      <YStack
+        px="$4"
+        py="$4"
+        pb={insets.bottom + 16}
+        borderTopWidth={1}
+        borderTopColor="$borderColor"
+        bg="$surface"
+      >
+        <XStack gap="$3">
+          <Button
+            flex={1}
+            size="$5"
+            bg="$color4"
+            color="$color11"
+            onPress={handleBack}
+            icon={ChevronLeft}
+            fontFamily="$body"
+            fontWeight="600"
+            rounded="$4"
+            pressStyle={{ opacity: 0.9, scale: 0.98 }}
+          >
+            Back
+          </Button>
+          <Button
+            flex={2}
+            size="$5"
+            bg={hasCommitted ? '$primary' : '$color6'}
+            color="white"
+            disabled={!hasCommitted}
+            onPress={handleContinue}
+            iconAfter={ChevronRight}
+            fontFamily="$body"
+            fontWeight="700"
+            rounded="$4"
+            pressStyle={hasCommitted ? { opacity: 0.9, scale: 0.98 } : {}}
+          >
+            {hasCommitted ? "Let's Do This" : 'Make Commitment'}
+          </Button>
+        </XStack>
+      </YStack>
+    </YStack>
   )
 }
