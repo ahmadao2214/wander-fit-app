@@ -190,11 +190,13 @@ export function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * OnboardingRoute - For authenticated users who completed intake but not onboarding
- * Used by the onboarding flow (educational screens after intake)
+ * OnboardingRoute - For authenticated users accessing onboarding screens
+ * Used by the onboarding flow (educational screens interleaved with intake)
  *
- * Also allows revisit mode: users who have completed onboarding but have
- * their progress reset to 0 can revisit the flow.
+ * Supports three modes:
+ * 1. Interleaved mode: User is in the middle of intake, navigating to onboarding screens
+ * 2. Post-intake mode: User completed intake but not onboarding
+ * 3. Revisit mode: User completed onboarding but progress is reset to 0
  */
 export function OnboardingRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading, user, needsSetup, needsOnboarding } = useAuth()
@@ -218,21 +220,21 @@ export function OnboardingRoute({ children }: { children: React.ReactNode }) {
     return <Redirect href="/(auth)/sign-up" />
   }
 
-  // Hasn't completed intake → go to intake
-  if (!user?.intakeCompletedAt) {
-    return <Redirect href="/(intake)/sport" />
-  }
+  // REMOVED: Intake completion check
+  // The interleaved flow navigates to onboarding screens DURING intake,
+  // so we can't require intake to be complete here.
+  // Navigation back to intake is handled by the screens themselves.
 
   // Allow revisit mode: completed onboarding but progress is reset to 0
   const isRevisitMode = user?.onboardingCompletedAt != null &&
     (user?.onboardingProgress === 0 || user?.onboardingProgress === undefined)
 
-  // Already completed onboarding and not in revisit mode → go to dashboard
-  if (!needsOnboarding && !isRevisitMode) {
+  // Already completed both intake and onboarding and not in revisit mode → go to dashboard
+  if (user?.intakeCompletedAt && !needsOnboarding && !isRevisitMode) {
     return <Redirect href="/(athlete)" />
   }
 
-  // Show onboarding flow (either first time or revisit)
+  // Show onboarding flow (interleaved, post-intake, or revisit)
   return <>{children}</>
 }
 
