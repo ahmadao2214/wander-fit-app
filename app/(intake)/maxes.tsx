@@ -5,13 +5,13 @@ import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api'
-import { Id } from '../../convex/_generated/dataModel'
 import {
   ChevronRight,
   ChevronLeft,
   Dumbbell,
   Info,
 } from '@tamagui/lucide-icons'
+import { IntakeProgressDots, INTAKE_SCREENS } from '../../components/IntakeProgressDots'
 
 const MAX_1RM = 2000
 
@@ -163,12 +163,17 @@ export default function MaxesScreen() {
         <YStack
           gap="$6"
           px="$4"
-          pt="$10"
+          pt={insets.top + 16}
           pb="$8"
           maxW={600}
           width="100%"
           self="center"
         >
+          {/* Progress Dots */}
+          <YStack items="center" mb="$2">
+            <IntakeProgressDots total={7} current={INTAKE_SCREENS.MAXES} />
+          </YStack>
+
           {/* Header */}
           <YStack gap="$2" items="center">
             <Dumbbell size={48} color="$primary" />

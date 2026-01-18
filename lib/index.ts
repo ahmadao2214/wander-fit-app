@@ -86,3 +86,29 @@ export type {
   ScaledBodyweightPrescription,
 } from "./intensityScaling";
 
+// Onboarding education flow
+export {
+  ONBOARDING_SCREENS,
+  TOTAL_ONBOARDING_SCREENS,
+  ONBOARDING_SECTIONS,
+  SCREEN_METADATA,
+  getScreenIdFromIndex,
+  getIndexFromScreenId,
+  getScreenSection,
+  getSectionFromScreenId,
+  calculateProgress,
+  calculateViewedProgress,
+  isFirstInSection,
+  isLastInSection,
+  getNextScreenIndex,
+  getPreviousScreenIndex,
+  isFirstScreen,
+  isLastScreen,
+  getScreenMetadata,
+  getScreensInSection,
+  getSectionProgress,
+  isSectionComplete,
+  getSectionOrder,
+  computeOnboardingState,
+} from "./onboarding";
+
