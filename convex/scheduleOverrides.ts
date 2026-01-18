@@ -240,13 +240,14 @@ export const getTodayWorkout = query({
       };
     };
 
-    // If there's an explicit focus override, check if it's completed
+    // PRIORITY 2: If there's an explicit focus override, return it
+    // This is a workout the user explicitly selected as "today's workout"
+    // We return it even if completed, so the UI can show it with a "Completed" badge
     if (overrideRecord?.todayFocusTemplateId) {
       const focusTemplate = await ctx.db.get(overrideRecord.todayFocusTemplateId);
-      if (focusTemplate && !completedTemplateIds.has(focusTemplate._id)) {
+      if (focusTemplate) {
         return getTemplateWithExercises(focusTemplate, { isFocusOverride: true });
       }
-      // Focus override is completed, fall through to find first incomplete
     }
 
     // Get all workouts for current week (considering slot overrides)

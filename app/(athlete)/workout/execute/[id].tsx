@@ -173,14 +173,28 @@ export default function WorkoutExecutionScreen() {
   const [showExitDialog, setShowExitDialog] = useState(false)
   const [showCompletionDialog, setShowCompletionDialog] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)
-  
+
+  // Auto-advance state (1.5s delay when all sets complete)
+  const [autoAdvanceCountdown, setAutoAdvanceCountdown] = useState<number | null>(null)
+  const autoAdvanceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
   // Auto-save ref
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Track if session has been completed/abandoned to prevent save attempts
+  const sessionEndedRef = useRef(false)
 
   // Queries
   const session = useQuery(
     api.gppWorkoutSessions.getById,
     sessionId ? { sessionId: sessionId as Id<"gpp_workout_sessions"> } : "skip"
+  )
+
+  // Get last completed session for comparison hints
+  const lastCompletedSession = useQuery(
+    api.gppWorkoutSessions.getLastCompletedSessionForTemplate,
+    session?.templateId ? { templateId: session.templateId } : "skip"
   )
 
   // Mutations
@@ -232,6 +246,19 @@ export default function WorkoutExecutionScreen() {
     if (Platform.OS !== 'web') {
       Vibration.vibrate(15)
     }
+  }, [])
+
+  // Cancel any pending auto-advance
+  const cancelAutoAdvance = useCallback(() => {
+    if (autoAdvanceRef.current) {
+      clearTimeout(autoAdvanceRef.current)
+      autoAdvanceRef.current = null
+    }
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current)
+      countdownIntervalRef.current = null
+    }
+    setAutoAdvanceCountdown(null)
   }, [])
 
   // Animation for swipe feedback
@@ -322,10 +349,16 @@ export default function WorkoutExecutionScreen() {
 
   // Auto-save with debounce
   const debouncedSave = useCallback(() => {
+    // Don't schedule save if session has already ended
+    if (sessionEndedRef.current) return
+
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current)
     }
     saveTimeoutRef.current = setTimeout(async () => {
+      // Double-check session hasn't ended while timeout was waiting
+      if (sessionEndedRef.current) return
+
       if (sessionId && exerciseCompletions.length > 0) {
         try {
           await updateProgress({
@@ -334,13 +367,21 @@ export default function WorkoutExecutionScreen() {
             exerciseOrder: exerciseOrder.length > 0 ? exerciseOrder : undefined,
           })
         } catch (error) {
-          console.error('Failed to save progress:', error)
+          // Silently ignore "already completed/abandoned" errors - this is expected
+          // when the user completes the workout while a save was pending
+          const errorMessage = String(error)
+          if (!errorMessage.includes('completed or abandoned')) {
+            console.error('Failed to save progress:', error)
+          }
         }
       }
     }, 2000)
   }, [sessionId, exerciseCompletions, exerciseOrder, updateProgress])
 
   useEffect(() => {
+    // Don't trigger saves if session has ended
+    if (sessionEndedRef.current) return
+
     if (isInitialized && exerciseCompletions.length > 0) {
       debouncedSave()
     }
@@ -353,14 +394,60 @@ export default function WorkoutExecutionScreen() {
       const exercise = { ...updated[currentExerciseIndex] }
       exercise.sets = [...exercise.sets]
       exercise.sets[setIndex] = data
-      
+
       const allSetsCompleted = exercise.sets.every(s => s.completed || s.skipped)
       exercise.completed = allSetsCompleted
-      
+
+      // Trigger auto-advance if all sets complete and not last exercise
+      if (allSetsCompleted && currentExerciseIndex < updated.length - 1) {
+        // Start countdown (1.5 seconds = 1500ms)
+        setAutoAdvanceCountdown(1.5)
+
+        // Update countdown every 100ms for smooth animation
+        countdownIntervalRef.current = setInterval(() => {
+          setAutoAdvanceCountdown(prev => {
+            if (prev === null || prev <= 0.1) {
+              return null
+            }
+            return Math.round((prev - 0.1) * 10) / 10
+          })
+        }, 100)
+
+        // Auto-advance after 1.5 seconds
+        autoAdvanceRef.current = setTimeout(() => {
+          cancelAutoAdvance()
+          triggerHaptic()
+          animateSlide('left')
+          setCurrentExerciseIndex(prevIdx => Math.min(updated.length - 1, prevIdx + 1))
+        }, 1500)
+      }
+
       updated[currentExerciseIndex] = exercise
       return updated
     })
   }
+
+  // Clean up auto-advance on exercise change or unmount
+  useEffect(() => {
+    return () => {
+      cancelAutoAdvance()
+    }
+  }, [cancelAutoAdvance])
+
+  // Clean up save timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+        saveTimeoutRef.current = null
+      }
+    }
+  }, [])
+
+  // Cancel auto-advance when manually navigating
+  useEffect(() => {
+    cancelAutoAdvance()
+  }, [currentExerciseIndex, cancelAutoAdvance])
 
   // Navigate to next exercise
   const goToNextExercise = async () => {
@@ -387,6 +474,14 @@ export default function WorkoutExecutionScreen() {
 
   // Complete the workout
   const handleCompleteWorkout = async () => {
+    // Mark session as ended to prevent further auto-saves
+    sessionEndedRef.current = true
+    // Clear any pending save timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+      saveTimeoutRef.current = null
+    }
+
     try {
       await completeSession({
         sessionId: sessionId as Id<"gpp_workout_sessions">,
@@ -403,6 +498,14 @@ export default function WorkoutExecutionScreen() {
 
   // Abandon the workout
   const handleAbandonWorkout = async () => {
+    // Mark session as ended to prevent further auto-saves
+    sessionEndedRef.current = true
+    // Clear any pending save timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+      saveTimeoutRef.current = null
+    }
+
     try {
       await abandonSession({
         sessionId: sessionId as Id<"gpp_workout_sessions">,
@@ -449,8 +552,34 @@ export default function WorkoutExecutionScreen() {
     }
   }
 
+  // Derived values (must be before early returns to maintain hook order)
+  const template = session?.template
+  const templateExercises = template?.exercises || []
+
+  const orderedExercises = exerciseOrder.length > 0
+    ? exerciseOrder.map(idx => templateExercises[idx])
+    : templateExercises
+
+  const currentExercise = orderedExercises[currentExerciseIndex]
+  const currentCompletion = exerciseCompletions[currentExerciseIndex]
+
+  // Get previous performance for current exercise (if available)
+  const previousSetsForCurrentExercise = useMemo(() => {
+    if (!lastCompletedSession?.exercises || !currentExercise) return undefined
+    const previousExercise = lastCompletedSession.exercises.find(
+      (ex) => String(ex.exerciseId) === currentExercise.exerciseId
+    )
+    if (!previousExercise?.sets) return undefined
+    return previousExercise.sets.map((set) => ({
+      repsCompleted: set.repsCompleted,
+      weight: set.weight,
+      completed: set.completed,
+      skipped: set.skipped,
+    }))
+  }, [lastCompletedSession, currentExercise])
+
   // Loading state
-  if (!session || !session.template) {
+  if (!session || !template) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
         <Spinner size="large" color="$primary" />
@@ -458,16 +587,6 @@ export default function WorkoutExecutionScreen() {
       </YStack>
     )
   }
-
-  const template = session.template
-  const templateExercises = template.exercises || []
-  
-  const orderedExercises = exerciseOrder.length > 0 
-    ? exerciseOrder.map(idx => templateExercises[idx])
-    : templateExercises
-  
-  const currentExercise = orderedExercises[currentExerciseIndex]
-  const currentCompletion = exerciseCompletions[currentExerciseIndex]
 
   if (!currentExercise) {
     return (
@@ -614,7 +733,52 @@ export default function WorkoutExecutionScreen() {
                   onSetUpdate={handleSetUpdate}
                   intensityColor={intensityColors.primary}
                   intensityLightColor={intensityColors.light}
+                  previousSets={previousSetsForCurrentExercise}
                 />
+              )}
+
+              {/* Auto-advance indicator */}
+              {autoAdvanceCountdown !== null && (
+                <XStack
+                  items="center"
+                  justify="center"
+                  gap="$2"
+                  bg={intensityColors.light}
+                  px="$4"
+                  py="$3"
+                  rounded="$3"
+                  borderWidth={1}
+                  borderColor={intensityColors.primary}
+                >
+                  <YStack
+                    width={20}
+                    height={20}
+                    rounded="$10"
+                    bg={intensityColors.primary}
+                    items="center"
+                    justify="center"
+                  >
+                    <ChevronRight size={14} color="white" />
+                  </YStack>
+                  <Text
+                    fontFamily="$body"
+                    fontWeight="600"
+                    color={intensityColors.text}
+                    fontSize={14}
+                  >
+                    Next exercise in {autoAdvanceCountdown.toFixed(1)}s
+                  </Text>
+                  <Button
+                    size="$2"
+                    bg="transparent"
+                    color={intensityColors.text}
+                    onPress={cancelAutoAdvance}
+                    fontFamily="$body"
+                    px="$2"
+                  >
+                    Cancel
+                  </Button>
+                </XStack>
               )}
 
               {/* Instructions Accordion */}
@@ -833,7 +997,58 @@ export default function WorkoutExecutionScreen() {
                     Exercises
                   </Text>
                 </YStack>
+                <YStack items="center">
+                  <Text fontFamily="$body" fontWeight="700" fontSize={24} color="$color11">
+                    {exerciseCompletions.reduce((total, ex) =>
+                      total + ex.sets.filter(s => s.completed && !s.skipped).length, 0
+                    )}
+                  </Text>
+                  <Text fontSize={12} color="$color10" fontFamily="$body">
+                    Sets
+                  </Text>
+                </YStack>
               </XStack>
+
+              {/* Comparison with previous session */}
+              {lastCompletedSession && (
+                <YStack
+                  width="100%"
+                  bg="$color2"
+                  p="$3"
+                  rounded="$3"
+                  borderWidth={1}
+                  borderColor="$borderColor"
+                >
+                  <Text fontSize={12} color="$color10" fontFamily="$body" mb="$2">
+                    vs. Previous ({new Date(lastCompletedSession.completedAt || 0).toLocaleDateString()})
+                  </Text>
+                  <XStack gap="$4" justify="space-around">
+                    <YStack items="center">
+                      <Text fontFamily="$body" fontWeight="600" fontSize={14} color={
+                        elapsedTime < (lastCompletedSession.totalDurationSeconds || 0)
+                          ? '$success'
+                          : elapsedTime > (lastCompletedSession.totalDurationSeconds || 0)
+                            ? '$red10'
+                            : '$color11'
+                      }>
+                        {elapsedTime < (lastCompletedSession.totalDurationSeconds || 0) ? '-' : '+'}
+                        {Math.abs(Math.round((elapsedTime - (lastCompletedSession.totalDurationSeconds || 0)) / 60))} min
+                      </Text>
+                      <Text fontSize={11} color="$color9" fontFamily="$body">
+                        Time
+                      </Text>
+                    </YStack>
+                    <YStack items="center">
+                      <Text fontFamily="$body" fontWeight="600" fontSize={14} color="$color11">
+                        {lastCompletedSession.exercises?.filter(e => e.completed && !e.skipped).length || 0}
+                      </Text>
+                      <Text fontSize={11} color="$color9" fontFamily="$body">
+                        Prev Exercises
+                      </Text>
+                    </YStack>
+                  </XStack>
+                </YStack>
+              )}
               
               <Button 
                 width="100%"

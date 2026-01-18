@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Platform, ScrollView, KeyboardAvoidingView } from 'react-native'
+import { Platform, ScrollView, KeyboardAvoidingView, Keyboard } from 'react-native'
 import { Text, Input, YStack, XStack, Button, RadioGroup, Label, Card, Spinner, styled } from 'tamagui'
 import { useSignUp, useSSO, useUser, useClerk } from '@clerk/clerk-expo'
 import { Link, useRouter } from 'expo-router'
@@ -71,6 +71,8 @@ export default function SignUpScreen() {
   const [code, setCode] = React.useState('')
   const [isCreatingUser, setIsCreatingUser] = React.useState(false)
   const [error, setError] = React.useState('')
+  const [emailError, setEmailError] = React.useState('')
+  const [passwordError, setPasswordError] = React.useState('')
   const [showPassword, setShowPassword] = React.useState(false)
 
   // Pre-fill name from Clerk user if they're completing setup
@@ -204,7 +206,13 @@ export default function SignUpScreen() {
   const onSignUpPress = async () => {
     if (!isLoaded) return
 
+    // Dismiss keyboard immediately on submit
+    Keyboard.dismiss()
+
+    // Clear all errors
     setError('')
+    setEmailError('')
+    setPasswordError('')
 
     if (!emailAddress || !password || !name) {
       setError('Please fill in all fields')
@@ -222,19 +230,32 @@ export default function SignUpScreen() {
     } catch (err: any) {
       console.error(JSON.stringify(err, null, 2))
       
-      const clerkError = err?.errors?.[0]
-      if (clerkError) {
-        if (clerkError.code === 'form_identifier_exists') {
-          setError('An account with this email already exists. Please sign in instead.')
-        } else if (clerkError.code === 'form_password_pwned') {
-          setError('This password has been found in a data breach. Please use a different password.')
-        } else if (clerkError.code === 'form_password_length_too_short') {
-          setError('Password must be at least 8 characters long.')
-        } else if (clerkError.code === 'form_param_format_invalid') {
-          setError('Please enter a valid email address.')
-        } else {
-          setError(clerkError.longMessage || clerkError.message || 'Sign up failed. Please try again.')
+      // Process all Clerk errors and set field-level + general errors
+      const clerkErrors = err?.errors
+      if (clerkErrors && clerkErrors.length > 0) {
+        const generalErrors: string[] = []
+        
+        for (const clerkError of clerkErrors) {
+          if (clerkError.code === 'form_identifier_exists') {
+            setEmailError('This email is already registered.')
+            generalErrors.push('An account with this email already exists. Please sign in instead.')
+          } else if (clerkError.code === 'form_password_pwned') {
+            setPasswordError('This password was found in a data breach.')
+            generalErrors.push('Please use a different password.')
+          } else if (clerkError.code === 'form_password_length_too_short') {
+            setPasswordError('Must be at least 8 characters.')
+            generalErrors.push('Password must be at least 8 characters long.')
+          } else if (clerkError.code === 'form_param_format_invalid') {
+            setEmailError('Invalid email format.')
+            generalErrors.push('Please enter a valid email address.')
+          } else {
+            generalErrors.push(clerkError.longMessage || clerkError.message || 'Sign up failed.')
+          }
         }
+        
+        // Set general error (deduplicated)
+        const uniqueErrors = [...new Set(generalErrors)]
+        setError(uniqueErrors.join(' '))
       } else {
         setError('Sign up failed. Please try again.')
       }
@@ -660,61 +681,77 @@ export default function SignUpScreen() {
                   focusStyle={{ borderColor: '$primary', borderWidth: 2 }}
                 />
 
-                <Input
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                  value={emailAddress}
-                  placeholder="Email address"
-                  onChangeText={(email) => {
-                    setEmailAddress(email)
-                    setError('')
-                  }}
-                  size="$5"
-                  bg="$surface"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                  rounded="$4"
-                  fontFamily="$body"
-                  focusStyle={{ borderColor: '$primary', borderWidth: 2 }}
-                />
-
-                <XStack position="relative">
+                <YStack gap="$1">
                   <Input
-                    value={password}
-                    placeholder="Password"
-                    secureTextEntry={!showPassword}
-                    onChangeText={(password) => {
-                      setPassword(password)
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    value={emailAddress}
+                    placeholder="Email address"
+                    onChangeText={(email) => {
+                      setEmailAddress(email)
                       setError('')
+                      setEmailError('')
                     }}
                     size="$5"
                     bg="$surface"
-                    borderWidth={1}
-                    borderColor="$borderColor"
+                    borderWidth={emailError ? 2 : 1}
+                    borderColor={emailError ? '$error' : '$borderColor'}
                     rounded="$4"
                     fontFamily="$body"
-                    focusStyle={{ borderColor: '$primary', borderWidth: 2 }}
-                    flex={1}
-                    pr="$10"
+                    focusStyle={{ borderColor: emailError ? '$error' : '$primary', borderWidth: 2 }}
                   />
-                  <XStack
-                    position="absolute"
-                    right="$3"
-                    top={0}
-                    bottom={0}
-                    items="center"
-                    justify="center"
-                    onPress={() => setShowPassword(!showPassword)}
-                    cursor="pointer"
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  >
-                    {showPassword ? (
-                      <EyeOff size={20} color="$color10" />
-                    ) : (
-                      <Eye size={20} color="$color10" />
-                    )}
+                  {emailError ? (
+                    <Text color="$error" fontSize={12} fontFamily="$body" pl="$1">
+                      {emailError}
+                    </Text>
+                  ) : null}
+                </YStack>
+
+                <YStack gap="$1">
+                  <XStack position="relative">
+                    <Input
+                      value={password}
+                      placeholder="Password"
+                      secureTextEntry={!showPassword}
+                      onChangeText={(password) => {
+                        setPassword(password)
+                        setError('')
+                        setPasswordError('')
+                      }}
+                      size="$5"
+                      bg="$surface"
+                      borderWidth={passwordError ? 2 : 1}
+                      borderColor={passwordError ? '$error' : '$borderColor'}
+                      rounded="$4"
+                      fontFamily="$body"
+                      focusStyle={{ borderColor: passwordError ? '$error' : '$primary', borderWidth: 2 }}
+                      flex={1}
+                      pr="$10"
+                    />
+                    <XStack
+                      position="absolute"
+                      right="$3"
+                      top={0}
+                      bottom={0}
+                      items="center"
+                      justify="center"
+                      onPress={() => setShowPassword(!showPassword)}
+                      cursor="pointer"
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      {showPassword ? (
+                        <EyeOff size={20} color="$color10" />
+                      ) : (
+                        <Eye size={20} color="$color10" />
+                      )}
+                    </XStack>
                   </XStack>
-                </XStack>
+                  {passwordError ? (
+                    <Text color="$error" fontSize={12} fontFamily="$body" pl="$1">
+                      {passwordError}
+                    </Text>
+                  ) : null}
+                </YStack>
 
                 {/* Sign Up Button */}
                 <Button

@@ -1143,7 +1143,7 @@ export const SAMPLE_TEMPLATE = {
   skillLevel: "Novice" as const,
   week: 1,
   day: 1,
-  name: "Lower Body Foundation - Day 1",
+  name: "Lower Body Foundation",
   description: "Introduction to fundamental lower body movement patterns with emphasis on form and control.",
   estimatedDurationMinutes: 45,
   exercises: [

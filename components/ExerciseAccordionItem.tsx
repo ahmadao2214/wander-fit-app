@@ -90,7 +90,7 @@ export function ExerciseAccordionItem({
       {/* Collapsed Header - Always Visible */}
       <XStack items="center" gap="$2" p="$3">
         {/* Drag Handle - works on both mobile (long-press) and web (click-hold) */}
-        {drag ? (
+        {drag && (
           <Pressable
             onLongPress={drag}
             delayLongPress={Platform.OS === 'web' ? 100 : 150}
@@ -108,8 +108,6 @@ export function ExerciseAccordionItem({
               <GripVertical size={20} color={isActive ? intensityColor : "$color9"} />
             </View>
           </Pressable>
-        ) : (
-          <View style={styles.dragHandlePlaceholder} />
         )}
 
         {/* Order Number */}
@@ -280,9 +278,6 @@ const styles = StyleSheet.create({
   dragHandleActive: {
     backgroundColor: 'rgba(34, 197, 94, 0.2)', // green tint when dragging
     cursor: 'grabbing' as any,
-  },
-  dragHandlePlaceholder: {
-    width: 32,
   },
   exerciseInfo: {
     flex: 1,

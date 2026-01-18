@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { KeyboardAvoidingView, Platform } from 'react-native'
 import { YStack, XStack, H2, Text, Card, Button, ScrollView, Input, Spinner } from 'tamagui'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -153,7 +154,12 @@ export default function MaxesScreen() {
 
   return (
     <YStack flex={1} bg="$background">
-      <ScrollView flex={1}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+        enabled={Platform.OS === 'ios'}
+      >
+        <ScrollView flex={1} keyboardShouldPersistTaps="handled">
         <YStack
           gap="$6"
           px="$4"
@@ -234,7 +240,8 @@ export default function MaxesScreen() {
             </YStack>
           </Card>
         </YStack>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Bottom Actions */}
       <YStack

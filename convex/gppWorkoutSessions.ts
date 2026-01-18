@@ -374,6 +374,86 @@ export const getCompletedTemplateIds = query({
   },
 });
 
+/**
+ * Get the last completed session for a specific template with full performance data
+ * Used to show comparison on workout detail screen and inline during execution
+ */
+export const getLastCompletedSessionForTemplate = query({
+  args: { templateId: v.id("program_templates") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) {
+      return null;
+    }
+
+    // Get completed sessions for this template, most recent first
+    const sessions = await ctx.db
+      .query("gpp_workout_sessions")
+      .withIndex("by_template", (q) => q.eq("templateId", args.templateId))
+      .order("desc")
+      .take(20);
+
+    // Find the user's most recent completed session
+    const lastCompleted = sessions.find(
+      (s) => s.userId === user._id && s.status === "completed"
+    );
+
+    if (!lastCompleted) {
+      return null;
+    }
+
+    // Get template for exercise names
+    const template = await ctx.db.get(args.templateId);
+    if (!template) {
+      return null;
+    }
+
+    // Get exercise details for each exercise in the session
+    const exerciseDetails = await Promise.all(
+      (lastCompleted.exercises || []).map(async (sessionExercise, index) => {
+        const exercise = await ctx.db.get(sessionExercise.exerciseId);
+
+        // Get prescribed data from template if available
+        const templateExercise = template.exercises?.[index];
+        const prescribedSets = templateExercise?.sets ?? sessionExercise.sets.length;
+        const prescribedReps = templateExercise?.reps ?? "?";
+
+        return {
+          exerciseId: sessionExercise.exerciseId,
+          exerciseName: exercise?.name || "Unknown",
+          exerciseSlug: exercise?.slug || "unknown",
+          prescribedSets,
+          prescribedReps,
+          completed: sessionExercise.completed,
+          skipped: sessionExercise.skipped,
+          sets: sessionExercise.sets.map((set, setIdx) => ({
+            ...set,
+            setNumber: setIdx + 1,
+          })),
+        };
+      })
+    );
+
+    return {
+      _id: lastCompleted._id,
+      completedAt: lastCompleted.completedAt,
+      totalDurationSeconds: lastCompleted.totalDurationSeconds,
+      targetIntensity: lastCompleted.targetIntensity,
+      exercises: exerciseDetails,
+      templateName: template.name,
+    };
+  },
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // MUTATIONS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -608,6 +688,12 @@ export const completeSession = mutation({
         lastWorkoutDate: now,
         updatedAt: now,
       });
+
+      // Note: We intentionally do NOT clear todayFocusTemplateId here.
+      // If user explicitly selected this workout as today's workout, it should
+      // remain visible on the Today's Workout card with a "Completed" badge.
+      // The focus will be cleared automatically when a new day starts or
+      // when the user selects a different workout.
     }
 
     return {

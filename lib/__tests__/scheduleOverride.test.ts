@@ -405,8 +405,10 @@ function determineTodayWorkout(ctx: TodayWorkoutContext): string | null {
     return ctx.inProgressTemplateId;
   }
 
-  // Priority 2: Explicit focus override (if not completed)
-  if (ctx.focusOverrideTemplateId && !ctx.completedTemplateIds.has(ctx.focusOverrideTemplateId)) {
+  // Priority 2: Explicit focus override (return even if completed)
+  // UPDATED: We now keep showing the focused workout even after completion
+  // so the user sees their completed workout on Today's card with a "Completed" badge
+  if (ctx.focusOverrideTemplateId) {
     return ctx.focusOverrideTemplateId;
   }
 
@@ -477,15 +479,17 @@ describe("Today's Workout Priority Logic", () => {
       expect(result).toBe("power-conditioning");
     });
 
-    it("skips completed focus override and falls through to first incomplete", () => {
+    it("returns completed focus override (shows as completed on Today's card)", () => {
+      // UPDATED: Focus is now returned even when completed
+      // This allows the UI to show the workout with a "Completed" badge
       const result = determineTodayWorkout({
         inProgressTemplateId: null,
-        focusOverrideTemplateId: "lower-body", // Day 1 is completed
+        focusOverrideTemplateId: "lower-body", // Day 1 is completed but still focused
         weekWorkouts,
         completedTemplateIds: new Set(["lower-body"]),
         currentDay: 1,
       });
-      expect(result).toBe("upper-body"); // First incomplete
+      expect(result).toBe("lower-body"); // Returns focus even if completed
     });
   });
 

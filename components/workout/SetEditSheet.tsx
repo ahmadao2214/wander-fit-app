@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Keyboard, Platform } from 'react-native'
 import {
   YStack,
   XStack,
@@ -9,6 +10,7 @@ import {
   Slider,
   H3,
   Separator,
+  ScrollView,
 } from 'tamagui'
 import { X, Check, Minus, Plus } from '@tamagui/lucide-icons'
 import { parseReps } from '../../lib'
@@ -50,6 +52,24 @@ export function SetEditSheet({
   const [reps, setReps] = useState(initialData.repsCompleted || parseReps(prescribedReps))
   const [weight, setWeight] = useState(initialData.weight?.toString() || '')
   const [rpe, setRpe] = useState(initialData.rpe || 7)
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
+
+  // Track keyboard visibility to adjust sheet height
+  useEffect(() => {
+    if (Platform.OS === 'web') return
+
+    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+      setIsKeyboardVisible(true)
+    })
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setIsKeyboardVisible(false)
+    })
+
+    return () => {
+      showSubscription.remove()
+      hideSubscription.remove()
+    }
+  }, [])
 
   // Reset state when sheet opens with new data
   useEffect(() => {
@@ -80,12 +100,15 @@ export function SetEditSheet({
     onOpenChange(false)
   }
 
+  // Use higher snap point when keyboard is visible to ensure input is visible
+  const snapPoints = isKeyboardVisible ? [85] : [55]
+
   return (
     <Sheet
       modal
       open={open}
       onOpenChange={onOpenChange}
-      snapPoints={[55]}
+      snapPoints={snapPoints}
       dismissOnSnapToBottom
     >
       <Sheet.Overlay />
@@ -98,6 +121,7 @@ export function SetEditSheet({
       >
         <Sheet.Handle />
 
+        <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <YStack gap="$4" pt="$2">
           {/* Header */}
           <XStack items="center" justify="space-between">
@@ -232,6 +256,7 @@ export function SetEditSheet({
             </Button>
           </XStack>
         </YStack>
+        </ScrollView>
       </Sheet.Frame>
     </Sheet>
   )

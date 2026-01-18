@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { YStack, XStack, Text, Card, styled } from 'tamagui'
 import { Check, SkipForward } from '@tamagui/lucide-icons'
 import { TouchableOpacity, Platform, Vibration } from 'react-native'
 import { SetEditSheet } from './SetEditSheet'
+import { parseReps } from '../../lib'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
@@ -28,6 +29,14 @@ interface SetData {
   skipped: boolean
 }
 
+/** Previous performance data for a single set */
+interface PreviousSetData {
+  repsCompleted?: number
+  weight?: number
+  completed: boolean
+  skipped: boolean
+}
+
 interface SetTrackerProps {
   sets: SetData[]
   prescribedReps: string
@@ -37,6 +46,8 @@ interface SetTrackerProps {
   intensityColor?: `$${string}` | string
   /** Light intensity color for completed pill background (e.g. $intensityMed2) */
   intensityLightColor?: `$${string}` | string
+  /** Previous performance data for comparison hints */
+  previousSets?: PreviousSetData[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -57,6 +68,7 @@ export function SetTracker({
   onSetUpdate,
   intensityColor = '$primary',
   intensityLightColor = '$color3',
+  previousSets,
 }: SetTrackerProps) {
   const [editingSetIndex, setEditingSetIndex] = useState<number | null>(null)
 
@@ -72,9 +84,10 @@ export function SetTracker({
     triggerHaptic()
     const currentSet = sets[index]
     if (!currentSet.completed && !currentSet.skipped) {
-      // Quick complete with prescribed values
+      // Quick complete with prescribed reps value
       onSetUpdate(index, {
         ...currentSet,
+        repsCompleted: parseReps(prescribedReps),
         completed: true,
         skipped: false,
       })
@@ -110,6 +123,22 @@ export function SetTracker({
 
   const displayReps = prescribedReps
 
+  // Calculate previous performance summary
+  const previousSummary = useMemo(() => {
+    if (!previousSets || previousSets.length === 0) return null
+    const completedPrevious = previousSets.filter(s => s.completed && !s.skipped)
+    if (completedPrevious.length === 0) return null
+
+    const maxWeight = Math.max(...completedPrevious.map(s => s.weight || 0))
+    const maxReps = Math.max(...completedPrevious.map(s => s.repsCompleted || 0))
+
+    return {
+      sets: completedPrevious.length,
+      maxWeight: maxWeight > 0 ? maxWeight : null,
+      maxReps: maxReps > 0 ? maxReps : null,
+    }
+  }, [previousSets])
+
   return (
     <>
       <YStack gap="$3">
@@ -118,8 +147,15 @@ export function SetTracker({
           <Text fontSize={12} color="$color9" fontFamily="$body">
             {sets.filter(s => s.completed).length}/{prescribedSets}
           </Text>
+          {previousSummary && (
+            <Text fontSize={11} color="$color9" fontFamily="$body" ml="auto">
+              Last: {previousSummary.sets} sets
+              {previousSummary.maxWeight ? ` @ ${previousSummary.maxWeight}lb` : ''}
+              {previousSummary.maxReps ? ` x${previousSummary.maxReps}` : ''}
+            </Text>
+          )}
         </XStack>
-        
+
         <XStack gap="$2" flexWrap="wrap" justify="center">
           {sets.map((set, index) => {
             const isCompleted = set.completed
