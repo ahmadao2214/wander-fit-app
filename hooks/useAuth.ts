@@ -209,7 +209,7 @@ export function useIsAthlete() {
 }
 
 /**
- * Check if user has completed onboarding education
+ * Check if user has completed onboarding
  */
 export function useHasCompletedOnboarding() {
   const { user } = useAuth()
@@ -217,8 +217,8 @@ export function useHasCompletedOnboarding() {
 }
 
 /**
- * Check if user needs onboarding education
- * (completed intake but not onboarding)
+ * Check if user needs to see onboarding
+ * Returns true if intake is complete but onboarding is not
  */
 export function useNeedsOnboarding() {
   const { needsOnboarding } = useAuth()

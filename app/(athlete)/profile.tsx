@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { YStack, XStack, Text, Card, Button, ScrollView, Spinner, styled } from 'tamagui'
-import { useQuery } from 'convex/react'
+import { useQuery, useMutation } from 'convex/react'
+import { useRouter } from 'expo-router'
 import { api } from 'convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
 import { SignOutButton } from '../../components/SignOutButton'
@@ -16,7 +17,7 @@ import {
   ChevronRight,
   Dumbbell,
   Check,
-  Circle,
+  BookOpen,
 } from '@tamagui/lucide-icons'
 import { PHASE_NAMES } from '../../types'
 
@@ -53,6 +54,10 @@ const StatNumber = styled(Text, {
 export default function ProfilePage() {
   const { user, isLoading: authLoading } = useAuth()
   const insets = useSafeAreaInsets()
+  const router = useRouter()
+
+  // Mutation to reset onboarding for revisit
+  const resetOnboardingForRevisit = useMutation(api.onboarding.resetOnboardingForRevisit)
 
   // Sheet state for editing 1RM
   const [maxSheetOpen, setMaxSheetOpen] = useState(false)
@@ -433,14 +438,51 @@ export default function ProfilePage() {
                 <YStack bg="$color4" p="$2" rounded="$10">
                   <Settings size={18} color="$color10" />
                 </YStack>
-                <Text 
-                  flex={1} 
+                <Text
+                  flex={1}
                   fontSize={15}
                   fontFamily="$body" fontWeight="500"
                   color="$color12"
                 >
                   App Settings
                 </Text>
+                <ChevronRight size={20} color="$color9" />
+              </XStack>
+            </Card>
+
+            {/* Revisit Onboarding */}
+            <Card
+              p="$4"
+              bg="$surface"
+              rounded="$4"
+              borderWidth={1}
+              borderColor="$borderColor"
+              pressStyle={{ bg: '$surfaceHover' }}
+              onPress={async () => {
+                await resetOnboardingForRevisit()
+                router.push('/(onboarding)' as any)
+              }}
+            >
+              <XStack items="center" gap="$3">
+                <YStack bg="$green4" p="$2" rounded="$10">
+                  <BookOpen size={18} color="$green10" />
+                </YStack>
+                <YStack flex={1}>
+                  <Text
+                    fontSize={15}
+                    fontFamily="$body" fontWeight="500"
+                    color="$color12"
+                  >
+                    Revisit Onboarding
+                  </Text>
+                  <Text
+                    fontSize={12}
+                    fontFamily="$body"
+                    color="$color10"
+                  >
+                    Learn about GPP, SPP, SSP phases again
+                  </Text>
+                </YStack>
                 <ChevronRight size={20} color="$color9" />
               </XStack>
             </Card>

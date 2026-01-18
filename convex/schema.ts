@@ -251,8 +251,10 @@ export default defineSchema({
     // GPP intake tracking
     intakeCompletedAt: v.optional(v.number()), // null = needs intake flow
 
-    // Onboarding education flow tracking (GPP/SPP/SSP education after intake)
-    onboardingCompletedAt: v.optional(v.number()), // null = needs onboarding education
+// Onboarding flow tracking (educational screens after intake)
+    onboardingCompletedAt: v.optional(v.number()), // null = needs onboarding
+    onboardingProgress: v.optional(v.number()), // Current screen index (0-9) for resume
+    onboardingSkipped: v.optional(v.boolean()), // True if user skipped onboarding
   })
     .index("by_email", ["email"])
     .index("by_clerk", ["clerkId"])
@@ -329,71 +331,6 @@ export default defineSchema({
     // Pause/Freeze (2+ weeks absence = restart)
     pausedAt: v.optional(v.number()),
     pauseReason: v.optional(v.string()),
-
-    // Meta
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_user", ["userId"]),
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // ONBOARDING EDUCATION TRACKING
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  /**
-   * user_onboarding_progress - Tracks progress through GPP/SPP/SSP education flow
-   *
-   * The onboarding education flow consists of 10 screens in 4 sections:
-   *
-   * Section 1: Welcome (3 screens)
-   *   - welcome: Introduction to personalized training
-   *   - assessment-complete: Your assessment results summary
-   *   - what-to-expect: Overview of what's coming
-   *
-   * Section 2: Phase Education (3 screens)
-   *   - phase-gpp: GPP (General Physical Preparedness) explanation
-   *   - phase-spp: SPP (Specific Physical Preparedness) explanation
-   *   - phase-ssp: SSP (Sport-Specific Preparedness) explanation
-   *
-   * Section 3: Timeline & Commitment (2 screens)
-   *   - timeline: Your 12-week journey overview
-   *   - commitment: Training frequency and expectations
-   *
-   * Section 4: How It Works (2 screens)
-   *   - how-workouts-work: Workout structure explanation
-   *   - ready-to-start: Final confirmation before starting
-   *
-   * Design decisions:
-   * - Skippable: Users can skip the entire flow
-   * - Revisitable: Users can access from Settings to re-watch
-   * - Progress is tracked per-screen for analytics and resume capability
-   */
-  user_onboarding_progress: defineTable({
-    userId: v.id("users"),
-
-    // Current progress
-    currentScreen: v.number(), // 0-9 (index into ordered screen list)
-
-    // Screen completion tracking (timestamps when each screen was viewed)
-    // Using individual fields for type safety and query efficiency
-    welcomeViewedAt: v.optional(v.number()),
-    assessmentCompleteViewedAt: v.optional(v.number()),
-    whatToExpectViewedAt: v.optional(v.number()),
-    phaseGppViewedAt: v.optional(v.number()),
-    phaseSppViewedAt: v.optional(v.number()),
-    phaseSspViewedAt: v.optional(v.number()),
-    timelineViewedAt: v.optional(v.number()),
-    commitmentViewedAt: v.optional(v.number()),
-    howWorkoutsWorkViewedAt: v.optional(v.number()),
-    readyToStartViewedAt: v.optional(v.number()),
-
-    // Flow control
-    skippedAt: v.optional(v.number()), // If user skipped the flow
-    completedAt: v.optional(v.number()), // When user finished all screens
-
-    // Revisit tracking (for Settings access)
-    lastRevisitedAt: v.optional(v.number()),
-    revisitCount: v.number(), // How many times user re-visited from Settings
 
     // Meta
     createdAt: v.number(),
