@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { YStack, Text, Circle } from 'tamagui'
+import { YStack, XStack, Text } from 'tamagui'
 import { Pressable, Platform, Vibration } from 'react-native'
 import Animated, {
   useSharedValue,
@@ -8,6 +8,7 @@ import Animated, {
   withSpring,
   runOnJS,
   Easing,
+  interpolateColor,
 } from 'react-native-reanimated'
 
 interface CommitmentButtonProps {
@@ -28,11 +29,11 @@ interface CommitmentButtonProps {
 const AnimatedYStack = Animated.createAnimatedComponent(YStack)
 
 /**
- * CommitmentButton - YAZIO-style hold-to-confirm button
+ * CommitmentButton - Hold-to-confirm button
  *
  * User must press and hold for a duration to confirm their commitment.
  * Features:
- * - Progress ring that fills as user holds
+ * - Simple circular button that fills as user holds
  * - Haptic feedback during hold and on complete
  * - Celebration animation on success
  * - Resets if released early
@@ -53,11 +54,10 @@ export function CommitmentButton({
   const hapticInterval = useRef<ReturnType<typeof setInterval> | null>(null)
   const startTime = useRef<number>(0)
 
-  // Haptic feedback using native Vibration API (fallback without expo-haptics)
+  // Haptic feedback using native Vibration API
   const triggerHaptic = useCallback((type: 'light' | 'medium' | 'success') => {
     if (Platform.OS === 'web') return
 
-    // Use basic vibration patterns as fallback
     switch (type) {
       case 'light':
         Vibration.vibrate(10)
@@ -152,9 +152,9 @@ export function CommitmentButton({
     transform: [{ scale: scale.value }],
   }))
 
-  const strokeWidth = 6
-  const radius = (size - strokeWidth) / 2
-  const circumference = Math.PI * 2 * radius
+  const fillStyle = useAnimatedStyle(() => ({
+    opacity: progress.value,
+  }))
 
   return (
     <YStack items="center" gap="$4">
@@ -167,43 +167,35 @@ export function CommitmentButton({
           style={containerStyle}
           width={size}
           height={size}
+          rounded={size / 2}
           items="center"
           justify="center"
+          bg={isComplete ? '$primary' : '$color4'}
+          overflow="hidden"
         >
-          {/* Background circle */}
-          <Circle
-            size={size}
-            bg={isComplete ? '$green10' : isHolding ? '$green4' : '$gray3'}
-            position="absolute"
-          />
-
-          {/* Progress ring - using SVG would be ideal, using YStack as fallback */}
-          <YStack
+          {/* Progress fill overlay */}
+          <AnimatedYStack
+            style={fillStyle}
             position="absolute"
             width={size}
             height={size}
-            rounded="$10"
-            borderWidth={strokeWidth}
-            borderColor={isComplete ? '$green10' : '$green8'}
-            opacity={isHolding || isComplete ? 1 : 0.3}
+            bg="$primary"
           />
 
           {/* Inner content */}
-          <YStack items="center" gap="$1">
+          <YStack items="center" gap="$1" zIndex={1}>
             {isComplete ? (
-              <Text fontSize="$6" color="white">
+              <Text fontSize={size / 3} color="white">
                 ✓
               </Text>
             ) : (
-              <>
-                <Text
-                  fontSize="$5"
-                  fontWeight="bold"
-                  color={isHolding ? '$green11' : '$gray11'}
-                >
-                  {label}
-                </Text>
-              </>
+              <Text
+                fontSize="$5"
+                fontWeight="bold"
+                color={isHolding ? 'white' : '$color11'}
+              >
+                {label}
+              </Text>
             )}
           </YStack>
         </AnimatedYStack>
@@ -212,7 +204,7 @@ export function CommitmentButton({
       {/* Instruction text */}
       <Text
         fontSize="$3"
-        color={isComplete ? '$green11' : '$gray10'}
+        color={isComplete ? '$primary' : '$color10'}
       >
         {isComplete ? "You're committed!" : instruction}
       </Text>

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { YStack, XStack, Text, Card, Button, styled, Circle } from 'tamagui'
+import { YStack, XStack, Text, Button, styled } from 'tamagui'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ChevronRight, ChevronLeft, Minus, Plus, Trophy, Award, Medal } from '@tamagui/lucide-icons'
@@ -37,199 +37,21 @@ const MAX_YEARS = 10
 // Skill level styling
 const SKILL_STYLES = {
   Novice: {
-    color: '$intensityLow11',
-    bgColor: '$intensityLow3',
+    color: '$blue11',
     label: 'Novice',
     description: 'Building your foundation',
   },
   Moderate: {
-    color: '$intensityMed11',
-    bgColor: '$intensityMed3',
+    color: '$orange11',
     label: 'Moderate',
     description: 'Developing your skills',
   },
   Advanced: {
-    color: '$intensityHigh11',
-    bgColor: '$intensityHigh3',
+    color: '$primary',
     label: 'Advanced',
     description: 'Refining your expertise',
   },
 } as const
-
-// ─────────────────────────────────────────────────────────────────────────────
-// TrophyShelf Component
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface TrophyShelfProps {
-  years: number
-  onIncrement: () => void
-  onDecrement: () => void
-}
-
-const TrophyShelf = ({ years, onIncrement, onDecrement }: TrophyShelfProps) => {
-  // Calculate how many trophies to show (1 per 2 years, max 5)
-  const trophyCount = Math.min(Math.ceil(years / 2), 5)
-
-  // Determine trophy types based on years
-  const getTrophyIcon = (index: number) => {
-    if (years >= 6 && index === 0) return Trophy // Gold trophy for 6+ years
-    if (years >= 3 && index <= 1) return Award // Award for 3+ years
-    return Medal // Medal for base
-  }
-
-  const getTrophyColor = (index: number) => {
-    if (years >= 6 && index === 0) return '$yellow10' // Gold
-    if (years >= 3 && index <= 1) return '$orange9' // Bronze/Orange
-    return '$gray10' // Silver
-  }
-
-  return (
-    <Card
-      bg="$surface"
-      borderColor="$borderColor"
-      borderWidth={1}
-      rounded="$6"
-      p="$5"
-      gap="$5"
-    >
-      {/* Year Counter */}
-      <YStack items="center" gap="$2">
-        <Text
-          fontSize={64}
-          fontFamily="$heading"
-          fontWeight="800"
-          color="$color12"
-        >
-          {years}
-        </Text>
-        <Text
-          fontSize={18}
-          fontFamily="$body"
-          fontWeight="600"
-          color="$color10"
-          textTransform="uppercase"
-          letterSpacing={2}
-        >
-          {years === 1 ? 'Year' : 'Years'}
-        </Text>
-      </YStack>
-
-      {/* Trophy Display Shelf */}
-      <YStack
-        bg="$color3"
-        rounded="$4"
-        p="$4"
-        height={80}
-        items="center"
-        justify="center"
-      >
-        {years === 0 ? (
-          <Text color="$color9" fontFamily="$body" fontSize={14}>
-            Tap + to add your experience
-          </Text>
-        ) : (
-          <XStack gap="$3" items="flex-end" justify="center" flexWrap="wrap">
-            {Array.from({ length: trophyCount }, (_, index) => {
-              const Icon = getTrophyIcon(index)
-              const color = getTrophyColor(index)
-              return (
-                <YStack
-                  key={index}
-                  items="center"
-                  animation="bouncy"
-                  enterStyle={{ opacity: 0, scale: 0.5, y: 20 }}
-                >
-                  <Icon size={32 - index * 2} color={color} />
-                </YStack>
-              )
-            })}
-          </XStack>
-        )}
-      </YStack>
-
-      {/* Stepper Controls */}
-      <XStack items="center" justify="center" gap="$4">
-        <Button
-          circular
-          size="$5"
-          bg={years <= MIN_YEARS ? '$color4' : '$color6'}
-          disabled={years <= MIN_YEARS}
-          onPress={onDecrement}
-          pressStyle={{ scale: 0.95 }}
-        >
-          <Minus
-            size={24}
-            color={years <= MIN_YEARS ? '$color8' : '$color12'}
-          />
-        </Button>
-
-        <YStack width={100} items="center">
-          <Text fontSize={13} color="$color9" fontFamily="$body">
-            {years === 0 && 'Just starting'}
-            {years > 0 && years < 3 && 'Getting started'}
-            {years >= 3 && years < 6 && 'Experienced'}
-            {years >= 6 && 'Seasoned athlete'}
-          </Text>
-        </YStack>
-
-        <Button
-          circular
-          size="$5"
-          bg={years >= MAX_YEARS ? '$color4' : '$primary'}
-          disabled={years >= MAX_YEARS}
-          onPress={onIncrement}
-          pressStyle={{ scale: 0.95 }}
-        >
-          <Plus
-            size={24}
-            color={years >= MAX_YEARS ? '$color8' : 'white'}
-          />
-        </Button>
-      </XStack>
-    </Card>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// SkillLevelBadge Component
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface SkillLevelBadgeProps {
-  level: 'Novice' | 'Moderate' | 'Advanced'
-}
-
-const SkillLevelBadge = ({ level }: SkillLevelBadgeProps) => {
-  const style = SKILL_STYLES[level]
-
-  return (
-    <Card
-      bg={style.bgColor}
-      borderColor={style.color}
-      borderWidth={1}
-      rounded="$4"
-      px="$4"
-      py="$3"
-      animation="quick"
-    >
-      <XStack items="center" gap="$3">
-        <Circle size={10} bg={style.color} />
-        <YStack gap="$0.5">
-          <Text
-            fontSize={16}
-            fontFamily="$body"
-            fontWeight="700"
-            color={style.color}
-          >
-            {style.label} Level
-          </Text>
-          <Text fontSize={13} color="$color10" fontFamily="$body">
-            {style.description}
-          </Text>
-        </YStack>
-      </XStack>
-    </Card>
-  )
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Experience Years Screen
@@ -252,6 +74,23 @@ export default function ExperienceYearsScreen() {
   }
 
   const skillLevel = getSkillLevel(years)
+  const skillStyle = SKILL_STYLES[skillLevel]
+
+  // Calculate how many trophies to show (1 per 2 years, max 5)
+  const trophyCount = Math.min(Math.ceil(years / 2), 5)
+
+  // Determine trophy types based on years
+  const getTrophyIcon = (index: number) => {
+    if (years >= 6 && index === 0) return Trophy
+    if (years >= 3 && index <= 1) return Award
+    return Medal
+  }
+
+  const getTrophyColor = (index: number) => {
+    if (years >= 6 && index === 0) return '$yellow10'
+    if (years >= 3 && index <= 1) return '$orange9'
+    return '$color10'
+  }
 
   const handleIncrement = () => {
     if (years < MAX_YEARS) {
@@ -300,27 +139,110 @@ export default function ExperienceYearsScreen() {
         </YStack>
 
         {/* Header */}
-        <YStack gap="$3" items="center" mb="$5">
+        <YStack gap="$3" items="center" mb="$6">
           <DisplayHeading>YOUR EXPERIENCE</DisplayHeading>
           <Subtitle>
             How long have you been training{'\n'}for your sport?
           </Subtitle>
         </YStack>
 
-        {/* Trophy Shelf */}
-        <TrophyShelf
-          years={years}
-          onIncrement={handleIncrement}
-          onDecrement={handleDecrement}
-        />
+        {/* Main Experience Display - Full Width */}
+        <YStack flex={1} items="center" justify="center" gap="$6">
+          {/* Large Year Counter with skill level color */}
+          <YStack items="center" gap="$2">
+            <Text
+              fontSize={120}
+              fontFamily="$heading"
+              fontWeight="800"
+              color={skillStyle.color}
+              lineHeight={120}
+            >
+              {years}
+            </Text>
+            <Text
+              fontSize={20}
+              fontFamily="$body"
+              fontWeight="600"
+              color="$color10"
+              textTransform="uppercase"
+              letterSpacing={3}
+            >
+              {years === 1 ? 'Year' : 'Years'}
+            </Text>
+          </YStack>
 
-        {/* Skill Level Badge */}
-        <YStack mt="$4" items="center">
-          <SkillLevelBadge level={skillLevel} />
+          {/* Trophy Display */}
+          <YStack height={60} items="center" justify="center">
+            {years === 0 ? (
+              <Text color="$color9" fontFamily="$body" fontSize={15}>
+                Tap + to add your experience
+              </Text>
+            ) : (
+              <XStack gap="$4" items="flex-end" justify="center">
+                {Array.from({ length: trophyCount }, (_, index) => {
+                  const Icon = getTrophyIcon(index)
+                  const color = getTrophyColor(index)
+                  return (
+                    <YStack
+                      key={index}
+                      items="center"
+                      animation="bouncy"
+                      enterStyle={{ opacity: 0, scale: 0.5, y: 20 }}
+                    >
+                      <Icon size={36 - index * 3} color={color} />
+                    </YStack>
+                  )
+                })}
+              </XStack>
+            )}
+          </YStack>
+
+          {/* Skill Level Label */}
+          <YStack items="center" gap="$1">
+            <Text
+              fontSize={18}
+              fontFamily="$body"
+              fontWeight="700"
+              color={skillStyle.color}
+            >
+              {skillStyle.label}
+            </Text>
+            <Text fontSize={14} color="$color10" fontFamily="$body">
+              {skillStyle.description}
+            </Text>
+          </YStack>
+
+          {/* Stepper Controls */}
+          <XStack items="center" justify="center" gap="$6" mt="$4">
+            <Button
+              circular
+              size="$6"
+              bg={years <= MIN_YEARS ? '$color4' : '$color6'}
+              disabled={years <= MIN_YEARS}
+              onPress={handleDecrement}
+              pressStyle={{ scale: 0.95 }}
+            >
+              <Minus
+                size={28}
+                color={years <= MIN_YEARS ? '$color8' : '$color12'}
+              />
+            </Button>
+
+            <Button
+              circular
+              size="$6"
+              bg={years >= MAX_YEARS ? '$color4' : '$primary'}
+              disabled={years >= MAX_YEARS}
+              onPress={handleIncrement}
+              pressStyle={{ scale: 0.95 }}
+            >
+              <Plus
+                size={28}
+                color={years >= MAX_YEARS ? '$color8' : 'white'}
+              />
+            </Button>
+          </XStack>
         </YStack>
-
-        {/* Spacer */}
-        <YStack flex={1} />
       </YStack>
 
       {/* Bottom Actions */}

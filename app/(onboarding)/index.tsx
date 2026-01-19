@@ -8,8 +8,11 @@ import { analytics } from '../../lib/analytics'
 /**
  * Onboarding Index - Entry Point & Router
  *
- * Redirects to the appropriate onboarding screen based on progress.
- * If user has progress, resume from there. Otherwise start from welcome.
+ * This route is used for:
+ * 1. Revisit mode - When users want to review educational content
+ * 2. Edge cases - If somehow users end up here
+ *
+ * The main flow uses the interleaved intake/onboarding flow starting at /(intake)/sport
  */
 export default function OnboardingIndex() {
   const router = useRouter()
@@ -32,32 +35,28 @@ export default function OnboardingIndex() {
       const isRevisit = onboardingState?.isRevisit ?? false
       analytics.trackOnboardingStarted(10, isRevisit)
 
+      // For revisit mode, go directly to phases-overview (educational content)
+      // Skip the old welcome screen and intake-related screens
+      if (isRevisit) {
+        router.replace('/(onboarding)/phases-overview' as any)
+        return
+      }
+
+      // If intake is not completed, redirect to intake flow
+      if (!onboardingState?.intakeCompletedAt) {
+        router.replace('/(intake)/sport' as any)
+        return
+      }
+
       // Only initialize if onboarding progress hasn't been set yet
-      // This prevents unnecessary database writes
       if (onboardingState?.onboardingProgress === undefined ||
           onboardingState?.onboardingProgress === null) {
         await startOnboarding()
       }
 
-      // Determine which screen to show based on progress
-      const progress = onboardingState?.onboardingProgress ?? 0
-
-      // Map progress to screen routes
-      const screenRoutes = [
-        '/(onboarding)/welcome',         // 0
-        '/(onboarding)/phases-overview',  // 1
-        '/(onboarding)/why-it-works',     // 2
-        '/(onboarding)/gpp-detail',       // 3
-        '/(onboarding)/spp-detail',       // 4
-        '/(onboarding)/ssp-detail',       // 5
-        '/(onboarding)/personal-timeline', // 6
-        '/(onboarding)/commitment',       // 7
-        '/(onboarding)/progression',      // 8
-        '/(onboarding)/first-workout',    // 9
-      ]
-
-      const targetRoute = screenRoutes[progress] ?? screenRoutes[0]
-      router.replace(targetRoute as any)
+      // For normal flow after intake, go to phases-overview
+      // (the new combined flow handles routing between intake and onboarding)
+      router.replace('/(onboarding)/phases-overview' as any)
     }
 
     initAndRedirect()
@@ -66,7 +65,7 @@ export default function OnboardingIndex() {
 
   return (
     <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-      <Spinner size="large" color="$green10" />
+      <Spinner size="large" color="$primary" />
       <Text color="$gray11">Loading your journey...</Text>
     </YStack>
   )

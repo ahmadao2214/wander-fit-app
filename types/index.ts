@@ -70,7 +70,6 @@ export type IntakeResponse = Doc<"intake_responses">;
 export type GppWorkoutSession = Doc<"gpp_workout_sessions">;
 export type UserProgress = Doc<"user_progress">;
 export type UserMax = Doc<"user_maxes">;
-export type UserOnboardingProgress = Doc<"user_onboarding_progress">;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Onboarding Education Types

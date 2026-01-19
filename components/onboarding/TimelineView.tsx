@@ -88,66 +88,54 @@ export function TimelineView({
 
   // Vertical orientation (default)
   return (
-    <YStack gap="$4">
+    <YStack>
       {phases.map((phase, index) => (
-        <XStack key={phase.phase} gap="$4">
+        <XStack key={phase.phase} gap="$3">
           {/* Timeline indicator */}
-          <YStack items="center" width={40}>
-            {/* Connector line (top) */}
-            {index > 0 && (
-              <YStack
-                width={2}
-                height={16}
-                bg={phases[index - 1].isCompleted ? '$green8' : '$gray4'}
-              />
-            )}
-
+          <YStack items="center" width={36}>
             {/* Phase marker */}
             <YStack
-              width={40}
-              height={40}
+              width={36}
+              height={36}
               rounded="$10"
-              bg={phase.isCurrent ? '$green10' : phase.isCompleted ? '$green8' : '$gray4'}
+              bg={phase.isCurrent ? '$primary' : phase.isCompleted ? '$color8' : '$color5'}
               items="center"
               justify="center"
-              borderWidth={phase.isCurrent ? 3 : 0}
-              borderColor="$green6"
+              borderWidth={phase.isCurrent ? 2 : 0}
+              borderColor="$primary"
             >
               <Text
                 fontSize="$3"
                 fontWeight="bold"
-                color={phase.isCurrent || phase.isCompleted ? 'white' : '$gray10'}
+                color={phase.isCurrent || phase.isCompleted ? 'white' : '$color10'}
               >
-                {phase.phase.charAt(0)}
+                {index + 1}
               </Text>
             </YStack>
 
-            {/* Connector line (bottom) */}
-            {index < phases.length - 1 && (
-              <YStack
-                flex={1}
-                width={2}
-                height={16}
-                bg={phase.isCompleted ? '$green8' : '$gray4'}
-              />
-            )}
+            {/* Connector line (bottom) - always show to connect all phases + program complete */}
+            <YStack
+              width={2}
+              height={40}
+              bg={phase.isCompleted ? '$color8' : '$color5'}
+            />
           </YStack>
 
           {/* Phase content */}
-          <YStack flex={1} pb={index < phases.length - 1 ? '$4' : 0}>
+          <YStack flex={1} pb="$3">
             <XStack justify="space-between" items="flex-start">
               <YStack flex={1}>
-                <Text fontSize="$4" fontWeight="bold" color="$gray12">
+                <Text fontSize="$4" fontWeight="bold" color="$color12">
                   {PHASE_DATA[phase.phase].name}
                 </Text>
-                <Text fontSize="$3" color="$gray11" mt="$1">
+                <Text fontSize="$3" color="$color11" mt="$1">
                   {PHASE_DATA[phase.phase].tagline}
                 </Text>
               </YStack>
 
               {phase.isCurrent && (
-                <YStack bg="$green4" px="$2" py="$1" rounded="$2">
-                  <Text fontSize="$1" color="$green11" fontWeight="600">
+                <YStack bg="$blue4" px="$2" py="$1" rounded="$2">
+                  <Text fontSize="$1" color="$blue11" fontWeight="700">
                     CURRENT
                   </Text>
                 </YStack>
@@ -155,46 +143,41 @@ export function TimelineView({
             </XStack>
 
             {/* Date range */}
-            <Text fontSize="$2" color="$gray9" mt="$2">
+            <Text fontSize="$2" color="$color9" mt="$2">
               {formatDate(phase.startDate)} – {formatDate(phase.endDate)}
             </Text>
           </YStack>
         </XStack>
       ))}
 
-      {/* Season start indicator */}
-      {seasonStartDate && (
-        <XStack gap="$4" mt="$2">
-          <YStack items="center" width={40}>
-            <YStack
-              width={2}
-              height={16}
-              bg="$gray4"
-            />
-            <YStack
-              width={32}
-              height={32}
-              rounded="$10"
-              bg="$blue4"
-              items="center"
-              justify="center"
-            >
-              <Text fontSize="$2" color="$blue11">
-                🏆
-              </Text>
-            </YStack>
+      {/* Program End indicator - connected to timeline */}
+      <XStack gap="$3">
+        <YStack items="center" width={36}>
+          <YStack
+            width={32}
+            height={32}
+            rounded="$10"
+            bg="$color5"
+            items="center"
+            justify="center"
+          >
+            <Text fontSize="$3" fontWeight="bold" color="$color10">
+              ✓
+            </Text>
           </YStack>
+        </YStack>
 
-          <YStack flex={1}>
-            <Text fontSize="$3" fontWeight="600" color="$gray12">
-              Season Starts
+        <YStack flex={1} justify="center">
+          <Text fontSize="$3" fontWeight="600" color="$color12">
+            Program Complete
+          </Text>
+          {phases.length > 0 && (
+            <Text fontSize="$2" color="$color9" mt="$1">
+              {formatDate(phases[phases.length - 1].endDate)}
             </Text>
-            <Text fontSize="$2" color="$gray9" mt="$1">
-              {formatDate(seasonStartDate)}
-            </Text>
-          </YStack>
-        </XStack>
-      )}
+          )}
+        </YStack>
+      </XStack>
     </YStack>
   )
 }

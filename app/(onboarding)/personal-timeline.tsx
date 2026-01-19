@@ -55,9 +55,9 @@ export default function PersonalTimelineScreen() {
 
   const handleContinue = () => {
     trackScreenComplete()
-    // Navigate to commitment screen with all params
+    // Navigate to maxes screen (Know Your Starting Point)
     router.push({
-      pathname: '/(onboarding)/commitment',
+      pathname: '/(intake)/maxes',
       params: {
         sportId,
         ageGroup,
@@ -116,16 +116,16 @@ export default function PersonalTimelineScreen() {
           <XStack gap="$3" mb="$4">
             <YStack
               flex={1}
-              bg="$green2"
+              bg="$color3"
               rounded="$4"
               p="$3"
               gap="$2"
               borderWidth={1}
-              borderColor="$green6"
+              borderColor="$color6"
             >
               <XStack gap="$2" items="center">
-                <Calendar size={16} color="$green10" />
-                <Text fontSize="$2" color="$green11" fontWeight="600">
+                <Calendar size={16} color="$primary" />
+                <Text fontSize="$2" color="$color11" fontWeight="600">
                   STARTS
                 </Text>
               </XStack>
@@ -136,16 +136,16 @@ export default function PersonalTimelineScreen() {
 
             <YStack
               flex={1}
-              bg="$blue2"
+              bg="$color3"
               rounded="$4"
               p="$3"
               gap="$2"
               borderWidth={1}
-              borderColor="$blue6"
+              borderColor="$color6"
             >
               <XStack gap="$2" items="center">
-                <Flag size={16} color="$blue10" />
-                <Text fontSize="$2" color="$blue11" fontWeight="600">
+                <Flag size={16} color="$primary" />
+                <Text fontSize="$2" color="$color11" fontWeight="600">
                   ENDS
                 </Text>
               </XStack>

@@ -12,6 +12,8 @@ import { ChevronRight, ChevronLeft } from '@tamagui/lucide-icons'
  *
  * Social proof and education about periodization training.
  * Explains why the GPP→SPP→SSP model is effective.
+ *
+ * Also used in revisit mode as the second educational screen.
  */
 export default function WhyItWorksScreen() {
   const router = useRouter()
@@ -20,13 +22,11 @@ export default function WhyItWorksScreen() {
 
   // Get onboarding state
   const onboardingState = useQuery(api.onboarding.getOnboardingState)
-
-  // Mutations
-  const skipOnboarding = useMutation(api.onboarding.skipOnboarding)
+  const completeOnboarding = useMutation(api.onboarding.completeOnboarding)
 
   // Analytics tracking
   const isRevisit = onboardingState?.isRevisit ?? false
-  const { trackScreenComplete, trackSkip } = useOnboardingAnalytics({
+  const { trackScreenComplete } = useOnboardingAnalytics({
     screenIndex: COMBINED_FLOW_SCREENS.WHY_IT_WORKS,
     screenName: ONBOARDING_SCREEN_NAMES[2],
     isRevisit,
@@ -53,6 +53,12 @@ export default function WhyItWorksScreen() {
     } as any)
   }
 
+  const handleDone = async () => {
+    // Mark onboarding as complete and return to dashboard
+    await completeOnboarding()
+    router.replace('/(athlete)')
+  }
+
   return (
     <YStack flex={1} bg="$background">
       {/* Main Content */}
@@ -65,10 +71,21 @@ export default function WhyItWorksScreen() {
           width="100%"
           self="center"
         >
-          {/* Progress Dots */}
-          <YStack items="center" mb="$4">
-            <IntakeProgressDots total={COMBINED_FLOW_SCREEN_COUNT} current={COMBINED_FLOW_SCREENS.WHY_IT_WORKS} />
-          </YStack>
+          {/* Progress Dots - only show in normal flow, not revisit */}
+          {!isRevisit && (
+            <YStack items="center" mb="$4">
+              <IntakeProgressDots total={COMBINED_FLOW_SCREEN_COUNT} current={COMBINED_FLOW_SCREENS.WHY_IT_WORKS} />
+            </YStack>
+          )}
+
+          {/* Revisit Mode Header */}
+          {isRevisit && (
+            <YStack items="center" mb="$2">
+              <Text fontSize="$2" color="$color10" fontWeight="600" textTransform="uppercase" letterSpacing={1}>
+                Training Education
+              </Text>
+            </YStack>
+          )}
 
           {/* Header */}
           <YStack items="center" gap="$2" mb="$6">
@@ -137,36 +154,68 @@ export default function WhyItWorksScreen() {
         borderTopColor="$borderColor"
         bg="$surface"
       >
-        <XStack gap="$3">
-          <Button
-            flex={1}
-            size="$5"
-            bg="$color4"
-            color="$color11"
-            onPress={handleBack}
-            icon={ChevronLeft}
-            fontFamily="$body"
-            fontWeight="600"
-            rounded="$4"
-            pressStyle={{ opacity: 0.9, scale: 0.98 }}
-          >
-            Back
-          </Button>
-          <Button
-            flex={2}
-            size="$5"
-            bg="$primary"
-            color="white"
-            onPress={handleContinue}
-            iconAfter={ChevronRight}
-            fontFamily="$body"
-            fontWeight="700"
-            rounded="$4"
-            pressStyle={{ opacity: 0.9, scale: 0.98 }}
-          >
-            Continue
-          </Button>
-        </XStack>
+        {isRevisit ? (
+          <XStack gap="$3">
+            <Button
+              flex={1}
+              size="$5"
+              bg="$color4"
+              color="$color11"
+              onPress={handleBack}
+              icon={ChevronLeft}
+              fontFamily="$body"
+              fontWeight="600"
+              rounded="$4"
+              pressStyle={{ opacity: 0.9, scale: 0.98 }}
+            >
+              Back
+            </Button>
+            <Button
+              flex={2}
+              size="$5"
+              bg="$primary"
+              color="white"
+              onPress={handleDone}
+              fontFamily="$body"
+              fontWeight="700"
+              rounded="$4"
+              pressStyle={{ opacity: 0.9, scale: 0.98 }}
+            >
+              Done
+            </Button>
+          </XStack>
+        ) : (
+          <XStack gap="$3">
+            <Button
+              flex={1}
+              size="$5"
+              bg="$color4"
+              color="$color11"
+              onPress={handleBack}
+              icon={ChevronLeft}
+              fontFamily="$body"
+              fontWeight="600"
+              rounded="$4"
+              pressStyle={{ opacity: 0.9, scale: 0.98 }}
+            >
+              Back
+            </Button>
+            <Button
+              flex={2}
+              size="$5"
+              bg="$primary"
+              color="white"
+              onPress={handleContinue}
+              iconAfter={ChevronRight}
+              fontFamily="$body"
+              fontWeight="700"
+              rounded="$4"
+              pressStyle={{ opacity: 0.9, scale: 0.98 }}
+            >
+              Continue
+            </Button>
+          </XStack>
+        )}
       </YStack>
     </YStack>
   )
@@ -182,13 +231,13 @@ function StatCard({ value, label, sublabel }: StatCardProps) {
   return (
     <YStack
       flex={1}
-      bg="$green2"
+      bg="$color3"
       rounded="$4"
       p="$3"
       items="center"
       gap="$1"
       borderWidth={1}
-      borderColor="$green6"
+      borderColor="$color6"
     >
       <Text fontSize="$7" fontWeight="bold" color="$primary">
         {value}

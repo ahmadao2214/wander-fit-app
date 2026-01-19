@@ -1,18 +1,15 @@
 import { useState, useMemo } from 'react'
-import { YStack, XStack, Text, Card, Button, styled, Circle, ScrollView } from 'tamagui'
+import { YStack, XStack, Text, Card, Button, styled, Circle } from 'tamagui'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   ChevronRight,
   ChevronLeft,
   Calendar,
-  Plane,
   Flag,
-  ArrowRight,
 } from '@tamagui/lucide-icons'
 import { Vibration } from 'react-native'
 import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT } from '../../components/IntakeProgressDots'
-import { getTrainingPhase } from '../../lib'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
@@ -42,27 +39,6 @@ const MONTHS = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ]
-
-const PHASE_STYLES = {
-  'Off-Season': {
-    color: '$blue10',
-    bgColor: '$blue3',
-    label: 'Off-Season',
-    description: 'Building your base',
-  },
-  'Pre-Season': {
-    color: '$orange10',
-    bgColor: '$orange3',
-    label: 'Pre-Season',
-    description: 'Sport-specific prep',
-  },
-  'In-Season Prep': {
-    color: '$green10',
-    bgColor: '$green3',
-    label: 'In-Season Prep',
-    description: 'Peak performance',
-  },
-} as const
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
@@ -107,12 +83,12 @@ function isSameDay(a: Date, b: Date): boolean {
   )
 }
 
-function getDayPhaseColor(date: Date, today: Date): string {
-  const weeks = getWeeksBetween(today, date)
-  if (weeks <= 0) return '$color4' // Past
-  if (weeks <= 4) return '$green4' // In-Season Prep
-  if (weeks <= 8) return '$orange4' // Pre-Season
-  return '$blue4' // Off-Season
+function isDateInRange(date: Date, today: Date, selectedDate: Date | null): boolean {
+  if (!selectedDate) return false
+  const dateTime = date.getTime()
+  const todayTime = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()
+  const selectedTime = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()).getTime()
+  return dateTime >= todayTime && dateTime <= selectedTime
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -135,7 +111,6 @@ const CalendarMonth = ({
   onSelectDate,
 }: CalendarMonthProps) => {
   const days = useMemo(() => getMonthDays(year, month), [year, month])
-  const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month
 
   return (
     <YStack gap="$2" minW={280}>
@@ -175,7 +150,7 @@ const CalendarMonth = ({
               const isToday = isSameDay(date, today)
               const isSelected = selectedDate && isSameDay(date, selectedDate)
               const isPast = date < today && !isToday
-              const phaseColor = getDayPhaseColor(date, today)
+              const isInRange = isDateInRange(date, today, selectedDate)
 
               return (
                 <Button
@@ -187,16 +162,24 @@ const CalendarMonth = ({
                   bg={
                     isSelected
                       ? '$primary'
-                      : isToday
-                        ? '$color5'
-                        : isOutsideMonth || isPast
-                          ? 'transparent'
-                          : (phaseColor as any)
+                      : isInRange
+                        ? '$primary'
+                        : isToday
+                          ? '$color5'
+                          : 'transparent'
                   }
-                  borderWidth={isToday && !isSelected ? 2 : 0}
+                  opacity={
+                    isOutsideMonth
+                      ? 0.3
+                      : isPast
+                        ? 0.5
+                        : isInRange && !isSelected
+                          ? 0.4
+                          : 1
+                  }
+                  borderWidth={isToday && !isSelected && !isInRange ? 2 : 0}
                   borderColor="$primary"
                   disabled={isPast || isOutsideMonth}
-                  opacity={isOutsideMonth ? 0.3 : isPast ? 0.5 : 1}
                   pressStyle={{ scale: 0.95 }}
                   onPress={() => {
                     if (!isPast && !isOutsideMonth) {
@@ -207,9 +190,9 @@ const CalendarMonth = ({
                   <Text
                     fontSize={14}
                     fontFamily="$body"
-                    fontWeight={isToday || isSelected ? '700' : '400'}
+                    fontWeight={isToday || isSelected || isInRange ? '700' : '400'}
                     color={
-                      isSelected
+                      isSelected || isInRange
                         ? 'white'
                         : isToday
                           ? '$primary'
@@ -231,80 +214,74 @@ const CalendarMonth = ({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FlightPath Component
+// WeeksDisplay Component (simplified, connected line with weeks on it)
 // ─────────────────────────────────────────────────────────────────────────────
 
-interface FlightPathProps {
+interface WeeksDisplayProps {
   weeks: number
-  phase: ReturnType<typeof getTrainingPhase>
 }
 
-const FlightPath = ({ weeks, phase }: FlightPathProps) => {
-  const style = PHASE_STYLES[phase]
-
+const WeeksDisplay = ({ weeks }: WeeksDisplayProps) => {
   return (
-    <Card
-      bg={style.bgColor}
-      borderColor={style.color}
-      borderWidth={1}
-      rounded="$5"
-      p="$4"
-    >
-      <XStack items="center" justify="space-between">
-        {/* Today */}
-        <YStack items="center" gap="$1">
-          <Circle size={40} bg="$color5" borderWidth={2} borderColor="$primary">
-            <Calendar size={20} color="$primary" />
-          </Circle>
-          <Text fontSize={12} fontFamily="$body" color="$color10">
-            Today
-          </Text>
-        </YStack>
+    <YStack px="$2">
+      <XStack items="center" height={50}>
+        {/* Today Circle */}
+        <Circle size={44} bg="$color5" borderWidth={2} borderColor="$primary">
+          <Calendar size={22} color="$primary" />
+        </Circle>
 
-        {/* Flight Path */}
-        <YStack flex={1} px="$3" items="center" gap="$1">
-          <XStack items="center" gap="$2">
-            <YStack flex={1} height={2} bg={style.color} opacity={0.3} />
-            <Plane size={20} color={style.color} style={{ transform: [{ rotate: '45deg' }] }} />
-            <YStack flex={1} height={2} bg={style.color} opacity={0.3} />
-          </XStack>
-          <XStack items="baseline" gap="$1">
-            <Text
-              fontSize={28}
-              fontFamily="$heading"
-              fontWeight="800"
-              color={style.color}
+        {/* Connected Line with Weeks on it */}
+        <XStack flex={1} items="center" position="relative">
+          {/* The connecting line */}
+          <YStack
+            position="absolute"
+            left={0}
+            right={0}
+            height={3}
+            bg="$primary"
+            opacity={0.4}
+          />
+          {/* Weeks badge on the line */}
+          <YStack flex={1} items="center">
+            <XStack
+              bg="$background"
+              px="$3"
+              py="$1"
+              rounded="$4"
+              items="baseline"
+              gap="$1"
             >
-              {weeks}
-            </Text>
-            <Text fontSize={14} color="$color10" fontFamily="$body">
-              weeks
-            </Text>
-          </XStack>
-        </YStack>
+              <Text
+                fontSize={24}
+                fontFamily="$heading"
+                fontWeight="800"
+                color="$primary"
+              >
+                {weeks}
+              </Text>
+              <Text fontSize={14} color="$color10" fontFamily="$body">
+                weeks
+              </Text>
+            </XStack>
+          </YStack>
+        </XStack>
 
-        {/* Season Start */}
-        <YStack items="center" gap="$1">
-          <Circle size={40} bg={style.color}>
-            <Flag size={20} color="white" />
-          </Circle>
-          <Text fontSize={12} fontFamily="$body" color="$color10">
-            Season
-          </Text>
-        </YStack>
+        {/* Season End Circle */}
+        <Circle size={44} bg="$primary">
+          <Flag size={22} color="white" />
+        </Circle>
       </XStack>
 
-      {/* Phase Badge */}
-      <XStack mt="$3" items="center" justify="center" gap="$2">
-        <Circle size={8} bg={style.color} />
-        <Text fontSize={14} fontFamily="$body" fontWeight="600" color={style.color}>
-          {style.label}
+      {/* Labels below */}
+      <XStack justify="space-between" mt="$2">
+        <Text fontSize={13} fontFamily="$body" color="$color10" width={44} text="center">
+          Today
         </Text>
-        <Text fontSize={13} color="$color10" fontFamily="$body">
-          – {style.description}
+        <Text fontSize={13} fontFamily="$body" color="$color10" width={44} text="center">
+          Season
         </Text>
       </XStack>
-    </Card>
+    </YStack>
   )
 }
 
@@ -324,6 +301,7 @@ export default function SeasonTimelineScreen() {
 
   const today = useMemo(() => new Date(), [])
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+  const [currentMonthIndex, setCurrentMonthIndex] = useState(0)
 
   // Generate next 4 months for the calendar
   const months = useMemo((): { year: number; month: number }[] => {
@@ -342,11 +320,24 @@ export default function SeasonTimelineScreen() {
   }
 
   const weeks = selectedDate ? getWeeksBetween(today, selectedDate) : 0
-  const phase = getTrainingPhase(weeks)
 
   const handleSelectDate = (date: Date) => {
     Vibration.vibrate(10)
     setSelectedDate(date)
+  }
+
+  const handlePrevMonth = () => {
+    if (currentMonthIndex > 0) {
+      Vibration.vibrate(10)
+      setCurrentMonthIndex(i => i - 1)
+    }
+  }
+
+  const handleNextMonth = () => {
+    if (currentMonthIndex < months.length - 1) {
+      Vibration.vibrate(10)
+      setCurrentMonthIndex(i => i + 1)
+    }
   }
 
   const handleBack = () => {
@@ -355,9 +346,9 @@ export default function SeasonTimelineScreen() {
 
   const handleContinue = () => {
     if (selectedDate) {
-      // Navigate to onboarding personal-timeline screen
+      // Navigate directly to maxes screen (skip personal-timeline, merged into results)
       router.push({
-        pathname: '/(onboarding)/personal-timeline',
+        pathname: '/(intake)/maxes',
         params: {
           sportId,
           ageGroup,
@@ -392,63 +383,74 @@ export default function SeasonTimelineScreen() {
               When does your competitive{'\n'}season begin?
             </Subtitle>
           </YStack>
-
-          {/* Phase Legend */}
-          <XStack justify="center" gap="$4" mb="$4" flexWrap="wrap">
-            <XStack items="center" gap="$1.5">
-              <Circle size={10} bg="$blue4" />
-              <Text fontSize={11} color="$color10" fontFamily="$body">Off-Season</Text>
-            </XStack>
-            <XStack items="center" gap="$1.5">
-              <Circle size={10} bg="$orange4" />
-              <Text fontSize={11} color="$color10" fontFamily="$body">Pre-Season</Text>
-            </XStack>
-            <XStack items="center" gap="$1.5">
-              <Circle size={10} bg="$green4" />
-              <Text fontSize={11} color="$color10" fontFamily="$body">In-Season</Text>
-            </XStack>
-          </XStack>
         </YStack>
 
-        {/* Scrollable Calendar */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{
-            paddingHorizontal: 16,
-            gap: 24,
-          } as any}
-        >
-          {months.map((m) => (
-            <CalendarMonth
-              key={`${m.year}-${m.month}`}
-              year={m.year}
-              month={m.month}
-              today={today}
-              selectedDate={selectedDate}
-              onSelectDate={handleSelectDate}
-            />
-          ))}
-        </ScrollView>
-
-        {/* Flight Path Display */}
-        <YStack px="$4" mt="$4" maxW={600} width="100%" self="center">
-          {selectedDate ? (
-            <FlightPath weeks={weeks} phase={phase} />
-          ) : (
-            <Card
-              bg="$color3"
-              rounded="$5"
-              p="$5"
-              items="center"
-              gap="$2"
+        {/* Single Month Calendar with Navigation */}
+        <YStack flex={1} px="$4">
+          <XStack items="center" gap="$3" width="100%">
+            {/* Previous Month Button */}
+            <Button
+              circular
+              size="$4"
+              bg={currentMonthIndex === 0 ? '$color3' : '$color4'}
+              disabled={currentMonthIndex === 0}
+              opacity={currentMonthIndex === 0 ? 0.4 : 1}
+              onPress={handlePrevMonth}
+              pressStyle={{ scale: 0.95 }}
             >
-              <Calendar size={32} color="$color9" />
-              <Text color="$color10" fontFamily="$body" text="center">
-                Select your season start date above
-              </Text>
-            </Card>
-          )}
+              <ChevronLeft size={20} color={currentMonthIndex === 0 ? '$color8' : '$color11'} />
+            </Button>
+
+            {/* Calendar Month */}
+            <YStack flex={1} items="center">
+              <CalendarMonth
+                year={months[currentMonthIndex].year}
+                month={months[currentMonthIndex].month}
+                today={today}
+                selectedDate={selectedDate}
+                onSelectDate={handleSelectDate}
+              />
+            </YStack>
+
+            {/* Next Month Button */}
+            <Button
+              circular
+              size="$4"
+              bg={currentMonthIndex === months.length - 1 ? '$color3' : '$color4'}
+              disabled={currentMonthIndex === months.length - 1}
+              opacity={currentMonthIndex === months.length - 1 ? 0.4 : 1}
+              onPress={handleNextMonth}
+              pressStyle={{ scale: 0.95 }}
+            >
+              <ChevronRight size={20} color={currentMonthIndex === months.length - 1 ? '$color8' : '$color11'} />
+            </Button>
+          </XStack>
+
+          {/* Month Indicator Dots */}
+          <XStack gap="$2" mt="$3" justify="center">
+            {months.map((_, i) => (
+              <Circle
+                key={i}
+                size={8}
+                bg={i === currentMonthIndex ? '$primary' : '$color6'}
+                animation="quick"
+              />
+            ))}
+          </XStack>
+
+          {/* Weeks Display - directly below calendar */}
+          <YStack mt="$5" maxW={600} width="100%">
+            {selectedDate ? (
+              <WeeksDisplay weeks={weeks} />
+            ) : (
+              <YStack items="center" gap="$2" py="$4">
+                <Calendar size={28} color="$color9" />
+                <Text color="$color10" fontFamily="$body" text="center" fontSize={14}>
+                  Select your season start date above
+                </Text>
+              </YStack>
+            )}
+          </YStack>
         </YStack>
       </YStack>
 

@@ -106,7 +106,7 @@ export default function MaxesScreen() {
         }
       }
 
-      // Navigate directly to results screen
+      // Navigate to results screen (program preview)
       router.push({
         pathname: '/(intake)/results',
         params: {
@@ -126,7 +126,7 @@ export default function MaxesScreen() {
   }
 
   const handleSkip = () => {
-    // Skip maxes, go directly to results
+    // Skip maxes, go to results (program preview)
     router.push({
       pathname: '/(intake)/results',
       params: {
@@ -153,22 +153,27 @@ export default function MaxesScreen() {
   }
 
   return (
-    <YStack flex={1} bg="$background">
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1 }}
-        enabled={Platform.OS === 'ios'}
-      >
-        <ScrollView flex={1} keyboardShouldPersistTaps="handled">
-        <YStack
-          gap="$6"
-          px="$4"
-          pt={insets.top + 16}
-          pb="$8"
-          maxW={600}
-          width="100%"
-          self="center"
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1 }}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
+      <YStack flex={1} bg="$background">
+        <ScrollView 
+          flex={1} 
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ flexGrow: 1 }}
+          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
         >
+          <YStack
+            gap="$6"
+            px="$4"
+            pt={insets.top + 16}
+            pb="$8"
+            maxW={600}
+            width="100%"
+            self="center"
+          >
           {/* Progress Dots */}
           <YStack items="center" mb="$2">
             <IntakeProgressDots total={COMBINED_FLOW_SCREEN_COUNT} current={COMBINED_FLOW_SCREENS.MAXES} />
@@ -242,69 +247,69 @@ export default function MaxesScreen() {
                   No exercises available. You can set these later in your profile.
                 </Text>
               )}
-            </YStack>
-          </Card>
-        </YStack>
+              </YStack>
+            </Card>
+          </YStack>
         </ScrollView>
-      </KeyboardAvoidingView>
 
-      {/* Bottom Actions */}
-      <YStack
-        px="$4"
-        pt="$4"
-        pb={16 + insets.bottom}
-        borderTopWidth={1}
-        borderTopColor="$gray5"
-        bg="$background"
-        gap="$3"
-      >
-        <XStack gap="$3">
-          <Button
-            flex={1}
-            size="$5"
-            variant="outlined"
-            onPress={handleBack}
-            icon={ChevronLeft}
-            disabled={isSubmitting}
-          >
-            Back
-          </Button>
-          <Button
-            flex={2}
-            size="$5"
-            bg={hasErrors ? '$color6' : '$primary'}
-            color="white"
-            onPress={handleContinue}
-            iconAfter={ChevronRight}
-            fontWeight="700"
-            disabled={isSubmitting || hasErrors}
-            opacity={hasErrors ? 0.6 : 1}
-          >
-            {isSubmitting ? (
-              <XStack items="center" gap="$2">
-                <Spinner size="small" color="white" />
-                <Text color="white" fontWeight="700">Saving...</Text>
-              </XStack>
-            ) : hasAnyMaxes ? (
-              'Save & Continue'
-            ) : (
-              'Continue'
-            )}
-          </Button>
-        </XStack>
+        {/* Bottom Actions */}
+        <YStack
+          px="$4"
+          pt="$4"
+          pb={16 + insets.bottom}
+          borderTopWidth={1}
+          borderTopColor="$gray5"
+          bg="$background"
+          gap="$3"
+        >
+          <XStack gap="$3">
+            <Button
+              flex={1}
+              size="$5"
+              variant="outlined"
+              onPress={handleBack}
+              icon={ChevronLeft}
+              disabled={isSubmitting}
+            >
+              Back
+            </Button>
+            <Button
+              flex={2}
+              size="$5"
+              bg={hasErrors ? '$color6' : '$primary'}
+              color="white"
+              onPress={handleContinue}
+              iconAfter={ChevronRight}
+              fontWeight="700"
+              disabled={isSubmitting || hasErrors}
+              opacity={hasErrors ? 0.6 : 1}
+            >
+              {isSubmitting ? (
+                <XStack items="center" gap="$2">
+                  <Spinner size="small" color="white" />
+                  <Text color="white" fontWeight="700">Saving...</Text>
+                </XStack>
+              ) : hasAnyMaxes ? (
+                'Save & Continue'
+              ) : (
+                'Continue'
+              )}
+            </Button>
+          </XStack>
 
-        {!hasAnyMaxes && (
-          <Button
-            size="$3"
-            chromeless
-            color="$color10"
-            onPress={handleSkip}
-            disabled={isSubmitting}
-          >
-            I'll set these later
-          </Button>
-        )}
+          {!hasAnyMaxes && (
+            <Button
+              size="$3"
+              chromeless
+              color="$color10"
+              onPress={handleSkip}
+              disabled={isSubmitting}
+            >
+              I'll set these later
+            </Button>
+          )}
+        </YStack>
       </YStack>
-    </YStack>
+    </KeyboardAvoidingView>
   )
 }

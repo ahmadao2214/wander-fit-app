@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { YStack, XStack, Text, Card, Button, styled, Circle } from 'tamagui'
+import { YStack, XStack, Text, Button, styled, Circle } from 'tamagui'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { ChevronRight, ChevronLeft, Check, X } from '@tamagui/lucide-icons'
+import { ChevronRight, ChevronLeft, Check } from '@tamagui/lucide-icons'
 import { Vibration } from 'react-native'
 import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT } from '../../components/IntakeProgressDots'
 
@@ -41,7 +41,6 @@ const DAYS = [
 ] as const
 
 const MIN_DAYS = 1
-const MAX_DAYS = 7
 const RECOMMENDED_MIN = 3
 const RECOMMENDED_MAX = 4
 
@@ -53,30 +52,17 @@ interface DaySlotProps {
   day: (typeof DAYS)[number]
   isSelected: boolean
   onToggle: () => void
-  index: number
 }
 
-const DaySlot = ({ day, isSelected, onToggle, index }: DaySlotProps) => {
+const DaySlot = ({ day, isSelected, onToggle }: DaySlotProps) => {
   return (
-    <YStack
-      items="center"
-      gap="$2"
-      animation="quick"
-      enterStyle={{
-        opacity: 0,
-        y: 10,
-      }}
-      style={{
-        animationDelay: `${index * 50}ms`,
-      }}
-    >
+    <YStack items="center" gap="$3">
       {/* Day Label */}
       <Text
-        fontSize={12}
+        fontSize={14}
         fontFamily="$body"
         fontWeight="600"
         color="$color10"
-        textTransform="uppercase"
       >
         {day.short}
       </Text>
@@ -104,122 +90,6 @@ const DaySlot = ({ day, isSelected, onToggle, index }: DaySlotProps) => {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// WhiteboardCard Component
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface WhiteboardCardProps {
-  selectedDays: Set<number>
-  onToggleDay: (dayIndex: number) => void
-}
-
-const WhiteboardCard = ({ selectedDays, onToggleDay }: WhiteboardCardProps) => {
-  const count = selectedDays.size
-  const isInRecommendedRange = count >= RECOMMENDED_MIN && count <= RECOMMENDED_MAX
-
-  return (
-    <Card
-      bg="$surface"
-      borderColor="$borderColor"
-      borderWidth={1}
-      rounded="$6"
-      overflow="hidden"
-    >
-      {/* Whiteboard Header */}
-      <YStack
-        bg="$color3"
-        px="$4"
-        py="$3"
-        borderBottomWidth={1}
-        borderBottomColor="$borderColor"
-      >
-        <Text
-          fontSize={14}
-          fontFamily="$body"
-          fontWeight="700"
-          color="$color11"
-          textTransform="uppercase"
-          letterSpacing={1}
-        >
-          Weekly Training Schedule
-        </Text>
-      </YStack>
-
-      {/* Days Grid */}
-      <YStack p="$5" gap="$5">
-        <XStack justify="space-between" px="$2">
-          {DAYS.map((day, index) => (
-            <DaySlot
-              key={day.index}
-              day={day}
-              index={index}
-              isSelected={selectedDays.has(day.index)}
-              onToggle={() => onToggleDay(day.index)}
-            />
-          ))}
-        </XStack>
-
-        {/* Session Counter */}
-        <YStack
-          bg="$color2"
-          rounded="$4"
-          p="$4"
-          items="center"
-          gap="$2"
-        >
-          <XStack items="baseline" gap="$2">
-            <Text
-              fontSize={48}
-              fontFamily="$heading"
-              fontWeight="800"
-              color={isInRecommendedRange ? '$primary' : '$color12'}
-            >
-              {count}
-            </Text>
-            <Text
-              fontSize={18}
-              fontFamily="$body"
-              color="$color10"
-            >
-              {count === 1 ? 'session' : 'sessions'} / week
-            </Text>
-          </XStack>
-
-          {/* Recommendation Hint */}
-          <XStack
-            items="center"
-            gap="$2"
-            opacity={0.8}
-          >
-            {isInRecommendedRange ? (
-              <>
-                <Circle size={8} bg="$intensityLow10" />
-                <Text fontSize={13} color="$intensityLow11" fontFamily="$body">
-                  Great choice! This is in our recommended range
-                </Text>
-              </>
-            ) : count < RECOMMENDED_MIN ? (
-              <>
-                <Circle size={8} bg="$intensityMed10" />
-                <Text fontSize={13} color="$intensityMed11" fontFamily="$body">
-                  We recommend at least {RECOMMENDED_MIN} days for best results
-                </Text>
-              </>
-            ) : (
-              <>
-                <Circle size={8} bg="$intensityMed10" />
-                <Text fontSize={13} color="$intensityMed11" fontFamily="$body">
-                  Make sure to include rest days for recovery
-                </Text>
-              </>
-            )}
-          </XStack>
-        </YStack>
-      </YStack>
-    </Card>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Training Days Screen
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -239,6 +109,9 @@ export default function TrainingDaysScreen() {
     router.replace('/(intake)/sport')
     return null
   }
+
+  const count = selectedDays.size
+  const isInRecommendedRange = count >= RECOMMENDED_MIN && count <= RECOMMENDED_MAX
 
   const handleToggleDay = (dayIndex: number) => {
     Vibration.vibrate(10)
@@ -291,21 +164,65 @@ export default function TrainingDaysScreen() {
         </YStack>
 
         {/* Header */}
-        <YStack gap="$3" items="center" mb="$5">
+        <YStack gap="$3" items="center" mb="$6">
           <DisplayHeading>TRAINING DAYS</DisplayHeading>
           <Subtitle>
             Tap the days you can commit{'\n'}to training each week
           </Subtitle>
         </YStack>
 
-        {/* Whiteboard */}
-        <WhiteboardCard
-          selectedDays={selectedDays}
-          onToggleDay={handleToggleDay}
-        />
+        {/* Main Content - Full Width */}
+        <YStack flex={1} justify="center" gap="$8">
+          {/* Days Grid */}
+          <XStack justify="space-between" px="$2">
+            {DAYS.map((day) => (
+              <DaySlot
+                key={day.index}
+                day={day}
+                isSelected={selectedDays.has(day.index)}
+                onToggle={() => handleToggleDay(day.index)}
+              />
+            ))}
+          </XStack>
 
-        {/* Spacer */}
-        <YStack flex={1} />
+          {/* Session Counter */}
+          <YStack items="center" gap="$3">
+            <XStack items="baseline" gap="$2">
+              <Text
+                fontSize={72}
+                fontFamily="$heading"
+                fontWeight="800"
+                color={isInRecommendedRange ? '$primary' : '$color12'}
+                lineHeight={72}
+              >
+                {count}
+              </Text>
+              <Text
+                fontSize={20}
+                fontFamily="$body"
+                color="$color10"
+              >
+                {count === 1 ? 'session' : 'sessions'} / week
+              </Text>
+            </XStack>
+
+            {/* Recommendation */}
+            <XStack items="center" gap="$2">
+              <Circle size={8} bg={isInRecommendedRange ? '$primary' : '$orange10'} />
+              <Text
+                fontSize={14}
+                color={isInRecommendedRange ? '$primary' : '$orange11'}
+                fontFamily="$body"
+              >
+                {isInRecommendedRange
+                  ? 'Great choice! This is our recommended range'
+                  : count < RECOMMENDED_MIN
+                    ? `We recommend at least ${RECOMMENDED_MIN} days for best results`
+                    : 'Make sure to include rest days for recovery'}
+              </Text>
+            </XStack>
+          </YStack>
+        </YStack>
       </YStack>
 
       {/* Bottom Actions */}
