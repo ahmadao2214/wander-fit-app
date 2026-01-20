@@ -250,6 +250,11 @@ export default defineSchema({
 
     // GPP intake tracking
     intakeCompletedAt: v.optional(v.number()), // null = needs intake flow
+
+// Onboarding flow tracking (educational screens after intake)
+    onboardingCompletedAt: v.optional(v.number()), // null = needs onboarding
+    onboardingProgress: v.optional(v.number()), // Current screen index (0-9) for resume
+    onboardingSkipped: v.optional(v.boolean()), // True if user skipped onboarding
   })
     .index("by_email", ["email"])
     .index("by_clerk", ["clerkId"])

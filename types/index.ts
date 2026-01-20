@@ -72,6 +72,75 @@ export type UserProgress = Doc<"user_progress">;
 export type UserMax = Doc<"user_maxes">;
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Onboarding Education Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Onboarding screen identifiers
+ * Order matches the flow: Welcome → Phase Education → Timeline → Commitment
+ *
+ * These IDs must match the actual route file names in app/(onboarding)/
+ */
+export type OnboardingScreenId =
+  | "welcome"
+  | "why-it-works"
+  | "phases-overview"
+  | "gpp-detail"
+  | "spp-detail"
+  | "ssp-detail"
+  | "personal-timeline"
+  | "commitment"
+  | "progression";
+
+/**
+ * Onboarding section identifiers
+ */
+export type OnboardingSectionId =
+  | "welcome"
+  | "phaseEducation"
+  | "timeline"
+  | "howItWorks";
+
+/**
+ * Onboarding progress state returned by the hook
+ */
+export interface OnboardingProgressState {
+  hasStarted: boolean;
+  currentScreen: number;
+  currentScreenId: OnboardingScreenId;
+  totalScreens: number;
+  isCompleted: boolean;
+  isSkipped: boolean;
+  screensViewed: OnboardingScreenId[];
+  progress: number; // 0-100 percentage
+  completedAt?: number;
+  skippedAt?: number;
+  revisitCount?: number;
+}
+
+/**
+ * Onboarding screen data for rendering
+ */
+export interface OnboardingScreenData {
+  screenId: OnboardingScreenId;
+  screenIndex: number;
+  totalScreens: number;
+  isFirst: boolean;
+  isLast: boolean;
+  // Personalized data
+  userName: string;
+  sport: string | null;
+  category: {
+    id: number;
+    name: string;
+    shortName: string;
+    description: string;
+  } | null;
+  skillLevel: string | null;
+  trainingDays: number | null;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // GPP Exercise Types
 // ─────────────────────────────────────────────────────────────────────────────
 

@@ -1,14 +1,12 @@
-import { useState, useEffect } from 'react'
 import { YStack, XStack, H2, H3, Text, Card, Button, Spinner, ScrollView } from 'tamagui'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useQuery, useMutation } from 'convex/react'
+import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { Id } from '../../convex/_generated/dataModel'
 import {
   ChevronLeft,
-  ChevronDown,
-  ChevronUp,
+  ChevronRight,
   CheckCircle,
   Target,
   Trophy,
@@ -21,21 +19,21 @@ import {
   User,
 } from '@tamagui/lucide-icons'
 
-import { PHASE_NAMES, AgeGroup } from '../../types'
-import { useAuth } from '../../hooks/useAuth'
+import { AgeGroup } from '../../types'
 import { getSkillLevel, getTrainingPhase } from '../../lib'
+import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT, COMBINED_FLOW_ROUTES } from '../../components/IntakeProgressDots'
+import { TimelineView, createPhaseTimeline } from '../../components/onboarding'
 
 /**
  * Results Screen
  *
- * Final step of intake flow.
+ * Program preview step of intake flow.
  * Shows the calculated assignment and previews the program.
- * User confirms to create their program and complete intake.
+ * User reviews their program before making their commitment.
  */
 export default function ResultsScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
-  const { hasCompletedIntake } = useAuth()
   const { sportId, yearsOfExperience, trainingDays, weeksUntilSeason, ageGroup } = useLocalSearchParams<{
     sportId: string
     yearsOfExperience: string
@@ -44,12 +42,6 @@ export default function ResultsScreen() {
     ageGroup: AgeGroup
   }>()
 
-  const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set())
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isSuccess, setIsSuccess] = useState(false)
-
-  // Mutation to complete intake
-  const completeIntake = useMutation(api.userPrograms.completeIntake)
 
   // Get sport details
   const sport = useQuery(
@@ -103,67 +95,34 @@ export default function ResultsScreen() {
     return icons[categoryId as keyof typeof icons] || Activity
   }
 
-  // Helper: Toggle phase expansion
-  const togglePhase = (phase: string) => {
-    setExpandedPhases(prev => {
-      const next = new Set(prev)
-      if (next.has(phase)) {
-        next.delete(phase)
-      } else {
-        next.add(phase)
-      }
-      return next
-    })
-  }
-
-  // Get phase descriptions
-  const getPhaseDescription = (phase: 'GPP' | 'SPP' | 'SSP') => {
-    const descriptions = {
-      GPP: 'Foundation phase focusing on overall fitness, movement quality, and work capacity.',
-      SPP: 'Sport-specific movements that transfer directly to your athletic demands.',
-      SSP: 'Peak performance preparation while maintaining gains and reducing fatigue.',
-    }
-    return descriptions[phase]
-  }
-
   const handleBack = () => {
     router.back()
   }
 
-  const handleConfirm = async () => {
-    setIsSubmitting(true)
-    try {
-      await completeIntake({
-        sportId: sportId as Id<"sports">,
-        yearsOfExperience: years,
-        preferredTrainingDaysPerWeek: days,
-        weeksUntilSeason: weeks,
-        ageGroup: ageGroup as "10-13" | "14-17" | "18+",
-      })
-      setIsSuccess(true)
-    } catch (error) {
-      console.error('Failed to complete intake:', error)
-      alert('Failed to create program. Please try again.')
-      setIsSubmitting(false)
+  // Navigation handler for progress dots (backward navigation only)
+  const handleProgressNavigate = (index: number) => {
+    const route = COMBINED_FLOW_ROUTES[index]
+    if (route) {
+      router.push({
+        pathname: route,
+        params: { sportId, yearsOfExperience, trainingDays, weeksUntilSeason, ageGroup },
+      } as any)
     }
   }
 
-  // Navigate to athlete dashboard once intake is marked complete
-  useEffect(() => {
-    if (isSuccess && hasCompletedIntake) {
-      router.replace('/(athlete)')
-    }
-  }, [isSuccess, hasCompletedIntake, router])
-
-  // Fallback navigation after a short delay
-  useEffect(() => {
-    if (isSuccess) {
-      const timeout = setTimeout(() => {
-        router.replace('/(athlete)')
-      }, 2000)
-      return () => clearTimeout(timeout)
-    }
-  }, [isSuccess, router])
+  const handleContinue = () => {
+    // Navigate to commitment screen
+    router.push({
+      pathname: '/(onboarding)/commitment',
+      params: {
+        sportId,
+        yearsOfExperience,
+        trainingDays,
+        weeksUntilSeason,
+        ageGroup,
+      },
+    } as any)
+  }
 
   // Show loading while fetching sport/category (undefined = still loading)
   if (sport === undefined || category === undefined) {
@@ -181,37 +140,27 @@ export default function ResultsScreen() {
     return null
   }
 
-  // Show success state while waiting for redirect
-  if (isSuccess) {
-    return (
-      <YStack flex={1} bg="$background" items="center" justify="center" gap="$6" px="$4">
-        <YStack items="center" gap="$4">
-          <Dumbbell size={72} color="$primary" />
-          <H2 text="center" color="$color12">Let's Go!</H2>
-          <Text color="$gray11" text="center" fontSize="$4">
-            Your personalized program is ready.
-          </Text>
-          <Text color="$gray11" text="center" fontSize="$4">
-            Taking you to your dashboard...
-          </Text>
-        </YStack>
-        <Spinner size="large" color="$primary" />
-      </YStack>
-    )
-  }
-
   return (
     <YStack flex={1} bg="$background">
       <ScrollView flex={1}>
         <YStack
           gap="$6"
           px="$4"
-          pt="$10"
+          pt={insets.top + 16}
           pb="$8"
           maxW={600}
           width="100%"
           self="center"
         >
+          {/* Progress Dots */}
+          <YStack items="center" mb="$2">
+            <IntakeProgressDots
+              total={COMBINED_FLOW_SCREEN_COUNT}
+              current={COMBINED_FLOW_SCREENS.RESULTS}
+              onNavigate={handleProgressNavigate}
+            />
+          </YStack>
+
           {/* Header */}
           <YStack gap="$2" items="center">
             <CheckCircle size={64} color="$primary" />
@@ -354,123 +303,17 @@ export default function ResultsScreen() {
             </Card>
           )}
 
-          {/* Training Journey - With Inline Accordions */}
+          {/* Training Journey - Timeline View */}
           <Card p="$4" bg="$background" borderColor="$borderColor" borderWidth={1}>
-            <YStack gap="$3">
-              <H3 fontSize="$5" color="$color12">Your Training Journey</H3>
+            <YStack gap="$4">
+              <H3 fontSize="$5" color="$color12">Your 12-Week Journey</H3>
 
-              <YStack gap="$3">
-                {/* GPP Phase */}
-                <Card
-                  p="$3"
-                  bg="$background"
-                  borderColor="$borderColor"
-                  borderWidth={1}
-                  pressStyle={{ bg: '$backgroundHover' }}
-                  onPress={() => togglePhase('GPP')}
-                >
-                  <YStack gap="$2">
-                    <XStack items="center" gap="$3">
-                      <Card bg="$primary" width={28} height={28} rounded={14} items="center" justify="center">
-                        <Text color="white" fontSize="$2" fontWeight="700">1</Text>
-                      </Card>
-                      <YStack flex={1}>
-                        <Text fontWeight="600" fontSize="$4" color="$color12">
-                          {PHASE_NAMES.GPP}
-                        </Text>
-                        <Text fontSize="$2" color="$color10">
-                          4 weeks • Foundation phase
-                        </Text>
-                      </YStack>
-                      {expandedPhases.has('GPP') ? (
-                        <ChevronUp size={20} color="$color10" />
-                      ) : (
-                        <ChevronDown size={20} color="$color10" />
-                      )}
-                    </XStack>
-
-                    {expandedPhases.has('GPP') && (
-                      <Text fontSize="$3" color="$color11" paddingLeft="$10">
-                        {getPhaseDescription('GPP')}
-                      </Text>
-                    )}
-                  </YStack>
-                </Card>
-
-                {/* SPP Phase */}
-                <Card
-                  p="$3"
-                  bg="$background"
-                  borderColor="$borderColor"
-                  borderWidth={1}
-                  pressStyle={{ bg: '$backgroundHover' }}
-                  onPress={() => togglePhase('SPP')}
-                >
-                  <YStack gap="$2">
-                    <XStack items="center" gap="$3">
-                      <Card bg="$primary" width={28} height={28} rounded={14} items="center" justify="center">
-                        <Text color="white" fontSize="$2" fontWeight="700">2</Text>
-                      </Card>
-                      <YStack flex={1}>
-                        <Text fontWeight="600" fontSize="$4" color="$color12">
-                          {PHASE_NAMES.SPP}
-                        </Text>
-                        <Text fontSize="$2" color="$color10">
-                          4 weeks • Sport-specific phase
-                        </Text>
-                      </YStack>
-                      {expandedPhases.has('SPP') ? (
-                        <ChevronUp size={20} color="$color10" />
-                      ) : (
-                        <ChevronDown size={20} color="$color10" />
-                      )}
-                    </XStack>
-
-                    {expandedPhases.has('SPP') && (
-                      <Text fontSize="$3" color="$color11" paddingLeft="$10">
-                        {getPhaseDescription('SPP')}
-                      </Text>
-                    )}
-                  </YStack>
-                </Card>
-
-                {/* SSP Phase */}
-                <Card
-                  p="$3"
-                  bg="$background"
-                  borderColor="$borderColor"
-                  borderWidth={1}
-                  pressStyle={{ bg: '$backgroundHover' }}
-                  onPress={() => togglePhase('SSP')}
-                >
-                  <YStack gap="$2">
-                    <XStack items="center" gap="$3">
-                      <Card bg="$primary" width={28} height={28} rounded={14} items="center" justify="center">
-                        <Text color="white" fontSize="$2" fontWeight="700">3</Text>
-                      </Card>
-                      <YStack flex={1}>
-                        <Text fontWeight="600" fontSize="$4" color="$color12">
-                          {PHASE_NAMES.SSP}
-                        </Text>
-                        <Text fontSize="$2" color="$color10">
-                          4 weeks • Peak performance phase
-                        </Text>
-                      </YStack>
-                      {expandedPhases.has('SSP') ? (
-                        <ChevronUp size={20} color="$color10" />
-                      ) : (
-                        <ChevronDown size={20} color="$color10" />
-                      )}
-                    </XStack>
-
-                    {expandedPhases.has('SSP') && (
-                      <Text fontSize="$3" color="$color11" paddingLeft="$10">
-                        {getPhaseDescription('SSP')}
-                      </Text>
-                    )}
-                  </YStack>
-                </Card>
-              </YStack>
+              {/* Timeline visualization */}
+              <TimelineView
+                phases={createPhaseTimeline(new Date())}
+                seasonStartDate={weeks ? new Date(Date.now() + weeks * 7 * 24 * 60 * 60 * 1000) : undefined}
+                orientation="vertical"
+              />
             </YStack>
           </Card>
 
@@ -493,7 +336,6 @@ export default function ResultsScreen() {
             variant="outlined"
             onPress={handleBack}
             icon={ChevronLeft}
-            disabled={isSubmitting}
           >
             Back
           </Button>
@@ -502,23 +344,11 @@ export default function ResultsScreen() {
             size="$5"
             bg="$primary"
             color="white"
-            onPress={handleConfirm}
+            onPress={handleContinue}
             fontWeight="700"
-            disabled={isSubmitting}
+            iconAfter={ChevronRight}
           >
-            <XStack items="center" justify="center" gap="$2">
-              {isSubmitting ? (
-                <>
-                  <Spinner size="small" color="white" />
-                  <Text color="white" fontWeight="700">Creating...</Text>
-                </>
-              ) : (
-                <>
-                  <Text color="white" fontWeight="700">Start My Program</Text>
-                  <CheckCircle size={20} color="white" />
-                </>
-              )}
-            </XStack>
+            Continue
           </Button>
         </XStack>
       </YStack>

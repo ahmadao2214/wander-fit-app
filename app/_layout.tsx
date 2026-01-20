@@ -95,6 +95,14 @@ function RootLayoutNav() {
           }}
         />
         
+        {/* Onboarding flow (educational screens) */}
+        <Stack.Screen
+          name="(onboarding)"
+          options={{
+            headerShown: false,
+          }}
+        />
+        
         {/* Main athlete dashboard */}
         <Stack.Screen
           name="(athlete)"

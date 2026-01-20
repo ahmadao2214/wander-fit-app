@@ -3,6 +3,9 @@ import { Redirect, type Href } from 'expo-router'
 import { YStack, Text, Spinner } from 'tamagui'
 import { useAuth } from '../hooks/useAuth'
 
+// Route for onboarding - cast needed until expo-router types are regenerated
+const ONBOARDING_ROUTE = '/(onboarding)' as Href
+
 interface AuthGuardProps {
   children: React.ReactNode
   requireAuth?: boolean
@@ -57,23 +60,11 @@ export function AuthGuard({
 }
 
 /**
- * AthleteOnlyRoute - For authenticated users with completed intake
+ * AthleteOnlyRoute - For authenticated users with completed intake AND onboarding
  * Used by the main athlete tabs
  */
 export function AthleteOnlyRoute({ children }: { children: React.ReactNode }) {
-  return (
-    <AuthGuard requireAuth={true} requireIntake={true}>
-      {children}
-    </AuthGuard>
-  )
-}
-
-/**
- * IntakeOnlyRoute - For authenticated users who haven't completed intake
- * Used by the intake flow
- */
-export function IntakeOnlyRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading, user, needsSetup } = useAuth()
+  const { isAuthenticated, isLoading, user, needsSetup, needsOnboarding } = useAuth()
 
   if (isLoading) {
     return (
@@ -94,8 +85,51 @@ export function IntakeOnlyRoute({ children }: { children: React.ReactNode }) {
     return <Redirect href="/(auth)/sign-up" />
   }
 
-  // Already completed intake → go to dashboard
+  // Needs intake → go to intake
+  if (!user?.intakeCompletedAt) {
+    return <Redirect href="/(intake)/sport" />
+  }
+
+  // Needs onboarding → go to onboarding
+  if (needsOnboarding) {
+    return <Redirect href={ONBOARDING_ROUTE} />
+  }
+
+  // All checks passed
+  return <>{children}</>
+}
+
+/**
+ * IntakeOnlyRoute - For authenticated users who haven't completed intake
+ * Used by the intake flow
+ */
+export function IntakeOnlyRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading, user, needsSetup, needsOnboarding } = useAuth()
+
+  if (isLoading) {
+    return (
+      <YStack flex={1} items="center" justify="center" gap="$4" bg="$background">
+        <Spinner size="large" color="$green10" />
+        <Text color="$gray11">Loading...</Text>
+      </YStack>
+    )
+  }
+
+  // Not authenticated → go to sign in
+  if (!isAuthenticated) {
+    return <Redirect href="/(auth)/sign-in" />
+  }
+
+  // Needs Convex user setup → go to sign up
+  if (needsSetup) {
+    return <Redirect href="/(auth)/sign-up" />
+  }
+
+  // Already completed intake → go to onboarding or dashboard
   if (user?.intakeCompletedAt) {
+    if (needsOnboarding) {
+      return <Redirect href={ONBOARDING_ROUTE} />
+    }
     return <Redirect href="/(athlete)" />
   }
 
@@ -117,10 +151,10 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 /**
  * PublicOnlyRoute - For unauthenticated users only (sign in, sign up)
- * Redirects to dashboard if already authenticated
+ * Redirects to appropriate screen if already authenticated
  */
 export function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading, user, needsSetup } = useAuth()
+  const { isAuthenticated, isLoading, user, needsSetup, needsOnboarding } = useAuth()
 
   if (isLoading) {
     return (
@@ -141,12 +175,66 @@ export function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
     return <Redirect href="/(intake)/sport" />
   }
 
-  // Authenticated with intake → go to dashboard
+  // Authenticated with intake but needs onboarding → go to onboarding
+  if (isAuthenticated && needsOnboarding) {
+    return <Redirect href={ONBOARDING_ROUTE} />
+  }
+
+  // Authenticated with intake and onboarding → go to dashboard
   if (isAuthenticated && user?.intakeCompletedAt) {
     return <Redirect href="/(athlete)" />
   }
 
   // Not authenticated → show public content
+  return <>{children}</>
+}
+
+/**
+ * OnboardingRoute - For authenticated users accessing onboarding screens
+ * Used by the onboarding flow (educational screens interleaved with intake)
+ *
+ * Supports three modes:
+ * 1. Interleaved mode: User is in the middle of intake, navigating to onboarding screens
+ * 2. Post-intake mode: User completed intake but not onboarding
+ * 3. Revisit mode: User completed onboarding but progress is reset to 0
+ */
+export function OnboardingRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading, user, needsSetup, needsOnboarding } = useAuth()
+
+  if (isLoading) {
+    return (
+      <YStack flex={1} items="center" justify="center" gap="$4" bg="$background">
+        <Spinner size="large" color="$green10" />
+        <Text color="$gray11">Loading...</Text>
+      </YStack>
+    )
+  }
+
+  // Not authenticated → go to sign in
+  if (!isAuthenticated) {
+    return <Redirect href="/(auth)/sign-in" />
+  }
+
+  // Needs Convex user setup → go to sign up
+  if (needsSetup) {
+    return <Redirect href="/(auth)/sign-up" />
+  }
+
+  // REMOVED: Intake completion check
+  // The interleaved flow navigates to onboarding screens DURING intake,
+  // so we can't require intake to be complete here.
+  // Navigation back to intake is handled by the screens themselves.
+
+  // Allow revisit mode: completed onboarding but progress is reset to 0
+  const isRevisitMode = user?.onboardingCompletedAt != null &&
+    (user?.onboardingProgress === 0 || user?.onboardingProgress === undefined)
+
+  // Already completed both intake and onboarding and not in revisit mode → go to dashboard
+  if (user?.intakeCompletedAt && !needsOnboarding && !isRevisitMode) {
+    return <Redirect href="/(athlete)" />
+  }
+
+  // Show onboarding flow (interleaved, post-intake, or revisit)
   return <>{children}</>
 }
 

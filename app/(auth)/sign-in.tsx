@@ -171,14 +171,15 @@ export default function SignInPage() {
     <PublicOnlyRoute>
       <YStack flex={1} bg="$background">
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={{ flex: 1 }}
-          enabled={Platform.OS === 'ios'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
         >
           <ScrollView
             contentContainerStyle={{ flexGrow: 1 }}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
+            automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
           >
             <YStack 
               gap="$5" 

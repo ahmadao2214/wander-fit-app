@@ -13,6 +13,7 @@ import {
 import { Id } from '../../convex/_generated/dataModel'
 import LottieView from 'lottie-react-native'
 import { getSportInitials } from '../../lib'
+import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT, COMBINED_FLOW_ROUTES } from '../../components/IntakeProgressDots'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
@@ -198,10 +199,20 @@ export default function SportSelectionScreen() {
 
   const handleContinue = () => {
     if (selectedSportId) {
+      // Navigate to onboarding education screens first (why-it-works)
       router.push({
-        pathname: '/(intake)/experience',
+        pathname: '/(onboarding)/why-it-works',
         params: { sportId: selectedSportId },
-      })
+      } as any)
+    }
+  }
+
+  // Navigation handler for progress dots (backward navigation only)
+  // Sport is the first screen, so no backward navigation is possible
+  const handleProgressNavigate = (index: number) => {
+    const route = COMBINED_FLOW_ROUTES[index]
+    if (route) {
+      router.push(route as any)
     }
   }
 
@@ -217,6 +228,15 @@ export default function SportSelectionScreen() {
           width="100%"
           self="center"
         >
+          {/* Progress Dots */}
+          <YStack items="center" mb="$2">
+            <IntakeProgressDots
+              total={COMBINED_FLOW_SCREEN_COUNT}
+              current={COMBINED_FLOW_SCREENS.SPORT}
+              onNavigate={handleProgressNavigate}
+            />
+          </YStack>
+
           {/* Header */}
           <YStack gap="$3" items="center">
             <YStack bg="$brand2" p="$4" rounded="$10">
