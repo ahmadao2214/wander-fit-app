@@ -1,9 +1,15 @@
 import { useEffect, useRef } from 'react'
-import { useRouter } from 'expo-router'
+import { useRouter, Href } from 'expo-router'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { YStack, Spinner, Text } from 'tamagui'
 import { analytics } from '../../lib/analytics'
+
+// Route constants for type-safe navigation
+const ROUTES = {
+  WHY_IT_WORKS: '/(onboarding)/why-it-works' as Href,
+  INTAKE_SPORT: '/(intake)/sport' as Href,
+} as const
 
 /**
  * Onboarding Index - Entry Point & Router
@@ -31,37 +37,26 @@ export default function OnboardingIndex() {
     hasInitialized.current = true
 
     const initAndRedirect = async () => {
-      // Track onboarding started
       const isRevisit = onboardingState?.isRevisit ?? false
       analytics.trackOnboardingStarted(10, isRevisit)
 
-      // For revisit mode, go directly to why-it-works (educational content)
-      // This is the consolidated "Training Overview" screen
-      if (isRevisit) {
-        router.replace('/(onboarding)/why-it-works' as any)
-        return
-      }
-
-      // If intake is not completed, redirect to intake flow
+      // Redirect to intake if not completed
       if (!onboardingState?.intakeCompletedAt) {
-        router.replace('/(intake)/sport' as any)
+        router.replace(ROUTES.INTAKE_SPORT)
         return
       }
 
-      // Only initialize if onboarding progress hasn't been set yet
-      if (onboardingState?.onboardingProgress === undefined ||
-          onboardingState?.onboardingProgress === null) {
+      // Initialize onboarding progress if not set
+      if (onboardingState?.onboardingProgress == null) {
         await startOnboarding()
       }
 
-      // For normal flow after intake, go to why-it-works
-      // (the new combined flow handles routing between intake and onboarding)
-      router.replace('/(onboarding)/why-it-works' as any)
+      // Go to why-it-works (educational content / training overview)
+      router.replace(ROUTES.WHY_IT_WORKS)
     }
 
     initAndRedirect()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onboardingState])
+  }, [onboardingState, router, startOnboarding])
 
   return (
     <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">

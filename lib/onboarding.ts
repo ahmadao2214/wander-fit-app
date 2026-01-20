@@ -13,24 +13,29 @@ import type { OnboardingScreenId, OnboardingSectionId } from "../types";
 
 /**
  * Ordered list of onboarding screens
+ * These IDs must match the actual route file names in app/(onboarding)/
  */
 export const ONBOARDING_SCREENS: OnboardingScreenId[] = [
   "welcome",
-  "assessment-complete",
-  "what-to-expect",
-  "phase-gpp",
-  "phase-spp",
-  "phase-ssp",
-  "timeline",
+  "why-it-works",
+  "phases-overview",
+  "gpp-detail",
+  "spp-detail",
+  "ssp-detail",
+  "personal-timeline",
   "commitment",
-  "how-workouts-work",
-  "ready-to-start",
+  "progression",
 ];
 
 export const TOTAL_ONBOARDING_SCREENS = ONBOARDING_SCREENS.length;
 
 /**
  * Section definitions with screen ranges
+ * Updated to match the actual 9-screen flow:
+ * 0: welcome, 1: why-it-works, 2: phases-overview
+ * 3: gpp-detail, 4: spp-detail, 5: ssp-detail
+ * 6: personal-timeline, 7: commitment
+ * 8: progression
  */
 export const ONBOARDING_SECTIONS: Record<
   OnboardingSectionId,
@@ -65,15 +70,16 @@ export const ONBOARDING_SECTIONS: Record<
   },
   howItWorks: {
     start: 8,
-    end: 9,
+    end: 8,
     title: "How It Works",
-    description: "How workouts are structured and executed",
-    screenCount: 2,
+    description: "Understanding workout progression",
+    screenCount: 1,
   },
 };
 
 /**
  * Screen metadata for UI rendering
+ * Keys must match actual route file names in app/(onboarding)/
  */
 export const SCREEN_METADATA: Record<
   OnboardingScreenId,
@@ -88,32 +94,32 @@ export const SCREEN_METADATA: Record<
     subtitle: "Your personalized training journey begins",
     section: "welcome",
   },
-  "assessment-complete": {
-    title: "Assessment Complete",
-    subtitle: "Here's what we learned about you",
+  "why-it-works": {
+    title: "Why It Works",
+    subtitle: "The science behind your training",
     section: "welcome",
   },
-  "what-to-expect": {
-    title: "What to Expect",
-    subtitle: "An overview of your training program",
+  "phases-overview": {
+    title: "The Three Phases",
+    subtitle: "GPP → SPP → SSP progression",
     section: "welcome",
   },
-  "phase-gpp": {
+  "gpp-detail": {
     title: "General Physical Preparedness",
     subtitle: "Building your foundation",
     section: "phaseEducation",
   },
-  "phase-spp": {
+  "spp-detail": {
     title: "Specific Physical Preparedness",
     subtitle: "Sport-specific development",
     section: "phaseEducation",
   },
-  "phase-ssp": {
+  "ssp-detail": {
     title: "Sport-Specific Preparedness",
     subtitle: "Peak performance phase",
     section: "phaseEducation",
   },
-  timeline: {
+  "personal-timeline": {
     title: "Your Timeline",
     subtitle: "12 weeks to transform your performance",
     section: "timeline",
@@ -123,14 +129,9 @@ export const SCREEN_METADATA: Record<
     subtitle: "What it takes to succeed",
     section: "timeline",
   },
-  "how-workouts-work": {
-    title: "How Workouts Work",
-    subtitle: "Understanding workout structure",
-    section: "howItWorks",
-  },
-  "ready-to-start": {
-    title: "Ready to Start",
-    subtitle: "Let's begin your journey",
+  progression: {
+    title: "Progression",
+    subtitle: "How your workouts evolve",
     section: "howItWorks",
   },
 };

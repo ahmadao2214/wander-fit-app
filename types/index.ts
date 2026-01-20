@@ -77,19 +77,20 @@ export type UserMax = Doc<"user_maxes">;
 
 /**
  * Onboarding screen identifiers
- * Order matches the flow: Welcome → Phase Education → Timeline → How It Works
+ * Order matches the flow: Welcome → Phase Education → Timeline → Commitment
+ *
+ * These IDs must match the actual route file names in app/(onboarding)/
  */
 export type OnboardingScreenId =
   | "welcome"
-  | "assessment-complete"
-  | "what-to-expect"
-  | "phase-gpp"
-  | "phase-spp"
-  | "phase-ssp"
-  | "timeline"
+  | "why-it-works"
+  | "phases-overview"
+  | "gpp-detail"
+  | "spp-detail"
+  | "ssp-detail"
+  | "personal-timeline"
   | "commitment"
-  | "how-workouts-work"
-  | "ready-to-start";
+  | "progression";
 
 /**
  * Onboarding section identifiers

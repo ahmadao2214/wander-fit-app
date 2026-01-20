@@ -5,31 +5,39 @@ import type { OnboardingProgressState, OnboardingScreenData } from "../types";
 
 /**
  * Onboarding screen configuration
- * Defines the ordered list of screens and their metadata
+ * Defines the ordered list of screens matching actual route files in app/(onboarding)/
+ *
+ * Note: The unified intake + onboarding flow uses a simplified set of screens.
+ * Screen IDs must match the actual .tsx file names in app/(onboarding)/
  */
 export const ONBOARDING_SCREENS = [
-  "welcome",
-  "assessment-complete",
-  "what-to-expect",
-  "phase-gpp",
-  "phase-spp",
-  "phase-ssp",
-  "timeline",
-  "commitment",
-  "how-workouts-work",
-  "ready-to-start",
+  "welcome",           // app/(onboarding)/welcome.tsx
+  "why-it-works",      // app/(onboarding)/why-it-works.tsx - consolidated training overview
+  "phases-overview",   // app/(onboarding)/phases-overview.tsx
+  "gpp-detail",        // app/(onboarding)/gpp-detail.tsx
+  "spp-detail",        // app/(onboarding)/spp-detail.tsx
+  "ssp-detail",        // app/(onboarding)/ssp-detail.tsx
+  "personal-timeline", // app/(onboarding)/personal-timeline.tsx
+  "commitment",        // app/(onboarding)/commitment.tsx
+  "progression",       // app/(onboarding)/progression.tsx
 ] as const;
 
 export const TOTAL_SCREENS = ONBOARDING_SCREENS.length;
 
 /**
  * Screen sections for grouping in UI (e.g., progress indicators)
+ * Must match the section definitions in lib/onboarding.ts
+ *
+ * Screens 0-2: welcome section (welcome, why-it-works, phases-overview)
+ * Screens 3-5: phaseEducation section (gpp-detail, spp-detail, ssp-detail)
+ * Screens 6-7: timeline section (personal-timeline, commitment)
+ * Screen 8: howItWorks section (progression)
  */
 export const ONBOARDING_SECTIONS = {
   welcome: { start: 0, end: 2, title: "Welcome", screenCount: 3 },
   phaseEducation: { start: 3, end: 5, title: "Phase Education", screenCount: 3 },
   timeline: { start: 6, end: 7, title: "Timeline & Commitment", screenCount: 2 },
-  howItWorks: { start: 8, end: 9, title: "How It Works", screenCount: 2 },
+  howItWorks: { start: 8, end: 8, title: "How It Works", screenCount: 1 },
 } as const;
 
 /**

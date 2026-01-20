@@ -184,17 +184,19 @@ export function TimelineView({
 
 /**
  * Helper to create phase timeline data from a start date
+ * Note: Creates new Date objects to avoid mutating the input date
  */
 export function createPhaseTimeline(startDate: Date): TimelinePhase[] {
   const phases: Phase[] = ['GPP', 'SPP', 'SSP']
   const weeksPerPhase = 4
 
   return phases.map((phase, index) => {
-    const phaseStartDate = new Date(startDate)
-    phaseStartDate.setDate(phaseStartDate.getDate() + index * weeksPerPhase * 7)
+    // Create new Date objects to avoid mutation
+    const phaseStartOffset = index * weeksPerPhase * 7
+    const phaseStartDate = new Date(startDate.getTime() + phaseStartOffset * 24 * 60 * 60 * 1000)
 
-    const phaseEndDate = new Date(phaseStartDate)
-    phaseEndDate.setDate(phaseEndDate.getDate() + weeksPerPhase * 7 - 1)
+    const phaseEndOffset = (index + 1) * weeksPerPhase * 7 - 1
+    const phaseEndDate = new Date(startDate.getTime() + phaseEndOffset * 24 * 60 * 60 * 1000)
 
     return {
       phase,

@@ -31,22 +31,22 @@ import type { OnboardingScreenId } from "../../types";
 
 describe("Onboarding Constants", () => {
   describe("ONBOARDING_SCREENS", () => {
-    it("contains exactly 10 screens", () => {
-      expect(ONBOARDING_SCREENS).toHaveLength(10);
+    it("contains exactly 9 screens", () => {
+      expect(ONBOARDING_SCREENS).toHaveLength(9);
     });
 
     it("has all screens in correct order", () => {
+      // Screen IDs must match actual route file names in app/(onboarding)/
       expect(ONBOARDING_SCREENS).toEqual([
         "welcome",
-        "assessment-complete",
-        "what-to-expect",
-        "phase-gpp",
-        "phase-spp",
-        "phase-ssp",
-        "timeline",
+        "why-it-works",
+        "phases-overview",
+        "gpp-detail",
+        "spp-detail",
+        "ssp-detail",
+        "personal-timeline",
         "commitment",
-        "how-workouts-work",
-        "ready-to-start",
+        "progression",
       ]);
     });
 
@@ -78,10 +78,10 @@ describe("Onboarding Constants", () => {
       expect(ONBOARDING_SECTIONS.timeline.screenCount).toBe(2);
     });
 
-    it("howItWorks section covers screens 8-9", () => {
+    it("howItWorks section covers screen 8", () => {
       expect(ONBOARDING_SECTIONS.howItWorks.start).toBe(8);
-      expect(ONBOARDING_SECTIONS.howItWorks.end).toBe(9);
-      expect(ONBOARDING_SECTIONS.howItWorks.screenCount).toBe(2);
+      expect(ONBOARDING_SECTIONS.howItWorks.end).toBe(8);
+      expect(ONBOARDING_SECTIONS.howItWorks.screenCount).toBe(1);
     });
 
     it("all sections cover all screens without gaps", () => {
@@ -114,13 +114,13 @@ describe("Screen Index Functions", () => {
   describe("getScreenIdFromIndex", () => {
     it("returns correct screen ID for valid indices", () => {
       expect(getScreenIdFromIndex(0)).toBe("welcome");
-      expect(getScreenIdFromIndex(3)).toBe("phase-gpp");
-      expect(getScreenIdFromIndex(9)).toBe("ready-to-start");
+      expect(getScreenIdFromIndex(3)).toBe("gpp-detail");
+      expect(getScreenIdFromIndex(8)).toBe("progression");
     });
 
     it("returns null for out-of-range indices", () => {
       expect(getScreenIdFromIndex(-1)).toBeNull();
-      expect(getScreenIdFromIndex(10)).toBeNull();
+      expect(getScreenIdFromIndex(9)).toBeNull();
       expect(getScreenIdFromIndex(100)).toBeNull();
     });
   });
@@ -128,8 +128,8 @@ describe("Screen Index Functions", () => {
   describe("getIndexFromScreenId", () => {
     it("returns correct index for valid screen IDs", () => {
       expect(getIndexFromScreenId("welcome")).toBe(0);
-      expect(getIndexFromScreenId("phase-gpp")).toBe(3);
-      expect(getIndexFromScreenId("ready-to-start")).toBe(9);
+      expect(getIndexFromScreenId("gpp-detail")).toBe(3);
+      expect(getIndexFromScreenId("progression")).toBe(8);
     });
 
     it("returns 0 for invalid screen IDs", () => {
@@ -162,23 +162,22 @@ describe("Section Functions", () => {
       expect(getScreenSection(7)).toBe("timeline");
     });
 
-    it("returns howItWorks for screens 8-9", () => {
+    it("returns howItWorks for screen 8", () => {
       expect(getScreenSection(8)).toBe("howItWorks");
-      expect(getScreenSection(9)).toBe("howItWorks");
     });
 
     it("returns null for out-of-range indices", () => {
       expect(getScreenSection(-1)).toBeNull();
-      expect(getScreenSection(10)).toBeNull();
+      expect(getScreenSection(9)).toBeNull();
     });
   });
 
   describe("getSectionFromScreenId", () => {
     it("returns correct section for each screen", () => {
       expect(getSectionFromScreenId("welcome")).toBe("welcome");
-      expect(getSectionFromScreenId("phase-gpp")).toBe("phaseEducation");
-      expect(getSectionFromScreenId("timeline")).toBe("timeline");
-      expect(getSectionFromScreenId("ready-to-start")).toBe("howItWorks");
+      expect(getSectionFromScreenId("gpp-detail")).toBe("phaseEducation");
+      expect(getSectionFromScreenId("personal-timeline")).toBe("timeline");
+      expect(getSectionFromScreenId("progression")).toBe("howItWorks");
     });
   });
 
@@ -186,30 +185,29 @@ describe("Section Functions", () => {
     it("returns welcome section screens", () => {
       expect(getScreensInSection("welcome")).toEqual([
         "welcome",
-        "assessment-complete",
-        "what-to-expect",
+        "why-it-works",
+        "phases-overview",
       ]);
     });
 
     it("returns phaseEducation section screens", () => {
       expect(getScreensInSection("phaseEducation")).toEqual([
-        "phase-gpp",
-        "phase-spp",
-        "phase-ssp",
+        "gpp-detail",
+        "spp-detail",
+        "ssp-detail",
       ]);
     });
 
     it("returns timeline section screens", () => {
       expect(getScreensInSection("timeline")).toEqual([
-        "timeline",
+        "personal-timeline",
         "commitment",
       ]);
     });
 
     it("returns howItWorks section screens", () => {
       expect(getScreensInSection("howItWorks")).toEqual([
-        "how-workouts-work",
-        "ready-to-start",
+        "progression",
       ]);
     });
   });
@@ -236,12 +234,12 @@ describe("Progress Calculation Functions", () => {
       expect(calculateProgress(0)).toBe(0);
     });
 
-    it("returns 50 for screen 5", () => {
-      expect(calculateProgress(5)).toBe(50);
+    it("returns ~56% for screen 5 (5/9 screens)", () => {
+      expect(calculateProgress(5)).toBe(56);
     });
 
-    it("returns 100 for screen 10 (total screens)", () => {
-      expect(calculateProgress(10)).toBe(100);
+    it("returns 100 for screen 9 (total screens)", () => {
+      expect(calculateProgress(9)).toBe(100);
     });
 
     it("rounds to nearest integer", () => {
@@ -260,7 +258,8 @@ describe("Progress Calculation Functions", () => {
     });
 
     it("returns correct percentage for partial progress", () => {
-      expect(calculateViewedProgress(["welcome", "assessment-complete"])).toBe(20);
+      // 2 screens viewed out of 9 = 22%
+      expect(calculateViewedProgress(["welcome", "why-it-works"])).toBe(22);
     });
 
     it("returns 100 when all screens viewed", () => {
@@ -276,8 +275,8 @@ describe("Progress Calculation Functions", () => {
     it("returns 100 when all section screens viewed", () => {
       const welcomeScreens: OnboardingScreenId[] = [
         "welcome",
-        "assessment-complete",
-        "what-to-expect",
+        "why-it-works",
+        "phases-overview",
       ];
       expect(getSectionProgress("welcome", welcomeScreens)).toBe(100);
     });
@@ -296,14 +295,14 @@ describe("Progress Calculation Functions", () => {
     it("returns true when all section screens viewed", () => {
       const welcomeScreens: OnboardingScreenId[] = [
         "welcome",
-        "assessment-complete",
-        "what-to-expect",
+        "why-it-works",
+        "phases-overview",
       ];
       expect(isSectionComplete("welcome", welcomeScreens)).toBe(true);
     });
 
     it("returns false when some section screens not viewed", () => {
-      const partialScreens: OnboardingScreenId[] = ["welcome", "assessment-complete"];
+      const partialScreens: OnboardingScreenId[] = ["welcome", "why-it-works"];
       expect(isSectionComplete("welcome", partialScreens)).toBe(false);
     });
   });
@@ -325,7 +324,7 @@ describe("Navigation Functions", () => {
     it("returns false for non-first screens", () => {
       expect(isFirstInSection(1)).toBe(false);
       expect(isFirstInSection(4)).toBe(false);
-      expect(isFirstInSection(9)).toBe(false);
+      expect(isFirstInSection(7)).toBe(false);
     });
   });
 
@@ -334,13 +333,13 @@ describe("Navigation Functions", () => {
       expect(isLastInSection(2)).toBe(true); // welcome section
       expect(isLastInSection(5)).toBe(true); // phaseEducation section
       expect(isLastInSection(7)).toBe(true); // timeline section
-      expect(isLastInSection(9)).toBe(true); // howItWorks section
+      expect(isLastInSection(8)).toBe(true); // howItWorks section (only 1 screen)
     });
 
     it("returns false for non-last screens", () => {
       expect(isLastInSection(0)).toBe(false);
       expect(isLastInSection(3)).toBe(false);
-      expect(isLastInSection(8)).toBe(false);
+      expect(isLastInSection(6)).toBe(false);
     });
   });
 
@@ -351,15 +350,15 @@ describe("Navigation Functions", () => {
     });
 
     it("clamps to last screen index", () => {
-      expect(getNextScreenIndex(9)).toBe(9);
-      expect(getNextScreenIndex(10)).toBe(9);
+      expect(getNextScreenIndex(8)).toBe(8);
+      expect(getNextScreenIndex(9)).toBe(8);
     });
   });
 
   describe("getPreviousScreenIndex", () => {
     it("decrements index normally", () => {
       expect(getPreviousScreenIndex(5)).toBe(4);
-      expect(getPreviousScreenIndex(9)).toBe(8);
+      expect(getPreviousScreenIndex(8)).toBe(7);
     });
 
     it("clamps to first screen index", () => {
@@ -372,15 +371,15 @@ describe("Navigation Functions", () => {
     it("returns true only for index 0", () => {
       expect(isFirstScreen(0)).toBe(true);
       expect(isFirstScreen(1)).toBe(false);
-      expect(isFirstScreen(9)).toBe(false);
+      expect(isFirstScreen(8)).toBe(false);
     });
   });
 
   describe("isLastScreen", () => {
     it("returns true only for last index", () => {
-      expect(isLastScreen(9)).toBe(true);
+      expect(isLastScreen(8)).toBe(true);
       expect(isLastScreen(0)).toBe(false);
-      expect(isLastScreen(8)).toBe(false);
+      expect(isLastScreen(7)).toBe(false);
     });
   });
 });
@@ -397,15 +396,15 @@ describe("Metadata Functions", () => {
       expect(metadata.section).toBe("welcome");
     });
 
-    it("returns metadata for phase-gpp screen", () => {
-      const metadata = getScreenMetadata("phase-gpp");
+    it("returns metadata for gpp-detail screen", () => {
+      const metadata = getScreenMetadata("gpp-detail");
       expect(metadata.title).toBe("General Physical Preparedness");
       expect(metadata.section).toBe("phaseEducation");
     });
 
-    it("returns metadata for ready-to-start screen", () => {
-      const metadata = getScreenMetadata("ready-to-start");
-      expect(metadata.title).toBe("Ready to Start");
+    it("returns metadata for progression screen", () => {
+      const metadata = getScreenMetadata("progression");
+      expect(metadata.title).toBe("Progression");
       expect(metadata.section).toBe("howItWorks");
     });
   });
