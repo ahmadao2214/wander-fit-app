@@ -5,7 +5,7 @@ import { YStack, XStack, Text, Spinner, ScrollView, Button } from 'tamagui'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { TimelineView, createPhaseTimeline } from '../../components/onboarding'
 import { useOnboardingAnalytics, ONBOARDING_SCREEN_NAMES } from '../../hooks/useOnboardingAnalytics'
-import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT } from '../../components/IntakeProgressDots'
+import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT, COMBINED_FLOW_ROUTES } from '../../components/IntakeProgressDots'
 import { Calendar, Flag, ChevronRight, ChevronLeft } from '@tamagui/lucide-icons'
 
 /**
@@ -68,6 +68,17 @@ export default function PersonalTimelineScreen() {
     } as any)
   }
 
+  // Handle backward navigation from progress dots
+  const handleProgressNavigate = (index: number) => {
+    const route = COMBINED_FLOW_ROUTES[index]
+    if (route) {
+      router.push({
+        pathname: route,
+        params: { sportId, ageGroup, yearsOfExperience, trainingDays, weeksUntilSeason: weeksParam },
+      } as any)
+    }
+  }
+
   // Create timeline starting from today
   const startDate = new Date()
   const phases = createPhaseTimeline(startDate)
@@ -78,9 +89,8 @@ export default function PersonalTimelineScreen() {
     ? new Date(startDate.getTime() + weeksUntilSeason * 7 * 24 * 60 * 60 * 1000)
     : undefined
 
-  // Calculate program end date (12 weeks from start)
-  const programEndDate = new Date(startDate)
-  programEndDate.setDate(programEndDate.getDate() + 12 * 7)
+  // Calculate program end date (12 weeks from start) - use immutable pattern
+  const programEndDate = new Date(startDate.getTime() + 12 * 7 * 24 * 60 * 60 * 1000)
 
   // Use trainingDays from route params or fallback to onboardingData
   const preferredDays = trainingDays ? parseInt(trainingDays, 10) : onboardingData?.preferredDays
@@ -99,7 +109,11 @@ export default function PersonalTimelineScreen() {
         >
           {/* Progress Dots */}
           <YStack items="center" mb="$4">
-            <IntakeProgressDots total={COMBINED_FLOW_SCREEN_COUNT} current={COMBINED_FLOW_SCREENS.PERSONAL_TIMELINE} />
+            <IntakeProgressDots
+              total={COMBINED_FLOW_SCREEN_COUNT}
+              current={COMBINED_FLOW_SCREENS.PERSONAL_TIMELINE}
+              onNavigate={handleProgressNavigate}
+            />
           </YStack>
 
           {/* Header */}

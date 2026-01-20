@@ -5,7 +5,7 @@ import { YStack, XStack, Text, Spinner, ScrollView, Button } from 'tamagui'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { PHASE_DATA } from '../../components/onboarding'
 import { useOnboardingAnalytics, ONBOARDING_SCREEN_NAMES } from '../../hooks/useOnboardingAnalytics'
-import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT } from '../../components/IntakeProgressDots'
+import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT, COMBINED_FLOW_ROUTES } from '../../components/IntakeProgressDots'
 import { ChevronRight, ChevronLeft } from '@tamagui/lucide-icons'
 import type { Phase } from '../../types'
 
@@ -76,6 +76,17 @@ export default function PhasesOverviewScreen() {
     router.replace('/(athlete)')
   }
 
+  // Handle backward navigation from progress dots
+  const handleProgressNavigate = (index: number) => {
+    const route = COMBINED_FLOW_ROUTES[index]
+    if (route) {
+      router.push({
+        pathname: route,
+        params: { sportId },
+      } as any)
+    }
+  }
+
   const phases: Phase[] = ['GPP', 'SPP', 'SSP']
 
   return (
@@ -93,7 +104,11 @@ export default function PhasesOverviewScreen() {
           {/* Progress Dots - only show in normal flow, not revisit */}
           {!isRevisit && (
             <YStack items="center" mb="$4">
-              <IntakeProgressDots total={COMBINED_FLOW_SCREEN_COUNT} current={COMBINED_FLOW_SCREENS.PHASES_OVERVIEW} />
+              <IntakeProgressDots
+                total={COMBINED_FLOW_SCREEN_COUNT}
+                current={COMBINED_FLOW_SCREENS.PHASES_OVERVIEW}
+                onNavigate={handleProgressNavigate}
+              />
             </YStack>
           )}
 
