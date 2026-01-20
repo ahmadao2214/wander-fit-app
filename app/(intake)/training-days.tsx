@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { YStack, XStack, Text, Button, styled, Circle } from 'tamagui'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { ChevronRight, ChevronLeft, Check } from '@tamagui/lucide-icons'
-import { Vibration } from 'react-native'
-import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT } from '../../components/IntakeProgressDots'
+import { ChevronRight, ChevronLeft, Check, Dumbbell } from '@tamagui/lucide-icons'
+import { Vibration, Animated } from 'react-native'
+import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT, COMBINED_FLOW_ROUTES } from '../../components/IntakeProgressDots'
+import { useSwipeNavigation } from '../../hooks/useSwipeNavigation'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
@@ -26,6 +27,31 @@ const Subtitle = styled(Text, {
   lineHeight: 22,
 })
 
+// Square calendar cell styled component
+const CalendarCell = styled(YStack, {
+  width: 44,
+  height: 56,
+  rounded: '$3',
+  items: 'center',
+  justify: 'center',
+  gap: '$1',
+  borderWidth: 2,
+  animation: 'quick',
+  pressStyle: { scale: 0.95, opacity: 0.9 },
+  variants: {
+    selected: {
+      true: {
+        bg: '$primary',
+        borderColor: '$primary',
+      },
+      false: {
+        bg: '$color3',
+        borderColor: '$color5',
+      },
+    },
+  } as const,
+})
+
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -45,7 +71,7 @@ const RECOMMENDED_MIN = 3
 const RECOMMENDED_MAX = 4
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DaySlot Component
+// DaySlot Component (Square Calendar Cell)
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface DaySlotProps {
@@ -56,36 +82,36 @@ interface DaySlotProps {
 
 const DaySlot = ({ day, isSelected, onToggle }: DaySlotProps) => {
   return (
-    <YStack items="center" gap="$3">
-      {/* Day Label */}
+    <CalendarCell
+      selected={isSelected}
+      onPress={onToggle}
+      cursor="pointer"
+    >
+      {/* Day Letter */}
       <Text
-        fontSize={14}
+        fontSize={12}
         fontFamily="$body"
         fontWeight="600"
-        color="$color10"
+        color={isSelected ? 'white' : '$color10'}
+        opacity={isSelected ? 0.9 : 1}
       >
         {day.short}
       </Text>
 
-      {/* Slot Button */}
-      <Button
-        size="$5"
-        circular
-        bg={isSelected ? '$primary' : '$color4'}
-        borderWidth={2}
-        borderColor={isSelected ? '$primary' : '$color6'}
-        pressStyle={{ scale: 0.92 }}
-        onPress={onToggle}
-      >
-        {isSelected ? (
-          <Check size={24} color="white" strokeWidth={3} />
-        ) : (
-          <Text fontSize={18} color="$color8" fontFamily="$body" fontWeight="500">
-            –
-          </Text>
-        )}
-      </Button>
-    </YStack>
+      {/* Icon or Empty State */}
+      {isSelected ? (
+        <Dumbbell size={18} color="white" />
+      ) : (
+        <YStack
+          width={18}
+          height={18}
+          rounded="$1"
+          borderWidth={1}
+          borderColor="$color6"
+          borderStyle="dashed"
+        />
+      )}
+    </CalendarCell>
   )
 }
 
@@ -103,6 +129,15 @@ export default function TrainingDaysScreen() {
   }>()
 
   const [selectedDays, setSelectedDays] = useState<Set<number>>(new Set())
+
+  // Swipe navigation - only backward (right swipe), forward requires Continue button
+  const { panHandlers, translateX } = useSwipeNavigation({
+    onSwipeRight: () => router.back(),
+    canSwipeRight: true,
+    canSwipeLeft: false,
+  })
+
+  const isValid = selectedDays.size >= MIN_DAYS
 
   // Redirect if missing params
   if (!sportId || !ageGroup || !yearsOfExperience) {
@@ -144,9 +179,22 @@ export default function TrainingDaysScreen() {
     }
   }
 
-  const isValid = selectedDays.size >= MIN_DAYS
+  // Navigation handler for progress dots (backward navigation only)
+  const handleProgressNavigate = (index: number) => {
+    const route = COMBINED_FLOW_ROUTES[index]
+    if (route) {
+      router.push({
+        pathname: route,
+        params: { sportId, ageGroup, yearsOfExperience },
+      } as any)
+    }
+  }
 
   return (
+    <Animated.View
+      {...panHandlers}
+      style={{ flex: 1, transform: [{ translateX }] }}
+    >
     <YStack flex={1} bg="$background">
       {/* Main Content */}
       <YStack
@@ -160,7 +208,11 @@ export default function TrainingDaysScreen() {
       >
         {/* Progress Dots */}
         <YStack items="center" mb="$4">
-          <IntakeProgressDots total={COMBINED_FLOW_SCREEN_COUNT} current={COMBINED_FLOW_SCREENS.TRAINING_DAYS} />
+          <IntakeProgressDots
+            total={COMBINED_FLOW_SCREEN_COUNT}
+            current={COMBINED_FLOW_SCREENS.TRAINING_DAYS}
+            onNavigate={handleProgressNavigate}
+          />
         </YStack>
 
         {/* Header */}
@@ -172,18 +224,41 @@ export default function TrainingDaysScreen() {
         </YStack>
 
         {/* Main Content - Full Width */}
-        <YStack flex={1} justify="center" gap="$8">
-          {/* Days Grid */}
-          <XStack justify="space-between" px="$2">
-            {DAYS.map((day) => (
-              <DaySlot
-                key={day.index}
-                day={day}
-                isSelected={selectedDays.has(day.index)}
-                onToggle={() => handleToggleDay(day.index)}
-              />
-            ))}
-          </XStack>
+        <YStack flex={1} justify="center" gap="$6">
+          {/* Calendar Strip Container */}
+          <YStack
+            bg="$color2"
+            rounded="$5"
+            p="$4"
+            borderWidth={1}
+            borderColor="$color4"
+          >
+            {/* Week Label */}
+            <XStack justify="center" mb="$3">
+              <Text
+                fontSize={13}
+                fontFamily="$body"
+                fontWeight="600"
+                color="$color10"
+                letterSpacing={1}
+                textTransform="uppercase"
+              >
+                Your Weekly Schedule
+              </Text>
+            </XStack>
+
+            {/* Days Grid */}
+            <XStack justify="space-between">
+              {DAYS.map((day) => (
+                <DaySlot
+                  key={day.index}
+                  day={day}
+                  isSelected={selectedDays.has(day.index)}
+                  onToggle={() => handleToggleDay(day.index)}
+                />
+              ))}
+            </XStack>
+          </YStack>
 
           {/* Session Counter */}
           <YStack items="center" gap="$3">
@@ -207,20 +282,28 @@ export default function TrainingDaysScreen() {
             </XStack>
 
             {/* Recommendation */}
-            <XStack items="center" gap="$2">
-              <Circle size={8} bg={isInRecommendedRange ? '$primary' : '$orange10'} />
-              <Text
-                fontSize={14}
-                color={isInRecommendedRange ? '$primary' : '$orange11'}
-                fontFamily="$body"
-              >
-                {isInRecommendedRange
-                  ? 'Great choice! This is our recommended range'
-                  : count < RECOMMENDED_MIN
-                    ? `We recommend at least ${RECOMMENDED_MIN} days for best results`
-                    : 'Make sure to include rest days for recovery'}
-              </Text>
-            </XStack>
+            <YStack
+              bg={isInRecommendedRange ? '$brand2' : '$orange3'}
+              px="$4"
+              py="$2"
+              rounded="$3"
+            >
+              <XStack items="center" gap="$2">
+                <Circle size={8} bg={isInRecommendedRange ? '$primary' : '$orange10'} />
+                <Text
+                  fontSize={14}
+                  color={isInRecommendedRange ? '$primary' : '$orange11'}
+                  fontFamily="$body"
+                  fontWeight="500"
+                >
+                  {isInRecommendedRange
+                    ? 'Perfect! This is our recommended range'
+                    : count < RECOMMENDED_MIN
+                      ? `We recommend at least ${RECOMMENDED_MIN} days`
+                      : 'Include rest days for recovery'}
+                </Text>
+              </XStack>
+            </YStack>
           </YStack>
         </YStack>
       </YStack>
@@ -267,5 +350,6 @@ export default function TrainingDaysScreen() {
         </XStack>
       </YStack>
     </YStack>
+    </Animated.View>
   )
 }

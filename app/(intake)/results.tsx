@@ -21,7 +21,7 @@ import {
 
 import { AgeGroup } from '../../types'
 import { getSkillLevel, getTrainingPhase } from '../../lib'
-import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT } from '../../components/IntakeProgressDots'
+import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT, COMBINED_FLOW_ROUTES } from '../../components/IntakeProgressDots'
 import { TimelineView, createPhaseTimeline } from '../../components/onboarding'
 
 /**
@@ -99,6 +99,17 @@ export default function ResultsScreen() {
     router.back()
   }
 
+  // Navigation handler for progress dots (backward navigation only)
+  const handleProgressNavigate = (index: number) => {
+    const route = COMBINED_FLOW_ROUTES[index]
+    if (route) {
+      router.push({
+        pathname: route,
+        params: { sportId, yearsOfExperience, trainingDays, weeksUntilSeason, ageGroup },
+      } as any)
+    }
+  }
+
   const handleContinue = () => {
     // Navigate to commitment screen
     router.push({
@@ -143,7 +154,11 @@ export default function ResultsScreen() {
         >
           {/* Progress Dots */}
           <YStack items="center" mb="$2">
-            <IntakeProgressDots total={COMBINED_FLOW_SCREEN_COUNT} current={COMBINED_FLOW_SCREENS.RESULTS} />
+            <IntakeProgressDots
+              total={COMBINED_FLOW_SCREEN_COUNT}
+              current={COMBINED_FLOW_SCREENS.RESULTS}
+              onNavigate={handleProgressNavigate}
+            />
           </YStack>
 
           {/* Header */}

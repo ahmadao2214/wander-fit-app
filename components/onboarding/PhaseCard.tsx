@@ -140,21 +140,23 @@ export function PhaseCard({
 
 /**
  * Phase data for use in onboarding screens
+ * Using relative timing (first/middle/final third) to be agnostic
+ * of the user's specific timeline input
  */
 export const PHASE_DATA: Record<Phase, { name: string; tagline: string; duration: string }> = {
   GPP: {
     name: 'General Physical Preparedness',
     tagline: 'Build Your Foundation',
-    duration: 'Weeks 1-4',
+    duration: 'First third',
   },
   SPP: {
     name: 'Specific Physical Preparedness',
     tagline: 'Sharpen Your Skills',
-    duration: 'Weeks 5-8',
+    duration: 'Middle third',
   },
   SSP: {
     name: 'Sport-Specific Preparedness',
     tagline: 'Peak Performance',
-    duration: 'Weeks 9-12',
+    duration: 'Final third',
   },
 }

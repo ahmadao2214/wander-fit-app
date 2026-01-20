@@ -7,7 +7,7 @@ import { YStack, XStack, Text, Spinner, ScrollView, Button, H2 } from 'tamagui'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { CommitmentButton } from '../../components/onboarding'
 import { useOnboardingAnalytics, ONBOARDING_SCREEN_NAMES } from '../../hooks/useOnboardingAnalytics'
-import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT } from '../../components/IntakeProgressDots'
+import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT, COMBINED_FLOW_ROUTES } from '../../components/IntakeProgressDots'
 import { analytics } from '../../lib/analytics'
 import { CheckCircle, ChevronLeft, Dumbbell } from '@tamagui/lucide-icons'
 import type { AgeGroup } from '../../types'
@@ -102,6 +102,17 @@ export default function CommitmentScreen() {
     router.back()
   }
 
+  // Navigation handler for progress dots (backward navigation only)
+  const handleProgressNavigate = (index: number) => {
+    const route = COMBINED_FLOW_ROUTES[index]
+    if (route) {
+      router.push({
+        pathname: route,
+        params: { sportId, yearsOfExperience, trainingDays: trainingDaysParam, weeksUntilSeason, ageGroup },
+      } as any)
+    }
+  }
+
   const firstName = onboardingData?.userName?.split(' ')[0] ?? 'Athlete'
   const sportName = onboardingData?.sport?.name ?? 'your sport'
   const trainingDays = trainingDaysParam ? parseInt(trainingDaysParam, 10) : (onboardingData?.preferredDays ?? 4)
@@ -139,7 +150,11 @@ export default function CommitmentScreen() {
         >
           {/* Progress Dots */}
           <YStack items="center" mb="$4">
-            <IntakeProgressDots total={COMBINED_FLOW_SCREEN_COUNT} current={COMBINED_FLOW_SCREENS.COMMITMENT} />
+            <IntakeProgressDots
+              total={COMBINED_FLOW_SCREEN_COUNT}
+              current={COMBINED_FLOW_SCREENS.COMMITMENT}
+              onNavigate={handleProgressNavigate}
+            />
           </YStack>
 
           {/* Header */}

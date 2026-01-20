@@ -1,7 +1,11 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { YStack, XStack, Text, Card, Button, styled, Circle } from 'tamagui'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Animated, Easing } from 'react-native'
+import { useQuery } from 'convex/react'
+import { api } from '../../convex/_generated/api'
+import { Id } from '../../convex/_generated/dataModel'
 import {
   ChevronRight,
   ChevronLeft,
@@ -9,7 +13,14 @@ import {
   Flag,
 } from '@tamagui/lucide-icons'
 import { Vibration } from 'react-native'
-import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT } from '../../components/IntakeProgressDots'
+import LottieView from 'lottie-react-native'
+import { getSportInitials } from '../../lib'
+import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT, COMBINED_FLOW_ROUTES } from '../../components/IntakeProgressDots'
+
+// Sport Lottie mapping (same as sport.tsx)
+const SPORT_LOTTIE: Record<string, any> = {
+  'Soccer': require('../../assets/lottie/sports/soccer.json'),
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
@@ -214,35 +225,204 @@ const CalendarMonth = ({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// WeeksDisplay Component (simplified, connected line with weeks on it)
+// Sport Icon Component (for timeline)
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface SportIconProps {
+  name: string
+  size?: number
+}
+
+const SportIcon = ({ name, size = 36 }: SportIconProps) => {
+  const lottieSource = SPORT_LOTTIE[name]
+
+  if (lottieSource) {
+    return (
+      <Circle
+        size={size}
+        bg="$brand3"
+        overflow="hidden"
+        items="center"
+        justify="center"
+        borderWidth={2}
+        borderColor="$primary"
+      >
+        <LottieView
+          source={lottieSource}
+          autoPlay
+          loop
+          speed={0.8}
+          style={{ width: size * 1.3, height: size * 1.3 }}
+        />
+      </Circle>
+    )
+  }
+
+  // Fallback: initials
+  const initials = getSportInitials(name)
+
+  return (
+    <Circle
+      size={size}
+      bg="$brand3"
+      borderWidth={2}
+      borderColor="$primary"
+    >
+      <Text
+        fontSize={size / 2.5}
+        fontFamily="$body"
+        fontWeight="700"
+        color="$primary"
+      >
+        {initials}
+      </Text>
+    </Circle>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WeeksDisplay Component (with count-up animation and sport icon)
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface WeeksDisplayProps {
   weeks: number
+  sportName?: string
 }
 
-const WeeksDisplay = ({ weeks }: WeeksDisplayProps) => {
+const WeeksDisplay = ({ weeks, sportName }: WeeksDisplayProps) => {
+  const [displayWeeks, setDisplayWeeks] = useState(0)
+  const [lineWidth, setLineWidth] = useState(0)
+  const [animationComplete, setAnimationComplete] = useState(false)
+  const previousWeeksRef = useRef<number | null>(null)
+  const slideAnim = useRef(new Animated.Value(0)).current
+
+  // Use the same size as the flag circle so they align perfectly
+  const FLAG_CIRCLE_SIZE = 44
+  const SPORT_ICON_SIZE = 44
+
+  // Count-up animation when weeks changes
+  useEffect(() => {
+    // Skip animation if weeks decreased or is the same
+    if (previousWeeksRef.current !== null && weeks <= previousWeeksRef.current) {
+      setDisplayWeeks(weeks)
+      previousWeeksRef.current = weeks
+      slideAnim.setValue(1) // Jump to end
+      setAnimationComplete(true)
+      return
+    }
+
+    previousWeeksRef.current = weeks
+    setAnimationComplete(false)
+
+    // Start from 0 and animate up
+    setDisplayWeeks(0)
+    slideAnim.setValue(0)
+
+    const duration = 600 // ms
+    const steps = Math.min(weeks, 30) // Cap steps for very long durations
+    const stepDuration = duration / steps
+
+    // Start the slide animation
+    Animated.timing(slideAnim, {
+      toValue: 1,
+      duration: duration,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start(() => {
+      setAnimationComplete(true)
+    })
+
+    let currentStep = 0
+    const interval = setInterval(() => {
+      currentStep++
+      // Ease-out: start fast, slow down at the end
+      const progress = currentStep / steps
+      const easedProgress = 1 - Math.pow(1 - progress, 3) // Cubic ease-out
+      const newValue = Math.round(easedProgress * weeks)
+      setDisplayWeeks(newValue)
+
+      if (currentStep >= steps) {
+        clearInterval(interval)
+        setDisplayWeeks(weeks) // Ensure final value is exact
+      }
+    }, stepDuration)
+
+    return () => clearInterval(interval)
+  }, [weeks, slideAnim])
+
+  // Calculate the end position for the sport icon
+  // The icon should end exactly where the flag circle is (at the right edge of the line)
+  // lineWidth is the width of the middle section, and the flag is right after it
+  // So the icon needs to travel: lineWidth (to reach the end) + offset to center on the flag
+  const iconEndPosition = Math.max(0, lineWidth + (FLAG_CIRCLE_SIZE - SPORT_ICON_SIZE) / 2)
+
   return (
     <YStack px="$2">
-      <XStack items="center" height={50}>
+      <XStack items="center" height={56}>
         {/* Today Circle */}
         <Circle size={44} bg="$color5" borderWidth={2} borderColor="$primary">
           <Calendar size={22} color="$primary" />
         </Circle>
 
-        {/* Connected Line with Weeks on it */}
-        <XStack flex={1} items="center" position="relative">
+        {/* Connected Line with Sport Icon moving along it */}
+        <XStack
+          flex={1}
+          items="center"
+          position="relative"
+          height={56}
+          onLayout={(e) => setLineWidth(e.nativeEvent.layout.width)}
+        >
           {/* The connecting line */}
           <YStack
             position="absolute"
             left={0}
             right={0}
-            height={3}
+            top={26}
+            height={4}
             bg="$primary"
-            opacity={0.4}
+            opacity={0.3}
+            rounded="$2"
           />
-          {/* Weeks badge on the line */}
-          <YStack flex={1} items="center">
+
+          {/* Progress fill (animated) */}
+          <Animated.View
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 26,
+              height: 4,
+              backgroundColor: '#2563EB', // $primary
+              borderRadius: 4,
+              width: '100%',
+              transform: [{
+                scaleX: slideAnim,
+              }],
+              transformOrigin: 'left',
+            }}
+          />
+
+          {/* Sport icon sliding along the line - positioned to end exactly on the flag */}
+          {sportName && lineWidth > 0 && (
+            <Animated.View
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 6, // Vertically centered (56 - 44) / 2 = 6
+                zIndex: 10, // Ensure it's above the flag
+                transform: [{
+                  translateX: slideAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, iconEndPosition],
+                  }),
+                }],
+              }}
+            >
+              <SportIcon name={sportName} size={SPORT_ICON_SIZE} />
+            </Animated.View>
+          )}
+
+          {/* Weeks badge - centered on the line */}
+          <YStack flex={1} items="center" pt="$1">
             <XStack
               bg="$background"
               px="$3"
@@ -250,24 +430,31 @@ const WeeksDisplay = ({ weeks }: WeeksDisplayProps) => {
               rounded="$4"
               items="baseline"
               gap="$1"
+              animation="quick"
+              enterStyle={{ scale: 0.8, opacity: 0 }}
             >
               <Text
-                fontSize={24}
+                fontSize={28}
                 fontFamily="$heading"
                 fontWeight="800"
                 color="$primary"
+                animation="quick"
               >
-                {weeks}
+                {displayWeeks}
               </Text>
               <Text fontSize={14} color="$color10" fontFamily="$body">
-                weeks
+                {displayWeeks === 1 ? 'week' : 'weeks'}
               </Text>
             </XStack>
           </YStack>
         </XStack>
 
-        {/* Season End Circle */}
-        <Circle size={44} bg="$primary">
+        {/* Season End Circle - hide when sport icon covers it */}
+        <Circle
+          size={44}
+          bg="$primary"
+          opacity={sportName && animationComplete ? 0 : 1}
+        >
           <Flag size={22} color="white" />
         </Circle>
       </XStack>
@@ -298,6 +485,12 @@ export default function SeasonTimelineScreen() {
     yearsOfExperience: string
     trainingDays: string
   }>()
+
+  // Query sport to get name for the icon
+  const sport = useQuery(
+    api.sports.getById,
+    sportId ? { sportId: sportId as Id<"sports"> } : "skip"
+  )
 
   const today = useMemo(() => new Date(), [])
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
@@ -344,6 +537,17 @@ export default function SeasonTimelineScreen() {
     router.back()
   }
 
+  // Navigation handler for progress dots (backward navigation only)
+  const handleProgressNavigate = (index: number) => {
+    const route = COMBINED_FLOW_ROUTES[index]
+    if (route) {
+      router.push({
+        pathname: route,
+        params: { sportId, ageGroup, yearsOfExperience, trainingDays },
+      } as any)
+    }
+  }
+
   const handleContinue = () => {
     if (selectedDate) {
       // Navigate directly to maxes screen (skip personal-timeline, merged into results)
@@ -373,7 +577,11 @@ export default function SeasonTimelineScreen() {
         >
           {/* Progress Dots */}
           <YStack items="center" mb="$4">
-            <IntakeProgressDots total={COMBINED_FLOW_SCREEN_COUNT} current={COMBINED_FLOW_SCREENS.SEASON_TIMELINE} />
+            <IntakeProgressDots
+              total={COMBINED_FLOW_SCREEN_COUNT}
+              current={COMBINED_FLOW_SCREENS.SEASON_TIMELINE}
+              onNavigate={handleProgressNavigate}
+            />
           </YStack>
 
           {/* Header */}
@@ -441,7 +649,7 @@ export default function SeasonTimelineScreen() {
           {/* Weeks Display - directly below calendar */}
           <YStack mt="$5" maxW={600} width="100%">
             {selectedDate ? (
-              <WeeksDisplay weeks={weeks} />
+              <WeeksDisplay weeks={weeks} sportName={sport?.name} />
             ) : (
               <YStack items="center" gap="$2" py="$4">
                 <Calendar size={28} color="$color9" />

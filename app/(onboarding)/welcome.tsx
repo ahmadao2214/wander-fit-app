@@ -42,7 +42,8 @@ export default function WelcomeScreen() {
   const handleContinue = async () => {
     trackScreenComplete()
     await advanceOnboarding({ screenIndex: 1 })
-    router.push('/(onboarding)/phases-overview' as any)
+    // Navigate to consolidated Training Overview screen
+    router.push('/(onboarding)/why-it-works' as any)
   }
 
   const handleSkip = async () => {

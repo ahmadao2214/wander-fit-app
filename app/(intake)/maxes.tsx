@@ -11,7 +11,7 @@ import {
   Dumbbell,
   Info,
 } from '@tamagui/lucide-icons'
-import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT } from '../../components/IntakeProgressDots'
+import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT, COMBINED_FLOW_ROUTES } from '../../components/IntakeProgressDots'
 
 const MAX_1RM = 2000
 
@@ -75,6 +75,17 @@ export default function MaxesScreen() {
 
   const handleBack = () => {
     router.back()
+  }
+
+  // Navigation handler for progress dots (backward navigation only)
+  const handleProgressNavigate = (index: number) => {
+    const route = COMBINED_FLOW_ROUTES[index]
+    if (route) {
+      router.push({
+        pathname: route,
+        params: { sportId, yearsOfExperience, trainingDays, weeksUntilSeason, ageGroup },
+      } as any)
+    }
   }
 
   // Validate on input change
@@ -176,7 +187,11 @@ export default function MaxesScreen() {
           >
           {/* Progress Dots */}
           <YStack items="center" mb="$2">
-            <IntakeProgressDots total={COMBINED_FLOW_SCREEN_COUNT} current={COMBINED_FLOW_SCREENS.MAXES} />
+            <IntakeProgressDots
+              total={COMBINED_FLOW_SCREEN_COUNT}
+              current={COMBINED_FLOW_SCREENS.MAXES}
+              onNavigate={handleProgressNavigate}
+            />
           </YStack>
 
           {/* Header */}

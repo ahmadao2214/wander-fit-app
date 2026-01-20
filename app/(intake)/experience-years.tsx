@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { YStack, XStack, Text, Button, styled } from 'tamagui'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { ChevronRight, ChevronLeft, Minus, Plus, Trophy, Award, Medal } from '@tamagui/lucide-icons'
-import { Vibration } from 'react-native'
-import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT } from '../../components/IntakeProgressDots'
+import { ChevronRight, ChevronLeft, Minus, Plus, Trophy } from '@tamagui/lucide-icons'
+import { Vibration, Animated } from 'react-native'
+import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT, COMBINED_FLOW_ROUTES } from '../../components/IntakeProgressDots'
+import { useSwipeNavigation } from '../../hooks/useSwipeNavigation'
 import { getSkillLevel } from '../../lib'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -34,7 +35,7 @@ const Subtitle = styled(Text, {
 const MIN_YEARS = 0
 const MAX_YEARS = 10
 
-// Skill level styling
+// Skill level styling based on years
 const SKILL_STYLES = {
   Novice: {
     color: '$blue11',
@@ -43,7 +44,7 @@ const SKILL_STYLES = {
   },
   Moderate: {
     color: '$orange11',
-    label: 'Moderate',
+    label: 'Intermediate',
     description: 'Developing your skills',
   },
   Advanced: {
@@ -52,6 +53,133 @@ const SKILL_STYLES = {
     description: 'Refining your expertise',
   },
 } as const
+
+// Special styling for 10+ years (veteran status)
+const VETERAN_STYLE = {
+  color: '$yellow10',
+  label: 'Veteran',
+  description: 'A decade of dedication',
+}
+
+// Trophy styling based on year index (0-9)
+// Earlier years = smaller/duller, later years = bigger/shinier
+function getTrophyStyle(yearIndex: number): { size: number; color: string } {
+  // Size progression: starts at 20, grows to 28 for year 10
+  const baseSize = 18
+  const sizeIncrement = 1
+  const size = baseSize + (yearIndex * sizeIncrement)
+
+  // Color progression based on milestone years
+  if (yearIndex >= 9) {
+    // Year 10: Gold champion
+    return { size: 28, color: '$yellow10' }
+  } else if (yearIndex >= 6) {
+    // Years 7-9: Gold
+    return { size, color: '$yellow9' }
+  } else if (yearIndex >= 3) {
+    // Years 4-6: Orange/Bronze
+    return { size, color: '$orange9' }
+  } else {
+    // Years 1-3: Silver/Gray
+    return { size, color: '$color9' }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TrophyCase Component (1 trophy per year)
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface TrophyCaseProps {
+  years: number
+}
+
+const TrophyCase = ({ years }: TrophyCaseProps) => {
+  // Empty state
+  if (years === 0) {
+    return (
+      <YStack
+        height={100}
+        width="100%"
+        items="center"
+        justify="center"
+        bg="$color2"
+        rounded="$4"
+        borderWidth={2}
+        borderColor="$color4"
+        borderStyle="dashed"
+      >
+        <Text color="$color8" fontFamily="$body" fontSize={14}>
+          Your trophy case awaits
+        </Text>
+      </YStack>
+    )
+  }
+
+  // Generate one trophy per year
+  const trophies = Array.from({ length: years }, (_, i) => getTrophyStyle(i))
+
+  return (
+    <YStack
+      width="100%"
+      bg="$color2"
+      rounded="$4"
+      p="$4"
+      borderWidth={1}
+      borderColor="$color5"
+    >
+      {/* Shelf */}
+      <YStack
+        minHeight={70}
+        items="center"
+        justify="flex-end"
+      >
+        {/* Trophies on shelf - wrap if needed */}
+        <XStack
+          gap="$2"
+          items="flex-end"
+          justify="center"
+          flexWrap="wrap"
+          pb="$2"
+          px="$2"
+        >
+          {trophies.map((trophy, index) => (
+            <YStack
+              key={index}
+              items="center"
+              animation="bouncy"
+              enterStyle={{ opacity: 0, scale: 0.5, y: 15 }}
+              style={{ animationDelay: `${index * 50}ms` }}
+            >
+              <Trophy
+                size={trophy.size}
+                color={trophy.color as any}
+              />
+            </YStack>
+          ))}
+        </XStack>
+
+        {/* Shelf line */}
+        <YStack
+          width="100%"
+          height={4}
+          bg="$color6"
+          rounded="$2"
+        />
+      </YStack>
+
+      {/* Shelf label for milestones */}
+      {years >= 10 && (
+        <XStack justify="center" mt="$2">
+          <YStack bg="$yellow4" px="$3" py="$1" rounded="$2">
+            <Text fontSize={11} color="$yellow11" fontWeight="700" letterSpacing={1}>
+              DECADE CLUB
+            </Text>
+          </YStack>
+        </XStack>
+      )}
+    </YStack>
+  )
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Experience Years Screen
@@ -67,30 +195,23 @@ export default function ExperienceYearsScreen() {
 
   const [years, setYears] = useState(0)
 
+  // Swipe navigation - only backward (right swipe), forward requires Continue button
+  const { panHandlers, translateX } = useSwipeNavigation({
+    onSwipeRight: () => router.back(),
+    canSwipeRight: true,
+    canSwipeLeft: false,
+  })
+
   // Redirect if missing params
   if (!sportId || !ageGroup) {
     router.replace('/(intake)/sport')
     return null
   }
 
+  // Use veteran style for 10+ years, otherwise use skill level
+  const isVeteran = years >= 10
   const skillLevel = getSkillLevel(years)
-  const skillStyle = SKILL_STYLES[skillLevel]
-
-  // Calculate how many trophies to show (1 per 2 years, max 5)
-  const trophyCount = Math.min(Math.ceil(years / 2), 5)
-
-  // Determine trophy types based on years
-  const getTrophyIcon = (index: number) => {
-    if (years >= 6 && index === 0) return Trophy
-    if (years >= 3 && index <= 1) return Award
-    return Medal
-  }
-
-  const getTrophyColor = (index: number) => {
-    if (years >= 6 && index === 0) return '$yellow10'
-    if (years >= 3 && index <= 1) return '$orange9'
-    return '$color10'
-  }
+  const skillStyle = isVeteran ? VETERAN_STYLE : SKILL_STYLES[skillLevel]
 
   const handleIncrement = () => {
     if (years < MAX_YEARS) {
@@ -121,7 +242,22 @@ export default function ExperienceYearsScreen() {
     })
   }
 
+  // Navigation handler for progress dots (backward navigation only)
+  const handleProgressNavigate = (index: number) => {
+    const route = COMBINED_FLOW_ROUTES[index]
+    if (route) {
+      router.push({
+        pathname: route,
+        params: { sportId, ageGroup },
+      } as any)
+    }
+  }
+
   return (
+    <Animated.View
+      {...panHandlers}
+      style={{ flex: 1, transform: [{ translateX }] }}
+    >
     <YStack flex={1} bg="$background">
       {/* Main Content */}
       <YStack
@@ -135,7 +271,11 @@ export default function ExperienceYearsScreen() {
       >
         {/* Progress Dots */}
         <YStack items="center" mb="$4">
-          <IntakeProgressDots total={COMBINED_FLOW_SCREEN_COUNT} current={COMBINED_FLOW_SCREENS.EXPERIENCE_YEARS} />
+          <IntakeProgressDots
+            total={COMBINED_FLOW_SCREEN_COUNT}
+            current={COMBINED_FLOW_SCREENS.EXPERIENCE_YEARS}
+            onNavigate={handleProgressNavigate}
+          />
         </YStack>
 
         {/* Header */}
@@ -146,56 +286,33 @@ export default function ExperienceYearsScreen() {
           </Subtitle>
         </YStack>
 
-        {/* Main Experience Display - Full Width */}
-        <YStack flex={1} items="center" justify="center" gap="$6">
+        {/* Main Experience Display */}
+        <YStack flex={1} items="center" justify="center" gap="$5">
           {/* Large Year Counter with skill level color */}
-          <YStack items="center" gap="$2">
+          <YStack items="center" gap="$1">
             <Text
-              fontSize={120}
+              fontSize={isVeteran ? 80 : 100}
               fontFamily="$heading"
               fontWeight="800"
               color={skillStyle.color}
-              lineHeight={120}
+              lineHeight={isVeteran ? 80 : 100}
             >
-              {years}
+              {isVeteran ? '10+' : years}
             </Text>
             <Text
-              fontSize={20}
+              fontSize={18}
               fontFamily="$body"
               fontWeight="600"
               color="$color10"
               textTransform="uppercase"
-              letterSpacing={3}
+              letterSpacing={2}
             >
               {years === 1 ? 'Year' : 'Years'}
             </Text>
           </YStack>
 
-          {/* Trophy Display */}
-          <YStack height={60} items="center" justify="center">
-            {years === 0 ? (
-              <Text color="$color9" fontFamily="$body" fontSize={15}>
-                Tap + to add your experience
-              </Text>
-            ) : (
-              <XStack gap="$4" items="flex-end" justify="center">
-                {Array.from({ length: trophyCount }, (_, index) => {
-                  const Icon = getTrophyIcon(index)
-                  const color = getTrophyColor(index)
-                  return (
-                    <YStack
-                      key={index}
-                      items="center"
-                      animation="bouncy"
-                      enterStyle={{ opacity: 0, scale: 0.5, y: 20 }}
-                    >
-                      <Icon size={36 - index * 3} color={color} />
-                    </YStack>
-                  )
-                })}
-              </XStack>
-            )}
-          </YStack>
+          {/* Trophy Case Display */}
+          <TrophyCase years={years} />
 
           {/* Skill Level Label */}
           <YStack items="center" gap="$1">
@@ -213,7 +330,7 @@ export default function ExperienceYearsScreen() {
           </YStack>
 
           {/* Stepper Controls */}
-          <XStack items="center" justify="center" gap="$6" mt="$4">
+          <XStack items="center" justify="center" gap="$6" mt="$2">
             <Button
               circular
               size="$6"
@@ -286,5 +403,6 @@ export default function ExperienceYearsScreen() {
         </XStack>
       </YStack>
     </YStack>
+    </Animated.View>
   )
 }

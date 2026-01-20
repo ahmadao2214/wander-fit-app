@@ -13,7 +13,7 @@ import {
 import { Id } from '../../convex/_generated/dataModel'
 import LottieView from 'lottie-react-native'
 import { getSportInitials } from '../../lib'
-import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT } from '../../components/IntakeProgressDots'
+import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT, COMBINED_FLOW_ROUTES } from '../../components/IntakeProgressDots'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
@@ -207,6 +207,15 @@ export default function SportSelectionScreen() {
     }
   }
 
+  // Navigation handler for progress dots (backward navigation only)
+  // Sport is the first screen, so no backward navigation is possible
+  const handleProgressNavigate = (index: number) => {
+    const route = COMBINED_FLOW_ROUTES[index]
+    if (route) {
+      router.push(route as any)
+    }
+  }
+
   return (
     <YStack flex={1} bg="$background">
       <ScrollView flex={1} showsVerticalScrollIndicator={false}>
@@ -221,7 +230,11 @@ export default function SportSelectionScreen() {
         >
           {/* Progress Dots */}
           <YStack items="center" mb="$2">
-            <IntakeProgressDots total={COMBINED_FLOW_SCREEN_COUNT} current={COMBINED_FLOW_SCREENS.SPORT} />
+            <IntakeProgressDots
+              total={COMBINED_FLOW_SCREEN_COUNT}
+              current={COMBINED_FLOW_SCREENS.SPORT}
+              onNavigate={handleProgressNavigate}
+            />
           </YStack>
 
           {/* Header */}

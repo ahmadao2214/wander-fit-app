@@ -35,10 +35,10 @@ export default function OnboardingIndex() {
       const isRevisit = onboardingState?.isRevisit ?? false
       analytics.trackOnboardingStarted(10, isRevisit)
 
-      // For revisit mode, go directly to phases-overview (educational content)
-      // Skip the old welcome screen and intake-related screens
+      // For revisit mode, go directly to why-it-works (educational content)
+      // This is the consolidated "Training Overview" screen
       if (isRevisit) {
-        router.replace('/(onboarding)/phases-overview' as any)
+        router.replace('/(onboarding)/why-it-works' as any)
         return
       }
 
@@ -54,9 +54,9 @@ export default function OnboardingIndex() {
         await startOnboarding()
       }
 
-      // For normal flow after intake, go to phases-overview
+      // For normal flow after intake, go to why-it-works
       // (the new combined flow handles routing between intake and onboarding)
-      router.replace('/(onboarding)/phases-overview' as any)
+      router.replace('/(onboarding)/why-it-works' as any)
     }
 
     initAndRedirect()

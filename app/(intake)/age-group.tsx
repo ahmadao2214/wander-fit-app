@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { YStack, XStack, Text, Card, Button, styled, Circle } from 'tamagui'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { ChevronRight, ChevronLeft, Check, Users, Zap, Crown } from '@tamagui/lucide-icons'
-import { Vibration } from 'react-native'
-import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT } from '../../components/IntakeProgressDots'
+import { ChevronRight, ChevronLeft, Check, Sprout, Zap, Mountain } from '@tamagui/lucide-icons'
+import { Vibration, Animated } from 'react-native'
+import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT, COMBINED_FLOW_ROUTES } from '../../components/IntakeProgressDots'
+import { useSwipeNavigation } from '../../hooks/useSwipeNavigation'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -50,7 +51,7 @@ const DIVISIONS: DivisionData[] = [
     id: '10-13',
     label: 'Youth',
     subtitle: 'Ages 10-13',
-    icon: Users,
+    icon: Sprout,
     color: '$intensityLow11',
     bgColor: '$intensityLow3',
   },
@@ -66,7 +67,7 @@ const DIVISIONS: DivisionData[] = [
     id: '18+',
     label: 'Adult',
     subtitle: 'Ages 18+',
-    icon: Crown,
+    icon: Mountain,
     color: '$intensityHigh11',
     bgColor: '$intensityHigh3',
   },
@@ -100,15 +101,17 @@ const DivisionCard = ({ division, isSelected, onSelect }: DivisionCardProps) => 
       p="$5"
     >
       <XStack items="center" gap="$4">
-        {/* Icon Badge */}
+        {/* Icon Badge - lighter bg when selected, colored icon */}
         <Circle
           size={64}
-          bg={isSelected ? (division.color as any) : '$color5'}
+          bg={isSelected ? (division.bgColor as any) : '$color5'}
+          borderWidth={isSelected ? 2 : 0}
+          borderColor={isSelected ? (division.color as any) : 'transparent'}
           animation="quick"
         >
           <Icon
             size={32}
-            color={isSelected ? 'white' : '$color10'}
+            color={isSelected ? (division.color as any) : '$color10'}
           />
         </Circle>
 
@@ -132,10 +135,10 @@ const DivisionCard = ({ division, isSelected, onSelect }: DivisionCardProps) => 
           </Text>
         </YStack>
 
-        {/* Selected Check */}
+        {/* Selected Check - dark check on light bg */}
         {isSelected && (
-          <Circle size={28} bg={division.color as any}>
-            <Check size={16} color="white" strokeWidth={3} />
+          <Circle size={28} bg={division.bgColor as any} borderWidth={2} borderColor={division.color as any}>
+            <Check size={16} color={division.color as any} strokeWidth={3} />
           </Circle>
         )}
       </XStack>
@@ -153,6 +156,13 @@ export default function AgeGroupScreen() {
   const { sportId } = useLocalSearchParams<{ sportId: string }>()
 
   const [selectedAgeGroup, setSelectedAgeGroup] = useState<AgeGroup | null>(null)
+
+  // Swipe navigation - only backward (right swipe), forward requires Continue button
+  const { panHandlers, translateX } = useSwipeNavigation({
+    onSwipeRight: () => router.back(),
+    canSwipeRight: true,
+    canSwipeLeft: false,
+  })
 
   // Redirect if missing params
   if (!sportId) {
@@ -181,7 +191,22 @@ export default function AgeGroupScreen() {
     }
   }
 
+  // Navigation handler for progress dots (backward navigation only)
+  const handleProgressNavigate = (index: number) => {
+    const route = COMBINED_FLOW_ROUTES[index]
+    if (route) {
+      router.push({
+        pathname: route,
+        params: { sportId },
+      } as any)
+    }
+  }
+
   return (
+    <Animated.View
+      {...panHandlers}
+      style={{ flex: 1, transform: [{ translateX }] }}
+    >
     <YStack flex={1} bg="$background">
       {/* Main Content */}
       <YStack
@@ -195,7 +220,11 @@ export default function AgeGroupScreen() {
       >
         {/* Progress Dots */}
         <YStack items="center" mb="$4">
-          <IntakeProgressDots total={COMBINED_FLOW_SCREEN_COUNT} current={COMBINED_FLOW_SCREENS.AGE_GROUP} />
+          <IntakeProgressDots
+            total={COMBINED_FLOW_SCREEN_COUNT}
+            current={COMBINED_FLOW_SCREENS.AGE_GROUP}
+            onNavigate={handleProgressNavigate}
+          />
         </YStack>
 
         {/* Header */}
@@ -261,5 +290,6 @@ export default function AgeGroupScreen() {
         </XStack>
       </YStack>
     </YStack>
+    </Animated.View>
   )
 }
