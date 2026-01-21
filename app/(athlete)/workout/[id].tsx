@@ -1,11 +1,11 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { View, StyleSheet } from 'react-native'
-import { 
-  YStack, 
-  XStack, 
+import {
+  YStack,
+  XStack,
   H3,
-  Text, 
-  Card, 
+  Text,
+  Card,
   Button,
   Spinner,
 } from 'tamagui'
@@ -15,13 +15,14 @@ import { api } from '../../../convex/_generated/api'
 import { useAuth } from '../../../hooks/useAuth'
 import { useDragReorder } from '../../../hooks/useDragReorder'
 import { Id } from '../../../convex/_generated/dataModel'
-import { 
-  ArrowLeft, 
-  Play, 
+import {
+  ArrowLeft,
+  Play,
   Lock,
   CheckCircle,
+  Dumbbell,
 } from '@tamagui/lucide-icons'
-import DraggableFlatList, { 
+import DraggableFlatList, {
   ScaleDecorator,
   RenderItemParams,
 } from 'react-native-draggable-flatlist'
@@ -29,7 +30,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { ExerciseAccordionItem } from '../../../components/ExerciseAccordionItem'
 
 /**
- * Exercise type for the draggable list (with intensity scaling)
+ * Exercise type for the draggable list (with category-specific intensity scaling)
  */
 type ExerciseItem = {
   exerciseId: string
@@ -46,7 +47,7 @@ type ExerciseItem = {
     instructions?: string
     tags?: string[]
   }
-  // Intensity scaling fields
+  // Category-specific intensity scaling fields
   scaledSets?: number
   scaledReps?: string
   scaledRestSeconds?: number
@@ -57,42 +58,39 @@ type ExerciseItem = {
   isSubstituted?: boolean
   substitutedExerciseSlug?: string
   hasOneRepMax?: boolean
+  exerciseFocus?: "strength" | "power" | "bodyweight"
 }
 
 /**
  * Workout Detail Screen
- * 
+ *
  * OPEN ACCESS:
  * - Athletes can start ANY workout within their unlocked phases
  * - No suggested/scheduled workout - full flexibility
  * - Locked phases show exercise preview but disable start
- * 
+ *
  * FEATURES:
  * - Accordion-style exercise list (collapsed by default for quick scanning)
  * - Drag-and-drop reordering of exercises before starting
  * - Start button in header for quick access from anywhere
  * - Shows exercises in user's custom order if they reordered during execution
+ *
+ * CATEGORY-SPECIFIC INTENSITY (v2):
+ * - No user-selectable intensity (Low/Moderate/High removed)
+ * - Parameters automatically calculated from athlete profile:
+ *   - Sport Category (1-4)
+ *   - Training Phase (GPP/SPP/SSP)
+ *   - Age Group (10-13, 14-17, 18+)
+ *   - Years of Experience
+ *   - Exercise Type (strength/power/bodyweight)
  */
 export default function WorkoutDetailScreen() {
   const router = useRouter()
-  const { id, intensity: urlIntensity } = useLocalSearchParams<{ id: string; intensity?: string }>()
+  const { id } = useLocalSearchParams<{ id: string }>()
   const { user } = useAuth()
 
   // All hooks must be called before any early returns
   const [isStarting, setIsStarting] = useState(false)
-  
-  // Intensity selection for workout scaling (persisted in URL)
-  const validIntensities = ["Low", "Moderate", "High"] as const
-  const initialIntensity = validIntensities.includes(urlIntensity as any) 
-    ? (urlIntensity as "Low" | "Moderate" | "High") 
-    : "Moderate"
-  const [selectedIntensity, setSelectedIntensityState] = useState<"Low" | "Moderate" | "High">(initialIntensity)
-  
-  // Update URL when intensity changes (persists on refresh)
-  const setSelectedIntensity = useCallback((intensity: "Low" | "Moderate" | "High") => {
-    setSelectedIntensityState(intensity)
-    router.setParams({ intensity })
-  }, [router])
 
   // Safe back navigation - avoids getting stuck in execution screens
   const handleBack = useCallback(() => {
@@ -107,10 +105,10 @@ export default function WorkoutDetailScreen() {
   // Track which accordions are expanded (by exercise ID, not index, so state persists through reordering)
   const [expandedExerciseIds, setExpandedExerciseIds] = useState<Set<string>>(new Set())
 
-  // Get the template with intensity scaling applied
+  // Get the template with category-specific intensity scaling applied
   const templateQuery = useQuery(
-    api.programTemplates.getWorkoutWithIntensity,
-    id ? { templateId: id as Id<"program_templates">, intensity: selectedIntensity } : "skip"
+    api.programTemplates.getWorkoutWithScaling,
+    id ? { templateId: id as Id<"program_templates"> } : "skip"
   )
   
   // Keep previous template data while loading new intensity to prevent flicker
@@ -187,7 +185,7 @@ export default function WorkoutDetailScreen() {
   // Start workout handler
   const startWorkout = useCallback(async () => {
     if (isStarting || !template) return
-    
+
     setIsStarting(true)
     try {
       // Auto-focus: If this workout isn't already today's focus, set it
@@ -195,14 +193,14 @@ export default function WorkoutDetailScreen() {
       if (todayWorkout && todayWorkout._id !== template._id) {
         await setTodayFocus({ templateId: template._id })
       }
-      
-      // Pass custom exercise order and intensity
+
+      // Start session - intensity is now calculated automatically from athlete profile
       const result = await startSession({
         templateId: template._id,
         exerciseOrder: hasCustomOrder ? orderIndices : undefined,
-        targetIntensity: selectedIntensity,
+        // Note: targetIntensity is deprecated, scalingSnapshot is saved automatically
       })
-      
+
       // Navigate to execution screen with the session ID
       router.push({
         pathname: '/(athlete)/workout/execute/[id]',
@@ -214,15 +212,24 @@ export default function WorkoutDetailScreen() {
     } finally {
       setIsStarting(false)
     }
-  }, [isStarting, template, startSession, router, hasCustomOrder, orderIndices, todayWorkout, setTodayFocus, selectedIntensity])
+  }, [isStarting, template, startSession, router, hasCustomOrder, orderIndices, todayWorkout, setTodayFocus])
 
-  // Map selected intensity to color token
-  const intensityColorMap = {
-    Low: "$intensityLow6",
-    Moderate: "$intensityMed6",
-    High: "$intensityHigh6",
-  } as const
-  const intensityColor = intensityColorMap[selectedIntensity]
+  // Derive intensity color from the average RPE of the workout
+  // RPE 5-6: Low, RPE 6-7: Moderate, RPE 8-9: High
+  const intensityColor = useMemo(() => {
+    if (!template?.scalingContext) {
+      return "$intensityMed6" // Default to moderate
+    }
+    // Get RPE from first exercise as a proxy (all exercises in a phase should have similar RPE)
+    const firstExercise = template.exercises[0]
+    const avgRpe = firstExercise?.rpeTarget
+      ? (firstExercise.rpeTarget.min + firstExercise.rpeTarget.max) / 2
+      : 7
+
+    if (avgRpe <= 6.5) return "$intensityLow6"
+    if (avgRpe <= 7.5) return "$intensityMed6"
+    return "$intensityHigh6"
+  }, [template])
 
   // Render item for DraggableFlatList
   const renderExerciseItem = useCallback(
@@ -287,94 +294,34 @@ export default function WorkoutDetailScreen() {
           </Card>
         )}
 
-        {/* Intensity Selector */}
-        {isPhaseUnlocked && !isCompleted && (
+        {/* Scaling Context Info - shows what parameters are being used */}
+        {isPhaseUnlocked && !isCompleted && template.scalingContext && (
           <Card p="$3" bg="$color2" borderColor="$borderColor">
-            <YStack gap="$3">
-              <Text fontSize="$3" fontWeight="600" color="$color12">
-                Workout Intensity
+            <YStack gap="$2">
+              <XStack items="center" gap="$2">
+                <Dumbbell size={16} color="$color11" />
+                <Text fontSize="$3" fontWeight="600" color="$color12">
+                  Personalized for You
+                </Text>
+              </XStack>
+              <Text fontSize="$2" color="$color10">
+                Sets, reps, rest, and weight are calculated based on your profile:
               </Text>
-              <XStack gap="$2">
-                <Card
-                  flex={1}
-                  p="$3"
-                  bg={selectedIntensity === "Low" ? "$intensityLow6" : "$color4"}
-                  borderColor={selectedIntensity === "Low" ? "$intensityLow7" : "$borderColor"}
-                  borderWidth={selectedIntensity === "Low" ? 2 : 1}
-                  pressStyle={{ scale: 0.98 }}
-                  onPress={() => setSelectedIntensity("Low")}
-                  cursor="pointer"
-                >
-                  <YStack items="center" gap="$1">
-                    <Text
-                      fontSize="$4"
-                      fontWeight={selectedIntensity === "Low" ? "700" : "500"}
-                      color={selectedIntensity === "Low" ? "white" : "$color11"}
-                    >
-                      Low
-                    </Text>
-                    <Text
-                      fontSize="$1"
-                      color={selectedIntensity === "Low" ? "white" : "$color10"}
-                      opacity={selectedIntensity === "Low" ? 0.9 : 0.7}
-                    >
-                      RPE 5-6
-                    </Text>
-                  </YStack>
+              <XStack gap="$2" flexWrap="wrap" pt="$1">
+                <Card bg="$color4" px="$2" py="$1" rounded="$4">
+                  <Text fontSize="$1" color="$color11">
+                    {template.phase} Phase
+                  </Text>
                 </Card>
-                <Card
-                  flex={1}
-                  p="$3"
-                  bg={selectedIntensity === "Moderate" ? "$intensityMed6" : "$color4"}
-                  borderColor={selectedIntensity === "Moderate" ? "$intensityMed7" : "$borderColor"}
-                  borderWidth={selectedIntensity === "Moderate" ? 2 : 1}
-                  pressStyle={{ scale: 0.98 }}
-                  onPress={() => setSelectedIntensity("Moderate")}
-                  cursor="pointer"
-                >
-                  <YStack items="center" gap="$1">
-                    <Text
-                      fontSize="$4"
-                      fontWeight={selectedIntensity === "Moderate" ? "700" : "500"}
-                      color={selectedIntensity === "Moderate" ? "white" : "$color11"}
-                    >
-                      Moderate
-                    </Text>
-                    <Text
-                      fontSize="$1"
-                      color={selectedIntensity === "Moderate" ? "white" : "$color10"}
-                      opacity={selectedIntensity === "Moderate" ? 0.9 : 0.7}
-                    >
-                      RPE 6-7
-                    </Text>
-                  </YStack>
+                <Card bg="$color4" px="$2" py="$1" rounded="$4">
+                  <Text fontSize="$1" color="$color11">
+                    Age: {template.scalingContext.ageGroup}
+                  </Text>
                 </Card>
-                <Card
-                  flex={1}
-                  p="$3"
-                  bg={selectedIntensity === "High" ? "$intensityHigh6" : "$color4"}
-                  borderColor={selectedIntensity === "High" ? "$intensityHigh7" : "$borderColor"}
-                  borderWidth={selectedIntensity === "High" ? 2 : 1}
-                  pressStyle={{ scale: 0.98 }}
-                  onPress={() => setSelectedIntensity("High")}
-                  cursor="pointer"
-                >
-                  <YStack items="center" gap="$1">
-                    <Text
-                      fontSize="$4"
-                      fontWeight={selectedIntensity === "High" ? "700" : "500"}
-                      color={selectedIntensity === "High" ? "white" : "$color11"}
-                    >
-                      High
-                    </Text>
-                    <Text
-                      fontSize="$1"
-                      color={selectedIntensity === "High" ? "white" : "$color10"}
-                      opacity={selectedIntensity === "High" ? 0.9 : 0.7}
-                    >
-                      RPE 8-9
-                    </Text>
-                  </YStack>
+                <Card bg="$color4" px="$2" py="$1" rounded="$4">
+                  <Text fontSize="$1" color="$color11">
+                    Exp: {template.scalingContext.experienceBucket} yrs
+                  </Text>
                 </Card>
               </XStack>
             </YStack>
@@ -392,7 +339,7 @@ export default function WorkoutDetailScreen() {
         </XStack>
       </YStack>
     )
-  }, [template, isPhaseUnlocked, isCompleted, canReorder, selectedIntensity, setSelectedIntensity])
+  }, [template, isPhaseUnlocked, isCompleted, canReorder])
 
   // Footer component with bottom padding
   const ListFooter = useMemo(() => {

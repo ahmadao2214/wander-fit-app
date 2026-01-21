@@ -391,6 +391,22 @@ export default defineSchema({
       day: v.number(),
       workoutDate: v.number(), // The actual date this workout was done
     })),
+
+    /**
+     * scalingSnapshot - Captures athlete profile at time of workout
+     *
+     * Used by category-specific intensity system to calculate exercise parameters.
+     * Preserves the exact scaling context so historical workouts show
+     * the same parameters even if athlete's profile changes.
+     *
+     * @see convex/intensityScaling.ts for getCategoryExerciseParameters()
+     */
+    scalingSnapshot: v.optional(v.object({
+      categoryId: v.number(), // 1-4 (Endurance, Power, Rotational, Strength)
+      phase: phaseValidator,  // GPP, SPP, SSP
+      ageGroup: ageGroupValidator, // 10-13, 14-17, 18+
+      yearsOfExperience: v.number(), // Used to determine experience bucket
+    })),
   })
     .index("by_user", ["userId"])
     .index("by_user_status", ["userId", "status"])
