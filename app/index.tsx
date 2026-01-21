@@ -4,15 +4,16 @@ import { useAuth } from '../hooks/useAuth'
 
 /**
  * Root Index Page
- * 
+ *
  * Handles initial routing based on auth state:
  * 1. Not authenticated → Sign in
  * 2. Authenticated but no Convex user → Sign up (create user)
  * 3. Authenticated but no intake → Intake flow
- * 4. Authenticated with intake → Athlete dashboard
+ * 4. Authenticated with intake but no onboarding → Onboarding flow
+ * 5. Authenticated with both complete → Athlete dashboard
  */
 export default function IndexPage() {
-  const { isAuthenticated, isLoading, user, needsSetup, needsIntake } = useAuth()
+  const { isAuthenticated, isLoading, user, needsSetup, needsIntake, needsOnboarding } = useAuth()
 
   // Show loading while determining where to redirect
   if (isLoading) {
@@ -38,6 +39,11 @@ export default function IndexPage() {
   // Authenticated but needs intake → go to intake flow
   if (needsIntake || !user?.intakeCompletedAt) {
     return <Redirect href="/(intake)/sport" />
+  }
+
+  // Authenticated with intake but needs onboarding → go to onboarding flow
+  if (needsOnboarding) {
+    return <Redirect href="/(onboarding)" />
   }
 
   // Fully set up → go to athlete dashboard
