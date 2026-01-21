@@ -867,7 +867,7 @@ export function getValueFromPosition(range: ParameterRange, position: PositionTy
 export function getExerciseFocus(tags?: string[], equipment?: string[]): ExerciseFocus {
   // Check if bodyweight
   if (isBodyweightExercise(equipment)) {
-    return "bodyweight";
+  const { min, max } = range;
   }
 
   // Check for power/explosive tags
