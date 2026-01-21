@@ -23,6 +23,12 @@ export type Intensity = "Low" | "Moderate" | "High";
 export type AgeGroup = "10-13" | "14-17" | "18+";
 export type Phase = "GPP" | "SPP" | "SSP";
 
+// Category-specific intensity types
+export type CategoryId = 1 | 2 | 3 | 4;
+export type ExperienceBucket = "0-1" | "2-5" | "6+";
+export type ExerciseFocus = "strength" | "power" | "bodyweight";
+export type PositionType = "lowest" | "lowest_plus_1" | "lowest_plus_2" | "second_lowest" | "middle" | "max_minus_2" | "max_minus_1" | "max";
+
 export interface IntensityConfig {
   oneRepMaxPercent: { min: number; max: number };
   setsMultiplier: number;
@@ -75,6 +81,53 @@ export interface AgeIntensityRules {
 export interface PhaseIntensityRange {
   min: number;
   max: number;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CATEGORY-SPECIFIC INTENSITY TYPES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface ParameterRange {
+  min: number;
+  max: number;
+}
+
+export interface Tempo {
+  eccentric: number | "x";
+  isometric: number | "x";
+  concentric: number | "x";
+}
+
+export interface CategoryPhaseConfig {
+  oneRepMaxPercent: {
+    strength: ParameterRange;
+    power: ParameterRange;
+  };
+  reps: {
+    strength: ParameterRange;
+    power: ParameterRange;
+  };
+  sets: ParameterRange;
+  restSeconds: {
+    strength: number;
+    power: number;
+  };
+  tempo: Tempo;
+  rpe: ParameterRange;
+}
+
+export interface AgeExperienceModifier {
+  setsPosition: PositionType;
+  repsPosition: PositionType;
+}
+
+export interface ScaledCategoryParameters {
+  oneRepMaxPercent: ParameterRange;
+  sets: number;
+  reps: number;
+  restSeconds: number;
+  tempo: Tempo;
+  rpe: ParameterRange;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -203,6 +256,199 @@ export const PHASE_INTENSITY_RANGES: Record<Phase, PhaseIntensityRange> = {
   GPP: { min: 0.60, max: 0.75 },
   SPP: { min: 0.75, max: 0.85 },
   SSP: { min: 0.85, max: 0.90 },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CATEGORY-SPECIFIC INTENSITY CONFIGURATION
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Category-Phase Configuration Matrix
+ *
+ * Each sport category has specific parameters for each training phase.
+ * Parameters include 1RM%, reps, sets, rest, tempo, and RPE.
+ *
+ * Categories:
+ * - 1: Endurance (Soccer, Hockey, Lacrosse)
+ * - 2: Power (Basketball, Volleyball)
+ * - 3: Rotational (Baseball, Tennis, Golf)
+ * - 4: Strength (Wrestling, Football)
+ */
+export const CATEGORY_PHASE_CONFIG: Record<CategoryId, Record<Phase, CategoryPhaseConfig>> = {
+  // Category 1: Endurance (Soccer, Hockey, Lacrosse)
+  1: {
+    GPP: {
+      oneRepMaxPercent: { strength: { min: 0.50, max: 0.65 }, power: { min: 0.30, max: 0.30 } },
+      reps: { strength: { min: 10, max: 14 }, power: { min: 6, max: 8 } },
+      sets: { min: 4, max: 6 },
+      restSeconds: { strength: 30, power: 60 },
+      tempo: { eccentric: 2, isometric: 1, concentric: 2 },
+      rpe: { min: 6, max: 7 },
+    },
+    SPP: {
+      oneRepMaxPercent: { strength: { min: 0.65, max: 0.75 }, power: { min: 0.40, max: 0.40 } },
+      reps: { strength: { min: 6, max: 8 }, power: { min: 4, max: 6 } },
+      sets: { min: 4, max: 6 },
+      restSeconds: { strength: 60, power: 60 },
+      tempo: { eccentric: 2, isometric: 0, concentric: 2 },
+      rpe: { min: 7, max: 8 },
+    },
+    SSP: {
+      oneRepMaxPercent: { strength: { min: 0.75, max: 0.80 }, power: { min: 0.55, max: 0.55 } },
+      reps: { strength: { min: 4, max: 6 }, power: { min: 4, max: 6 } },
+      sets: { min: 3, max: 5 },
+      restSeconds: { strength: 60, power: 60 },
+      tempo: { eccentric: "x", isometric: "x", concentric: "x" },
+      rpe: { min: 8, max: 9 },
+    },
+  },
+  // Category 2: Power (Basketball, Volleyball)
+  2: {
+    GPP: {
+      oneRepMaxPercent: { strength: { min: 0.55, max: 0.65 }, power: { min: 0.35, max: 0.35 } },
+      reps: { strength: { min: 10, max: 14 }, power: { min: 6, max: 8 } },
+      sets: { min: 4, max: 6 },
+      restSeconds: { strength: 30, power: 60 },
+      tempo: { eccentric: 1, isometric: 1, concentric: 1 },
+      rpe: { min: 6, max: 7 },
+    },
+    SPP: {
+      oneRepMaxPercent: { strength: { min: 0.65, max: 0.80 }, power: { min: 0.45, max: 0.45 } },
+      reps: { strength: { min: 8, max: 12 }, power: { min: 4, max: 6 } },
+      sets: { min: 4, max: 6 },
+      restSeconds: { strength: 60, power: 60 },
+      tempo: { eccentric: 2, isometric: 0, concentric: 2 },
+      rpe: { min: 7, max: 8 },
+    },
+    SSP: {
+      oneRepMaxPercent: { strength: { min: 0.80, max: 0.90 }, power: { min: 0.50, max: 0.60 } },
+      reps: { strength: { min: 4, max: 6 }, power: { min: 3, max: 6 } },
+      sets: { min: 4, max: 6 },
+      restSeconds: { strength: 120, power: 120 },
+      tempo: { eccentric: "x", isometric: "x", concentric: "x" },
+      rpe: { min: 9, max: 9 },
+    },
+  },
+  // Category 3: Rotational (Baseball, Tennis, Golf)
+  3: {
+    GPP: {
+      oneRepMaxPercent: { strength: { min: 0.50, max: 0.60 }, power: { min: 0.30, max: 0.30 } },
+      reps: { strength: { min: 10, max: 14 }, power: { min: 8, max: 10 } },
+      sets: { min: 2, max: 4 },
+      restSeconds: { strength: 40, power: 60 },
+      tempo: { eccentric: 2, isometric: 0, concentric: 2 },
+      rpe: { min: 6, max: 7 },
+    },
+    SPP: {
+      oneRepMaxPercent: { strength: { min: 0.60, max: 0.70 }, power: { min: 0.35, max: 0.40 } },
+      reps: { strength: { min: 8, max: 12 }, power: { min: 6, max: 8 } },
+      sets: { min: 3, max: 5 },
+      restSeconds: { strength: 90, power: 60 },
+      tempo: { eccentric: 2, isometric: 0, concentric: 2 },
+      rpe: { min: 7, max: 8 },
+    },
+    SSP: {
+      oneRepMaxPercent: { strength: { min: 0.70, max: 0.85 }, power: { min: 0.50, max: 0.50 } },
+      reps: { strength: { min: 4, max: 6 }, power: { min: 3, max: 6 } },
+      sets: { min: 4, max: 6 },
+      restSeconds: { strength: 120, power: 120 },
+      tempo: { eccentric: "x", isometric: "x", concentric: "x" },
+      rpe: { min: 8, max: 9 },
+    },
+  },
+  // Category 4: Strength (Wrestling, Football)
+  4: {
+    GPP: {
+      oneRepMaxPercent: { strength: { min: 0.60, max: 0.70 }, power: { min: 0.35, max: 0.40 } },
+      reps: { strength: { min: 10, max: 12 }, power: { min: 6, max: 8 } },
+      sets: { min: 3, max: 5 },
+      restSeconds: { strength: 30, power: 60 },
+      tempo: { eccentric: 2, isometric: 1, concentric: 2 },
+      rpe: { min: 7, max: 7 },
+    },
+    SPP: {
+      oneRepMaxPercent: { strength: { min: 0.70, max: 0.85 }, power: { min: 0.45, max: 0.50 } },
+      reps: { strength: { min: 8, max: 12 }, power: { min: 4, max: 6 } },
+      sets: { min: 4, max: 5 },
+      restSeconds: { strength: 90, power: 60 },
+      tempo: { eccentric: 2, isometric: 0, concentric: 2 },
+      rpe: { min: 7, max: 9 },
+    },
+    SSP: {
+      oneRepMaxPercent: { strength: { min: 0.85, max: 0.90 }, power: { min: 0.55, max: 0.55 } },
+      reps: { strength: { min: 3, max: 5 }, power: { min: 3, max: 6 } },
+      sets: { min: 4, max: 6 },
+      restSeconds: { strength: 120, power: 120 },
+      tempo: { eccentric: "x", isometric: "x", concentric: "x" },
+      rpe: { min: 8, max: 9 },
+    },
+  },
+};
+
+/**
+ * Age + Experience Matrix
+ *
+ * Determines position within parameter ranges based on age group and experience.
+ * For example, if sets range is 4-6:
+ * - "lowest" = 4
+ * - "middle" = 5
+ * - "max" = 6
+ */
+export const AGE_EXPERIENCE_MATRIX: Record<AgeGroup, Record<ExperienceBucket, AgeExperienceModifier>> = {
+  "10-13": {
+    "0-1": { setsPosition: "lowest", repsPosition: "lowest" },
+    "2-5": { setsPosition: "lowest_plus_1", repsPosition: "lowest_plus_2" },
+    "6+": { setsPosition: "second_lowest", repsPosition: "max_minus_1" },
+  },
+  "14-17": {
+    "0-1": { setsPosition: "middle", repsPosition: "middle" },
+    "2-5": { setsPosition: "max", repsPosition: "max_minus_1" },
+    "6+": { setsPosition: "max", repsPosition: "max" },
+  },
+  "18+": {
+    "0-1": { setsPosition: "max", repsPosition: "max_minus_2" },
+    "2-5": { setsPosition: "max", repsPosition: "max_minus_1" },
+    "6+": { setsPosition: "max", repsPosition: "max" },
+  },
+};
+
+/**
+ * Age Group Safety Constraints
+ *
+ * Additional safety caps that override category-specific values for younger athletes.
+ * - 10-13: Hard cap at 3 sets, 65% 1RM ceiling
+ * - 14-17 and 18+: Use category ranges (no additional caps)
+ */
+export const AGE_SAFETY_CONSTRAINTS: Record<AgeGroup, { maxSets: number | null; oneRepMaxCeiling: number }> = {
+  "10-13": { maxSets: 3, oneRepMaxCeiling: 0.65 },
+  "14-17": { maxSets: null, oneRepMaxCeiling: 0.85 },
+  "18+": { maxSets: null, oneRepMaxCeiling: 0.90 },
+};
+
+/**
+ * Bodyweight Progression Variant Matrix
+ *
+ * Determines which exercise variant to use based on phase and experience.
+ * - "easier": Use easier progression variant
+ * - "base": Use base exercise
+ * - "harder": Use harder progression variant
+ */
+export const BODYWEIGHT_VARIANT_MATRIX: Record<Phase, Record<ExperienceBucket, "easier" | "base" | "harder">> = {
+  GPP: {
+    "0-1": "easier",
+    "2-5": "base",
+    "6+": "base",
+  },
+  SPP: {
+    "0-1": "base",
+    "2-5": "base",
+    "6+": "base",
+  },
+  SSP: {
+    "0-1": "base",
+    "2-5": "base",
+    "6+": "harder",
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -558,4 +804,231 @@ export function applyAgeModifiers(
     intensity: cappedIntensity,
     oneRepMaxRange: getOneRepMaxRange(ageGroup, phase),
   };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CATEGORY-SPECIFIC INTENSITY FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Tags that indicate a power/explosive exercise
+ */
+const POWER_TAGS = ["power", "explosive", "plyometric", "reactive"];
+
+/**
+ * Convert years of experience to an experience bucket.
+ */
+export function getExperienceBucket(yearsOfExperience: number): ExperienceBucket {
+  if (yearsOfExperience <= 1) return "0-1";
+  if (yearsOfExperience <= 5) return "2-5";
+  return "6+";
+}
+
+/**
+ * Calculate the exact value from a range given a position.
+ *
+ * @param range - The min/max range
+ * @param position - The position within the range
+ * @returns The calculated value
+ */
+export function getValueFromPosition(range: ParameterRange, position: PositionType): number {
+  const { min, max } = range;
+  const spread = max - min;
+
+  switch (position) {
+    case "lowest":
+      return min;
+    case "lowest_plus_1":
+      return min + 1;
+    case "lowest_plus_2":
+      return min + 2;
+    case "second_lowest":
+      return min + 1;
+    case "middle":
+      return Math.round((min + max) / 2);
+    case "max_minus_2":
+      return Math.max(min, max - 2);
+    case "max_minus_1":
+      return Math.max(min, max - 1);
+    case "max":
+      return max;
+    default:
+      return Math.round((min + max) / 2);
+  }
+}
+
+/**
+ * Determine the exercise focus type based on tags and equipment.
+ *
+ * @param tags - Exercise tags
+ * @param equipment - Exercise equipment
+ * @returns The exercise focus type (strength, power, or bodyweight)
+ */
+export function getExerciseFocus(tags?: string[], equipment?: string[]): ExerciseFocus {
+  // Check if bodyweight
+  if (isBodyweightExercise(equipment)) {
+  const { min, max } = range;
+  }
+
+  // Check for power/explosive tags
+  if (tags?.some(tag => POWER_TAGS.includes(tag.toLowerCase()))) {
+    return "power";
+  }
+
+  // Default to strength
+  return "strength";
+}
+
+/**
+ * Get exercise parameters based on category, phase, age, and experience.
+ *
+ * This is the main function for the category-specific intensity system.
+ * It calculates the appropriate sets, reps, rest, tempo, RPE, and 1RM%
+ * based on the athlete's profile.
+ *
+ * @param categoryId - Sport category (1-4)
+ * @param phase - Training phase (GPP, SPP, SSP)
+ * @param ageGroup - Athlete's age group
+ * @param yearsOfExperience - Years of training experience
+ * @param exerciseFocus - Type of exercise (strength, power, bodyweight)
+ * @returns Scaled parameters for the exercise
+ */
+export function getCategoryExerciseParameters(
+  categoryId: CategoryId,
+  phase: Phase,
+  ageGroup: AgeGroup,
+  yearsOfExperience: number,
+  exerciseFocus: ExerciseFocus
+): ScaledCategoryParameters {
+  const config = CATEGORY_PHASE_CONFIG[categoryId][phase];
+  const expBucket = getExperienceBucket(yearsOfExperience);
+  const ageExpModifier = AGE_EXPERIENCE_MATRIX[ageGroup][expBucket];
+  const safetyConstraints = AGE_SAFETY_CONSTRAINTS[ageGroup];
+
+  // Determine which config values to use based on exercise focus
+  const focusKey = exerciseFocus === "power" ? "power" : "strength";
+
+  // Calculate sets from range using age+experience position
+  let sets = getValueFromPosition(config.sets, ageExpModifier.setsPosition);
+
+  // Apply age safety cap for 10-13
+  if (safetyConstraints.maxSets !== null) {
+    sets = Math.min(sets, safetyConstraints.maxSets);
+  }
+
+  // Calculate reps from range using age+experience position
+  const repsRange = config.reps[focusKey];
+  const reps = getValueFromPosition(repsRange, ageExpModifier.repsPosition);
+
+  // Get rest seconds based on exercise focus
+  const restSeconds = config.restSeconds[focusKey];
+
+  // Calculate 1RM% range with age safety ceiling applied
+  const oneRepMaxRange = config.oneRepMaxPercent[focusKey];
+  const cappedOneRepMaxPercent: ParameterRange = {
+    min: Math.min(oneRepMaxRange.min, safetyConstraints.oneRepMaxCeiling),
+    max: Math.min(oneRepMaxRange.max, safetyConstraints.oneRepMaxCeiling),
+  };
+
+  return {
+    oneRepMaxPercent: cappedOneRepMaxPercent,
+    sets,
+    reps,
+    restSeconds,
+    tempo: config.tempo,
+    rpe: config.rpe,
+  };
+}
+
+/**
+ * Apply age safety constraints to calculated parameters.
+ *
+ * @param params - The calculated parameters
+ * @param ageGroup - Athlete's age group
+ * @returns Parameters with age safety constraints applied
+ */
+export function applyAgeSafetyConstraints(
+  params: ScaledCategoryParameters,
+  ageGroup: AgeGroup
+): ScaledCategoryParameters {
+  const constraints = AGE_SAFETY_CONSTRAINTS[ageGroup];
+
+  return {
+    ...params,
+    sets: constraints.maxSets !== null ? Math.min(params.sets, constraints.maxSets) : params.sets,
+    oneRepMaxPercent: {
+      min: Math.min(params.oneRepMaxPercent.min, constraints.oneRepMaxCeiling),
+      max: Math.min(params.oneRepMaxPercent.max, constraints.oneRepMaxCeiling),
+    },
+  };
+}
+
+/**
+ * Get the appropriate bodyweight exercise variant based on phase and experience.
+ *
+ * @param baseExerciseSlug - The base exercise slug
+ * @param phase - Training phase
+ * @param experienceBucket - Experience bucket (0-1, 2-5, 6+)
+ * @param progressions - Exercise progressions (easier/harder variants)
+ * @returns The exercise slug to use
+ */
+export function getBodyweightVariant(
+  baseExerciseSlug: string,
+  phase: Phase,
+  experienceBucket: ExperienceBucket,
+  progressions?: ExerciseProgressions
+): { slug: string; isSubstituted: boolean } {
+  const variantType = BODYWEIGHT_VARIANT_MATRIX[phase][experienceBucket];
+
+  switch (variantType) {
+    case "easier":
+      if (progressions?.easier) {
+        return { slug: progressions.easier, isSubstituted: true };
+      }
+      break;
+    case "harder":
+      if (progressions?.harder) {
+        return { slug: progressions.harder, isSubstituted: true };
+      }
+      break;
+  }
+
+  // Default to base exercise
+  return { slug: baseExerciseSlug, isSubstituted: false };
+}
+
+/**
+ * Format a tempo object to a string (e.g., "2.1.2" or "x.x.x").
+ */
+export function formatTempo(tempo: Tempo): string {
+  const ecc = tempo.eccentric === "x" ? "x" : String(tempo.eccentric);
+  const iso = tempo.isometric === "x" ? "x" : String(tempo.isometric);
+  const con = tempo.concentric === "x" ? "x" : String(tempo.concentric);
+  return `${ecc}.${iso}.${con}`;
+}
+
+/**
+ * Get category name from category ID.
+ */
+export function getCategoryName(categoryId: CategoryId): string {
+  const names: Record<CategoryId, string> = {
+    1: "Endurance",
+    2: "Power",
+    3: "Rotational",
+    4: "Strength",
+  };
+  return names[categoryId];
+}
+
+/**
+ * Get sports for a category.
+ */
+export function getCategorySports(categoryId: CategoryId): string[] {
+  const sports: Record<CategoryId, string[]> = {
+    1: ["Soccer", "Hockey", "Lacrosse"],
+    2: ["Basketball", "Volleyball"],
+    3: ["Baseball", "Tennis", "Golf"],
+    4: ["Wrestling", "Football"],
+  };
+  return sports[categoryId];
 }
