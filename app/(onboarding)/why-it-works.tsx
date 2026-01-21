@@ -94,12 +94,15 @@ export default function TrainingOverviewScreen() {
     })
   }
 
-  // Loading state
+  // Loading state - only undefined means loading, null means no user data
+  // Wrap in Animated.View for consistent layout with swipe navigation
   if (onboardingState === undefined) {
     return (
-      <YStack flex={1} bg="$background" items="center" justify="center">
-        <Spinner size="large" color="$primary" />
-      </YStack>
+      <Animated.View style={{ flex: 1, transform: [{ translateX }] }}>
+        <YStack flex={1} bg="$background" items="center" justify="center">
+          <Spinner size="large" color="$primary" />
+        </YStack>
+      </Animated.View>
     )
   }
 

@@ -100,11 +100,16 @@ export function AthleteOnlyRoute({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * IntakeOnlyRoute - For authenticated users who haven't completed intake
- * Used by the intake flow
+ * IntakeOnlyRoute - For authenticated users in the intake/onboarding flow
+ * Used by the intake flow screens
+ *
+ * INTERLEAVED FLOW SUPPORT:
+ * The intake and onboarding flows are interleaved, meaning users navigate
+ * between /(intake)/ and /(onboarding)/ routes during the combined flow.
+ * We allow access to intake screens as long as onboarding is not complete.
  */
 export function IntakeOnlyRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading, user, needsSetup, needsOnboarding } = useAuth()
+  const { isAuthenticated, isLoading, user, needsSetup } = useAuth()
 
   if (isLoading) {
     return (
@@ -125,15 +130,15 @@ export function IntakeOnlyRoute({ children }: { children: React.ReactNode }) {
     return <Redirect href="/(auth)/sign-up" />
   }
 
-  // Already completed intake → go to onboarding or dashboard
-  if (user?.intakeCompletedAt) {
-    if (needsOnboarding) {
-      return <Redirect href={ONBOARDING_ROUTE} />
-    }
+  // If both intake AND onboarding are complete → go to dashboard
+  // This prevents users from accessing intake after fully completing the flow
+  if (user?.intakeCompletedAt && user?.onboardingCompletedAt) {
     return <Redirect href="/(athlete)" />
   }
 
-  // Show intake flow
+  // Allow access during:
+  // 1. Initial intake (no intakeCompletedAt)
+  // 2. Interleaved flow (intakeCompletedAt set, but onboardingCompletedAt not set)
   return <>{children}</>
 }
 
