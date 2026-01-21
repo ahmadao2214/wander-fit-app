@@ -22,6 +22,7 @@ This document outlines the plan to replace the current user-selectable intensity
 - Automatic intensity calculation based on athlete profile
 - Category-specific parameter matrices
 - Age + Experience scaling matrix
+- Age group safety constraints
 
 ---
 
@@ -96,6 +97,33 @@ For a given parameter range (e.g., sets 4-6):
 
 ---
 
+## Age Group Safety Constraints
+
+### 1RM Percentage Ceilings
+
+Safety caps applied as: `effectiveMax = min(categoryPhaseMax, ageGroupCeiling)`
+
+| Age Group | Max 1RM% |
+|-----------|----------|
+| 10-13 | 65% |
+| 14-17 | 85% |
+| 18+ | 90% |
+
+**Example**: A 12-year-old Category 2 athlete in SSP:
+- Category prescription: 80-90% 1RM
+- Age ceiling: 65%
+- **Effective range: 50-65%** (capped for safety)
+
+### Max Sets Cap
+
+| Age Group | Max Sets |
+|-----------|----------|
+| 10-13 | 3 sets (hard cap) |
+| 14-17 | Use category range |
+| 18+ | Use category range |
+
+---
+
 ## Exercise Type Detection
 
 Exercises are automatically classified into three types:
@@ -115,39 +143,56 @@ Exercises are automatically classified into three types:
 
 ---
 
-## Open Questions (Need Input)
+## Bodyweight Exercise Handling
+
+### Decision: Hybrid Phase + Experience Approach
+
+Bodyweight exercises use progression variants based on BOTH phase AND experience level:
+
+| Phase | 0-1 yrs | 2-5 yrs | 6+ yrs |
+|-------|---------|---------|--------|
+| GPP | Easier | Base | Base |
+| SPP | Base | Base | Base |
+| SSP | Base | Base | Harder |
+
+**Rationale:**
+- Novices (0-1 yrs) never get thrown into explosive variants
+- Only experienced athletes (6+ yrs) in SSP get explosive/harder variants
+- GPP always prioritizes movement quality and foundation
+- This follows the stability → strength → power progression philosophy
+
+**Example - Push-up progression chain:**
+- Easier: Incline push-up
+- Base: Standard push-up
+- Harder: Plyo push-up
+
+**Scenario**: 16-year-old soccer player doing push-ups:
+- GPP, 1 year exp → Incline push-up (easier)
+- GPP, 3 years exp → Standard push-up (base)
+- SSP, 6+ years exp → Plyo push-up (harder)
+
+---
+
+## Decisions Made
 
 ### 1. Bodyweight Progression Variants
+**Decision**: Hybrid Phase + Experience approach
 
-Currently bodyweight exercises use progression variants (easier/harder versions). With auto-calculated intensity, should we use:
-
-- **A) Phase-based**: GPP uses easier/base, SPP uses base, SSP uses harder (follows stability→strength→power progression)
-- **B) Experience-based**: 0-1 years uses easier, 2-5 uses base, 6+ uses harder
-- **C) Always use base exercise** and let rep scaling handle difficulty
+Only 6+ years experience athletes in SSP get harder/explosive variants. Novices in GPP get easier variants. All other combinations use the base exercise.
 
 ### 2. Age Group 1RM Ceilings
+**Decision**: Keep as safety cap
 
-The current system caps 1RM% based on age:
-- 10-13: Max 65% 1RM
-- 14-17: Max 85% 1RM
-- 18+: Max 90% 1RM
-
-Some category-specific ranges exceed these (e.g., Category 2 SSP: 80-90% 1RM).
-
-**Question**: Should age ceiling still apply as a safety cap?
-
-**Example**: A 12-year-old Category 2 athlete in SSP:
-- With age cap: Would use max 65% 1RM (capped)
-- Without age cap: Would use 80-90% 1RM
+Take the LOWER of category-specific 1RM% and age group ceiling:
+- 10-13: Max 65%
+- 14-17: Max 85%
+- 18+: Max 90%
 
 ### 3. Age Group Max Sets Cap
+**Decision**: Hybrid - Keep for 10-13 only
 
-Current system caps sets for younger athletes:
-- 10-13: Max 3 sets per exercise
-- 14-17: Max 5 sets per exercise
-- 18+: Max 6 sets per exercise
-
-**Question**: Should this cap still apply with the new ranges?
+- 10-13: Hard cap at 3 sets per exercise
+- 14-17 and 18+: Trust the category ranges and age-experience matrix
 
 ---
 
@@ -157,7 +202,7 @@ Current system caps sets for younger athletes:
 
 | File | Changes |
 |------|---------|
-| `convex/intensityScaling.ts` | Add category-phase config matrix, age-experience matrix, helper functions |
+| `convex/intensityScaling.ts` | Add category-phase config matrix, age-experience matrix, safety constraints, helper functions |
 | `convex/programTemplates.ts` | Add new `getWorkoutWithScaling` query |
 | `convex/schema.ts` | Add `scalingSnapshot` to workout sessions |
 | `convex/gppWorkoutSessions.ts` | Update session mutations |
@@ -173,6 +218,6 @@ Current system caps sets for younger athletes:
 
 ---
 
-## Feedback
+## Status
 
-Please review the above configuration matrices and open questions. Leave comments or suggestions directly on this PR.
+✅ **Plan Approved** - All open questions resolved, ready for implementation.
