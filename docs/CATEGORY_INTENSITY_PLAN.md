@@ -33,23 +33,25 @@ Each sport category has specific parameters for each training phase:
 
 | Cat | Phase | 1RM% (Strength) | 1RM% (Power) | Reps (Strength) | Reps (Power) | Sets | Rest (Strength) | Rest (Power) | Tempo | RPE |
 |-----|-------|-----------------|--------------|-----------------|--------------|------|-----------------|--------------|-------|-----|
-| **1 (Endurance)** | GPP | 50-65% | 50-65% | 2-5 | 3-6 | 3-5 | 90s | 60s | 2/1/2 | 6-7 |
-| **1** | SPP | 65-75% | 50-65% | 2-5 | 3-6 | 3-5 | 90s | 60s | 2/0/2 | 7-8 |
-| **1** | SSP | 75-80% | 50-65% | 2-5 | 3-6 | 3-5 | 90s | 60s | x/x/x | 8-9 |
-| **2 (Power)** | GPP | 55-65% | 50-65% | 2-5 | 3-6 | 3-5 | 90s | 60s | 1/1/1 | 6-7 |
-| **2** | SPP | 65-80% | 50-65% | 2-5 | 3-6 | 3-5 | 90s | 60s | 2/0/2 | 7-8 |
-| **2** | SSP | 80-90% | 50-65% | 2-5 | 3-6 | 3-5 | 90s | 60s | x/x/x | 9 |
-| **3 (Rotational)** | GPP | 50-60% | 50-60% | 2-5 | 3-6 | 3-5 | 90s | 60s | 2/0/2 | 6-7 |
-| **3** | SPP | 60-70% | 50-65% | 2-5 | 3-6 | 3-5 | 90s | 60s | 2/0/2 | 7-8 |
-| **3** | SSP | 70-85% | 50-65% | 2-5 | 3-6 | 3-5 | 90s | 60s | x/x/x | 8-9 |
-| **4 (Strength)** | GPP | 60-70% | 50-65% | 2-5 | 3-6 | 3-5 | 90s | 60s | 2/1/2 | 7 |
-| **4** | SPP | 70-85% | 50-65% | 2-5 | 3-6 | 3-5 | 90s | 60s | 2/0/2 | 7-9 |
-| **4** | SSP | 85-90% | 50-65% | 2-5 | 3-6 | 3-5 | 90s | 60s | x/x/x | 8-9 |
+| **1 (Endurance)** | GPP | 50-65% | 30% | 10-14 | 6-8 | 4-6 | 30s | 60s | 2.1.2 | 6-7 |
+| **1** | SPP | 65-75% | 40% | 6-8 | 4-6 | 4-6 | 60s | 60s | 2.0.2 | 7-8 |
+| **1** | SSP | 75-80% | 55% | 4-6 | 4-6 | 3-5 | 60s | 60s | x.x.x | 8-9 |
+| **2 (Power)** | GPP | 55-65% | 35% | 10-14 | 6-8 | 4-6 | 30s | 60s | 1.1.1 | 6-7 |
+| **2** | SPP | 65-80% | 45% | 8-12 | 4-6 | 4-6 | 60s | 60s | 2.0.2 | 7-8 |
+| **2** | SSP | 80-90% | 50-60% | 4-6 | 3-6 | 4-6 | 120s | 120s | x.x.x | 9 |
+| **3 (Rotational)** | GPP | 50-60% | 30% | 10-14 | 8-10 | 2-4 | 40s | 60s | 2.0.2 | 6-7 |
+| **3** | SPP | 60-70% | 35-40% | 8-12 | 6-8 | 3-5 | 90s | 60s | 2.0.2 | 7-8 |
+| **3** | SSP | 70-85% | 50% | 4-6 | 3-6 | 4-6 | 120s | 120s | x.x.x | 8-9 |
+| **4 (Strength)** | GPP | 60-70% | 35-40% | 10-12 | 6-8 | 3-5 | 30s | 60s | 2.1.2 | 7 |
+| **4** | SPP | 70-85% | 45-50% | 8-12 | 4-6 | 4-5 | 90s | 60s | 2.0.2 | 7-9 |
+| **4** | SSP | 85-90% | 55% | 3-5 | 3-6 | 4-6 | 120s | 120s | x.x.x | 8-9 |
 
-### Key Constants
+### Key Observations
 
-- **Strength exercises**: 2-5 reps, 90s rest, 3-5 sets
-- **Power exercises**: 3-6 reps, 60s rest, sub-maximal 50-65% 1RM for explosiveness
+- **Power exercises** use sub-maximal loads (30-60% 1RM) for explosiveness
+- **Rest periods** vary by category and phase
+- **Tempo** format: eccentric.isometric.concentric (x = explosive/as fast as possible)
+- **SSP** generally has longer rest (60-120s) to allow for quality explosive reps
 
 ### Sport Categories Reference
 
@@ -68,28 +70,29 @@ This matrix determines where within the parameter ranges an athlete falls based 
 
 | Age Group | Experience | Sets Position | Reps Position |
 |-----------|------------|---------------|---------------|
-| **10-13** | 0-1 yrs | lowest (3) | lowest (2) |
-| **10-13** | 2-5 yrs | lowest + 1 (4) | lowest + 2 (4) |
-| **10-13** | 6+ yrs | second lowest (4) | max - 1 (4) |
-| **14-17** | 0-1 yrs | middle (4) | middle (3-4) |
-| **14-17** | 2-5 yrs | max (5) | max - 1 (4) |
-| **14-17** | 6+ yrs | max (5) | max (5) |
-| **18+** | 0-1 yrs | max (5) | max - 2 (3) |
-| **18+** | 2-5 yrs | max (5) | max - 1 (4) |
-| **18+** | 6+ yrs | max (5) | max (5) |
+| **10-13** | 0-1 yrs | lowest | lowest |
+| **10-13** | 2-5 yrs | lowest + 1 | lowest + 2 |
+| **10-13** | 6+ yrs | second lowest | max - 1 |
+| **14-17** | 0-1 yrs | middle | middle |
+| **14-17** | 2-5 yrs | max | max - 1 |
+| **14-17** | 6+ yrs | max | max |
+| **18+** | 0-1 yrs | max | max - 2 |
+| **18+** | 2-5 yrs | max | max - 1 |
+| **18+** | 6+ yrs | max | max |
 
 ### How It Works
 
-For a given parameter range (e.g., sets 3-5):
-- "lowest" = 3
-- "middle" = 4
-- "max" = 5
-- "max - 1" = 4
-- "max - 2" = 3
+For a given parameter range (e.g., sets 4-6):
+- "lowest" = 4
+- "middle" = 5
+- "max" = 6
+- "max - 1" = 5
+- "max - 2" = 4
 
-**Example**: An 18+ year old with 0-1 years experience would get:
-- Sets: max (5)
-- Reps: max - 2 (3 reps for strength exercises)
+**Example**: A Category 2 (Power) athlete, 18+ years old, 0-1 years experience, in GPP:
+- Sets range: 4-6 → Position "max" = **6 sets**
+- Strength reps range: 10-14 → Position "max - 2" = **12 reps**
+- Power reps range: 6-8 → Position "max - 2" = **6 reps**
 
 ---
 
@@ -134,7 +137,7 @@ Some category-specific ranges exceed these (e.g., Category 2 SSP: 80-90% 1RM).
 **Question**: Should age ceiling still apply as a safety cap?
 
 **Example**: A 12-year-old Category 2 athlete in SSP:
-- With age cap: Would use 50-65% 1RM (capped at 65%)
+- With age cap: Would use max 65% 1RM (capped)
 - Without age cap: Would use 80-90% 1RM
 
 ### 3. Age Group Max Sets Cap
@@ -144,7 +147,7 @@ Current system caps sets for younger athletes:
 - 14-17: Max 5 sets per exercise
 - 18+: Max 6 sets per exercise
 
-**Question**: Should this cap still apply with the new 3-5 sets range?
+**Question**: Should this cap still apply with the new ranges?
 
 ---
 
