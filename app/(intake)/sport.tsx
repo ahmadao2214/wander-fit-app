@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import { YStack, XStack, Text, Card, Button, ScrollView, Spinner, Input, Circle, styled } from 'tamagui'
 import { useQuery } from 'convex/react'
+import { useClerk } from '@clerk/clerk-expo'
 import { api } from '../../convex/_generated/api'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { 
+import {
   Search,
   ChevronRight,
   Target,
   Check,
+  LogOut,
 } from '@tamagui/lucide-icons'
 import { Id } from '../../convex/_generated/dataModel'
 import LottieView from 'lottie-react-native'
@@ -169,10 +171,21 @@ const SportTile = ({ sport, isSelected, onSelect }: SportTileProps) => {
 export default function SportSelectionScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
+  const { signOut } = useClerk()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedSportId, setSelectedSportId] = useState<Id<"sports"> | null>(null)
 
   const sports = useQuery(api.sports.list, {})
+
+  // Sign out handler for users who need to start fresh
+  const handleSignOut = async () => {
+    try {
+      await signOut()
+      router.replace('/(auth)/sign-in')
+    } catch (error) {
+      console.error('Sign out error:', error)
+    }
+  }
 
   const GAP = 12
 
@@ -218,6 +231,24 @@ export default function SportSelectionScreen() {
 
   return (
     <YStack flex={1} bg="$background">
+      {/* Sign Out Button - positioned in top right */}
+      <XStack
+        position="absolute"
+        top={insets.top + 8}
+        right={16}
+        zIndex={10}
+      >
+        <Button
+          size="$3"
+          chromeless
+          onPress={handleSignOut}
+          icon={<LogOut size={18} color="$color10" />}
+          color="$color10"
+        >
+          Sign Out
+        </Button>
+      </XStack>
+
       <ScrollView flex={1} showsVerticalScrollIndicator={false}>
         <YStack
           gap="$5"
