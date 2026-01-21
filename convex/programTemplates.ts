@@ -6,6 +6,15 @@ import {
   scaleRepsOrDuration,
   isBodyweightExercise,
   type Intensity,
+  // Category-specific intensity imports
+  type CategoryId,
+  type AgeGroup,
+  type Phase,
+  getCategoryExerciseParameters,
+  getExerciseFocus,
+  getExperienceBucket,
+  getBodyweightVariant,
+  formatTempo,
 } from "./intensityScaling";
 
 /**
@@ -482,6 +491,193 @@ export const getWorkoutWithIntensity = query({
       intensityConfig: {
         percentOf1RM: Math.round(avgPercent * 100),
         rpeTarget: config.rpeTarget,
+      },
+    };
+  },
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CATEGORY-SPECIFIC INTENSITY SCALING
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Get workout template with category-specific intensity scaling applied
+ *
+ * This query uses the athlete's profile (category, age, experience) to
+ * automatically calculate appropriate exercise parameters without requiring
+ * the user to select an intensity level.
+ *
+ * Key differences from getWorkoutWithIntensity:
+ * - No user-selected intensity (Low/Moderate/High)
+ * - Parameters derived from CATEGORY_PHASE_CONFIG matrix
+ * - Sets/reps determined by AGE_EXPERIENCE_MATRIX
+ * - Safety caps from AGE_SAFETY_CONSTRAINTS
+ * - Bodyweight variants from BODYWEIGHT_VARIANT_MATRIX
+ */
+export const getWorkoutWithScaling = query({
+  args: {
+    templateId: v.id("program_templates"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
+
+    // Get the user
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) {
+      return null;
+    }
+
+    // Get the template
+    const template = await ctx.db.get(args.templateId);
+    if (!template) {
+      return null;
+    }
+
+    // Get user's program for category and age group
+    const userProgram = await ctx.db
+      .query("user_programs")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .first();
+
+    if (!userProgram) {
+      return null;
+    }
+
+    // Get the latest intake for years of experience
+    const intake = await ctx.db
+      .query("intake_responses")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .order("desc")
+      .first();
+
+    // Extract scaling parameters
+    const categoryId = userProgram.gppCategoryId as CategoryId;
+    const phase = template.phase as Phase;
+    const ageGroup = (userProgram.ageGroup || "18+") as AgeGroup;
+    const yearsOfExperience = intake?.yearsOfExperience ?? 0;
+    const experienceBucket = getExperienceBucket(yearsOfExperience);
+
+    // Fetch exercise details
+    const exerciseIds = template.exercises.map((e) => e.exerciseId);
+    const exercises = await Promise.all(
+      exerciseIds.map((id) => ctx.db.get(id))
+    );
+
+    const exerciseMap = new Map(
+      exercises.filter(Boolean).map((ex) => [ex!._id.toString(), ex!])
+    );
+
+    // Get user's 1RM records for weight calculations
+    const userMaxes = await ctx.db
+      .query("user_maxes")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    const userMaxMap: Record<string, number> = {};
+    for (const max of userMaxes) {
+      userMaxMap[max.exerciseId.toString()] = max.oneRepMax;
+    }
+
+    // Apply category-specific scaling to each exercise
+    const scaledExercises = template.exercises.map((prescription) => {
+      const exercise = exerciseMap.get(prescription.exerciseId.toString());
+      const oneRepMax = userMaxMap[prescription.exerciseId.toString()];
+
+      // Detect exercise focus
+      const exerciseFocus = getExerciseFocus(exercise?.tags, exercise?.equipment);
+
+      // Get category-specific parameters
+      const params = getCategoryExerciseParameters(
+        categoryId,
+        phase,
+        ageGroup,
+        yearsOfExperience,
+        exerciseFocus
+      );
+
+      // Calculate average 1RM% for weight recommendation
+      const avgPercent = (params.oneRepMaxPercent.min + params.oneRepMaxPercent.max) / 2;
+
+      if (exerciseFocus === "bodyweight") {
+        // Bodyweight exercise - get variant based on phase + experience
+        const variantResult = getBodyweightVariant(
+          exercise?.slug || "",
+          phase,
+          experienceBucket,
+          exercise?.progressions
+        );
+
+        return {
+          ...prescription,
+          exercise,
+          // Scaled values from category-specific system
+          scaledSets: params.sets,
+          scaledReps: String(params.reps),
+          scaledRestSeconds: params.restSeconds,
+          // Intensity metadata
+          isBodyweight: true,
+          isSubstituted: variantResult.isSubstituted,
+          substitutedExerciseSlug: variantResult.isSubstituted ? variantResult.slug : undefined,
+          rpeTarget: params.rpe,
+          tempo: formatTempo(params.tempo),
+          // No weight for bodyweight exercises
+          targetWeight: undefined,
+          percentOf1RM: undefined,
+          hasOneRepMax: false,
+        };
+      } else {
+        // Weighted exercise (strength or power)
+        return {
+          ...prescription,
+          exercise,
+          // Scaled values from category-specific system
+          scaledSets: params.sets,
+          scaledReps: String(params.reps),
+          scaledRestSeconds: params.restSeconds,
+          // Weight calculation (if 1RM known)
+          targetWeight: oneRepMax ? Math.round(oneRepMax * avgPercent) : undefined,
+          percentOf1RM: Math.round(avgPercent * 100),
+          // Intensity metadata
+          isBodyweight: false,
+          isSubstituted: false,
+          rpeTarget: params.rpe,
+          tempo: formatTempo(params.tempo),
+          hasOneRepMax: !!oneRepMax,
+          exerciseFocus, // Expose whether this is strength or power
+        };
+      }
+    });
+
+    // Category name mapping for display
+    const categoryNames: Record<number, string> = {
+      1: "Endurance",
+      2: "Power",
+      3: "Rotational",
+      4: "Strength",
+    };
+
+    return {
+      ...template,
+      exercises: scaledExercises,
+      // Scaling context for reference (used internally)
+      scalingContext: {
+        categoryId,
+        phase,
+        ageGroup,
+        yearsOfExperience,
+        experienceBucket,
+      },
+      // User-friendly scaling info for display
+      scalingInfo: {
+        ageGroup,
+        categoryName: categoryNames[categoryId] || "General",
       },
     };
   },
