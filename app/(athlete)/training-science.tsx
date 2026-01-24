@@ -368,20 +368,20 @@ export default function TrainingSciencePage() {
               iconBgColor="$brand2"
             >
               <Card
-                bg={category.bgColor as any}
+                bg="$brand1"
                 p="$3"
                 rounded="$3"
                 borderLeftWidth={3}
-                borderLeftColor={category.color as any}
+                borderLeftColor="$primary"
               >
                 <YStack gap="$2">
                   <XStack items="center" gap="$2">
-                    <category.icon size={18} color={category.color as any} />
-                    <SubHeading color={category.color as any}>
+                    <category.icon size={18} color="$primary" />
+                    <SubHeading color="$primary">
                       Category {programState?.gppCategoryId}: {category.name}
                     </SubHeading>
                   </XStack>
-                  <Text fontSize={13} fontFamily="$body" fontWeight="600" color={category.color as any}>
+                  <Text fontSize={13} fontFamily="$body" fontWeight="600" color="$brand9">
                     Emphasis: {category.emphasis}
                   </Text>
                 </YStack>
