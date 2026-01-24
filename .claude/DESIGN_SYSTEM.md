@@ -25,9 +25,10 @@ Each training phase has a consistent icon:
 
 ### Brand Colors
 - **`$primary`** - Electric blue, main action color
-- **`$accent`** - Flame orange, reserved for intensity badges and special callouts
-- **`$brand1`** - Light blue background for featured cards
-- **`$brand2`** - Slightly darker blue for icon backgrounds and badges
+- **`$accent`** - Flame orange, reserved for intensity badges and special callouts (e.g., skill level badge)
+- **`$brand1`** - Light blue background for featured cards (e.g., profile header, workout card)
+- **`$brand2`** - Slightly darker blue for primary feature icon backgrounds (e.g., Training Science)
+- **`$color4`** - Neutral gray for secondary/settings icon backgrounds (e.g., App Settings)
 
 ### Surface Colors
 - **`$background`** - Main app background
@@ -77,6 +78,40 @@ For displaying labeled information with icons:
   </XStack>
 </Card>
 ```
+
+### Actionable Card (Navigation Pattern)
+For tappable cards that navigate to other screens:
+```tsx
+<Card
+  p="$4"
+  bg="$surface"
+  rounded="$4"
+  borderWidth={1}
+  borderColor="$borderColor"
+  pressStyle={{ bg: '$surfaceHover' }}
+  onPress={() => router.push('/destination')}
+>
+  <XStack items="center" gap="$3">
+    <YStack bg="$brand2" p="$2" rounded="$10">
+      <IconComponent size={18} color="$primary" />
+    </YStack>
+    <YStack flex={1}>
+      <Text fontSize={15} fontFamily="$body" fontWeight="500" color="$color12">
+        Title
+      </Text>
+      <Text fontSize={12} fontFamily="$body" color="$color10">
+        Subtitle
+      </Text>
+    </YStack>
+    <ChevronRight size={20} color="$color9" />
+  </XStack>
+</Card>
+```
+
+### Status Indicator Cards (My Maxes Pattern)
+For items with completion state:
+- **Completed:** Icon background `$green3`, icon color `$green10`, Check icon
+- **Incomplete:** Icon background `$color4`, icon color `$color9`, relevant icon (e.g., Dumbbell)
 
 ## Typography
 
