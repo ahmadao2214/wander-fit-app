@@ -88,6 +88,20 @@ plyo_push_up: { easier: "explosive_pushup" }
 | Base | ✅ Incline Dumbbell Press | `incline_db_press` | dumbbell, incline_bench | upper_body, push, incline, strength, chest |
 | Harder | 🆕 Incline Barbell Press | `incline_bench_press` | barbell, incline_bench, rack | upper_body, push, incline, strength, chest, compound |
 
+### Exercise 5: Unilateral Press Progression (Single Arm)
+| Level | Exercise | Slug | Equipment | Tags |
+|-------|----------|------|-----------|------|
+| Easier | 🆕 Single Arm Dumbbell Floor Press | `sa_db_floor_press` | dumbbell | upper_body, push, horizontal, strength, chest, unilateral, anti_rotation |
+| Base | 🆕 Single Arm Dumbbell Bench Press | `sa_db_bench_press` | dumbbell, bench | upper_body, push, horizontal, strength, chest, unilateral, anti_rotation |
+| Harder | 🆕 Single Arm Rotational Bench Press | `sa_rotational_bench_press` | dumbbell, bench | upper_body, push, horizontal, strength, chest, unilateral, rotation, power |
+
+**Progression Links to Add:**
+```typescript
+sa_db_floor_press: { harder: "sa_db_bench_press" }
+sa_db_bench_press: { easier: "sa_db_floor_press", harder: "sa_rotational_bench_press" }
+sa_rotational_bench_press: { easier: "sa_db_bench_press" }
+```
+
 ---
 
 ## 3. UPPER BODY PULL - VERTICAL
@@ -197,13 +211,15 @@ front_squat: { easier: "back_squat" }
 |-------|----------|------|-----------|------|
 | Easier | ✅ Single Leg Squat to Box | `single_leg_squat_box` | box, bench | lower_body, squat, unilateral, strength, single_leg, balance |
 | Base | ✅ Bulgarian Split Squat | `bulgarian_split_squat` | dumbbell, bench | lower_body, squat, unilateral, strength, single_leg |
-| Harder | 🆕 Pistol Squat | `pistol_squat` | bodyweight | lower_body, squat, unilateral, strength, single_leg, balance, advanced, bodyweight |
+| Harder | 🆕 Assisted Pistol Squat | `assisted_pistol_squat` | trx, bodyweight | lower_body, squat, unilateral, strength, single_leg, balance, advanced, bodyweight |
+
+> **Note:** Pistol squat is very challenging even for advanced athletes. The assisted version (using TRX suspension trainer or a stick/pole for balance) provides a more achievable progression endpoint.
 
 **Progression Links to Add:**
 ```typescript
 single_leg_squat_box: { harder: "bulgarian_split_squat" }
-bulgarian_split_squat: { easier: "single_leg_squat_box", harder: "pistol_squat" }
-pistol_squat: { easier: "bulgarian_split_squat" }
+bulgarian_split_squat: { easier: "single_leg_squat_box", harder: "assisted_pistol_squat" }
+assisted_pistol_squat: { easier: "bulgarian_split_squat" }
 ```
 
 ---
@@ -423,29 +439,36 @@ box_jump: { easier: "jump_squat", harder: "depth_jump" }
 depth_jump: { easier: "box_jump" }
 ```
 
-### Exercise 2: Horizontal Jump Progression
+### Exercise 2: Horizontal/Forward Jump Progression
 | Level | Exercise | Slug | Equipment | Tags |
 |-------|----------|------|-----------|------|
-| Easier | 🆕 Standing Long Jump | `standing_long_jump` | bodyweight | lower_body, plyometric, horizontal, power |
+| Easier | 🆕 Pogo Hops | `pogo_hops` | bodyweight | lower_body, plyometric, vertical, reactive, conditioning, bodyweight |
 | Base | ✅ Broad Jump | `broad_jump` | bodyweight | lower_body, plyometric, power, horizontal, explosive |
 | Harder | 🆕 Consecutive Broad Jumps | `consecutive_broad_jumps` | bodyweight | lower_body, plyometric, power, horizontal, explosive, reactive |
 
+> **Note:** Pogo hops teach reactive ground contact and ankle stiffness, which are foundational for horizontal jumping power.
+
 **Progression Links to Add:**
 ```typescript
-broad_jump: { easier: "standing_long_jump", harder: "consecutive_broad_jumps" }
+pogo_hops: { harder: "broad_jump" }
+broad_jump: { easier: "pogo_hops", harder: "consecutive_broad_jumps" }
+consecutive_broad_jumps: { easier: "broad_jump" }
 ```
 
 ### Exercise 3: Lateral Jump Progression
 | Level | Exercise | Slug | Equipment | Tags |
 |-------|----------|------|-----------|------|
-| Easier | ✅ Skater Jump | `skater_jump` | bodyweight | lower_body, plyometric, power, frontal, single_leg |
-| Base | ✅ Skater Hops | `skater_hops` | bodyweight | lower_body, plyometric, explosive, frontal, conditioning, agility |
-| Harder | 🆕 Lateral Bounding | `lateral_bounding` | bodyweight | lower_body, plyometric, power, frontal, single_leg, reactive |
+| Easier | 🆕 Ascending Skater Jumps | `ascending_skater_jumps` | bodyweight | lower_body, plyometric, frontal, single_leg, power, bodyweight |
+| Base | 🆕 Deceleration Skater Jump | `deceleration_skater_jump` | bodyweight | lower_body, plyometric, frontal, single_leg, deceleration_mechanics, eccentric, bodyweight |
+| Harder | 🆕 Lateral Single Leg Bounds | `lateral_single_leg_bounds` | bodyweight | lower_body, plyometric, power, frontal, single_leg, reactive, explosive |
+
+> **Note:** This progression emphasizes the deceleration/landing component (critical for injury prevention) before advancing to maximal power output. The deceleration skater jump uses a long eccentric to build landing tolerance.
 
 **Progression Links to Add:**
 ```typescript
-skater_jump: { harder: "skater_hops" }
-skater_hops: { easier: "skater_jump", harder: "lateral_bounding" }
+ascending_skater_jumps: { harder: "deceleration_skater_jump" }
+deceleration_skater_jump: { easier: "ascending_skater_jumps", harder: "lateral_single_leg_bounds" }
+lateral_single_leg_bounds: { easier: "deceleration_skater_jump" }
 ```
 
 ### Exercise 4: Reactive Jump Progression
@@ -505,19 +528,31 @@ Loaded locomotion for core stability, grip, and full-body conditioning.
 | Step-Up | `step_up` | Lunge |
 | Farmer's Carry | `farmers_carry` | Carry |
 | Suitcase Carry | `suitcase_carry` | Carry |
+| Pogo Hops | `pogo_hops` | Jump |
+| Ascending Skater Jumps | `ascending_skater_jumps` | Jump |
+| Deceleration Skater Jump | `deceleration_skater_jump` | Jump |
 
 ### Medium Priority (Progressions & Variants)
 
 | Exercise | Slug | Movement Pattern |
 |----------|------|------------------|
-| Pistol Squat | `pistol_squat` | Lower Push |
+| Assisted Pistol Squat | `assisted_pistol_squat` | Lower Push |
 | Conventional Deadlift | `conventional_deadlift` | Hinge |
 | Nordic Curl | `nordic_curl` | Hinge |
 | Kickstand RDL | `kickstand_rdl` | Hinge |
 | Split Squat Jump | `split_squat_jump` | Lunge |
 | Cossack Squat | `cossack_squat` | Lunge |
 | Drop Jump | `drop_jump` | Jump |
-| Lateral Bounding | `lateral_bounding` | Jump |
+| Lateral Single Leg Bounds | `lateral_single_leg_bounds` | Jump |
+| Consecutive Broad Jumps | `consecutive_broad_jumps` | Jump |
+
+### Unilateral Press (New Category - Greg's Feedback)
+
+| Exercise | Slug | Movement Pattern |
+|----------|------|------------------|
+| Single Arm DB Floor Press | `sa_db_floor_press` | Horizontal Push |
+| Single Arm DB Bench Press | `sa_db_bench_press` | Horizontal Push |
+| Single Arm Rotational Bench Press | `sa_rotational_bench_press` | Horizontal Push |
 
 ### Lower Priority (Equipment-Specific)
 
@@ -536,7 +571,7 @@ Loaded locomotion for core stability, grip, and full-body conditioning.
 | Pattern | Existing | New Required | Total |
 |---------|----------|--------------|-------|
 | Upper Push - Vertical | 3 | 5 | 8 |
-| Upper Push - Horizontal | 8 | 2 | 10 |
+| Upper Push - Horizontal | 8 | 5 | 13 |
 | Upper Pull - Vertical | 5 | 4 | 9 |
 | Upper Pull - Horizontal | 7 | 7 | 14 |
 | Lower Push (Squat) | 8 | 1 | 9 |
@@ -544,9 +579,9 @@ Loaded locomotion for core stability, grip, and full-body conditioning.
 | Rotation | 5 | 4 | 9 |
 | Core/Anti-Rotation | 12 | 6 | 18 |
 | Lunge | 5 | 7 | 12 |
-| Jump | 7 | 4 | 11 |
+| Jump | 7 | 7 | 14 |
 | Carry | 0 | 10 | 10 |
-| **TOTAL** | **67** | **55** | **122** |
+| **TOTAL** | **67** | **61** | **128** |
 
 ---
 
