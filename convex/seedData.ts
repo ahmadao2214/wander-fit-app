@@ -145,6 +145,7 @@ export const SPORTS = [
   { name: "Swimming", gppCategoryId: 4 },
   { name: "Martial Arts", gppCategoryId: 4 },
   { name: "Weightlifting", gppCategoryId: 4 },
+  { name: "Esports", gppCategoryId: 4 },
   { name: "General Fitness", gppCategoryId: 4 },
 ];
 
@@ -1939,6 +1940,216 @@ export const EXERCISES = [
     progressions: {
       harder: "burpee",
     },
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // ESPORTS-SPECIFIC EXERCISES
+  // Targeting core strength, shoulder stability, forearm strength, finger dexterity, and cardio
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  // Forearm & Wrist Strength
+  {
+    name: "Wrist Curl",
+    slug: "wrist_curl",
+    tags: ["upper_body", "isolation", "strength"],
+    equipment: ["dumbbell"],
+    difficulty: "beginner" as const,
+    instructions:
+      "Sit with forearm resting on thigh or bench, wrist extended over edge. Hold dumbbell with palm up. Curl wrist upward, then lower with control. Builds forearm flexor strength for gaming endurance.",
+  },
+  {
+    name: "Reverse Wrist Curl",
+    slug: "reverse_wrist_curl",
+    tags: ["upper_body", "isolation", "strength"],
+    equipment: ["dumbbell"],
+    difficulty: "beginner" as const,
+    instructions:
+      "Similar to wrist curl but with palm facing down. Curl wrist upward against resistance. Strengthens forearm extensors to prevent overuse injuries from repetitive mouse movements.",
+  },
+  {
+    name: "Farmer's Carry",
+    slug: "farmers_carry",
+    tags: ["full_body", "carry", "strength", "conditioning"],
+    equipment: ["dumbbell", "kettlebell"],
+    difficulty: "beginner" as const,
+    instructions:
+      "Hold heavy dumbbells or kettlebells at your sides. Walk for distance while maintaining upright posture. Builds grip endurance and core stability crucial for long gaming sessions.",
+  },
+  {
+    name: "Plate Pinch Hold",
+    slug: "plate_pinch_hold",
+    tags: ["upper_body", "isometric", "strength"],
+    equipment: ["dumbbell"],
+    difficulty: "beginner" as const,
+    instructions:
+      "Pinch weight plate(s) between thumb and fingers. Hold for time. Develops thumb and finger pinch strength essential for precise mouse control.",
+  },
+  {
+    name: "Finger Extension with Band",
+    slug: "finger_extension_band",
+    tags: ["upper_body", "isolation", "mobility"],
+    equipment: ["band"],
+    difficulty: "beginner" as const,
+    instructions:
+      "Place rubber band around all five fingertips. Open fingers against resistance, spreading them wide. Strengthens finger extensors to balance repetitive gripping motions.",
+  },
+
+  // Finger Dexterity & Hand Health
+  {
+    name: "Finger Taps",
+    slug: "finger_taps",
+    tags: ["upper_body", "mobility", "warmup", "coordination"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+    instructions:
+      "Touch thumb to each fingertip in sequence (index, middle, ring, pinky) then reverse. Gradually increase speed. Improves finger independence and circulation before gaming.",
+  },
+  {
+    name: "Grip Ball Squeeze",
+    slug: "grip_ball_squeeze",
+    tags: ["upper_body", "strength", "isolation"],
+    equipment: ["medicine_ball"],
+    difficulty: "beginner" as const,
+    instructions:
+      "Squeeze a grip ball or stress ball rhythmically. Hold for 2-3 seconds per squeeze. Builds hand endurance and reduces tension. Can be done between gaming sessions.",
+  },
+  {
+    name: "Finger Flexion and Extension",
+    slug: "finger_flexion_extension",
+    tags: ["upper_body", "mobility", "warmup"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+    instructions:
+      "Make a tight fist, then fully extend and spread fingers wide. Repeat rhythmically for 30-60 seconds. Promotes blood flow and reduces stiffness in hands and fingers.",
+  },
+
+  // Shoulder Stability & Health
+  {
+    name: "External Shoulder Rotation",
+    slug: "external_shoulder_rotation",
+    tags: ["upper_body", "shoulder", "isolation", "shoulder_health"],
+    equipment: ["dumbbell", "band"],
+    difficulty: "beginner" as const,
+    instructions:
+      "Lie on side or stand with elbow bent 90°. Rotate forearm upward while keeping elbow at side. Strengthens rotator cuff to prevent shoulder pain from forward-leaning posture.",
+  },
+  {
+    name: "Band Pull-Apart",
+    slug: "band_pull_apart",
+    tags: ["upper_body", "pull", "shoulder_health", "rear_delt"],
+    equipment: ["band"],
+    difficulty: "beginner" as const,
+    instructions:
+      "Hold resistance band at chest height with arms extended. Pull band apart by squeezing shoulder blades together. Counters rounded shoulder posture from extended sitting.",
+  },
+  {
+    name: "Scapular Wall Slide",
+    slug: "scapular_wall_slide",
+    tags: ["upper_body", "shoulder", "mobility", "warmup"],
+    equipment: ["wall"],
+    difficulty: "beginner" as const,
+    instructions:
+      "Stand with back against wall, arms in 'W' position. Slide arms overhead while keeping contact with wall. Improves shoulder mobility and scapular control for better posture.",
+  },
+  {
+    name: "YTW Raises",
+    slug: "ytw_raises",
+    tags: ["upper_body", "shoulder", "rear_delt", "shoulder_health"],
+    equipment: ["dumbbell", "bodyweight"],
+    difficulty: "beginner" as const,
+    instructions:
+      "Lying face down or bent over, raise arms to form Y, then T, then W shapes with light weights or bodyweight. Activates all shoulder stabilizers and upper back muscles.",
+  },
+
+  // Core Strength (Posture-focused)
+  {
+    name: "Copenhagen Plank",
+    slug: "copenhagen_plank",
+    tags: ["core", "anti_lateral_flexion", "stability", "isometric"],
+    equipment: ["bench"],
+    difficulty: "advanced" as const,
+    instructions:
+      "Side plank position with top leg elevated on bench, bottom leg hanging. Hold position engaging obliques and hip abductors. Advanced core stability for lateral trunk control.",
+    progressions: {
+      easier: "side_plank",
+    },
+  },
+  {
+    name: "Hollow Body Hold",
+    slug: "hollow_body_hold",
+    tags: ["core", "anti_extension", "isometric", "strength"],
+    equipment: ["bodyweight"],
+    difficulty: "intermediate" as const,
+    instructions:
+      "Lie on back, press lower back into floor. Lift shoulders and legs off ground, arms extended overhead. Hold position with core maximally engaged. Develops deep core strength.",
+    progressions: {
+      easier: "dead_bug",
+    },
+  },
+  {
+    name: "Wall Sit",
+    slug: "wall_sit",
+    tags: ["lower_body", "isometric", "strength", "quad_dominant"],
+    equipment: ["wall"],
+    difficulty: "beginner" as const,
+    instructions:
+      "Lean back against wall with knees bent at 90°, thighs parallel to ground. Hold position. Builds leg endurance and promotes better seated posture awareness.",
+  },
+
+  // Cardio & Conditioning
+  {
+    name: "Jump Rope",
+    slug: "jump_rope",
+    tags: ["full_body", "conditioning", "coordination", "agility"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+    instructions:
+      "Jump over rotating rope with quick, rhythmic bounces. Excellent low-impact cardio that also improves coordination and footwork.",
+  },
+  {
+    name: "Rowing Machine",
+    slug: "rowing_machine",
+    tags: ["full_body", "conditioning", "strength", "pull"],
+    equipment: ["cable_machine"],
+    difficulty: "beginner" as const,
+    instructions:
+      "Seated on rowing machine, drive with legs then pull handle to chest. Return with control. Full-body cardio that strengthens posterior chain and improves posture.",
+  },
+  {
+    name: "Stationary Bike",
+    slug: "stationary_bike",
+    tags: ["lower_body", "conditioning"],
+    equipment: ["cable_machine"],
+    difficulty: "beginner" as const,
+    instructions:
+      "Pedal at moderate to high intensity for continuous cardio work. Low-impact option that builds leg endurance while providing active recovery for upper body.",
+  },
+  {
+    name: "Shadow Boxing",
+    slug: "shadow_boxing",
+    tags: ["full_body", "conditioning", "coordination", "upper_body"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+    instructions:
+      "Throw punches in the air with proper form - jabs, crosses, hooks, uppercuts. Constant movement builds cardio endurance, shoulder stability, and coordination.",
+  },
+  {
+    name: "Neck Flexion",
+    slug: "neck_flexion",
+    tags: ["upper_body", "isolation", "strength"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+    instructions:
+      "Lying on back, lift head off ground bringing chin toward chest. Hold briefly. Strengthens neck flexors to support head position during long gaming sessions.",
+  },
+  {
+    name: "Neck Extension",
+    slug: "neck_extension",
+    tags: ["upper_body", "isolation", "strength"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+    instructions:
+      "Lying face down, lift head and look up toward ceiling. Hold briefly. Strengthens neck extensors to counteract forward head posture from screen time.",
   },
 ];
 
