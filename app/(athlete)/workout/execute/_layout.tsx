@@ -2,8 +2,9 @@ import { Stack } from 'expo-router'
 
 /**
  * Execute Workout Layout
- * 
- * Simple passthrough layout for the workout execution screen.
+ *
+ * Full-screen modal presentation for the workout execution screen.
+ * Prevents accidental swipe-to-dismiss during active workouts.
  */
 export default function ExecuteLayout() {
   return (
@@ -12,9 +13,10 @@ export default function ExecuteLayout() {
         headerShown: false,
       }}
     >
-      <Stack.Screen 
-        name="[id]" 
+      <Stack.Screen
+        name="[id]"
         options={{
+          presentation: 'fullScreenModal',
           animation: 'slide_from_bottom',
           gestureEnabled: false, // Prevent accidental swipe-to-dismiss during workout
         }}

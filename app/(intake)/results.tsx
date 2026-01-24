@@ -142,7 +142,7 @@ export default function ResultsScreen() {
 
   return (
     <YStack flex={1} bg="$background">
-      <ScrollView flex={1}>
+      <ScrollView flex={1} contentInsetAdjustmentBehavior="automatic">
         <YStack
           gap="$6"
           px="$4"

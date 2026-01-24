@@ -76,7 +76,11 @@ export default function TrainerDashboard() {
 
   return (
     <YStack flex={1} bg="$background">
-      <ScrollView flex={1} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        flex={1}
+        showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="automatic"
+      >
         <YStack
           gap="$5"
           px="$4"

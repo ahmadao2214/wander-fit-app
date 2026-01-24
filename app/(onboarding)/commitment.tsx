@@ -139,7 +139,7 @@ export default function CommitmentScreen() {
   return (
     <YStack flex={1} bg="$background">
       {/* Main Content */}
-      <ScrollView flex={1} showsVerticalScrollIndicator={false}>
+      <ScrollView flex={1} showsVerticalScrollIndicator={false} contentInsetAdjustmentBehavior="automatic">
         <YStack
           px="$4"
           pt={insets.top + 16}

@@ -341,15 +341,16 @@ export default function SignUpScreen() {
     return (
       <YStack flex={1} bg="$background">
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={process.env.EXPO_OS === 'ios' ? 'padding' : 'height'}
           style={{ flex: 1 }}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+          keyboardVerticalOffset={process.env.EXPO_OS === 'ios' ? 0 : 20}
         >
           <ScrollView
             contentContainerStyle={{ flexGrow: 1 }}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
-            automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+            automaticallyAdjustKeyboardInsets={process.env.EXPO_OS === 'ios'}
+            contentInsetAdjustmentBehavior="automatic"
           >
             <YStack
               flex={1}
@@ -427,15 +428,16 @@ export default function SignUpScreen() {
     return (
       <YStack flex={1} bg="$background">
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={process.env.EXPO_OS === 'ios' ? 'padding' : 'height'}
           style={{ flex: 1 }}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+          keyboardVerticalOffset={process.env.EXPO_OS === 'ios' ? 0 : 20}
         >
           <ScrollView
             contentContainerStyle={{ flexGrow: 1 }}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
-            automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+            automaticallyAdjustKeyboardInsets={process.env.EXPO_OS === 'ios'}
+            contentInsetAdjustmentBehavior="automatic"
           >
             <YStack
               flex={1}
@@ -565,15 +567,16 @@ export default function SignUpScreen() {
     <PublicOnlyRoute>
       <YStack flex={1} bg="$background">
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={process.env.EXPO_OS === 'ios' ? 'padding' : 'height'}
           style={{ flex: 1 }}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+          keyboardVerticalOffset={process.env.EXPO_OS === 'ios' ? 0 : 20}
         >
           <ScrollView
             contentContainerStyle={{ flexGrow: 1 }}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
-            automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+            automaticallyAdjustKeyboardInsets={process.env.EXPO_OS === 'ios'}
+            contentInsetAdjustmentBehavior="automatic"
           >
             <YStack
               flex={1}

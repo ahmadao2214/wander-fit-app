@@ -17,7 +17,6 @@ import { useAuth } from '../../../hooks/useAuth'
 import { useDragReorder } from '../../../hooks/useDragReorder'
 import { Id } from '../../../convex/_generated/dataModel'
 import {
-  ArrowLeft,
   Play,
   Lock,
   CheckCircle,
@@ -548,26 +547,19 @@ export default function WorkoutDetailScreen() {
   return (
     <GestureHandlerRootView style={styles.container}>
       <YStack flex={1} bg="$background">
-        {/* Header with Start Button */}
+        {/* Workout Info Header with Start Button */}
         <XStack
           items="center"
           gap="$3"
           px="$4"
-          pt={insets.top + 16}
+          pt="$3"
           pb="$3"
           bg="$background"
         >
-          <Button
-            size="$3"
-            variant="outlined"
-            icon={ArrowLeft}
-            onPress={handleBack}
-            circular
-          />
           <YStack flex={1} overflow="hidden">
-            <Text 
-              fontSize="$7" 
-              fontWeight="700" 
+            <Text
+              fontSize="$7"
+              fontWeight="700"
               numberOfLines={1}
               ellipsizeMode="tail"
             >
@@ -619,6 +611,7 @@ export default function WorkoutDetailScreen() {
               ListFooterComponent={ListFooter}
               contentContainerStyle={styles.contentContainer}
               style={styles.flatList}
+              contentInsetAdjustmentBehavior="automatic"
             />
           ) : (
             // Exercise Preview Mode - draggable list
@@ -633,6 +626,7 @@ export default function WorkoutDetailScreen() {
               containerStyle={styles.flatList}
               activationDistance={10}
               onDragBegin={triggerHaptic}
+              contentInsetAdjustmentBehavior="automatic"
             />
           )}
         </View>

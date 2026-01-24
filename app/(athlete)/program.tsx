@@ -603,6 +603,7 @@ export default function ProgramPage() {
             styles.contentContainer,
             { paddingTop: insets.top + 16 }
           ]}
+          contentInsetAdjustmentBehavior="automatic"
         />
       </YStack>
     </GestureHandlerRootView>

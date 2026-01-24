@@ -5,6 +5,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { SignOutButton } from '../../components/SignOutButton'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated'
 import {
   Play,
   Clock,
@@ -203,7 +204,11 @@ export default function AthleteDashboard() {
 
   return (
     <YStack flex={1} bg="$background">
-      <ScrollView flex={1} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        flex={1}
+        showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="automatic"
+      >
         <YStack
           gap="$5"
           px="$4"
@@ -272,17 +277,19 @@ export default function AthleteDashboard() {
           )}
 
           {/* Today's Workout Card */}
-          <Card
-            bg={isCompleted ? '$surface' : '$brand1'}
-            borderWidth={isCompleted ? 1 : 0}
-            borderColor="$borderColor"
-            p="$5"
-            rounded="$5"
-            elevation={isCompleted ? 0 : 3}
-            shadowColor="$primary"
-            shadowOpacity={isCompleted ? 0 : 0.1}
-            shadowRadius={20}
-          >
+          <Animated.View entering={FadeInDown.delay(100).duration(400)}>
+            <Card
+              bg={isCompleted ? '$surface' : '$brand1'}
+              borderWidth={isCompleted ? 1 : 0}
+              borderColor="$borderColor"
+              p="$5"
+              rounded="$5"
+              elevation={isCompleted ? 0 : 3}
+              shadowColor="$primary"
+              shadowOpacity={isCompleted ? 0 : 0.1}
+              shadowRadius={20}
+              style={{ borderCurve: 'continuous' }}
+            >
             <YStack gap="$4">
               {/* Top row: Phase badge + Duration */}
               <XStack justify="space-between" items="center">
@@ -416,89 +423,98 @@ export default function AthleteDashboard() {
               )}
             </YStack>
           </Card>
+          </Animated.View>
 
           {/* Progress Summary */}
           {progress && (
-            <YStack gap="$3">
-              <SectionLabel>YOUR PROGRESS</SectionLabel>
-              
-              <XStack gap="$3" flexWrap="wrap">
-                {/* Days Completed */}
-                <Card
-                  flex={1}
-                  minWidth={100}
-                  p="$4"
-                  bg="$surface"
-                  rounded="$4"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                >
-                  <YStack items="center" gap="$1">
-                    <StatNumber color="$primary">
-                      {progress.daysCompleted}
-                    </StatNumber>
-                    <Text
-                      fontSize={11}
-                      color="$color10"
-                      text="center"
-                      fontFamily="$body" fontWeight="500"
-                    >
-                      Days{'\n'}Completed
-                    </Text>
-                  </YStack>
-                </Card>
+            <Animated.View entering={FadeInDown.delay(200).duration(400)}>
+              <YStack gap="$3">
+                <SectionLabel>YOUR PROGRESS</SectionLabel>
 
-                {/* Current Streak */}
-                <Card
-                  flex={1}
-                  minWidth={100}
-                  p="$4"
-                  bg="$surface"
-                  rounded="$4"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                >
-                  <YStack items="center" gap="$1">
-                    <StatNumber color="$primary">
-                      {progress.currentStreak}
-                    </StatNumber>
-                    <Text
-                      fontSize={11}
-                      color="$color10"
-                      text="center"
-                      fontFamily="$body" fontWeight="500"
+                <XStack gap="$3" flexWrap="wrap">
+                  {/* Days Completed */}
+                  <Animated.View style={{ flex: 1, minWidth: 100 }} entering={FadeIn.delay(300).duration(300)}>
+                    <Card
+                      flex={1}
+                      p="$4"
+                      bg="$surface"
+                      rounded="$4"
+                      borderWidth={1}
+                      borderColor="$borderColor"
+                      style={{ borderCurve: 'continuous' }}
                     >
-                      Day{'\n'}Streak
-                    </Text>
-                  </YStack>
-                </Card>
+                      <YStack items="center" gap="$1">
+                        <StatNumber selectable color="$primary">
+                          {progress.daysCompleted}
+                        </StatNumber>
+                        <Text
+                          fontSize={11}
+                          color="$color10"
+                          text="center"
+                          fontFamily="$body" fontWeight="500"
+                        >
+                          Days{'\n'}Completed
+                        </Text>
+                      </YStack>
+                    </Card>
+                  </Animated.View>
 
-                {/* Exercises Tried */}
-                <Card
-                  flex={1}
-                  minWidth={100}
-                  p="$4"
-                  bg="$surface"
-                  rounded="$4"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                >
-                  <YStack items="center" gap="$1">
-                    <StatNumber color="$primary">
-                      {progress.uniqueExercisesPerformed}
-                    </StatNumber>
-                    <Text
-                      fontSize={11}
-                      color="$color10"
-                      text="center"
-                      fontFamily="$body" fontWeight="500"
+                  {/* Current Streak */}
+                  <Animated.View style={{ flex: 1, minWidth: 100 }} entering={FadeIn.delay(400).duration(300)}>
+                    <Card
+                      flex={1}
+                      p="$4"
+                      bg="$surface"
+                      rounded="$4"
+                      borderWidth={1}
+                      borderColor="$borderColor"
+                      style={{ borderCurve: 'continuous' }}
                     >
-                      Exercises{'\n'}Tried
-                    </Text>
-                  </YStack>
-                </Card>
-              </XStack>
-            </YStack>
+                      <YStack items="center" gap="$1">
+                        <StatNumber selectable color="$primary">
+                          {progress.currentStreak}
+                        </StatNumber>
+                        <Text
+                          fontSize={11}
+                          color="$color10"
+                          text="center"
+                          fontFamily="$body" fontWeight="500"
+                        >
+                          Day{'\n'}Streak
+                        </Text>
+                      </YStack>
+                    </Card>
+                  </Animated.View>
+
+                  {/* Exercises Tried */}
+                  <Animated.View style={{ flex: 1, minWidth: 100 }} entering={FadeIn.delay(500).duration(300)}>
+                    <Card
+                      flex={1}
+                      p="$4"
+                      bg="$surface"
+                      rounded="$4"
+                      borderWidth={1}
+                      borderColor="$borderColor"
+                      style={{ borderCurve: 'continuous' }}
+                    >
+                      <YStack items="center" gap="$1">
+                        <StatNumber selectable color="$primary">
+                          {progress.uniqueExercisesPerformed}
+                        </StatNumber>
+                        <Text
+                          fontSize={11}
+                          color="$color10"
+                          text="center"
+                          fontFamily="$body" fontWeight="500"
+                        >
+                          Exercises{'\n'}Tried
+                        </Text>
+                      </YStack>
+                    </Card>
+                  </Animated.View>
+                </XStack>
+              </YStack>
+            </Animated.View>
           )}
 
         </YStack>

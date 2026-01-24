@@ -7,6 +7,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { SignOutButton } from '../../components/SignOutButton'
 import { OneRepMaxSheet } from '../../components/OneRepMaxSheet'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated'
 import {
   User,
   Trophy,
@@ -111,7 +112,11 @@ export default function ProfilePage() {
 
   return (
     <YStack flex={1} bg="$background">
-      <ScrollView flex={1} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        flex={1}
+        showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="automatic"
+      >
         <YStack
           gap="$5"
           px="$4"
@@ -122,12 +127,14 @@ export default function ProfilePage() {
           self="center"
         >
           {/* Profile Header */}
-          <Card 
-            p="$5" 
-            bg="$brand1" 
-            rounded="$5"
-            borderWidth={0}
-          >
+          <Animated.View entering={FadeInDown.delay(100).duration(400)}>
+            <Card
+              p="$5"
+              bg="$brand1"
+              rounded="$5"
+              borderWidth={0}
+              style={{ borderCurve: 'continuous' }}
+            >
             <XStack items="center" gap="$4">
               <YStack
                 width={64}
@@ -159,6 +166,7 @@ export default function ProfilePage() {
               </YStack>
             </XStack>
           </Card>
+          </Animated.View>
 
           {/* Progress Stats */}
           {progress && (

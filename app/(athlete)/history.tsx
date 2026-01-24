@@ -3,7 +3,8 @@ import { useQuery } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { 
+import Animated, { FadeInDown } from 'react-native-reanimated'
+import {
   Calendar,
   Clock,
   CheckCircle,
@@ -76,7 +77,11 @@ export default function HistoryPage() {
 
   return (
     <YStack flex={1} bg="$background">
-      <ScrollView flex={1} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        flex={1}
+        showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="automatic"
+      >
         <YStack
           gap="$5"
           px="$4"
@@ -97,16 +102,20 @@ export default function HistoryPage() {
           {/* Sessions List */}
           {sessions && sessions.length > 0 ? (
             <YStack gap="$3">
-              {sessions.map((session: any) => (
-                <Card
+              {sessions.map((session: any, index: number) => (
+                <Animated.View
                   key={session._id}
-                  p="$4"
-                  bg="$surface"
-                  rounded="$4"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                  pressStyle={{ bg: '$surfaceHover' }}
+                  entering={FadeInDown.delay(index * 50).duration(300)}
                 >
+                  <Card
+                    p="$4"
+                    bg="$surface"
+                    rounded="$4"
+                    borderWidth={1}
+                    borderColor="$borderColor"
+                    pressStyle={{ bg: '$surfaceHover' }}
+                    style={{ borderCurve: 'continuous' }}
+                  >
                   <XStack items="center" gap="$3">
                     {/* Status Icon */}
                     <YStack
@@ -178,6 +187,7 @@ export default function HistoryPage() {
                     </Card>
                   </XStack>
                 </Card>
+                </Animated.View>
               ))}
             </YStack>
           ) : (

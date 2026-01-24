@@ -165,16 +165,17 @@ export default function MaxesScreen() {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={process.env.EXPO_OS === 'ios' ? 'padding' : 'height'}
       style={{ flex: 1 }}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      keyboardVerticalOffset={process.env.EXPO_OS === 'ios' ? 0 : 20}
     >
       <YStack flex={1} bg="$background">
-        <ScrollView 
-          flex={1} 
+        <ScrollView
+          flex={1}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ flexGrow: 1 }}
-          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+          automaticallyAdjustKeyboardInsets={process.env.EXPO_OS === 'ios'}
+          contentInsetAdjustmentBehavior="automatic"
         >
           <YStack
             gap="$6"

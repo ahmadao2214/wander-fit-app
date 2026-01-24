@@ -249,7 +249,7 @@ export default function SportSelectionScreen() {
         </Button>
       </XStack>
 
-      <ScrollView flex={1} showsVerticalScrollIndicator={false}>
+      <ScrollView flex={1} showsVerticalScrollIndicator={false} contentInsetAdjustmentBehavior="automatic">
         <YStack
           gap="$5"
           px="$4"
