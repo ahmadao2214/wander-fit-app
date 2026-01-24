@@ -13,6 +13,7 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as debug from "../debug.js";
 import type * as exercises from "../exercises.js";
 import type * as generateTemplates from "../generateTemplates.js";
 import type * as gppWorkoutSessions from "../gppWorkoutSessions.js";
@@ -40,6 +41,7 @@ import type * as workouts from "../workouts.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  debug: typeof debug;
   exercises: typeof exercises;
   generateTemplates: typeof generateTemplates;
   gppWorkoutSessions: typeof gppWorkoutSessions;
