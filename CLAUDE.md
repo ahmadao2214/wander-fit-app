@@ -153,3 +153,83 @@ const handleAction = async () => {
   }
 }
 ```
+
+## Testing Requirements
+
+**All new features must include unit tests.** This is a mandatory requirement for any PR.
+
+### Test File Locations
+- **Components**: `components/<component-name>/__tests__/<ComponentName>.test.tsx`
+- **Screens**: `app/__tests__/<screen-name>.test.tsx`
+- **Lib/Utils**: `lib/__tests__/<module-name>.test.ts`
+- **Convex functions**: `convex/__tests__/<module-name>.test.ts`
+
+### Test Setup Pattern
+
+```tsx
+import React from 'react'
+import { render, fireEvent } from '@testing-library/react-native'
+import { TamaguiProvider } from 'tamagui'
+import config from '../../tamagui.config'
+
+const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
+  return <TamaguiProvider config={config}>{children}</TamaguiProvider>
+}
+
+describe('ComponentName', () => {
+  it('renders correctly', () => {
+    const { getByText } = render(
+      <ComponentName />,
+      { wrapper: AllTheProviders }
+    )
+    expect(getByText('Expected text')).toBeTruthy()
+  })
+})
+```
+
+### Mocking Common Dependencies
+
+```tsx
+// Mock Convex
+jest.mock('convex/react', () => ({
+  useQuery: jest.fn(),
+  useMutation: jest.fn(),
+}))
+
+// Mock Expo Router
+jest.mock('expo-router', () => ({
+  useRouter: () => ({ back: jest.fn(), push: jest.fn() }),
+}))
+
+// Mock Safe Area
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ top: 44, bottom: 34, left: 0, right: 0 }),
+}))
+
+// Mock Auth
+jest.mock('../../hooks/useAuth', () => ({
+  useAuth: () => ({
+    user: { id: 'test-user', name: 'Test User' },
+    isLoading: false,
+  }),
+}))
+```
+
+### What to Test
+- Component renders without crashing
+- User interactions (press, input changes)
+- Conditional rendering based on props/state
+- Loading and error states
+- Data transformations and business logic
+
+### Running Tests
+```bash
+npm test                    # Run all tests
+npm test -- --watch        # Watch mode
+npm test -- <pattern>      # Run specific tests
+```
+
+**Reference implementations:**
+- Component tests: `components/__tests__/RadioButton.test.tsx`
+- Screen tests: `app/__tests__/training-science.test.tsx`
+- Lib tests: `lib/__tests__/calculations.test.ts`

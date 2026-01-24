@@ -168,17 +168,17 @@ export default function PhasesOverviewScreen() {
             {phases.map((phase, index) => (
               <YStack
                 key={phase}
-                bg={index === 0 ? '$blue2' : '$color3'}
+                bg={index === 0 ? '$brand1' : '$color3'}
                 rounded="$4"
                 p="$4"
                 gap="$2"
                 borderWidth={index === 0 ? 2 : 1}
-                borderColor={index === 0 ? '$blue8' : '$color5'}
+                borderColor={index === 0 ? '$primary' : '$color5'}
               >
                 <XStack justify="space-between" items="center">
                   <Text
                     fontSize="$2"
-                    color={index === 0 ? '$blue11' : '$color10'}
+                    color={index === 0 ? '$primary' : '$color10'}
                     fontWeight="600"
                     textTransform="uppercase"
                     letterSpacing={1}
@@ -186,8 +186,8 @@ export default function PhasesOverviewScreen() {
                     {PHASE_DATA[phase].duration}
                   </Text>
                   {index === 0 && (
-                    <YStack bg="$blue4" px="$2" py="$1" rounded="$2">
-                      <Text fontSize="$1" color="$blue11" fontWeight="600">
+                    <YStack bg="$brand2" px="$2" py="$1" rounded="$2">
+                      <Text fontSize="$1" color="$primary" fontWeight="600">
                         START HERE
                       </Text>
                     </YStack>
@@ -200,7 +200,7 @@ export default function PhasesOverviewScreen() {
                 </Text>
 
                 {/* Phase tagline */}
-                <Text fontSize="$4" fontWeight="600" color={index === 0 ? '$blue11' : '$primary'}>
+                <Text fontSize="$4" fontWeight="600" color="$primary">
                   {PHASE_DATA[phase].tagline}
                 </Text>
 

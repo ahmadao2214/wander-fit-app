@@ -26,6 +26,9 @@ import {
   RotateCcw,
   ListChecks,
   ClipboardList,
+  Info,
+  Zap,
+  Flame,
 } from '@tamagui/lucide-icons'
 import DraggableFlatList, {
   ScaleDecorator,
@@ -209,9 +212,19 @@ export default function WorkoutDetailScreen() {
     }
   }, [isStarting, isCompleted, template, startSession, router, hasCustomOrder, orderIndices, todayWorkout, setTodayFocus])
 
-  // Intensity color for personalized workouts (based on RPE from user profile)
-  // Uses moderate intensity color as the default for category-based scaling
-  const intensityColor = "$intensityMed6" as const
+  // Intensity color for personalized workouts (based on session target intensity)
+  // Intensity is determined when session starts, defaults to 'Moderate' for preview
+  const targetIntensity = session?.targetIntensity || 'Moderate'
+  const intensityColor = targetIntensity === 'Low'
+    ? '$intensityLow6'
+    : targetIntensity === 'High'
+      ? '$intensityHigh6'
+      : '$intensityMed6'
+  const intensityLabel = targetIntensity === 'Low'
+    ? 'LOW'
+    : targetIntensity === 'High'
+      ? 'HIGH'
+      : 'MODERATE'
 
   // Render item for DraggableFlatList
   const renderExerciseItem = useCallback(
@@ -280,13 +293,34 @@ export default function WorkoutDetailScreen() {
     if (!template) return null
     return (
       <YStack gap="$3" pb="$3">
-        {/* Phase Badge - simplified, no week/day to avoid confusion with reordering */}
-        <XStack gap="$2" flexWrap="wrap">
-          <Card bg="$green3" px="$3" py="$1" rounded="$10">
-            <Text fontSize="$2" color="$green11" fontWeight="500">
+        {/* Phase and Intensity Badges */}
+        <XStack gap="$2" flexWrap="wrap" items="center">
+          {/* Phase Badge - neutral brand colors */}
+          <Card bg="$brand2" px="$3" py="$1" rounded="$10">
+            <Text fontSize="$2" color="$primary" fontWeight="600">
               {template.phase}
             </Text>
           </Card>
+          {/* Intensity Badge - traffic light colors */}
+          {isPhaseUnlocked && !isCompleted && (
+            <Card
+              bg={intensityColor === '$intensityHigh6' ? '$intensityHigh2' : intensityColor === '$intensityLow6' ? '$intensityLow2' : '$intensityMed2'}
+              px="$3"
+              py="$1"
+              rounded="$10"
+            >
+              <XStack items="center" gap="$1">
+                {intensityColor === '$intensityHigh6' ? (
+                  <Flame size={12} color={intensityColor} />
+                ) : (
+                  <Zap size={12} color={intensityColor} />
+                )}
+                <Text fontSize="$2" color={intensityColor} fontWeight="600">
+                  {intensityLabel}
+                </Text>
+              </XStack>
+            </Card>
+          )}
         </XStack>
 
         {/* Phase Locked Banner */}
@@ -433,12 +467,23 @@ export default function WorkoutDetailScreen() {
 
         {/* Personalized Workout Info */}
         {isPhaseUnlocked && !isCompleted && template?.scalingInfo && (
-          <Card p="$3" bg="$green2" borderColor="$green6">
-            <XStack items="center" gap="$2">
-              <CheckCircle size={18} color="$green10" />
-              <Text fontSize="$3" color="$green11">
-                Personalized for your {template.scalingInfo.ageGroup} age group and {template.scalingInfo.categoryName} training
-              </Text>
+          <Card p="$3" bg="$brand1" borderColor="$brand3">
+            <XStack items="center" justify="space-between">
+              <XStack items="center" gap="$2" flex={1}>
+                <CheckCircle size={18} color="$primary" />
+                <Text fontSize="$3" color="$brand9" flex={1}>
+                  Personalized for your {template.scalingInfo.ageGroup} age group and {template.scalingInfo.categoryName} training
+                </Text>
+              </XStack>
+              <Button
+                size="$2"
+                bg="transparent"
+                p="$1"
+                onPress={() => router.push('/(athlete)/training-science' as any)}
+                pressStyle={{ opacity: 0.7 }}
+              >
+                <Info size={18} color="$primary" />
+              </Button>
             </XStack>
           </Card>
         )}

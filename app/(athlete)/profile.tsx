@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { YStack, XStack, Text, Card, Button, ScrollView, Spinner, styled } from 'tamagui'
-import { useQuery, useMutation } from 'convex/react'
+import { useQuery } from 'convex/react'
 import { useRouter } from 'expo-router'
 import { api } from 'convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
@@ -12,12 +12,13 @@ import {
   Trophy,
   Target,
   Calendar,
-  TrendingUp,
   Settings,
   ChevronRight,
   Dumbbell,
   Check,
-  BookOpen,
+  Lightbulb,
+  LogOut,
+  Award,
 } from '@tamagui/lucide-icons'
 import { PHASE_NAMES } from '../../types'
 
@@ -55,9 +56,6 @@ export default function ProfilePage() {
   const { user, isLoading: authLoading } = useAuth()
   const insets = useSafeAreaInsets()
   const router = useRouter()
-
-  // Mutation to reset onboarding for revisit
-  const resetOnboardingForRevisit = useMutation(api.onboarding.resetOnboardingForRevisit)
 
   // Sheet state for editing 1RM
   const [maxSheetOpen, setMaxSheetOpen] = useState(false)
@@ -162,23 +160,102 @@ export default function ProfilePage() {
             </XStack>
           </Card>
 
+          {/* Progress Stats */}
+          {progress && (
+            <YStack gap="$3">
+              <SectionLabel>PROGRESS STATS</SectionLabel>
+
+              <XStack gap="$3" flexWrap="wrap">
+                <Card
+                  flex={1}
+                  minWidth={100}
+                  p="$4"
+                  bg="$surface"
+                  rounded="$4"
+                  borderWidth={1}
+                  borderColor="$borderColor"
+                >
+                  <YStack items="center" gap="$1">
+                    <StatNumber color="$primary">
+                      {progress.daysCompleted}
+                    </StatNumber>
+                    <Text
+                      fontSize={11}
+                      color="$color10"
+                      text="center"
+                      fontFamily="$body" fontWeight="500"
+                    >
+                      Days{'\n'}Completed
+                    </Text>
+                  </YStack>
+                </Card>
+
+                <Card
+                  flex={1}
+                  minWidth={100}
+                  p="$4"
+                  bg="$surface"
+                  rounded="$4"
+                  borderWidth={1}
+                  borderColor="$borderColor"
+                >
+                  <YStack items="center" gap="$1">
+                    <StatNumber color="$primary">
+                      {progress.currentStreak}
+                    </StatNumber>
+                    <Text
+                      fontSize={11}
+                      color="$color10"
+                      text="center"
+                      fontFamily="$body" fontWeight="500"
+                    >
+                      Current{'\n'}Streak
+                    </Text>
+                  </YStack>
+                </Card>
+
+                <Card
+                  flex={1}
+                  minWidth={100}
+                  p="$4"
+                  bg="$surface"
+                  rounded="$4"
+                  borderWidth={1}
+                  borderColor="$borderColor"
+                >
+                  <YStack items="center" gap="$1">
+                    <StatNumber color="$primary">
+                      {progress.uniqueExercisesPerformed}
+                    </StatNumber>
+                    <Text
+                      fontSize={11}
+                      color="$color10"
+                      text="center"
+                      fontFamily="$body" fontWeight="500"
+                    >
+                      Exercises{'\n'}Tried
+                    </Text>
+                  </YStack>
+                </Card>
+              </XStack>
+            </YStack>
+          )}
+
           {/* Training Info */}
           {programState && (
             <YStack gap="$3">
               <SectionLabel>TRAINING INFO</SectionLabel>
 
-              <Card 
-                p="$4" 
-                bg="$surface" 
+              <Card
+                p="$4"
+                bg="$surface"
                 rounded="$4"
                 borderWidth={1}
                 borderColor="$borderColor"
               >
                 <YStack gap="$4">
                   <XStack items="center" gap="$3">
-                    <YStack bg="$brand2" p="$2" rounded="$10">
-                      <Target size={18} color="$primary" />
-                    </YStack>
+                    <Target size={20} color="$color9" />
                     <YStack flex={1}>
                       <Text fontSize={12} color="$color10" fontFamily="$body">
                         Current Phase
@@ -190,9 +267,7 @@ export default function ProfilePage() {
                   </XStack>
 
                   <XStack items="center" gap="$3">
-                    <YStack bg="$catPowerLight" p="$2" rounded="$10">
-                      <Calendar size={18} color="$catPower" />
-                    </YStack>
+                    <Calendar size={20} color="$color9" />
                     <YStack flex={1}>
                       <Text fontSize={12} color="$color10" fontFamily="$body">
                         Position
@@ -204,9 +279,7 @@ export default function ProfilePage() {
                   </XStack>
 
                   <XStack items="center" gap="$3">
-                    <YStack bg="$intensityLow2" p="$2" rounded="$10">
-                      <TrendingUp size={18} color="$intensityLow6" />
-                    </YStack>
+                    <Trophy size={20} color="$color9" />
                     <YStack flex={1}>
                       <Text fontSize={12} color="$color10" fontFamily="$body">
                         Skill Level
@@ -218,87 +291,6 @@ export default function ProfilePage() {
                   </XStack>
                 </YStack>
               </Card>
-            </YStack>
-          )}
-
-          {/* Progress Stats */}
-          {progress && (
-            <YStack gap="$3">
-              <SectionLabel>PROGRESS STATS</SectionLabel>
-
-              <XStack gap="$3" flexWrap="wrap">
-                <Card 
-                  flex={1} 
-                  minWidth={100} 
-                  p="$4" 
-                  bg="$surface" 
-                  rounded="$4"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                >
-                  <YStack items="center" gap="$1">
-                    <StatNumber color="$primary">
-                      {progress.daysCompleted}
-                    </StatNumber>
-                    <Text 
-                      fontSize={11} 
-                      color="$color10" 
-                      text="center"
-                      fontFamily="$body" fontWeight="500"
-                    >
-                      Days{'\n'}Completed
-                    </Text>
-                  </YStack>
-                </Card>
-
-                <Card 
-                  flex={1} 
-                  minWidth={100} 
-                  p="$4" 
-                  bg="$surface" 
-                  rounded="$4"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                >
-                  <YStack items="center" gap="$1">
-                    <StatNumber color="$accent">
-                      {progress.currentStreak}
-                    </StatNumber>
-                    <Text 
-                      fontSize={11} 
-                      color="$color10" 
-                      text="center"
-                      fontFamily="$body" fontWeight="500"
-                    >
-                      Current{'\n'}Streak
-                    </Text>
-                  </YStack>
-                </Card>
-
-                <Card 
-                  flex={1} 
-                  minWidth={100} 
-                  p="$4" 
-                  bg="$surface" 
-                  rounded="$4"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                >
-                  <YStack items="center" gap="$1">
-                    <StatNumber color="$catPower">
-                      {progress.uniqueExercisesPerformed}
-                    </StatNumber>
-                    <Text 
-                      fontSize={11} 
-                      color="$color10" 
-                      text="center"
-                      fontFamily="$body" fontWeight="500"
-                    >
-                      Exercises{'\n'}Tried
-                    </Text>
-                  </YStack>
-                </Card>
-              </XStack>
             </YStack>
           )}
 
@@ -377,47 +369,134 @@ export default function ProfilePage() {
             </YStack>
           )}
 
-          {/* Assessment History */}
+          {/* Assessment */}
           {latestIntake && (
             <YStack gap="$3">
               <SectionLabel>ASSESSMENT</SectionLabel>
 
-              <Card 
-                p="$4" 
-                bg="$surface" 
-                rounded="$4"
-                borderWidth={1}
-                borderColor="$borderColor"
-              >
-                <YStack gap="$3">
-                  <XStack justify="space-between" items="center">
-                    <Text fontSize={13} color="$color10" fontFamily="$body">
-                      Last Assessment
+              <XStack gap="$3" flexWrap="wrap">
+                {/* Training Days */}
+                <Card
+                  flex={1}
+                  minWidth={100}
+                  p="$4"
+                  bg="$surface"
+                  rounded="$4"
+                  borderWidth={1}
+                  borderColor="$borderColor"
+                >
+                  <YStack items="center" gap="$1">
+                    <StatNumber color="$primary">
+                      {latestIntake.preferredTrainingDaysPerWeek}
+                    </StatNumber>
+                    <Text
+                      fontSize={11}
+                      color="$color10"
+                      text="center"
+                      fontFamily="$body" fontWeight="500"
+                    >
+                      Days{'\n'}Per Week
                     </Text>
-                    <Text fontSize={13} color="$color11" fontFamily="$body" fontWeight="500">
-                      {new Date(latestIntake.completedAt).toLocaleDateString()}
+                  </YStack>
+                </Card>
+
+                {/* Experience */}
+                <Card
+                  flex={1}
+                  minWidth={100}
+                  p="$4"
+                  bg="$surface"
+                  rounded="$4"
+                  borderWidth={1}
+                  borderColor="$borderColor"
+                >
+                  <YStack items="center" gap="$1">
+                    <StatNumber color="$primary">
+                      {latestIntake.yearsOfExperience}
+                    </StatNumber>
+                    <Text
+                      fontSize={11}
+                      color="$color10"
+                      text="center"
+                      fontFamily="$body" fontWeight="500"
+                    >
+                      Years{'\n'}Experience
                     </Text>
-                  </XStack>
-                  <XStack justify="space-between" items="center">
-                    <Text fontSize={13} color="$color10" fontFamily="$body">
-                      Experience
+                  </YStack>
+                </Card>
+
+                {/* Last Assessment */}
+                <Card
+                  flex={1}
+                  minWidth={100}
+                  p="$4"
+                  bg="$surface"
+                  rounded="$4"
+                  borderWidth={1}
+                  borderColor="$borderColor"
+                >
+                  <YStack items="center" gap="$1">
+                    <Text
+                      fontSize={14}
+                      fontFamily="$body" fontWeight="700"
+                      color="$color11"
+                    >
+                      {new Date(latestIntake.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </Text>
-                    <Text fontSize={13} color="$color11" fontFamily="$body" fontWeight="500">
-                      {latestIntake.yearsOfExperience} years
+                    <Text
+                      fontSize={11}
+                      color="$color10"
+                      text="center"
+                      fontFamily="$body" fontWeight="500"
+                    >
+                      Last{'\n'}Assessment
                     </Text>
-                  </XStack>
-                  <XStack justify="space-between" items="center">
-                    <Text fontSize={13} color="$color10" fontFamily="$body">
-                      Training Days
-                    </Text>
-                    <Text fontSize={13} color="$color11" fontFamily="$body" fontWeight="500">
-                      {latestIntake.preferredTrainingDaysPerWeek} days/week
-                    </Text>
-                  </XStack>
-                </YStack>
-              </Card>
+                  </YStack>
+                </Card>
+              </XStack>
             </YStack>
           )}
+
+          {/* Learn Section */}
+          <YStack gap="$3">
+            <SectionLabel>LEARN</SectionLabel>
+
+            {/* Training Science */}
+            <Card
+              p="$4"
+              bg="$surface"
+              rounded="$4"
+              borderWidth={1}
+              borderColor="$borderColor"
+              pressStyle={{ bg: '$surfaceHover' }}
+              onPress={() => {
+                router.push('/(athlete)/training-science' as any)
+              }}
+            >
+              <XStack items="center" gap="$3">
+                <YStack bg="$brand2" p="$2" rounded="$10">
+                  <Lightbulb size={18} color="$primary" />
+                </YStack>
+                <YStack flex={1}>
+                  <Text
+                    fontSize={15}
+                    fontFamily="$body" fontWeight="500"
+                    color="$color12"
+                  >
+                    Training Science
+                  </Text>
+                  <Text
+                    fontSize={12}
+                    fontFamily="$body"
+                    color="$color10"
+                  >
+                    Understand your program
+                  </Text>
+                </YStack>
+                <ChevronRight size={20} color="$color9" />
+              </XStack>
+            </Card>
+          </YStack>
 
           {/* Settings Section */}
           <YStack gap="$3">
@@ -446,43 +525,6 @@ export default function ProfilePage() {
                 >
                   App Settings
                 </Text>
-                <ChevronRight size={20} color="$color9" />
-              </XStack>
-            </Card>
-
-            {/* Revisit Onboarding */}
-            <Card
-              p="$4"
-              bg="$surface"
-              rounded="$4"
-              borderWidth={1}
-              borderColor="$borderColor"
-              pressStyle={{ bg: '$surfaceHover' }}
-              onPress={async () => {
-                await resetOnboardingForRevisit()
-                router.push('/(onboarding)' as any)
-              }}
-            >
-              <XStack items="center" gap="$3">
-                <YStack bg="$green4" p="$2" rounded="$10">
-                  <BookOpen size={18} color="$green10" />
-                </YStack>
-                <YStack flex={1}>
-                  <Text
-                    fontSize={15}
-                    fontFamily="$body" fontWeight="500"
-                    color="$color12"
-                  >
-                    Revisit Onboarding
-                  </Text>
-                  <Text
-                    fontSize={12}
-                    fontFamily="$body"
-                    color="$color10"
-                  >
-                    Learn about GPP, SPP, SSP phases again
-                  </Text>
-                </YStack>
                 <ChevronRight size={20} color="$color9" />
               </XStack>
             </Card>
