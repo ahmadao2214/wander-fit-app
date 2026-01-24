@@ -129,3 +129,52 @@ export const getUserData = query({
     };
   },
 });
+
+// Fix user's intake/onboarding state
+export const fixUserOnboardingState = mutation({
+  args: {
+    userId: v.id("users"),
+    action: v.union(
+      v.literal("complete_onboarding"),
+      v.literal("reset_intake")
+    )
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) throw new Error("User not found");
+
+    const now = Date.now();
+
+    if (args.action === "complete_onboarding") {
+      await ctx.db.patch(args.userId, {
+        onboardingCompletedAt: now,
+        onboardingProgress: 9,
+      });
+      return { success: true, action: "completed_onboarding" };
+    }
+
+    if (args.action === "reset_intake") {
+      // Clear user's intake/onboarding flags
+      await ctx.db.patch(args.userId, {
+        intakeCompletedAt: undefined,
+        onboardingCompletedAt: undefined,
+        onboardingProgress: undefined,
+      });
+
+      // Delete their program if exists
+      const program = await ctx.db
+        .query("user_programs")
+        .withIndex("by_user", (q) => q.eq("userId", args.userId))
+        .first();
+      if (program) {
+        await ctx.db.delete(program._id);
+      }
+
+      // Note: intake_responses are preserved for history
+
+      return { success: true, action: "reset_intake", programDeleted: !!program };
+    }
+
+    return { success: false, error: "Unknown action" };
+  },
+});

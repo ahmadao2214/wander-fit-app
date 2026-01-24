@@ -36,6 +36,9 @@ export default function CommitmentScreen() {
   const onboardingState = useQuery(api.onboarding.getOnboardingState)
   const onboardingData = useQuery(api.onboarding.getOnboardingData)
 
+  // Check if user already has a program (edge case: has program but incomplete onboarding)
+  const existingProgram = useQuery(api.userPrograms.getCurrentUserProgram)
+
   // Mutations
   const completeIntake = useMutation(api.userPrograms.completeIntake)
   const completeOnboarding = useMutation(api.onboarding.completeOnboarding)
@@ -64,7 +67,7 @@ export default function CommitmentScreen() {
   }, [isSuccess, router])
 
   // Loading state
-  if (onboardingState === undefined || onboardingData === undefined) {
+  if (onboardingState === undefined || onboardingData === undefined || existingProgram === undefined) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center">
         <Spinner size="large" color="$primary" />
@@ -78,21 +81,37 @@ export default function CommitmentScreen() {
     setIsSubmitting(true)
 
     try {
-      // Complete both intake and onboarding
-      await completeIntake({
-        sportId: sportId as Id<"sports">,
-        yearsOfExperience: years,
-        preferredTrainingDaysPerWeek: days,
-        weeksUntilSeason: weeks,
-        ageGroup: ageGroup as "10-13" | "14-17" | "18+",
-      })
+      // Only create program if user doesn't already have one
+      // (handles edge case where user has program but incomplete onboarding)
+      if (!existingProgram) {
+        await completeIntake({
+          sportId: sportId as Id<"sports">,
+          yearsOfExperience: years,
+          preferredTrainingDaysPerWeek: days,
+          weeksUntilSeason: weeks,
+          ageGroup: ageGroup as "10-13" | "14-17" | "18+",
+        })
+      }
+
       await completeOnboarding()
       trackScreenComplete()
       analytics.trackOnboardingCompleted(false)
       setIsSuccess(true)
     } catch (error) {
-      console.error('Failed to complete intake:', error)
-      alert('Failed to create program. Please try again.')
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      console.error('Failed to complete intake:', errorMessage)
+
+      // User-friendly error messages
+      if (errorMessage.includes('Invalid sport')) {
+        alert('Sport selection is invalid. Please go back and select a sport.')
+      } else if (errorMessage.includes('Not authenticated')) {
+        alert('Your session expired. Please sign in again.')
+      } else if (errorMessage.includes('User not found')) {
+        alert('Account not found. Please sign out and sign in again.')
+      } else {
+        alert(`Failed to create program: ${errorMessage}`)
+      }
+
       setIsSubmitting(false)
       setHasCommitted(false)
     }
