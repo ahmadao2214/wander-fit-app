@@ -1,12 +1,8 @@
 import { YStack, XStack, Text, Card, ScrollView, styled, Spinner } from 'tamagui'
 import { useQuery } from 'convex/react'
-import { useRouter } from 'expo-router'
 import { api } from 'convex/_generated/api'
-import { useAuth } from '../../hooks/useAuth'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Pressable } from 'react-native'
+import { useAuth } from '../../../hooks/useAuth'
 import {
-  ChevronLeft,
   Layers,
   Target,
   Dumbbell,
@@ -17,7 +13,7 @@ import {
   Flame,
   Trophy,
 } from '@tamagui/lucide-icons'
-import { ScienceSection } from '../../components/training-science/ScienceSection'
+import { ScienceSection } from '../../../components/training-science/ScienceSection'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
@@ -105,8 +101,6 @@ const CATEGORY_INFO: Record<number, {
 
 export default function TrainingSciencePage() {
   const { user, isLoading: authLoading } = useAuth()
-  const insets = useSafeAreaInsets()
-  const router = useRouter()
 
   const programState = useQuery(
     api.userPrograms.getCurrentProgramState,
@@ -129,36 +123,20 @@ export default function TrainingSciencePage() {
   }
 
   return (
-    <YStack flex={1} bg="$background">
-      {/* Header */}
-      <XStack
-        pt={insets.top + 8}
-        pb="$3"
+    <ScrollView
+      flex={1}
+      showsVerticalScrollIndicator={false}
+      contentInsetAdjustmentBehavior="automatic"
+      bg="$background"
+    >
+      <YStack
+        gap="$4"
         px="$4"
-        items="center"
-        gap="$3"
-        bg="$background"
-        borderBottomWidth={1}
-        borderBottomColor="$borderColor"
+        py="$4"
+        maxW={800}
+        width="100%"
+        self="center"
       >
-        <Pressable onPress={() => router.replace('/(athlete)/profile')} hitSlop={8}>
-          <ChevronLeft size={24} color="$color12" />
-        </Pressable>
-        <Text fontFamily="$heading" fontSize={20} color="$color12">
-          TRAINING SCIENCE
-        </Text>
-      </XStack>
-
-      <ScrollView flex={1} showsVerticalScrollIndicator={false}>
-        <YStack
-          gap="$4"
-          px="$4"
-          pt="$4"
-          pb={insets.bottom + 100}
-          maxW={800}
-          width="100%"
-          self="center"
-        >
           {/* Hero Section */}
           <Card bg="$brand1" p="$4" rounded="$4">
             <YStack gap="$2">
@@ -456,6 +434,5 @@ export default function TrainingSciencePage() {
           </ScienceSection>
         </YStack>
       </ScrollView>
-    </YStack>
   )
 }

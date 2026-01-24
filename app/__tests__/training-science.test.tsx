@@ -37,7 +37,7 @@ jest.mock('../../hooks/useAuth', () => ({
   }),
 }))
 
-import TrainingSciencePage from '../(athlete)/training-science'
+import TrainingSciencePage from '../(athlete)/training-science/index'
 
 const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
   return <TamaguiProvider config={config}>{children}</TamaguiProvider>
