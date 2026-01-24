@@ -18,6 +18,7 @@ import {
   Dumbbell,
   Check,
   BookOpen,
+  Lightbulb,
 } from '@tamagui/lucide-icons'
 import { PHASE_NAMES } from '../../types'
 
@@ -419,10 +420,11 @@ export default function ProfilePage() {
             </YStack>
           )}
 
-          {/* Settings Section */}
+          {/* Learn Section */}
           <YStack gap="$3">
-            <SectionLabel>SETTINGS</SectionLabel>
+            <SectionLabel>LEARN</SectionLabel>
 
+            {/* Training Science */}
             <Card
               p="$4"
               bg="$surface"
@@ -431,21 +433,29 @@ export default function ProfilePage() {
               borderColor="$borderColor"
               pressStyle={{ bg: '$surfaceHover' }}
               onPress={() => {
-                console.log('Settings pressed')
+                router.push('/(athlete)/training-science' as any)
               }}
             >
               <XStack items="center" gap="$3">
-                <YStack bg="$color4" p="$2" rounded="$10">
-                  <Settings size={18} color="$color10" />
+                <YStack bg="$brand2" p="$2" rounded="$10">
+                  <Lightbulb size={18} color="$primary" />
                 </YStack>
-                <Text
-                  flex={1}
-                  fontSize={15}
-                  fontFamily="$body" fontWeight="500"
-                  color="$color12"
-                >
-                  App Settings
-                </Text>
+                <YStack flex={1}>
+                  <Text
+                    fontSize={15}
+                    fontFamily="$body" fontWeight="500"
+                    color="$color12"
+                  >
+                    Training Science
+                  </Text>
+                  <Text
+                    fontSize={12}
+                    fontFamily="$body"
+                    color="$color10"
+                  >
+                    Understand your program
+                  </Text>
+                </YStack>
                 <ChevronRight size={20} color="$color9" />
               </XStack>
             </Card>
@@ -483,6 +493,38 @@ export default function ProfilePage() {
                     Learn about GPP, SPP, SSP phases again
                   </Text>
                 </YStack>
+                <ChevronRight size={20} color="$color9" />
+              </XStack>
+            </Card>
+          </YStack>
+
+          {/* Settings Section */}
+          <YStack gap="$3">
+            <SectionLabel>SETTINGS</SectionLabel>
+
+            <Card
+              p="$4"
+              bg="$surface"
+              rounded="$4"
+              borderWidth={1}
+              borderColor="$borderColor"
+              pressStyle={{ bg: '$surfaceHover' }}
+              onPress={() => {
+                console.log('Settings pressed')
+              }}
+            >
+              <XStack items="center" gap="$3">
+                <YStack bg="$color4" p="$2" rounded="$10">
+                  <Settings size={18} color="$color10" />
+                </YStack>
+                <Text
+                  flex={1}
+                  fontSize={15}
+                  fontFamily="$body" fontWeight="500"
+                  color="$color12"
+                >
+                  App Settings
+                </Text>
                 <ChevronRight size={20} color="$color9" />
               </XStack>
             </Card>
