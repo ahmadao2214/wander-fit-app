@@ -202,10 +202,10 @@ export default function TrainingSciencePage() {
               <YStack gap="$2">
                 <XStack items="center" gap="$2">
                   <Flame size={16} color="$accent" />
-                  <SubHeading color="$orange11">SPP: Sport-Specific Development</SubHeading>
+                  <SubHeading color="$orange11">SPP: Sports Physical Preparedness</SubHeading>
                 </XStack>
                 <BodyText color="$orange11">
-                  Sport-Specific Preparation translates your strength into sport performance. Now we tune the engine for your sport.
+                  Sports Physical Preparedness builds sport-ready athleticism. Now we develop the physical qualities your sport demands.
                 </BodyText>
                 <Text fontSize={12} fontFamily="$body" color="$orange10">
                   Moderate loads (75-85%) • Sport movements • Faster tempo
@@ -218,10 +218,10 @@ export default function TrainingSciencePage() {
               <YStack gap="$2">
                 <XStack items="center" gap="$2">
                   <Trophy size={16} color="$green9" />
-                  <SubHeading color="$green11">SSP: Peak Performance</SubHeading>
+                  <SubHeading color="$green11">SSP: Sports Specific Preparation</SubHeading>
                 </XStack>
                 <BodyText color="$green11">
-                  Specific Sport Preparation is about competition readiness. Lower volume, higher intensity, maintaining your gains. Time to race.
+                  Sports Specific Preparation is about competition readiness. Lower volume, higher intensity, maintaining your gains. Time to race.
                 </BodyText>
                 <Text fontSize={12} fontFamily="$body" color="$green10">
                   Higher loads (85-90%) • Lower volume • Explosive tempo
@@ -234,8 +234,8 @@ export default function TrainingSciencePage() {
           <ScienceSection
             title="Understanding Your Numbers"
             icon={Dumbbell}
-            iconColor="$accent"
-            iconBgColor="$catPowerLight"
+            iconColor="$primary"
+            iconBgColor="$brand2"
           >
             {/* 1RM */}
             <YStack gap="$2">
@@ -300,8 +300,8 @@ export default function TrainingSciencePage() {
           <ScienceSection
             title="Training Intensity"
             icon={Activity}
-            iconColor="$catEndurance"
-            iconBgColor="$catEnduranceLight"
+            iconColor="$primary"
+            iconBgColor="$brand2"
           >
             <BodyText>
               Your daily workout intensity varies between Low, Moderate, and High to optimize recovery and adaptation.
@@ -363,9 +363,9 @@ export default function TrainingSciencePage() {
           {category && (
             <ScienceSection
               title="Your Sport Category"
-              icon={category.icon}
-              iconColor={category.color as any}
-              iconBgColor={category.bgColor as any}
+              icon={Users}
+              iconColor="$primary"
+              iconBgColor="$brand2"
             >
               <Card
                 bg={category.bgColor as any}
@@ -429,8 +429,8 @@ export default function TrainingSciencePage() {
           <ScienceSection
             title="Rest Periods"
             icon={Clock}
-            iconColor="$catRotation"
-            iconBgColor="$catRotationLight"
+            iconColor="$primary"
+            iconBgColor="$brand2"
           >
             <BodyText>
               Rest periods aren't random—they're designed to target specific energy systems and adaptations.

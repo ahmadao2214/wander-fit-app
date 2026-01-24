@@ -85,8 +85,8 @@ describe('TrainingSciencePage', () => {
 
     // The Three Phases section is defaultExpanded
     expect(getByText('GPP: Building Your Foundation')).toBeTruthy()
-    expect(getByText('SPP: Sport-Specific Development')).toBeTruthy()
-    expect(getByText('SSP: Peak Performance')).toBeTruthy()
+    expect(getByText('SPP: Sports Physical Preparedness')).toBeTruthy()
+    expect(getByText('SSP: Sports Specific Preparation')).toBeTruthy()
   })
 
   it('renders sport category section when program state exists', () => {
