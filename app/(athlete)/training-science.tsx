@@ -141,7 +141,7 @@ export default function TrainingSciencePage() {
         borderBottomWidth={1}
         borderBottomColor="$borderColor"
       >
-        <Pressable onPress={() => router.back()} hitSlop={8}>
+        <Pressable onPress={() => router.replace('/(athlete)/profile')} hitSlop={8}>
           <ChevronLeft size={24} color="$color12" />
         </Pressable>
         <Text fontFamily="$heading" fontSize={20} color="$color12">
@@ -363,7 +363,7 @@ export default function TrainingSciencePage() {
           {category && (
             <ScienceSection
               title="Your Sport Category"
-              icon={Users}
+              icon={Trophy}
               iconColor="$primary"
               iconBgColor="$brand2"
             >
@@ -397,8 +397,8 @@ export default function TrainingSciencePage() {
           <ScienceSection
             title="Your Profile Factors"
             icon={Users}
-            iconColor="$color10"
-            iconBgColor="$color4"
+            iconColor="$primary"
+            iconBgColor="$brand2"
           >
             <BodyText>
               Beyond your sport, two factors fine-tune your training prescription:

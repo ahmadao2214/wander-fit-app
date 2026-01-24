@@ -1,25 +1,28 @@
 import { useState, useCallback, useMemo, ReactElement } from 'react'
-import { YStack, XStack, H2, Text, Card, Button, Spinner, Popover } from 'tamagui'
+import { YStack, XStack, Text, Card, Button, Spinner } from 'tamagui'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
 import { useRouter } from 'expo-router'
-import { 
+import {
   Lock,
-  Unlock,
   ChevronRight,
+  ChevronDown,
   Dumbbell,
   Timer,
   GripVertical,
-  MoreVertical,
   RotateCcw,
   CalendarCheck,
   CheckCircle,
+  Target,
+  Flame,
+  Trophy,
 } from '@tamagui/lucide-icons'
 import { PHASE_NAMES, type Phase } from '../../types'
 import { Platform, TouchableOpacity, Vibration, StyleSheet, View, Pressable } from 'react-native'
 import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { Id } from 'convex/_generated/dataModel'
 
 /**
@@ -58,11 +61,13 @@ type ListItem =
 export default function ProgramPage() {
   const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   const [selectedPhase, setSelectedPhase] = useState<Phase>('GPP')
-  const [menuOpen, setMenuOpen] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
   // Key to force DraggableFlatList to reset when a swap is rejected
   const [listResetKey, setListResetKey] = useState(0)
+  // Track which weeks are collapsed (by week number) - default will be set based on current week
+  const [collapsedWeeks, setCollapsedWeeks] = useState<Set<number>>(new Set())
 
   // Get unlocked phases
   const unlockedPhases = useQuery(
@@ -160,7 +165,6 @@ export default function ProgramPage() {
     setIsResetting(true)
     try {
       await resetPhaseToDefault({ phase: selectedPhase })
-      setMenuOpen(false)
     } catch (error) {
       console.error('Failed to reset phase:', error)
     } finally {
@@ -219,46 +223,85 @@ export default function ProgramPage() {
     return firstIncomplete?._id ?? null
   }, [phaseOverview, programState, completedTemplateIds, selectedPhase])
 
+  // Toggle week collapsed state
+  const toggleWeekCollapsed = useCallback((week: number) => {
+    setCollapsedWeeks(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(week)) {
+        newSet.delete(week)
+      } else {
+        newSet.add(week)
+      }
+      return newSet
+    })
+  }, [])
+
+  // Initialize collapsed state based on current week (only non-current weeks start collapsed)
+  // This runs once when phaseOverview loads
+  useMemo(() => {
+    if (phaseOverview && programState) {
+      const currentWeek = programState.phase === selectedPhase ? programState.week : null
+      const weeksToCollapse = new Set<number>()
+
+      for (const { week } of phaseOverview) {
+        if (week !== currentWeek) {
+          weeksToCollapse.add(week)
+        }
+      }
+
+      setCollapsedWeeks(weeksToCollapse)
+    }
+  }, [phaseOverview, programState?.week, programState?.phase, selectedPhase])
+
   // Flatten phase overview into a single list with week headers
+  // Only include workouts for expanded weeks
   const flatListData = useMemo((): ListItem[] => {
     if (!phaseOverview) return []
 
     const items: ListItem[] = []
 
     for (const { week, workouts } of phaseOverview) {
-      // Add week header
+      // Add week header (always visible)
       const isCurrent = programState?.week === week && programState?.phase === selectedPhase
       items.push({ type: 'header', week, isCurrent })
 
-      // Add workouts for this week
-      for (const workout of workouts) {
-        items.push({
-          type: 'workout',
-          data: { ...workout, week },
-        })
+      // Only add workouts if week is not collapsed
+      if (!collapsedWeeks.has(week)) {
+        for (const workout of workouts) {
+          items.push({
+            type: 'workout',
+            data: { ...workout, week },
+          })
+        }
       }
     }
 
     return items
-  }, [phaseOverview, programState, selectedPhase])
+  }, [phaseOverview, programState, selectedPhase, collapsedWeeks])
 
   // Render list item (header or workout card)
   const renderListItem = useCallback(({ item, drag, isActive }: RenderItemParams<ListItem>) => {
-    // Render week header (non-draggable)
+    // Render week header (non-draggable, clickable accordion)
     if (item.type === 'header') {
+      const isCollapsed = collapsedWeeks.has(item.week)
+      const ChevronIcon = isCollapsed ? ChevronRight : ChevronDown
+
       return (
-        <XStack items="center" gap="$2" pt="$4" pb="$2">
-          <Text fontSize="$5" fontWeight="600" color="$gray12">
-            Week {item.week}
-          </Text>
-          {item.isCurrent && (
-            <Card bg="$green9" px="$2" py="$0.5" rounded="$10">
-              <Text color="white" fontSize="$1" fontWeight="600">
-                Current
-              </Text>
-            </Card>
-          )}
-        </XStack>
+        <Pressable onPress={() => toggleWeekCollapsed(item.week)}>
+          <XStack items="center" gap="$2" pt="$4" pb="$2">
+            <ChevronIcon size={20} color="$color10" />
+            <Text fontSize="$5" fontWeight="600" color="$gray12">
+              Week {item.week}
+            </Text>
+            {item.isCurrent && (
+              <Card bg="$green9" px="$2" py="$0.5" rounded="$10">
+                <Text color="white" fontSize="$1" fontWeight="600">
+                  Current
+                </Text>
+              </Card>
+            )}
+          </XStack>
+        </Pressable>
       )
     }
 
@@ -382,7 +425,7 @@ export default function ProgramPage() {
         </TouchableOpacity>
       </ScaleDecorator>
     )
-  }, [router, scheduleOverride?.todayFocusTemplateId, handleSetTodayFocus, completedTemplateIds, firstIncompleteWorkoutId])
+  }, [router, scheduleOverride?.todayFocusTemplateId, handleSetTodayFocus, completedTemplateIds, firstIncompleteWorkoutId, collapsedWeeks, toggleWeekCollapsed])
 
   // Key extractor for flat list
   const keyExtractor = useCallback((item: ListItem) => {
@@ -428,67 +471,35 @@ export default function ProgramPage() {
   const isPhaseUnlocked = (phase: Phase) =>
     (unlockedPhases?.phases as readonly Phase[] | undefined)?.includes(phase) ?? false
 
-  // List header component (header, phase tabs, phase description)
+  // List header component (phase tabs, phase description)
   const ListHeader = useMemo((): ReactElement => (
     <YStack gap="$4" pb="$2">
-      {/* Header with Menu */}
-      <XStack justify="space-between" items="center">
-        <YStack gap="$1">
-          <H2>My Program</H2>
-          <Text color="$color11">
-            Drag to reorder your workouts
-          </Text>
-        </YStack>
-
-        {/* Options Menu */}
-        <Popover open={menuOpen} onOpenChange={setMenuOpen} placement="bottom-end">
-          <Popover.Trigger asChild>
-            <Button
-              size="$3"
-              circular
-              chromeless
-              icon={<MoreVertical size={20} />}
-            />
-          </Popover.Trigger>
-          <Popover.Content
-            bg="$background"
-            borderColor="$gray6"
-            borderWidth={1}
-            p="$2"
-            elevate
-          >
-            <YStack gap="$1">
-              <Button
-                size="$3"
-                chromeless
-                icon={<RotateCcw size={16} />}
-                onPress={handleResetPhase}
-                disabled={isResetting}
-              >
-                Reset {selectedPhase} to Default
-              </Button>
-            </YStack>
-          </Popover.Content>
-        </Popover>
-      </XStack>
-
       {/* Phase Tabs */}
       <XStack gap="$2">
         {phases.map((phase) => {
           const unlocked = isPhaseUnlocked(phase)
           const isSelected = selectedPhase === phase
 
+          // Phase-specific icons when unlocked, Lock icon when locked
+          // GPP: Target (building foundation), SPP: Flame (intensity), SSP: Trophy (peak)
+          const PHASE_ICONS: Record<Phase, typeof Target> = {
+            GPP: Target,
+            SPP: Flame,
+            SSP: Trophy,
+          }
+          const PhaseIcon = unlocked ? PHASE_ICONS[phase] : Lock
+
           return (
             <Button
               key={phase}
               flex={1}
               size="$4"
-              bg={isSelected ? (unlocked ? '$green9' : '$gray6') : '$gray3'}
-              color={isSelected ? 'white' : (unlocked ? '$gray12' : '$gray9')}
-              borderColor={unlocked ? '$green7' : '$gray6'}
+              bg={isSelected ? '$primary' : (unlocked ? '$brand1' : '$gray3')}
+              color={isSelected ? 'white' : (unlocked ? '$primary' : '$gray9')}
+              borderColor={isSelected ? '$primary' : (unlocked ? '$brand3' : '$gray6')}
               borderWidth={1}
               opacity={unlocked ? 1 : 0.6}
-              icon={unlocked ? Unlock : Lock}
+              icon={PhaseIcon}
               onPress={() => unlocked && setSelectedPhase(phase)}
               disabled={!unlocked}
             >
@@ -501,9 +512,24 @@ export default function ProgramPage() {
       {/* Phase Description */}
       <Card p="$4" bg="$color2" borderColor="$borderColor" borderWidth={1}>
         <YStack gap="$2">
-          <Text fontSize={16} fontFamily="$body" fontWeight="600" color="$color12">
-            {PHASE_NAMES[selectedPhase]}
-          </Text>
+          <XStack justify="space-between" items="flex-start">
+            <Text fontSize={16} fontFamily="$body" fontWeight="600" color="$color12" flex={1}>
+              {PHASE_NAMES[selectedPhase]}
+            </Text>
+            {isPhaseUnlocked(selectedPhase) && (
+              <Button
+                size="$2"
+                chromeless
+                icon={<RotateCcw size={14} />}
+                onPress={handleResetPhase}
+                disabled={isResetting}
+                color="$color10"
+                px="$2"
+              >
+                Reset Order
+              </Button>
+            )}
+          </XStack>
           <Text fontSize={14} fontFamily="$body" color="$color10" lineHeight={22}>
             {PHASE_DESCRIPTIONS[selectedPhase]}
           </Text>
@@ -533,7 +559,7 @@ export default function ProgramPage() {
         </Card>
       )}
     </YStack>
-  ), [menuOpen, isResetting, selectedPhase, unlockedPhases])
+  ), [isResetting, selectedPhase, unlockedPhases])
 
   // Empty state component
   const ListEmpty = useMemo((): ReactElement | null => {
@@ -553,7 +579,7 @@ export default function ProgramPage() {
   if (authLoading || !unlockedPhases) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$green10" />
+        <Spinner size="large" color="$primary" />
         <Text>Loading training block...</Text>
       </YStack>
     )
@@ -573,7 +599,10 @@ export default function ProgramPage() {
           onDragEnd={handleDragEnd}
           activationDistance={10}
           containerStyle={styles.flatList}
-          contentContainerStyle={styles.contentContainer}
+          contentContainerStyle={[
+            styles.contentContainer,
+            { paddingTop: insets.top + 16 }
+          ]}
         />
       </YStack>
     </GestureHandlerRootView>
@@ -593,7 +622,6 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: 16,
-    paddingTop: 24,
     paddingBottom: 32,
     maxWidth: 800,
     width: '100%',

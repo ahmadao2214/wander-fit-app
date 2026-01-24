@@ -5,20 +5,17 @@ import { useAuth } from '../../hooks/useAuth'
 import { SignOutButton } from '../../components/SignOutButton'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { 
-  Play, 
-  Clock, 
-  Dumbbell, 
-  Timer, 
+import {
+  Play,
+  Clock,
+  Dumbbell,
+  Timer,
   Target,
   Flame,
-  TrendingUp,
-  Calendar,
   CheckCircle,
   RotateCcw,
   Zap,
 } from '@tamagui/lucide-icons'
-import { PHASE_NAMES } from '../../types'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
@@ -194,8 +191,6 @@ export default function AthleteDashboard() {
       </YStack>
     )
   }
-
-  const phaseName = PHASE_NAMES[programState.phase as keyof typeof PHASE_NAMES] || programState.phase
 
   // Determine workout state
   const isInProgress = todaySession && 
@@ -429,25 +424,22 @@ export default function AthleteDashboard() {
               
               <XStack gap="$3" flexWrap="wrap">
                 {/* Days Completed */}
-                <Card 
-                  flex={1} 
-                  minWidth={100} 
-                  p="$4" 
-                  bg="$surface" 
+                <Card
+                  flex={1}
+                  minWidth={100}
+                  p="$4"
+                  bg="$surface"
                   rounded="$4"
                   borderWidth={1}
                   borderColor="$borderColor"
                 >
-                  <YStack items="center" gap="$2">
-                    <YStack bg="$brand2" p="$2" rounded="$10">
-                      <Calendar size={20} color="$primary" />
-                    </YStack>
+                  <YStack items="center" gap="$1">
                     <StatNumber color="$primary">
                       {progress.daysCompleted}
                     </StatNumber>
-                    <Text 
-                      fontSize={11} 
-                      color="$color10" 
+                    <Text
+                      fontSize={11}
+                      color="$color10"
                       text="center"
                       fontFamily="$body" fontWeight="500"
                     >
@@ -457,25 +449,22 @@ export default function AthleteDashboard() {
                 </Card>
 
                 {/* Current Streak */}
-                <Card 
-                  flex={1} 
-                  minWidth={100} 
-                  p="$4" 
-                  bg="$surface" 
+                <Card
+                  flex={1}
+                  minWidth={100}
+                  p="$4"
+                  bg="$surface"
                   rounded="$4"
                   borderWidth={1}
                   borderColor="$borderColor"
                 >
-                  <YStack items="center" gap="$2">
-                    <YStack bg="$accent1" p="$2" rounded="$10">
-                      <Flame size={20} color="$accent" />
-                    </YStack>
-                    <StatNumber color="$accent">
+                  <YStack items="center" gap="$1">
+                    <StatNumber color="$primary">
                       {progress.currentStreak}
                     </StatNumber>
-                    <Text 
-                      fontSize={11} 
-                      color="$color10" 
+                    <Text
+                      fontSize={11}
+                      color="$color10"
                       text="center"
                       fontFamily="$body" fontWeight="500"
                     >
@@ -485,25 +474,22 @@ export default function AthleteDashboard() {
                 </Card>
 
                 {/* Exercises Tried */}
-                <Card 
-                  flex={1} 
-                  minWidth={100} 
-                  p="$4" 
-                  bg="$surface" 
+                <Card
+                  flex={1}
+                  minWidth={100}
+                  p="$4"
+                  bg="$surface"
                   rounded="$4"
                   borderWidth={1}
                   borderColor="$borderColor"
                 >
-                  <YStack items="center" gap="$2">
-                    <YStack bg="$catPowerLight" p="$2" rounded="$10">
-                      <TrendingUp size={20} color="$catPower" />
-                    </YStack>
-                    <StatNumber color="$catPower">
+                  <YStack items="center" gap="$1">
+                    <StatNumber color="$primary">
                       {progress.uniqueExercisesPerformed}
                     </StatNumber>
-                    <Text 
-                      fontSize={11} 
-                      color="$color10" 
+                    <Text
+                      fontSize={11}
+                      color="$color10"
                       text="center"
                       fontFamily="$body" fontWeight="500"
                     >
@@ -515,38 +501,6 @@ export default function AthleteDashboard() {
             </YStack>
           )}
 
-          {/* Phase Info Card */}
-          <Card 
-            p="$4" 
-            bg="$surface" 
-            rounded="$4"
-            borderWidth={1}
-            borderColor="$borderColor"
-          >
-            <YStack gap="$2">
-              <SectionLabel>CURRENT PHASE</SectionLabel>
-              <Text 
-                fontSize={20} 
-                fontFamily="$body" fontWeight="700"
-                color="$color12"
-              >
-                {phaseName}
-              </Text>
-              <Text 
-                fontSize={14} 
-                color="$color10"
-                fontFamily="$body"
-                lineHeight={20}
-              >
-                {programState.phase === 'GPP' && 
-                  'Building your foundation with general fitness, movement quality, and work capacity.'}
-                {programState.phase === 'SPP' && 
-                  'Developing sport-specific strength and power that transfers to your sport.'}
-                {programState.phase === 'SSP' && 
-                  'Final preparation phase - maintaining fitness while peaking for competition.'}
-              </Text>
-            </YStack>
-          </Card>
         </YStack>
       </ScrollView>
     </YStack>
