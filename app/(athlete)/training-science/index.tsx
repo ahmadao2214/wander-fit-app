@@ -2,7 +2,7 @@ import { YStack, XStack, Text, Card, ScrollView, styled, Spinner } from 'tamagui
 import { useQuery } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { useAuth } from '../../../hooks/useAuth'
-import {
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
   Layers,
   Target,
   Dumbbell,
