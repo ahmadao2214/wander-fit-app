@@ -122,6 +122,8 @@ export default function TrainingSciencePage() {
     )
   }
 
+  const insets = useSafeAreaInsets()
+  
   return (
     <ScrollView
       flex={1}
@@ -132,7 +134,8 @@ export default function TrainingSciencePage() {
       <YStack
         gap="$4"
         px="$4"
-        py="$4"
+        pt={insets.top + 16}
+        pb={insets.bottom + 16}
         maxW={800}
         width="100%"
         self="center"
