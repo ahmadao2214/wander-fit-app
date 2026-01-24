@@ -1,5 +1,6 @@
-import { Stack } from 'expo-router'
-import { useColorScheme, PlatformColor } from 'react-native'
+import { Stack, useRouter } from 'expo-router'
+import { useColorScheme, Pressable } from 'react-native'
+import { ChevronLeft } from '@tamagui/lucide-icons'
 
 /**
  * Training Science Stack Layout
@@ -10,6 +11,7 @@ import { useColorScheme, PlatformColor } from 'react-native'
 export default function TrainingScienceLayout() {
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
+  const router = useRouter()
 
   return (
     <Stack
@@ -22,7 +24,6 @@ export default function TrainingScienceLayout() {
           fontFamily: 'BebasNeue',
           fontSize: 18,
         },
-        headerBackButtonDisplayMode: 'minimal',
         headerShadowVisible: true,
       }}
     >
@@ -30,6 +31,11 @@ export default function TrainingScienceLayout() {
         name="index"
         options={{
           title: 'TRAINING SCIENCE',
+          headerLeft: () => (
+            <Pressable onPress={() => router.back()} hitSlop={8}>
+              <ChevronLeft size={28} color={isDark ? '#F8FAFC' : '#0F172A'} />
+            </Pressable>
+          ),
         }}
       />
     </Stack>
