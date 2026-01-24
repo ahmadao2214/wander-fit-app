@@ -10,8 +10,6 @@ const config = getDefaultConfig(__dirname, {
   isCSSEnabled: true,
 })
 
-config.resolver.sourceExts.push('mjs')
-
 module.exports = withTamagui(config, {
   components: ['tamagui'],
   config: './tamagui.config.ts',

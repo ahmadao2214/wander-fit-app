@@ -1,0 +1,8 @@
+{
+  "enabledPlugins": {
+    "upgrading-expo@expo-plugins": true,
+    "expo-app-design@expo-plugins": true,
+    "expo-deployment@expo-plugins": true,
+    "code-review@claude-plugins-official": true
+  }
+}
