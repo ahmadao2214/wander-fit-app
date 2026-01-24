@@ -6,6 +6,15 @@ import {
   scaleRepsOrDuration,
   isBodyweightExercise,
   type Intensity,
+  // Category-specific intensity imports
+  type CategoryId,
+  type AgeGroup,
+  type Phase,
+  getCategoryExerciseParameters,
+  getExerciseFocus,
+  getExperienceBucket,
+  getBodyweightVariant,
+  formatTempo,
 } from "./intensityScaling";
 
 /**
@@ -164,11 +173,11 @@ export const getSessionForTemplate = query({
 
 /**
  * Get a specific session by ID with full details
- * 
- * INTENSITY SCALING:
- * If the session has a targetIntensity, this query applies intensity scaling
- * to all exercises. This ensures the execution screen shows the same scaled
- * values that were selected on the workout summary screen.
+ *
+ * INTENSITY SCALING (v2 - Category-Specific):
+ * If the session has a scalingSnapshot, uses the category-specific intensity
+ * system to calculate exercise parameters. Falls back to targetIntensity
+ * (the old Low/Moderate/High system) for backward compatibility.
  */
 export const getById = query({
   args: { sessionId: v.id("gpp_workout_sessions") },
@@ -206,7 +215,99 @@ export const getById = query({
       }
     }
 
-    // Apply intensity scaling if targetIntensity is set
+    // Check if we have the new scaling snapshot (category-specific system)
+    if (session.scalingSnapshot) {
+      // Use category-specific intensity system
+      const { categoryId, phase, ageGroup, yearsOfExperience } = session.scalingSnapshot;
+      const experienceBucket = getExperienceBucket(yearsOfExperience);
+
+      const scaledExercises = template.exercises.map((prescription) => {
+        const exercise = exerciseMap.get(prescription.exerciseId.toString());
+        const oneRepMax = userMaxMap[prescription.exerciseId.toString()];
+
+        // Detect exercise focus
+        const exerciseFocus = getExerciseFocus(exercise?.tags, exercise?.equipment);
+
+        // Get category-specific parameters
+        const params = getCategoryExerciseParameters(
+          categoryId as CategoryId,
+          phase as Phase,
+          ageGroup as AgeGroup,
+          yearsOfExperience,
+          exerciseFocus
+        );
+
+        // Calculate average 1RM% for weight recommendation
+        const avgPercent = (params.oneRepMaxPercent.min + params.oneRepMaxPercent.max) / 2;
+
+        if (exerciseFocus === "bodyweight") {
+          // Bodyweight exercise - get variant based on phase + experience
+          const variantResult = getBodyweightVariant(
+            exercise?.slug || "",
+            phase as Phase,
+            experienceBucket,
+            exercise?.progressions
+          );
+
+          return {
+            ...prescription,
+            exercise,
+            // Scaled values from category-specific system
+            scaledSets: params.sets,
+            scaledReps: String(params.reps),
+            scaledRestSeconds: params.restSeconds,
+            // Intensity metadata
+            isBodyweight: true,
+            isSubstituted: variantResult.isSubstituted,
+            substitutedExerciseSlug: variantResult.isSubstituted ? variantResult.slug : undefined,
+            rpeTarget: params.rpe,
+            tempo: formatTempo(params.tempo),
+            // No weight for bodyweight exercises
+            targetWeight: undefined,
+            percentOf1RM: undefined,
+            hasOneRepMax: false,
+          };
+        } else {
+          // Weighted exercise (strength or power)
+          return {
+            ...prescription,
+            exercise,
+            // Scaled values from category-specific system
+            scaledSets: params.sets,
+            scaledReps: String(params.reps),
+            scaledRestSeconds: params.restSeconds,
+            // Weight calculation (if 1RM known)
+            targetWeight: oneRepMax ? Math.round(oneRepMax * avgPercent) : undefined,
+            percentOf1RM: Math.round(avgPercent * 100),
+            // Intensity metadata
+            isBodyweight: false,
+            isSubstituted: false,
+            rpeTarget: params.rpe,
+            tempo: formatTempo(params.tempo),
+            hasOneRepMax: !!oneRepMax,
+            exerciseFocus,
+          };
+        }
+      });
+
+      return {
+        ...session,
+        template: {
+          ...template,
+          exercises: scaledExercises,
+          // Category-specific context
+          scalingContext: {
+            categoryId,
+            phase,
+            ageGroup,
+            yearsOfExperience,
+            experienceBucket,
+          },
+        },
+      };
+    }
+
+    // FALLBACK: Use old intensity system (Low/Moderate/High) for backward compatibility
     const intensity = (session.targetIntensity || "Moderate") as Intensity;
     const config = INTENSITY_CONFIG[intensity];
     const bwConfig = BODYWEIGHT_INTENSITY_CONFIG[intensity];
@@ -224,7 +325,7 @@ export const getById = query({
       if (isBW) {
         // Bodyweight exercise scaling
         const scaledReps = scaleRepsOrDuration(prescription.reps, bwConfig.repsMultiplier);
-        
+
         // Determine variant based on intensity
         let exerciseSlug = exercise?.slug || "";
         let isSubstituted = false;
@@ -522,6 +623,21 @@ export const startSession = mutation({
       throw new Error("Workout template not found");
     }
 
+    // Get the latest intake for years of experience (for scaling snapshot)
+    const intake = await ctx.db
+      .query("intake_responses")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .order("desc")
+      .first();
+
+    // Create scaling snapshot to capture athlete profile at workout time
+    const scalingSnapshot = {
+      categoryId: userProgram.gppCategoryId,
+      phase: template.phase as "GPP" | "SPP" | "SSP",
+      ageGroup: (userProgram.ageGroup || "18+") as "10-13" | "14-17" | "18+",
+      yearsOfExperience: intake?.yearsOfExperience ?? 0,
+    };
+
     // Initialize exercise tracking structure
     const initialExercises = template.exercises.map((ex) => ({
       exerciseId: ex.exerciseId,
@@ -552,6 +668,8 @@ export const startSession = mutation({
       exerciseOrder: args.exerciseOrder,
       // Target intensity for this session (defaults to Moderate if not specified)
       targetIntensity: args.targetIntensity,
+      // Category-specific scaling snapshot - captures athlete profile at workout time
+      scalingSnapshot,
       templateSnapshot: {
         name: template.name,
         phase: template.phase,

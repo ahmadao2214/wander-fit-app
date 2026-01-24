@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { View, StyleSheet, FlatList } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
@@ -82,25 +82,12 @@ type ExerciseItem = {
  */
 export default function WorkoutDetailScreen() {
   const router = useRouter()
-  const { id, intensity: urlIntensity } = useLocalSearchParams<{ id: string; intensity?: string }>()
+  const { id } = useLocalSearchParams<{ id: string }>()
   const { user } = useAuth()
   const insets = useSafeAreaInsets()
 
   // All hooks must be called before any early returns
   const [isStarting, setIsStarting] = useState(false)
-  
-  // Intensity selection for workout scaling (persisted in URL)
-  const validIntensities = ["Low", "Moderate", "High"] as const
-  const initialIntensity = validIntensities.includes(urlIntensity as any) 
-    ? (urlIntensity as "Low" | "Moderate" | "High") 
-    : "Moderate"
-  const [selectedIntensity, setSelectedIntensityState] = useState<"Low" | "Moderate" | "High">(initialIntensity)
-  
-  // Update URL when intensity changes (persists on refresh)
-  const setSelectedIntensity = useCallback((intensity: "Low" | "Moderate" | "High") => {
-    setSelectedIntensityState(intensity)
-    router.setParams({ intensity })
-  }, [router])
 
   // Safe back navigation - avoids getting stuck in execution screens
   const handleBack = useCallback(() => {
@@ -118,22 +105,11 @@ export default function WorkoutDetailScreen() {
   // View mode for completed workouts: "review" shows performance, "preview" shows exercise list
   const [viewMode, setViewMode] = useState<"review" | "preview">("review")
 
-  // Get the template with intensity scaling applied
-  const templateQuery = useQuery(
-    api.programTemplates.getWorkoutWithIntensity,
-    id ? { templateId: id as Id<"program_templates">, intensity: selectedIntensity } : "skip"
+  // Get the template with category-specific scaling applied (based on user profile)
+  const template = useQuery(
+    api.programTemplates.getWorkoutWithScaling,
+    id ? { templateId: id as Id<"program_templates"> } : "skip"
   )
-  
-  // Keep previous template data while loading new intensity to prevent flicker
-  const lastTemplateRef = useRef(templateQuery)
-  useEffect(() => {
-    if (templateQuery !== undefined) {
-      lastTemplateRef.current = templateQuery
-    }
-  }, [templateQuery])
-  
-  // Use the last valid template (prevents flicker during intensity changes)
-  const template = templateQuery === undefined ? lastTemplateRef.current : templateQuery
 
   // Get user's session for this template (to get custom exercise order)
   const session = useQuery(
@@ -214,11 +190,10 @@ export default function WorkoutDetailScreen() {
         await setTodayFocus({ templateId: template._id })
       }
 
-      // Pass custom exercise order and intensity
+      // Pass custom exercise order (intensity is now auto-calculated from user profile)
       const result = await startSession({
         templateId: template._id,
         exerciseOrder: hasCustomOrder ? orderIndices : undefined,
-        targetIntensity: selectedIntensity,
       })
 
       // Navigate to execution screen with the session ID
@@ -232,15 +207,11 @@ export default function WorkoutDetailScreen() {
     } finally {
       setIsStarting(false)
     }
-  }, [isStarting, isCompleted, template, startSession, router, hasCustomOrder, orderIndices, todayWorkout, setTodayFocus, selectedIntensity])
+  }, [isStarting, isCompleted, template, startSession, router, hasCustomOrder, orderIndices, todayWorkout, setTodayFocus])
 
-  // Map selected intensity to color token
-  const intensityColorMap = {
-    Low: "$intensityLow6",
-    Moderate: "$intensityMed6",
-    High: "$intensityHigh6",
-  } as const
-  const intensityColor = intensityColorMap[selectedIntensity]
+  // Intensity color for personalized workouts (based on RPE from user profile)
+  // Uses moderate intensity color as the default for category-based scaling
+  const intensityColor = "$intensityMed6" as const
 
   // Render item for DraggableFlatList
   const renderExerciseItem = useCallback(
@@ -460,97 +431,15 @@ export default function WorkoutDetailScreen() {
           </Card>
         )}
 
-        {/* Intensity Selector */}
-        {isPhaseUnlocked && !isCompleted && (
-          <Card p="$3" bg="$color2" borderColor="$borderColor">
-            <YStack gap="$3">
-              <Text fontSize="$3" fontWeight="600" color="$color12">
-                Workout Intensity
+        {/* Personalized Workout Info */}
+        {isPhaseUnlocked && !isCompleted && template?.scalingInfo && (
+          <Card p="$3" bg="$green2" borderColor="$green6">
+            <XStack items="center" gap="$2">
+              <CheckCircle size={18} color="$green10" />
+              <Text fontSize="$3" color="$green11">
+                Personalized for your {template.scalingInfo.ageGroup} age group and {template.scalingInfo.categoryName} training
               </Text>
-              <XStack gap="$2">
-                <Card
-                  flex={1}
-                  p="$3"
-                  bg={selectedIntensity === "Low" ? "$intensityLow6" : "$color4"}
-                  borderColor={selectedIntensity === "Low" ? "$intensityLow7" : "$borderColor"}
-                  borderWidth={selectedIntensity === "Low" ? 2 : 1}
-                  pressStyle={{ scale: 0.98 }}
-                  onPress={() => setSelectedIntensity("Low")}
-                  cursor="pointer"
-                >
-                  <YStack items="center" gap="$1">
-                    <Text
-                      fontSize="$4"
-                      fontWeight={selectedIntensity === "Low" ? "700" : "500"}
-                      color={selectedIntensity === "Low" ? "white" : "$color11"}
-                    >
-                      Low
-                    </Text>
-                    <Text
-                      fontSize="$1"
-                      color={selectedIntensity === "Low" ? "white" : "$color10"}
-                      opacity={selectedIntensity === "Low" ? 0.9 : 0.7}
-                    >
-                      RPE 5-6
-                    </Text>
-                  </YStack>
-                </Card>
-                <Card
-                  flex={1}
-                  p="$3"
-                  bg={selectedIntensity === "Moderate" ? "$intensityMed6" : "$color4"}
-                  borderColor={selectedIntensity === "Moderate" ? "$intensityMed7" : "$borderColor"}
-                  borderWidth={selectedIntensity === "Moderate" ? 2 : 1}
-                  pressStyle={{ scale: 0.98 }}
-                  onPress={() => setSelectedIntensity("Moderate")}
-                  cursor="pointer"
-                >
-                  <YStack items="center" gap="$1">
-                    <Text
-                      fontSize="$4"
-                      fontWeight={selectedIntensity === "Moderate" ? "700" : "500"}
-                      color={selectedIntensity === "Moderate" ? "white" : "$color11"}
-                    >
-                      Moderate
-                    </Text>
-                    <Text
-                      fontSize="$1"
-                      color={selectedIntensity === "Moderate" ? "white" : "$color10"}
-                      opacity={selectedIntensity === "Moderate" ? 0.9 : 0.7}
-                    >
-                      RPE 6-7
-                    </Text>
-                  </YStack>
-                </Card>
-                <Card
-                  flex={1}
-                  p="$3"
-                  bg={selectedIntensity === "High" ? "$intensityHigh6" : "$color4"}
-                  borderColor={selectedIntensity === "High" ? "$intensityHigh7" : "$borderColor"}
-                  borderWidth={selectedIntensity === "High" ? 2 : 1}
-                  pressStyle={{ scale: 0.98 }}
-                  onPress={() => setSelectedIntensity("High")}
-                  cursor="pointer"
-                >
-                  <YStack items="center" gap="$1">
-                    <Text
-                      fontSize="$4"
-                      fontWeight={selectedIntensity === "High" ? "700" : "500"}
-                      color={selectedIntensity === "High" ? "white" : "$color11"}
-                    >
-                      High
-                    </Text>
-                    <Text
-                      fontSize="$1"
-                      color={selectedIntensity === "High" ? "white" : "$color10"}
-                      opacity={selectedIntensity === "High" ? 0.9 : 0.7}
-                    >
-                      RPE 8-9
-                    </Text>
-                  </YStack>
-                </Card>
-              </XStack>
-            </YStack>
+            </XStack>
           </Card>
         )}
 
@@ -565,7 +454,7 @@ export default function WorkoutDetailScreen() {
         </XStack>
       </YStack>
     )
-  }, [template, isPhaseUnlocked, isCompleted, canReorder, selectedIntensity, setSelectedIntensity, lastCompletedSession, viewMode])
+  }, [template, isPhaseUnlocked, isCompleted, canReorder, lastCompletedSession, viewMode])
 
   // Footer component with bottom padding
   const ListFooter = useMemo(() => {
