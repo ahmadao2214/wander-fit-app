@@ -387,7 +387,7 @@ export const EXERCISES = [
     instructions:
       "Hold barbell at hip level. Push hips back while maintaining slight knee bend. Lower until you feel hamstring stretch. Drive hips forward to return.",
     progressions: {
-      harder: "kickstand_rdl",
+      harder: "trap_bar_deadlift",
     },
   },
   {
@@ -407,6 +407,10 @@ export const EXERCISES = [
     tags: ["lower_body", "hinge", "bilateral", "strength", "compound", "power"],
     equipment: ["trap_bar"],
     difficulty: "intermediate" as const,
+    progressions: {
+      easier: "romanian_deadlift",
+      harder: "conventional_deadlift",
+    },
   },
   {
     name: "Hip Thrust",
@@ -1042,9 +1046,6 @@ export const EXERCISES = [
     tags: ["core", "isometric", "anti_lateral_flexion", "frontal"],
     equipment: ["bodyweight"],
     difficulty: "beginner" as const,
-    progressions: {
-      easier: "side_plank",
-    },
   },
   {
     name: "Mountain Climbers",
@@ -1099,6 +1100,7 @@ export const EXERCISES = [
     difficulty: "intermediate" as const,
     progressions: {
       easier: "push_up",
+      harder: "plyo_push_up",
     },
   },
   {
@@ -1223,7 +1225,7 @@ export const EXERCISES = [
     instructions:
       "Perform a push-up but explode up so hands leave the ground. Land softly and immediately go into the next rep. Can clap hands at the top.",
     progressions: {
-      easier: "push_up",
+      easier: "explosive_pushup",
     },
   },
 
@@ -1595,6 +1597,9 @@ export const EXERCISES = [
     equipment: ["barbell"],
     difficulty: "intermediate" as const,
     instructions: "Stand with feet hip-width, bar over mid-foot. Hinge and grip bar, then drive through floor to stand. The foundational hinge pattern.",
+    progressions: {
+      easier: "trap_bar_deadlift",
+    },
   },
   {
     name: "Kickstand RDL",
@@ -1604,7 +1609,6 @@ export const EXERCISES = [
     difficulty: "beginner" as const,
     instructions: "Stagger stance with back foot on toe for balance only. Hinge on front leg. Transition between bilateral and single-leg RDL.",
     progressions: {
-      easier: "romanian_deadlift",
       harder: "single_leg_rdl",
     },
   },

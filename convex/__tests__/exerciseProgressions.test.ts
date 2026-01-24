@@ -214,10 +214,25 @@ describe("Exercise Progression Chains", () => {
       expect(exercise?.progressions?.harder).toBe("hip_thrust");
     });
 
-    it("kickstand_rdl should have romanian_deadlift as easier and single_leg_rdl as harder", () => {
+    it("romanian_deadlift should have trap_bar_deadlift as harder (bilateral chain)", () => {
+      const exercise = EXERCISES.find(e => e.slug === "romanian_deadlift");
+      expect(exercise?.progressions?.harder).toBe("trap_bar_deadlift");
+    });
+
+    it("trap_bar_deadlift should have romanian_deadlift as easier and conventional_deadlift as harder", () => {
+      const exercise = EXERCISES.find(e => e.slug === "trap_bar_deadlift");
+      expect(exercise?.progressions?.easier).toBe("romanian_deadlift");
+      expect(exercise?.progressions?.harder).toBe("conventional_deadlift");
+    });
+
+    it("conventional_deadlift should have trap_bar_deadlift as easier", () => {
+      const exercise = EXERCISES.find(e => e.slug === "conventional_deadlift");
+      expect(exercise?.progressions?.easier).toBe("trap_bar_deadlift");
+    });
+
+    it("kickstand_rdl should have single_leg_rdl as harder (unilateral chain)", () => {
       const exercise = EXERCISES.find(e => e.slug === "kickstand_rdl");
       expect(exercise).toBeDefined();
-      expect(exercise?.progressions?.easier).toBe("romanian_deadlift");
       expect(exercise?.progressions?.harder).toBe("single_leg_rdl");
     });
 
@@ -231,11 +246,6 @@ describe("Exercise Progression Chains", () => {
       const exercise = EXERCISES.find(e => e.slug === "single_leg_deadlift");
       expect(exercise).toBeDefined();
       expect(exercise?.progressions?.easier).toBe("single_leg_rdl");
-    });
-
-    it("romanian_deadlift should have kickstand_rdl as harder", () => {
-      const exercise = EXERCISES.find(e => e.slug === "romanian_deadlift");
-      expect(exercise?.progressions?.harder).toBe("kickstand_rdl");
     });
   });
 

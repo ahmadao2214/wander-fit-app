@@ -122,8 +122,10 @@ describe("Progression Chain Completeness", () => {
       ["goblet_carry", "farmers_carry", "trap_bar_carry"],
       // Lunge chain
       ["reverse_lunge", "walking_lunge", "deficit_reverse_lunge"],
-      // RDL chain
-      ["romanian_deadlift", "kickstand_rdl", "single_leg_rdl", "single_leg_deadlift"],
+      // Bilateral hinge chain
+      ["romanian_deadlift", "trap_bar_deadlift", "conventional_deadlift"],
+      // Unilateral hinge chain
+      ["kickstand_rdl", "single_leg_rdl", "single_leg_deadlift"],
       // Inverted row chain
       ["elevated_inverted_row", "inverted_row", "feet_elevated_inverted_row"],
       // Hanging leg raise chain
