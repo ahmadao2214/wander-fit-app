@@ -238,6 +238,9 @@ export const TAGS_GLOSSARY = {
     "balance",
     "coordination",
     "shoulder_health",
+    "deceleration_mechanics",  // Landing/braking emphasis
+    "eccentric",               // Lowering phase focus
+    "grip_endurance",          // Grip strength emphasis
   ],
   
   // Equipment Context
@@ -321,6 +324,9 @@ export const EXERCISES = [
     difficulty: "beginner" as const,
     instructions:
       "Hold a dumbbell or kettlebell at chest height with both hands. Squat down keeping your torso upright, elbows tracking inside your knees. Drive through your whole foot to stand.",
+    progressions: {
+      harder: "back_squat",
+    },
   },
   {
     name: "Back Squat",
@@ -330,6 +336,10 @@ export const EXERCISES = [
     difficulty: "intermediate" as const,
     instructions:
       "Position barbell on upper back. Unrack and step back. Squat down until hip crease passes below knee level. Drive up maintaining neutral spine.",
+    progressions: {
+      easier: "goblet_squat",
+      harder: "front_squat",
+    },
   },
   {
     name: "Front Squat",
@@ -337,6 +347,9 @@ export const EXERCISES = [
     tags: ["lower_body", "squat", "bilateral", "strength", "quad_dominant"],
     equipment: ["barbell", "rack"],
     difficulty: "advanced" as const,
+    progressions: {
+      easier: "back_squat",
+    },
   },
   {
     name: "Bulgarian Split Squat",
@@ -346,6 +359,10 @@ export const EXERCISES = [
     difficulty: "intermediate" as const,
     instructions:
       "Place rear foot on a bench behind you. Hold dumbbells at sides. Lower until front thigh is parallel to ground. Drive through front foot to stand.",
+    progressions: {
+      easier: "single_leg_squat_box",
+      harder: "assisted_pistol_squat",
+    },
   },
   {
     name: "Single Leg Squat to Box",
@@ -353,6 +370,9 @@ export const EXERCISES = [
     tags: ["lower_body", "squat", "unilateral", "strength", "single_leg", "balance"],
     equipment: ["box", "bench"],
     difficulty: "intermediate" as const,
+    progressions: {
+      harder: "bulgarian_split_squat",
+    },
   },
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -366,6 +386,9 @@ export const EXERCISES = [
     difficulty: "intermediate" as const,
     instructions:
       "Hold barbell at hip level. Push hips back while maintaining slight knee bend. Lower until you feel hamstring stretch. Drive hips forward to return.",
+    progressions: {
+      harder: "kickstand_rdl",
+    },
   },
   {
     name: "Single Leg RDL",
@@ -373,6 +396,10 @@ export const EXERCISES = [
     tags: ["lower_body", "hinge", "unilateral", "strength", "balance", "hamstring"],
     equipment: ["dumbbell", "kettlebell"],
     difficulty: "intermediate" as const,
+    progressions: {
+      easier: "kickstand_rdl",
+      harder: "single_leg_deadlift",
+    },
   },
   {
     name: "Trap Bar Deadlift",
@@ -387,6 +414,10 @@ export const EXERCISES = [
     tags: ["lower_body", "hinge", "bilateral", "strength", "glute"],
     equipment: ["barbell", "bench"],
     difficulty: "beginner" as const,
+    progressions: {
+      easier: "glute_bridge",
+      harder: "single_leg_hip_thrust",
+    },
   },
   {
     name: "Kettlebell Swing",
@@ -431,6 +462,7 @@ export const EXERCISES = [
     instructions: "Perform a squat, then explode upward into a jump. Land softly and repeat.",
     progressions: {
       easier: "bodyweight_squat",
+      harder: "box_jump",
     },
   },
   {
@@ -451,6 +483,7 @@ export const EXERCISES = [
     difficulty: "beginner" as const,
     progressions: {
       easier: "reverse_lunge",
+      harder: "deficit_reverse_lunge",
     },
   },
   {
@@ -459,6 +492,10 @@ export const EXERCISES = [
     tags: ["lower_body", "lunge", "unilateral", "mobility", "frontal"],
     equipment: ["dumbbell", "bodyweight"],
     difficulty: "beginner" as const,
+    progressions: {
+      easier: "lateral_step_up",
+      harder: "cossack_squat",
+    },
   },
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -472,6 +509,7 @@ export const EXERCISES = [
     difficulty: "beginner" as const,
     instructions: "Place hands on an elevated surface (bench, box). Perform push-up with body at an incline. Easier than standard push-up.",
     progressions: {
+      easier: "wall_push_up",
       harder: "push_up",
     },
   },
@@ -532,6 +570,9 @@ export const EXERCISES = [
     tags: ["upper_body", "push", "vertical", "strength", "shoulder"],
     equipment: ["barbell", "dumbbell"],
     difficulty: "intermediate" as const,
+    progressions: {
+      easier: "db_shoulder_press",
+    },
   },
   {
     name: "Dumbbell Shoulder Press",
@@ -539,6 +580,10 @@ export const EXERCISES = [
     tags: ["upper_body", "push", "vertical", "strength", "shoulder"],
     equipment: ["dumbbell"],
     difficulty: "beginner" as const,
+    progressions: {
+      easier: "pike_pushup",
+      harder: "overhead_press",
+    },
   },
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -552,6 +597,7 @@ export const EXERCISES = [
     difficulty: "beginner" as const,
     instructions: "Use a resistance band or assisted pull-up machine to help complete the movement. Easier than standard pull-up.",
     progressions: {
+      easier: "negative_pull_up",
       harder: "pull_up",
     },
   },
@@ -583,6 +629,10 @@ export const EXERCISES = [
     tags: ["upper_body", "pull", "horizontal", "strength", "back", "bodyweight"],
     equipment: ["barbell", "rack", "rings"],
     difficulty: "beginner" as const,
+    progressions: {
+      easier: "elevated_inverted_row",
+      harder: "feet_elevated_inverted_row",
+    },
   },
   {
     name: "Dumbbell Row",
@@ -648,6 +698,9 @@ export const EXERCISES = [
     tags: ["core", "anti_extension", "stability", "coordination", "warmup"],
     equipment: ["bodyweight"],
     difficulty: "beginner" as const,
+    progressions: {
+      harder: "pallof_press",
+    },
   },
   {
     name: "Pallof Press",
@@ -655,6 +708,10 @@ export const EXERCISES = [
     tags: ["core", "anti_rotation", "stability"],
     equipment: ["cable_machine", "band"],
     difficulty: "beginner" as const,
+    progressions: {
+      easier: "dead_bug",
+      harder: "pallof_press_march",
+    },
   },
   {
     name: "Bird Dog",
@@ -662,6 +719,9 @@ export const EXERCISES = [
     tags: ["core", "anti_rotation", "stability", "coordination", "warmup"],
     equipment: ["bodyweight"],
     difficulty: "beginner" as const,
+    progressions: {
+      harder: "bird_dog_band",
+    },
   },
   {
     name: "Cable Woodchop",
@@ -669,6 +729,10 @@ export const EXERCISES = [
     tags: ["core", "rotation", "power", "functional"],
     equipment: ["cable_machine"],
     difficulty: "intermediate" as const,
+    progressions: {
+      easier: "band_woodchop",
+      harder: "low_high_woodchop",
+    },
   },
   {
     name: "Hanging Leg Raise",
@@ -676,6 +740,10 @@ export const EXERCISES = [
     tags: ["core", "anti_extension", "strength", "hip_flexor"],
     equipment: ["pull_up_bar"],
     difficulty: "intermediate" as const,
+    progressions: {
+      easier: "lying_leg_raise",
+      harder: "toes_to_bar",
+    },
   },
   {
     name: "Side Plank",
@@ -683,6 +751,10 @@ export const EXERCISES = [
     tags: ["core", "anti_lateral_flexion", "stability", "isometric"],
     equipment: ["bodyweight"],
     difficulty: "beginner" as const,
+    progressions: {
+      easier: "knee_side_plank",
+      harder: "side_plank_hip_dip",
+    },
   },
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -694,6 +766,10 @@ export const EXERCISES = [
     tags: ["lower_body", "plyometric", "power", "explosive"],
     equipment: ["plyo_box"],
     difficulty: "intermediate" as const,
+    progressions: {
+      easier: "jump_squat",
+      harder: "depth_jump",
+    },
   },
   {
     name: "Broad Jump",
@@ -701,6 +777,10 @@ export const EXERCISES = [
     tags: ["lower_body", "plyometric", "power", "horizontal", "explosive"],
     equipment: ["bodyweight"],
     difficulty: "beginner" as const,
+    progressions: {
+      easier: "pogo_hops",
+      harder: "consecutive_broad_jumps",
+    },
   },
   {
     name: "Depth Jump",
@@ -708,6 +788,10 @@ export const EXERCISES = [
     tags: ["lower_body", "plyometric", "power", "reactive"],
     equipment: ["plyo_box"],
     difficulty: "advanced" as const,
+    progressions: {
+      easier: "box_jump",
+      harder: "drop_jump",
+    },
   },
   {
     name: "Skater Jump",
@@ -715,6 +799,10 @@ export const EXERCISES = [
     tags: ["lower_body", "plyometric", "power", "frontal", "single_leg"],
     equipment: ["bodyweight"],
     difficulty: "beginner" as const,
+    progressions: {
+      easier: "lateral_lunge",
+      harder: "skater_hops",
+    },
   },
   {
     name: "Medicine Ball Slam",
@@ -729,6 +817,10 @@ export const EXERCISES = [
     tags: ["core", "power", "rotation", "explosive"],
     equipment: ["medicine_ball", "wall"],
     difficulty: "intermediate" as const,
+    progressions: {
+      easier: "kneeling_med_ball_rotation",
+      harder: "rotational_med_ball_slam",
+    },
   },
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -806,7 +898,7 @@ export const EXERCISES = [
     equipment: ["bodyweight"],
     difficulty: "intermediate" as const,
     progressions: {
-      easier: "lateral_lunge",
+      easier: "skater_jump",
     },
   },
   {
@@ -910,6 +1002,7 @@ export const EXERCISES = [
     difficulty: "intermediate" as const,
     progressions: {
       easier: "push_up",
+      harder: "db_shoulder_press",
     },
   },
 
@@ -1054,6 +1147,9 @@ export const EXERCISES = [
     difficulty: "beginner" as const,
     instructions:
       "Lie on your back with knees bent and feet flat. Drive through heels to lift hips until body forms a straight line. Hold at top for 2 seconds, then lower with control.",
+    progressions: {
+      harder: "hip_thrust",
+    },
   },
   {
     name: "Bicycle Crunch",
@@ -1128,6 +1224,716 @@ export const EXERCISES = [
       "Perform a push-up but explode up so hands leave the ground. Land softly and immediately go into the next rep. Can clap hands at the top.",
     progressions: {
       easier: "push_up",
+    },
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // NEW EXERCISES - PHASE II EXPANSION
+  // Added for category-specific intensity programming
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CARRY EXERCISES (NEW MOVEMENT PATTERN)
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    name: "Goblet Carry",
+    slug: "goblet_carry",
+    tags: ["full_body", "carry", "core", "strength", "grip_endurance"],
+    equipment: ["dumbbell", "kettlebell"],
+    difficulty: "beginner" as const,
+    instructions: "Hold a dumbbell or kettlebell at chest height (goblet position). Walk with controlled steps, keeping torso upright and core engaged.",
+    progressions: {
+      harder: "farmers_carry",
+    },
+  },
+  {
+    name: "Farmer's Carry",
+    slug: "farmers_carry",
+    tags: ["full_body", "carry", "bilateral", "strength", "grip_endurance"],
+    equipment: ["dumbbell", "kettlebell"],
+    difficulty: "beginner" as const,
+    instructions: "Hold heavy weights at your sides. Walk with controlled steps, keeping shoulders back and core engaged. Maintain grip throughout.",
+    progressions: {
+      easier: "goblet_carry",
+      harder: "trap_bar_carry",
+    },
+  },
+  {
+    name: "Trap Bar Carry",
+    slug: "trap_bar_carry",
+    tags: ["full_body", "carry", "bilateral", "strength", "grip_endurance"],
+    equipment: ["trap_bar"],
+    difficulty: "intermediate" as const,
+    instructions: "Load trap bar heavily. Stand inside, grip handles, and walk with controlled steps. Allows for heavier loads than dumbbells.",
+    progressions: {
+      easier: "farmers_carry",
+    },
+  },
+  {
+    name: "Suitcase Carry",
+    slug: "suitcase_carry",
+    tags: ["full_body", "carry", "unilateral", "single_arm", "anti_lateral_flexion", "core"],
+    equipment: ["dumbbell", "kettlebell"],
+    difficulty: "beginner" as const,
+    instructions: "Hold a weight on one side only. Walk without leaning, keeping torso perfectly vertical. The offset load challenges anti-lateral flexion.",
+    progressions: {
+      harder: "single_arm_overhead_carry",
+    },
+  },
+  {
+    name: "Single Arm Overhead Carry",
+    slug: "single_arm_overhead_carry",
+    tags: ["full_body", "carry", "unilateral", "single_arm", "shoulder", "stability"],
+    equipment: ["dumbbell", "kettlebell"],
+    difficulty: "intermediate" as const,
+    instructions: "Press weight overhead and lock out arm. Walk with control, keeping weight directly over shoulder. Challenges shoulder stability.",
+    progressions: {
+      easier: "suitcase_carry",
+    },
+  },
+  {
+    name: "Waiter Carry",
+    slug: "waiter_carry",
+    tags: ["full_body", "carry", "unilateral", "single_arm", "balance", "shoulder"],
+    equipment: ["dumbbell", "kettlebell"],
+    difficulty: "intermediate" as const,
+    instructions: "Hold weight overhead with palm facing up (like a waiter's tray). Walk with control, maintaining balance throughout.",
+    progressions: {
+      harder: "double_overhead_carry",
+    },
+  },
+  {
+    name: "Double Overhead Carry",
+    slug: "double_overhead_carry",
+    tags: ["full_body", "carry", "bilateral", "shoulder", "stability", "core"],
+    equipment: ["dumbbell", "kettlebell"],
+    difficulty: "advanced" as const,
+    instructions: "Press two weights overhead. Walk with both arms locked out, maintaining stable shoulder position throughout.",
+    progressions: {
+      easier: "waiter_carry",
+    },
+  },
+  {
+    name: "Overhead Plate Carry",
+    slug: "overhead_plate_carry",
+    tags: ["full_body", "carry", "bilateral", "shoulder", "core", "stability"],
+    equipment: ["dumbbell"],
+    difficulty: "intermediate" as const,
+    instructions: "Hold weight plate overhead with both hands. Walk while keeping arms extended and core braced.",
+  },
+  {
+    name: "Front Rack Carry",
+    slug: "front_rack_carry",
+    tags: ["full_body", "carry", "bilateral", "core", "anti_extension"],
+    equipment: ["kettlebell", "barbell"],
+    difficulty: "intermediate" as const,
+    instructions: "Hold kettlebells in front rack position (resting on forearms at shoulders). Walk while maintaining upright posture against the forward load.",
+    progressions: {
+      harder: "zercher_carry",
+    },
+  },
+  {
+    name: "Zercher Carry",
+    slug: "zercher_carry",
+    tags: ["full_body", "carry", "bilateral", "core", "strength"],
+    equipment: ["barbell"],
+    difficulty: "advanced" as const,
+    instructions: "Cradle barbell in the crooks of your elbows. Walk with controlled steps, keeping torso upright against the challenging front load.",
+    progressions: {
+      easier: "front_rack_carry",
+    },
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // UNILATERAL PRESS EXERCISES (Greg's Feedback)
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    name: "Single Arm DB Floor Press",
+    slug: "sa_db_floor_press",
+    tags: ["upper_body", "push", "horizontal", "unilateral", "single_arm", "chest", "anti_rotation"],
+    equipment: ["dumbbell"],
+    difficulty: "beginner" as const,
+    instructions: "Lie on floor with one dumbbell. Press up while resisting rotation. Floor limits range of motion, making it easier on shoulders.",
+    progressions: {
+      harder: "sa_db_bench_press",
+    },
+  },
+  {
+    name: "Single Arm DB Bench Press",
+    slug: "sa_db_bench_press",
+    tags: ["upper_body", "push", "horizontal", "unilateral", "single_arm", "chest", "anti_rotation"],
+    equipment: ["dumbbell", "bench"],
+    difficulty: "intermediate" as const,
+    instructions: "Lie on bench with one dumbbell. Press up while keeping hips level and resisting rotation. Full range of motion challenge.",
+    progressions: {
+      easier: "sa_db_floor_press",
+      harder: "sa_rotational_bench_press",
+    },
+  },
+  {
+    name: "Single Arm Rotational Bench Press",
+    slug: "sa_rotational_bench_press",
+    tags: ["upper_body", "push", "horizontal", "unilateral", "single_arm", "chest", "rotation", "power"],
+    equipment: ["dumbbell", "bench"],
+    difficulty: "advanced" as const,
+    instructions: "Single arm bench press with intentional rotation through the pressing motion. Incorporates rotational power for throwing athletes.",
+    progressions: {
+      easier: "sa_db_bench_press",
+    },
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // UPPER BODY PUSH - VERTICAL
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    name: "Wall Push-Up",
+    slug: "wall_push_up",
+    tags: ["upper_body", "push", "bodyweight", "strength", "chest"],
+    equipment: ["bodyweight", "wall"],
+    difficulty: "beginner" as const,
+    instructions: "Stand facing wall, place hands on wall at shoulder height. Perform push-up movement against wall. Easiest push variation.",
+    progressions: {
+      harder: "incline_push_up",
+    },
+  },
+  {
+    name: "Wall Handstand Push-Up",
+    slug: "wall_handstand_push_up",
+    tags: ["upper_body", "push", "vertical", "bodyweight", "shoulder", "strength"],
+    equipment: ["bodyweight", "wall"],
+    difficulty: "advanced" as const,
+    instructions: "Kick up into handstand against wall. Lower head toward floor and press back up. Advanced vertical pressing movement.",
+    progressions: {
+      easier: "pike_pushup",
+    },
+  },
+  {
+    name: "Half-Kneeling Press",
+    slug: "half_kneeling_press",
+    tags: ["upper_body", "push", "vertical", "unilateral", "shoulder", "stability"],
+    equipment: ["dumbbell", "kettlebell"],
+    difficulty: "beginner" as const,
+    instructions: "From half-kneeling position (one knee down), press weight overhead. The position challenges hip stability while pressing.",
+    progressions: {
+      harder: "db_shoulder_press",
+    },
+  },
+  {
+    name: "Landmine Press",
+    slug: "landmine_press",
+    tags: ["upper_body", "push", "vertical", "shoulder", "strength"],
+    equipment: ["barbell"],
+    difficulty: "intermediate" as const,
+    instructions: "Stand facing landmine attachment. Press barbell at an angle from shoulder. Angled pressing is shoulder-friendly.",
+  },
+  {
+    name: "Push Press",
+    slug: "push_press",
+    tags: ["upper_body", "push", "vertical", "power", "explosive", "shoulder", "full_body"],
+    equipment: ["barbell", "dumbbell"],
+    difficulty: "intermediate" as const,
+    instructions: "From front rack, dip knees slightly then drive up explosively while pressing weight overhead. Uses leg drive for heavier loads.",
+    progressions: {
+      easier: "overhead_press",
+    },
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // UPPER BODY PUSH - HORIZONTAL
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    name: "Close-Grip Bench Press",
+    slug: "close_grip_bench_press",
+    tags: ["upper_body", "push", "horizontal", "strength", "compound"],
+    equipment: ["barbell", "bench", "rack"],
+    difficulty: "intermediate" as const,
+    instructions: "Bench press with hands closer together (shoulder-width or narrower). Emphasizes triceps more than standard grip.",
+  },
+  {
+    name: "Incline Barbell Press",
+    slug: "incline_bench_press",
+    tags: ["upper_body", "push", "incline", "strength", "compound", "chest", "shoulder"],
+    equipment: ["barbell", "incline_bench", "rack"],
+    difficulty: "intermediate" as const,
+    instructions: "Set bench to 30-45 degree incline. Press barbell from upper chest to lockout. Targets upper chest and front deltoids.",
+    progressions: {
+      easier: "bench_press",
+    },
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // UPPER BODY PULL - VERTICAL
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    name: "Straight Arm Pulldown",
+    slug: "straight_arm_pulldown",
+    tags: ["upper_body", "pull", "vertical", "back", "isolation"],
+    equipment: ["cable_machine"],
+    difficulty: "beginner" as const,
+    instructions: "Stand facing cable machine with high pulley. Keep arms straight and pull bar down to thighs using lats only.",
+  },
+  {
+    name: "Close-Grip Lat Pulldown",
+    slug: "close_grip_lat_pulldown",
+    tags: ["upper_body", "pull", "vertical", "back", "strength"],
+    equipment: ["cable_machine"],
+    difficulty: "beginner" as const,
+    instructions: "Use close/neutral grip attachment. Pull bar to chest, focusing on squeezing lats at bottom of movement.",
+  },
+  {
+    name: "Scapular Pull-Up",
+    slug: "scapular_pull_up",
+    tags: ["upper_body", "pull", "vertical", "back", "bodyweight", "stability"],
+    equipment: ["pull_up_bar"],
+    difficulty: "beginner" as const,
+    instructions: "Hang from bar with straight arms. Without bending elbows, pull shoulder blades down and together, lifting body slightly. Foundation for pull-ups.",
+    progressions: {
+      harder: "negative_pull_up",
+    },
+  },
+  {
+    name: "Negative Pull-Up",
+    slug: "negative_pull_up",
+    tags: ["upper_body", "pull", "vertical", "back", "bodyweight", "eccentric"],
+    equipment: ["pull_up_bar"],
+    difficulty: "beginner" as const,
+    instructions: "Jump or step to top of pull-up position. Lower yourself as slowly as possible (3-5 seconds). Builds strength for full pull-ups.",
+    progressions: {
+      easier: "scapular_pull_up",
+      harder: "assisted_pull_up",
+    },
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // UPPER BODY PULL - HORIZONTAL
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    name: "Chest-Supported Row",
+    slug: "chest_supported_row",
+    tags: ["upper_body", "pull", "horizontal", "back", "bilateral", "strength"],
+    equipment: ["dumbbell", "incline_bench"],
+    difficulty: "beginner" as const,
+    instructions: "Lie face down on incline bench. Row dumbbells up to sides, squeezing shoulder blades. Chest support removes lower back stress.",
+  },
+  {
+    name: "Kroc Row",
+    slug: "kroc_row",
+    tags: ["upper_body", "pull", "horizontal", "back", "unilateral", "power", "grip_endurance"],
+    equipment: ["dumbbell"],
+    difficulty: "intermediate" as const,
+    instructions: "Heavy single-arm row with controlled body English. Use momentum to lift heavy weights for high reps. Builds grip and back strength.",
+  },
+  {
+    name: "Elevated Inverted Row",
+    slug: "elevated_inverted_row",
+    tags: ["upper_body", "pull", "horizontal", "back", "bodyweight", "strength"],
+    equipment: ["barbell", "rack"],
+    difficulty: "beginner" as const,
+    instructions: "Set bar at waist height. Grip bar and walk feet forward. Body at steep angle makes it easier than standard inverted row.",
+    progressions: {
+      harder: "inverted_row",
+    },
+  },
+  {
+    name: "Feet-Elevated Inverted Row",
+    slug: "feet_elevated_inverted_row",
+    tags: ["upper_body", "pull", "horizontal", "back", "bodyweight", "strength"],
+    equipment: ["barbell", "rack", "box"],
+    difficulty: "intermediate" as const,
+    instructions: "Standard inverted row but with feet elevated on box. Increases difficulty by changing body angle.",
+    progressions: {
+      easier: "inverted_row",
+    },
+  },
+  {
+    name: "Seated Cable Row",
+    slug: "cable_row",
+    tags: ["upper_body", "pull", "horizontal", "back", "bilateral", "strength"],
+    equipment: ["cable_machine"],
+    difficulty: "beginner" as const,
+    instructions: "Sit at cable row station. Pull handle to torso, squeezing shoulder blades together. Keep torso upright throughout.",
+  },
+  {
+    name: "Single Arm Cable Row",
+    slug: "single_arm_cable_row",
+    tags: ["upper_body", "pull", "horizontal", "back", "unilateral", "single_arm", "anti_rotation"],
+    equipment: ["cable_machine"],
+    difficulty: "intermediate" as const,
+    instructions: "Stand sideways to cable machine. Pull handle with one arm while resisting rotation. Combines pulling with anti-rotation challenge.",
+  },
+  {
+    name: "Band Row",
+    slug: "band_row",
+    tags: ["upper_body", "pull", "horizontal", "back", "bilateral"],
+    equipment: ["band"],
+    difficulty: "beginner" as const,
+    instructions: "Anchor band at chest height or loop around feet. Pull band to torso, squeezing shoulder blades. Equipment-free pulling option.",
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // LOWER BODY PUSH - SQUAT
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    name: "Assisted Pistol Squat",
+    slug: "assisted_pistol_squat",
+    tags: ["lower_body", "squat", "unilateral", "single_leg", "strength", "balance"],
+    equipment: ["trx", "bodyweight"],
+    difficulty: "advanced" as const,
+    instructions: "Hold TRX or stick for balance. Perform single-leg squat to full depth while other leg extends forward. Use assistance as needed.",
+    progressions: {
+      easier: "bulgarian_split_squat",
+    },
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // LOWER BODY PULL/HINGE
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    name: "Conventional Deadlift",
+    slug: "conventional_deadlift",
+    tags: ["lower_body", "hinge", "bilateral", "strength", "compound", "posterior_chain"],
+    equipment: ["barbell"],
+    difficulty: "intermediate" as const,
+    instructions: "Stand with feet hip-width, bar over mid-foot. Hinge and grip bar, then drive through floor to stand. The foundational hinge pattern.",
+  },
+  {
+    name: "Kickstand RDL",
+    slug: "kickstand_rdl",
+    tags: ["lower_body", "hinge", "unilateral", "hamstring", "glute", "balance"],
+    equipment: ["dumbbell", "kettlebell"],
+    difficulty: "beginner" as const,
+    instructions: "Stagger stance with back foot on toe for balance only. Hinge on front leg. Transition between bilateral and single-leg RDL.",
+    progressions: {
+      easier: "romanian_deadlift",
+      harder: "single_leg_rdl",
+    },
+  },
+  {
+    name: "Single Leg Deadlift",
+    slug: "single_leg_deadlift",
+    tags: ["lower_body", "hinge", "unilateral", "single_leg", "hamstring", "balance"],
+    equipment: ["dumbbell", "kettlebell"],
+    difficulty: "advanced" as const,
+    instructions: "Stand on one leg. Hinge forward as back leg extends behind. Touch weights to floor and return. Maximum single-leg hinge challenge.",
+    progressions: {
+      easier: "single_leg_rdl",
+    },
+  },
+  {
+    name: "Single Leg Glute Bridge",
+    slug: "single_leg_glute_bridge",
+    tags: ["lower_body", "hinge", "unilateral", "single_leg", "glute", "strength"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+    instructions: "Lie on back, one foot flat, other leg extended. Drive through planted foot to lift hips. Progress from standard glute bridge.",
+    progressions: {
+      easier: "glute_bridge",
+      harder: "hip_thrust",
+    },
+  },
+  {
+    name: "Single Leg Hip Thrust",
+    slug: "single_leg_hip_thrust",
+    tags: ["lower_body", "hinge", "unilateral", "single_leg", "glute", "strength"],
+    equipment: ["bench", "bodyweight"],
+    difficulty: "intermediate" as const,
+    instructions: "Upper back on bench, one foot on floor, other leg extended. Drive through planted foot to lift hips. Advanced glute isolation.",
+    progressions: {
+      easier: "hip_thrust",
+    },
+  },
+  {
+    name: "Nordic Curl",
+    slug: "nordic_curl",
+    tags: ["lower_body", "hamstring", "eccentric", "strength"],
+    equipment: ["bodyweight"],
+    difficulty: "advanced" as const,
+    instructions: "Kneel with ankles anchored. Slowly lower torso toward floor using hamstring control. Use hands to catch yourself if needed. Advanced hamstring eccentric.",
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ROTATION EXERCISES
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    name: "Kneeling Med Ball Rotation",
+    slug: "kneeling_med_ball_rotation",
+    tags: ["core", "rotation", "power", "transverse"],
+    equipment: ["medicine_ball"],
+    difficulty: "beginner" as const,
+    instructions: "Kneel tall holding med ball. Rotate torso side to side with control. The kneeling position isolates core rotation from hip movement.",
+    progressions: {
+      harder: "med_ball_rotational_throw",
+    },
+  },
+  {
+    name: "Rotational Med Ball Slam",
+    slug: "rotational_med_ball_slam",
+    tags: ["core", "rotation", "power", "explosive", "conditioning"],
+    equipment: ["medicine_ball"],
+    difficulty: "intermediate" as const,
+    instructions: "Stand with med ball. Rotate and slam ball diagonally across body to floor. Combines rotation with power and conditioning.",
+    progressions: {
+      easier: "med_ball_rotational_throw",
+    },
+  },
+  {
+    name: "Low-to-High Woodchop",
+    slug: "low_high_woodchop",
+    tags: ["core", "rotation", "functional", "power"],
+    equipment: ["cable_machine"],
+    difficulty: "intermediate" as const,
+    instructions: "Set cable low. Rotate and pull diagonally from low to high across body. Reverse motion of high-to-low woodchop.",
+    progressions: {
+      easier: "cable_woodchop",
+    },
+  },
+  {
+    name: "Standing Rotation Reach",
+    slug: "standing_rotation_reach",
+    tags: ["core", "rotation", "mobility", "warmup", "thoracic"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+    instructions: "Stand with feet wide. Rotate torso and reach one hand toward opposite foot, then reverse. Dynamic thoracic mobility drill.",
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CORE - ANTI-ROTATION / ANTI-LATERAL FLEXION
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    name: "Knee Side Plank",
+    slug: "knee_side_plank",
+    tags: ["core", "anti_lateral_flexion", "stability", "isometric"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+    instructions: "Side plank position but with bottom knee bent and on floor. Easier entry point to side plank progression.",
+    progressions: {
+      harder: "side_plank",
+    },
+  },
+  {
+    name: "Side Plank Hip Dip",
+    slug: "side_plank_hip_dip",
+    tags: ["core", "anti_lateral_flexion", "stability", "dynamic"],
+    equipment: ["bodyweight"],
+    difficulty: "intermediate" as const,
+    instructions: "From side plank, lower hip toward floor and lift back up. Adds dynamic movement to static side plank.",
+    progressions: {
+      easier: "side_plank",
+    },
+  },
+  {
+    name: "Pallof Press March",
+    slug: "pallof_press_march",
+    tags: ["core", "anti_rotation", "stability", "dynamic"],
+    equipment: ["cable_machine", "band"],
+    difficulty: "intermediate" as const,
+    instructions: "From Pallof press position, march in place while maintaining anti-rotation. Adds dynamic stability challenge.",
+    progressions: {
+      easier: "pallof_press",
+    },
+  },
+  {
+    name: "Bird Dog with Band",
+    slug: "bird_dog_band",
+    tags: ["core", "anti_rotation", "stability", "strength"],
+    equipment: ["band", "bodyweight"],
+    difficulty: "intermediate" as const,
+    instructions: "Standard bird dog but with band around working foot or hand for added resistance. Progresses basic bird dog.",
+    progressions: {
+      easier: "bird_dog",
+    },
+  },
+  {
+    name: "Lying Leg Raise",
+    slug: "lying_leg_raise",
+    tags: ["core", "anti_extension", "strength", "hip_flexor"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+    instructions: "Lie flat on back, hands under hips for support. Lift legs to vertical, lower with control. Keep lower back pressed to floor.",
+    progressions: {
+      harder: "hanging_leg_raise",
+    },
+  },
+  {
+    name: "Toes to Bar",
+    slug: "toes_to_bar",
+    tags: ["core", "anti_extension", "strength", "hip_flexor"],
+    equipment: ["pull_up_bar"],
+    difficulty: "advanced" as const,
+    instructions: "Hang from bar. Lift legs all the way up until toes touch the bar. Requires significant core and hip flexor strength.",
+    progressions: {
+      easier: "hanging_leg_raise",
+    },
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // LUNGE EXERCISES
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    name: "Deficit Reverse Lunge",
+    slug: "deficit_reverse_lunge",
+    tags: ["lower_body", "lunge", "unilateral", "single_leg", "strength"],
+    equipment: ["dumbbell", "box"],
+    difficulty: "intermediate" as const,
+    instructions: "Stand on small platform. Step back into reverse lunge, going deeper due to elevated front foot. Increases range of motion.",
+    progressions: {
+      easier: "walking_lunge",
+    },
+  },
+  {
+    name: "Lateral Step-Up",
+    slug: "lateral_step_up",
+    tags: ["lower_body", "lunge", "unilateral", "single_leg", "frontal", "strength"],
+    equipment: ["box", "dumbbell"],
+    difficulty: "beginner" as const,
+    instructions: "Stand beside box. Step sideways onto box, driving through that leg to stand. Lower with control. Frontal plane strength.",
+    progressions: {
+      harder: "lateral_lunge",
+    },
+  },
+  {
+    name: "Cossack Squat",
+    slug: "cossack_squat",
+    tags: ["lower_body", "lunge", "unilateral", "frontal", "mobility", "strength"],
+    equipment: ["bodyweight", "dumbbell"],
+    difficulty: "intermediate" as const,
+    instructions: "Wide stance. Shift weight to one leg, squatting deep while other leg stays straight. Alternates sides. Deep frontal plane mobility.",
+    progressions: {
+      easier: "lateral_lunge",
+    },
+  },
+  {
+    name: "Split Squat Jump",
+    slug: "split_squat_jump",
+    tags: ["lower_body", "lunge", "plyometric", "power", "explosive"],
+    equipment: ["bodyweight"],
+    difficulty: "intermediate" as const,
+    instructions: "Start in split squat position. Jump explosively and land in same position. Don't switch legs mid-air.",
+    progressions: {
+      harder: "alternating_lunge_jump",
+    },
+  },
+  {
+    name: "Alternating Lunge Jump",
+    slug: "alternating_lunge_jump",
+    tags: ["lower_body", "lunge", "plyometric", "power", "explosive", "reactive"],
+    equipment: ["bodyweight"],
+    difficulty: "advanced" as const,
+    instructions: "From lunge position, jump and switch legs mid-air, landing in opposite lunge. Continuous alternating jumps.",
+    progressions: {
+      easier: "split_squat_jump",
+    },
+  },
+  {
+    name: "Low Box Step-Up",
+    slug: "low_box_step_up",
+    tags: ["lower_body", "lunge", "unilateral", "single_leg", "strength"],
+    equipment: ["box"],
+    difficulty: "beginner" as const,
+    instructions: "Step onto low box (6-12 inches). Focus on driving through stepping leg without pushing off back foot. Foundation step pattern.",
+    progressions: {
+      harder: "step_up",
+    },
+  },
+  {
+    name: "Step-Up",
+    slug: "step_up",
+    tags: ["lower_body", "lunge", "unilateral", "single_leg", "strength"],
+    equipment: ["box", "dumbbell"],
+    difficulty: "beginner" as const,
+    instructions: "Step onto box at knee height or higher. Drive through stepping leg to stand on box. Step down with control.",
+    progressions: {
+      easier: "low_box_step_up",
+    },
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // JUMP / PLYOMETRIC EXERCISES
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    name: "Pogo Hops",
+    slug: "pogo_hops",
+    tags: ["lower_body", "plyometric", "reactive", "power"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+    instructions: "Stand tall. Hop continuously using mainly ankle stiffness, minimal knee bend. Teaches reactive stiffness for plyometrics.",
+    progressions: {
+      harder: "broad_jump",
+    },
+  },
+  {
+    name: "Consecutive Broad Jumps",
+    slug: "consecutive_broad_jumps",
+    tags: ["lower_body", "plyometric", "reactive", "horizontal", "power"],
+    equipment: ["bodyweight"],
+    difficulty: "intermediate" as const,
+    instructions: "Perform broad jumps in sequence without pausing. Land and immediately transition into next jump. Builds reactive horizontal power.",
+    progressions: {
+      easier: "broad_jump",
+    },
+  },
+  {
+    name: "Ascending Skater Jumps",
+    slug: "ascending_skater_jumps",
+    tags: ["lower_body", "plyometric", "frontal", "single_leg", "power"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+    instructions: "Lateral bounds where each jump travels slightly forward and up, like skating uphill. Introduction to lateral plyometrics.",
+    progressions: {
+      harder: "deceleration_skater_jump",
+    },
+  },
+  {
+    name: "Deceleration Skater Jump",
+    slug: "deceleration_skater_jump",
+    tags: ["lower_body", "plyometric", "frontal", "single_leg", "deceleration_mechanics"],
+    equipment: ["bodyweight"],
+    difficulty: "intermediate" as const,
+    instructions: "Lateral bound with focus on controlled landing - stick each landing for 2 seconds before next jump. Trains deceleration/landing mechanics.",
+    progressions: {
+      easier: "ascending_skater_jumps",
+      harder: "lateral_single_leg_bounds",
+    },
+  },
+  {
+    name: "Lateral Single Leg Bounds",
+    slug: "lateral_single_leg_bounds",
+    tags: ["lower_body", "plyometric", "frontal", "single_leg", "power", "reactive"],
+    equipment: ["bodyweight"],
+    difficulty: "advanced" as const,
+    instructions: "Explosive lateral bounds, maximizing distance on each jump. Full power lateral plyometric movement.",
+    progressions: {
+      easier: "deceleration_skater_jump",
+    },
+  },
+  {
+    name: "Drop Jump",
+    slug: "drop_jump",
+    tags: ["lower_body", "plyometric", "reactive", "power", "vertical"],
+    equipment: ["plyo_box"],
+    difficulty: "advanced" as const,
+    instructions: "Step off box (don't jump), land and immediately rebound as high as possible. Minimize ground contact time. True reactive plyometric.",
+    progressions: {
+      easier: "depth_jump",
+    },
+  },
+  {
+    name: "Standing Long Jump",
+    slug: "standing_long_jump",
+    tags: ["lower_body", "plyometric", "horizontal", "power"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+    instructions: "From standing, swing arms and jump forward for maximum distance. Land softly with bent knees. Basic horizontal jump test.",
+  },
+  {
+    name: "Squat Thrust",
+    slug: "squat_thrust",
+    tags: ["full_body", "conditioning", "dynamic", "core"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner" as const,
+    instructions: "From standing, squat down, place hands on floor, jump feet back to plank, jump feet forward, stand. Burpee without the jump and push-up.",
+    progressions: {
+      harder: "burpee",
     },
   },
 ];
