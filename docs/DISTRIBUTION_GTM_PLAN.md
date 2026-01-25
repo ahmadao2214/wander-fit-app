@@ -307,39 +307,6 @@ This is a **discovery mission**, not a sales pitch. Goals:
 
 ---
 
-## Unclear Item: "Donation" Feature
-
-**Loukman's Note:** "Can we make the donation more fun and approachable for the kid"
-
-### Interpretation Options
-
-This note is unclear. Possible meanings:
-
-**Option A: In-App Donations (Charity)**
-- Athletes can donate to causes through the app
-- Gamify giving (streaks trigger donations?)
-- Partner with youth sports charities
-
-**Option B: Crowdfunding for Athletes**
-- Athletes raise money for equipment, camps, travel
-- Parents/family can contribute to athlete's "fund"
-- Similar to GoFundMe but sports-specific
-
-**Option C: Tip/Support Feature**
-- Users can "tip" or support the app/team
-- Alternative revenue to subscriptions
-- Patron-style support model
-
-**Option D: Typo/Misheard**
-- Could be referring to something else entirely
-- Need clarification from Loukman
-
-### Action Item
-
-| Action | Owner | Status | Notes |
-|--------|-------|--------|-------|
-| Clarify "donation" comment with Loukman | | ⬜ TODO | What did he mean? |
-
 ---
 
 ## 90-Day Action Plan
@@ -401,7 +368,6 @@ This note is unclear. Possible meanings:
 1. Who is the decision maker: parent or athlete?
 2. What's the right price point for our target market?
 3. What does an academy need to see to partner with us?
-4. What did Loukman mean by "donation"?
 
 ### Answer Through Research
 5. What specific "next level" are athletes trying to reach?
