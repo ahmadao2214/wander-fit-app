@@ -285,79 +285,46 @@ const phaseName = useKidFriendlyNames
 
 ---
 
-### 1.5 Make the App More Fun & Approachable for Kids
+### 1.5 Fun Factor & Gamification
 
 **Priority:** 🟠 High
-**Effort:** Medium (ongoing)
-**Dependencies:** None
+**Effort:** Medium-Large (ongoing)
+**Dependencies:** 1.1 Streak Calculation
 
-#### Problem Statement
+> **Deep Dive:** See [FUN_FACTOR_PLAN.md](./FUN_FACTOR_PLAN.md) for comprehensive gamification planning.
+
+#### Overview
+
 **Loukman's Note:** "Can we make the app more fun and approachable for the kid?"
 
-The app needs to feel exciting and engaging for young athletes, not like a chore. Current UX may feel too "adult" or clinical.
+This is a major initiative covering multiple pillars:
 
-#### Areas to Evaluate
+| Pillar | Description | Status |
+|--------|-------------|--------|
+| **Streaks** | Daily engagement, streak freezes, milestones | Partially built (needs calculation) |
+| **Avatar & Gear** | Create athlete, unlock sport-specific gear | Not started |
+| **Achievements** | Badges, collectibles, trophies | Not started |
+| **Social** | Leaderboards, friends, squads | Not started |
+| **Parent Verification** | Ensure workout integrity | Not started |
 
-| Area | Current State | Kid-Friendly Improvement |
-|------|---------------|-------------------------|
-| **Onboarding** | Educational, text-heavy | More visual, interactive, gamified |
-| **Dashboard** | Stats-focused | Progress visualizations, character/avatar? |
-| **Workout execution** | Functional | Encouraging feedback, sound effects? |
-| **Language/copy** | Neutral/technical | Energetic, motivational, age-appropriate |
-| **Visual design** | Clean, minimal | More color, animation, personality |
-| **Empty states** | Basic | Fun illustrations, encouraging messages |
+#### Key Decisions Needed
 
-#### Ideas to Explore
+1. **Avatar system:** Phased approach or wait for full build?
+2. **Social features:** What scope? Friends-only or leaderboards?
+3. **Verification:** Every workout, milestones only, or trust-based?
+4. **Mascot:** Do we need one? What style?
 
-**Quick Wins:**
-- [ ] Add encouraging micro-copy throughout ("Let's go!", "You've got this!")
-- [ ] Use more emojis in appropriate places
-- [ ] Add subtle animations to progress indicators
-- [ ] Celebratory sounds on workout completion (optional)
+#### Implementation Phases
 
-**Medium Effort:**
-- [ ] Athlete avatar/character that "grows" with progress
-- [ ] Visual progress map (journey/path metaphor)
-- [ ] Daily motivational message on dashboard
-- [ ] Exercise demo videos with young athletes
+| Phase | Focus | Effort |
+|-------|-------|--------|
+| Phase 1 | Streaks + Basic Achievements | 2-3 weeks |
+| Phase 2 | Avatar MVP (basic customization) | 3-4 weeks |
+| Phase 3 | Expanded Rewards (gear, collectibles) | 2-3 weeks |
+| Phase 4 | Social Layer (friends, squads) | 3-4 weeks |
+| Phase 5 | Verification & Polish | 2-3 weeks |
 
-**Larger Features:**
-- [ ] Mascot/character guide for onboarding
-- [ ] Achievement "showcase" to share with friends/family
-- [ ] Customizable themes/colors
-- [ ] Mini-games for rest periods?
-
-#### Research Needed
-
-| Question | Method |
-|----------|--------|
-| What apps do our target kids already love? | User interviews |
-| What makes them open an app daily? | User interviews |
-| What feels "lame" or "boring" to them? | User interviews |
-| What do successful kids' fitness apps do well? | Competitive analysis |
-
-#### Competitive Inspiration
-- **Duolingo** - Streaks, characters, playful copy, celebration animations
-- **Headspace Kids** - Friendly illustrations, simple language
-- **Pokemon GO** - Collection mechanics, visual progress
-- **Strava** - Social motivation, achievement badges
-
-#### Action Items
-
-| Action | Owner | Status | Notes |
-|--------|-------|--------|-------|
-| Audit current app for "fun factor" | | ⬜ TODO | Where does it feel dry/boring? |
-| Interview 5 kids about favorite apps | | ⬜ TODO | What makes them engaging? |
-| Competitive analysis: kids' fitness/health apps | | ⬜ TODO | What works? What doesn't? |
-| Create mood board for "fun" direction | | ⬜ TODO | Visual inspiration |
-| Prioritize quick wins from ideas list | | ⬜ TODO | Low effort, high impact first |
-| Test updated copy with target users | | ⬜ TODO | Does it resonate? |
-
-#### Acceptance Criteria
-- [ ] Kids describe the app as "fun" or "cool" in user testing
-- [ ] Increased daily active usage (engagement metric)
-- [ ] Workout completion rates improve
-- [ ] Positive feedback on app store reviews mentioning UX
+See [FUN_FACTOR_PLAN.md](./FUN_FACTOR_PLAN.md) for full details on each pillar.
 
 ---
 
@@ -556,7 +523,9 @@ achievements: defineTable({
 
 ## Related Documents
 
+- [FUN_FACTOR_PLAN.md](./FUN_FACTOR_PLAN.md) - Gamification deep dive (avatars, achievements, social)
 - [PARENT_EXPERIENCE_PLAN.md](./PARENT_EXPERIENCE_PLAN.md) - Parent features & COPPA details
+- [DISTRIBUTION_GTM_PLAN.md](./DISTRIBUTION_GTM_PLAN.md) - Go-to-market strategy
 - [INTAKE_ONBOARDING_PLAN.md](./INTAKE_ONBOARDING_PLAN.md) - Onboarding flow
 - [CATEGORY_EXERCISE_EXPANSION_PLAN.md](./CATEGORY_EXERCISE_EXPANSION_PLAN.md) - Exercise content
 
