@@ -1,60 +1,21 @@
 # Wander-Fit Product Roadmap
 
-> Based on technical advisor feedback from Loukman (January 2026)
+> Central hub for all product planning documents
 
-## Executive Summary
+## Immediate To-Do
 
-This roadmap prioritizes features that shift the app toward a **kid-focused experience with strong engagement mechanics**. The core insight: junior athletes (10-17) desperately want to reach the next level, and quick wins + visible progress keep them motivated.
-
-**Key Strategic Shifts:**
-- Kid motivation is paramount (streaks, celebrations, visible progress)
-- COPPA compliance is non-negotiable for under-13 users
-- Simplify terminology (GPP/SPP/SSP → kid-friendly names)
-- Notifications keep athletes engaged and parents informed
-
-> **Parent Experience:** See [PARENT_EXPERIENCE_PLAN.md](./PARENT_EXPERIENCE_PLAN.md) for comprehensive parent feature planning. PR #30 implements the core parent infrastructure.
-
----
-
-## Current Status
-
-### Already Implemented
-
-| Feature | Status | Location |
-|---------|--------|----------|
-| Athlete workout execution | ✅ Complete | `app/(athlete)/` |
-| Phase-based programming (GPP/SPP/SSP) | ✅ Complete | `convex/userPrograms.ts` |
-| 1RM tracking | ✅ Complete | `convex/userMaxes.ts` |
-| Workout reordering | ✅ Complete | `app/(athlete)/program.tsx` |
-| Training science education | ✅ Complete | `app/(athlete)/profile/training-science.tsx` |
-| **Parent dashboard & controls** | ✅ PR #30 | `app/(parent)/` |
-| **Parent-athlete linking** | ✅ PR #30 | `convex/parentRelationships.ts` |
-| **Family calendar** | ✅ PR #30 | `components/parent/FamilyCalendar.tsx` |
-
-### Partially Implemented
-
-| Feature | Status | Gap |
-|---------|--------|-----|
-| Streaks | ⚠️ Data model exists | Not calculated on workout completion |
-| Progress metrics | ⚠️ Displayed | Not celebrated |
-
----
-
-## Phase 1: Quick Wins & Engagement
-
-### 1.1 Fix Streak Calculation
+### Fix Streak Calculation
 
 **Priority:** 🔴 Critical
-**Effort:** Small (1-2 days)
-**Dependencies:** None
+**Effort:** 1-2 days
+**Status:** Not started
 
-#### Problem Statement
-Streaks exist in the database (`currentStreak`, `longestStreak` in `user_progress`) but are never updated when workouts are completed. This is a quick win that's already mostly built.
+Streaks exist in the database (`currentStreak`, `longestStreak` in `user_progress`) but are never calculated or updated. This is the foundation for all engagement features.
 
-#### Technical Requirements
+**What to Build:**
 
-**New Convex Function (`convex/streaks.ts`):**
 ```typescript
+// convex/streaks.ts
 export const updateStreakOnCompletion = mutation({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
@@ -66,468 +27,146 @@ export const updateStreakOnCompletion = mutation({
     // 6. Return milestone info if applicable
   }
 })
-
-export const checkStreakBreak = query({
-  args: { userId: v.id("users") },
-  handler: async (ctx, args) => {
-    // Returns true if streak is at risk of breaking
-  }
-})
 ```
 
 **Streak Window Logic:**
+
 | Training Days/Week | Max Gap Before Streak Breaks |
 |--------------------|------------------------------|
 | 3 days | 3 days without workout |
 | 4 days | 2 days without workout |
-| 5 days | 2 days without workout |
-| 6+ days | 1 day without workout |
+| 5+ days | 2 days without workout |
 
-#### Acceptance Criteria
-- [ ] Completing a workout increments `currentStreak`
-- [ ] `longestStreak` updates when `currentStreak` exceeds it
-- [ ] Streak resets to 0 if user misses too many days
-- [ ] Dashboard displays accurate streak count
-- [ ] Returns milestone info (hit 7, 14, 30, etc.)
-
-#### Files to Create/Modify
+**Files to Modify:**
 - `convex/streaks.ts` - New file for streak logic
 - `convex/gppWorkoutSessions.ts` - Call streak update on completion
-- `convex/userProgress.ts` - Ensure streak fields initialized
+- `convex/userProgress.ts` - Ensure fields initialized
 
-#### Testing Requirements
-- Unit tests for streak calculation logic
-- Test streak increment on completion
-- Test streak reset after gap
-- Test longest streak tracking
-
----
-
-### 1.2 Workout Completion Celebrations
-
-**Priority:** 🔴 Critical
-**Effort:** Small (2-3 days)
-**Dependencies:** None
-
-#### Problem Statement
-Completing a workout should feel rewarding. Kids love immediate positive feedback.
-
-#### Technical Requirements
-
-**New Components:**
-```
-components/
-  celebrations/
-    ConfettiEffect.tsx       # Confetti animation
-    CompletionOverlay.tsx    # Full-screen celebration
-    StreakBadge.tsx          # Animated streak display
-```
-
-**Completion Screen Enhancements:**
-```tsx
-// After workout completion
-<CompletionOverlay>
-  <ConfettiEffect />
-  <AnimatedCheckmark />
-  <Text>"Workout Complete!"</Text>
-  <StreakBadge streak={currentStreak} isNew={streakIncreased} />
-  <WorkoutSummary duration={...} exercises={...} />
-  <MotivationalQuote />
-</CompletionOverlay>
-```
-
-**Motivational Quotes (sport-specific):**
-- "Champions are made in training. You just got stronger."
-- "That's {X} workouts done. Your competition is still on the couch."
-- "Another day, another step toward your goals."
-
-#### Acceptance Criteria
-- [ ] Confetti animation plays on workout complete
-- [ ] Animated checkmark provides visual feedback
-- [ ] Streak prominently displayed with animation if increased
-- [ ] Session summary shows key stats
-- [ ] Motivational message shown
-- [ ] Smooth transition to dashboard
-
-#### Files to Create
-- `components/celebrations/ConfettiEffect.tsx`
-- `components/celebrations/CompletionOverlay.tsx`
-- `lib/constants/motivationalQuotes.ts`
-
-#### Files to Modify
-- `app/(athlete)/workout/execute/[id].tsx` - Completion flow
+**Acceptance Criteria:**
+- [ ] Completing workout increments `currentStreak`
+- [ ] `longestStreak` updates when exceeded
+- [ ] Streak resets after gap
+- [ ] Returns milestone info (7, 14, 30, etc.)
 
 ---
 
-### 1.3 Streak Milestone Celebrations
+## Feature Plans
 
-**Priority:** 🟠 High
-**Effort:** Medium (3-5 days)
-**Dependencies:** 1.1 Streak Calculation
+Detailed plans for each feature area:
 
-#### Problem Statement
-Kids love seeing progress quickly. Reaching streak milestones should feel special and motivating.
+| Feature | Document | Priority | Effort | Status |
+|---------|----------|----------|--------|--------|
+| **Workout Celebrations** | [WORKOUT_CELEBRATIONS_PLAN.md](./WORKOUT_CELEBRATIONS_PLAN.md) | 🔴 Critical | 2-3 days | Planning |
+| **Streak Milestones** | [STREAK_MILESTONES_PLAN.md](./STREAK_MILESTONES_PLAN.md) | 🟠 High | 3-5 days | Planning |
+| **Phase Naming** | [PHASE_NAMING_PLAN.md](./PHASE_NAMING_PLAN.md) | 🟡 Medium | 1-2 days | Planning |
+| **Notifications** | [NOTIFICATIONS_PLAN.md](./NOTIFICATIONS_PLAN.md) | 🟠 High | 1-2 weeks | Planning |
+| **Achievement System** | [ACHIEVEMENT_SYSTEM_PLAN.md](./ACHIEVEMENT_SYSTEM_PLAN.md) | 🟡 Medium | 1-2 weeks | Planning |
+| **Fun Factor / Gamification** | [FUN_FACTOR_PLAN.md](./FUN_FACTOR_PLAN.md) | 🟠 High | Ongoing | Planning |
+| **Parent Experience** | [PARENT_EXPERIENCE_PLAN.md](./PARENT_EXPERIENCE_PLAN.md) | 🟡 Medium | Varies | PR #30 + gaps |
+| **Distribution & GTM** | [DISTRIBUTION_GTM_PLAN.md](./DISTRIBUTION_GTM_PLAN.md) | 🟡 Medium | N/A | Planning |
 
-#### Milestone Definitions
+---
 
-| Streak | Name | Celebration |
-|--------|------|-------------|
-| 3 days | "Getting Started" | Small confetti, encouraging message |
-| 7 days | "One Week Strong" | Larger celebration, badge unlock |
-| 14 days | "Two Week Warrior" | Special animation |
-| 30 days | "Monthly Master" | Major celebration, achievement badge |
-| 50 days | "Elite Consistency" | Premium badge |
-| 100 days | "Century Club" | Ultimate celebration |
+## Implementation Order
 
-#### Technical Requirements
+### Phase 1: Foundation (Week 1)
+1. **Fix streak calculation** - Everything else depends on this
+2. **Workout celebrations** - Immediate reward for completing workout
 
-**Schema Addition:**
-```typescript
-// convex/schema.ts
-userAchievements: defineTable({
-  userId: v.id("users"),
-  achievementType: v.string(), // "streak_7", "streak_30", etc.
-  unlockedAt: v.number(),
-  seen: v.boolean(),
-})
+### Phase 2: Engagement (Weeks 2-3)
+3. **Streak milestones** - Celebrate consistency achievements
+4. **Phase naming** - Make app more approachable
+
+### Phase 3: Retention (Weeks 4-6)
+5. **Notifications** - Keep users coming back
+6. **Achievement system** - More ways to feel accomplished
+
+### Phase 4: Growth (Ongoing)
+7. **Fun factor items** - Avatar, gear, social (per FUN_FACTOR_PLAN.md)
+8. **Parent experience gaps** - COPPA, notifications (per PARENT_EXPERIENCE_PLAN.md)
+
+---
+
+## Current Status
+
+### Already Built
+
+| Feature | Status | Location |
+|---------|--------|----------|
+| Athlete workout execution | ✅ Complete | `app/(athlete)/` |
+| Phase-based programming | ✅ Complete | `convex/userPrograms.ts` |
+| 1RM tracking | ✅ Complete | `convex/userMaxes.ts` |
+| Workout reordering | ✅ Complete | `app/(athlete)/program.tsx` |
+| Training science education | ✅ Complete | `app/(athlete)/profile/` |
+| Parent dashboard | ✅ PR #30 | `app/(parent)/` |
+| Parent-athlete linking | ✅ PR #30 | `convex/parentRelationships.ts` |
+
+### Partially Built
+
+| Feature | Status | Gap |
+|---------|--------|-----|
+| Streaks | ⚠️ Schema exists | Not calculated |
+| Progress display | ⚠️ Shows data | Not celebrated |
+
+### Not Started
+
+| Feature | Document |
+|---------|----------|
+| Celebrations | WORKOUT_CELEBRATIONS_PLAN.md |
+| Achievements | ACHIEVEMENT_SYSTEM_PLAN.md |
+| Push notifications | NOTIFICATIONS_PLAN.md |
+| Avatar/gear system | FUN_FACTOR_PLAN.md |
+
+---
+
+## Dependencies
+
+```
+Fix Streak Calculation
+        │
+        ├──→ Workout Celebrations
+        │           │
+        │           └──→ Streak Milestones
+        │                       │
+        │                       └──→ Achievement System
+        │
+        └──→ Notifications (streak at risk)
+
+Phase Naming ──→ (independent, can do anytime)
+
+Fun Factor ──→ (depends on achievements + celebrations)
 ```
 
-**New Components:**
-```
-components/
-  celebrations/
-    StreakCelebration.tsx    # Milestone modal
-    BadgeReveal.tsx          # Badge unlock animation
-```
+---
 
-#### Acceptance Criteria
-- [ ] Celebration modal appears at milestones
-- [ ] Each milestone has unique visual treatment
-- [ ] Badges permanently stored and viewable
-- [ ] Can be dismissed to continue
+## Open Decisions
 
-#### Files to Create
-- `components/celebrations/StreakCelebration.tsx`
-- `components/celebrations/BadgeReveal.tsx`
-- `convex/achievements.ts`
-
-#### Files to Modify
-- `convex/schema.ts` - Add achievements table
-- `convex/streaks.ts` - Return milestone triggers
+| Decision | Options | Document |
+|----------|---------|----------|
+| Avatar art style | Cartoon, Athletic, Pixel, None | FUN_FACTOR_PLAN.md |
+| Social features scope | Friends only, Leaderboards, None | FUN_FACTOR_PLAN.md |
+| Parent verification model | Every workout, Milestones, Trust | FUN_FACTOR_PLAN.md |
+| Notification timing | User-set, Smart, Fixed | NOTIFICATIONS_PLAN.md |
 
 ---
 
-### 1.4 Kid-Friendly Phase Naming
-
-**Priority:** 🟡 Medium
-**Effort:** Small (1-2 days)
-**Dependencies:** None
-
-#### Problem Statement
-"GPP", "SPP", and "SSP" are technical terms that may intimidate young athletes.
-
-#### Naming Proposal
-
-| Technical | Kid-Friendly | Icon | Description |
-|-----------|--------------|------|-------------|
-| GPP | "Build Your Base" | 🌱 | Build your athletic foundation |
-| SPP | "Level Up" | 🔥 | Get sport-specific strong |
-| SSP | "Game Time" | 🏆 | Peak for competition |
-
-**Alternative:** "Get Ready" → "Get Stronger" → "Get There"
-
-#### Technical Requirements
-
-**Display Name Mapping:**
-```typescript
-// lib/constants/phases.ts
-export const PHASE_DISPLAY = {
-  GPP: {
-    technical: "GPP",
-    friendly: "Build Your Base",
-    icon: "🌱",
-    tagline: "Build your athletic foundation"
-  },
-  SPP: {
-    technical: "SPP",
-    friendly: "Level Up",
-    icon: "🔥",
-    tagline: "Get sport-specific strong"
-  },
-  SSP: {
-    technical: "SSP",
-    friendly: "Game Time",
-    icon: "🏆",
-    tagline: "Peak for competition"
-  }
-} as const
-
-// Usage in components
-const phaseName = useKidFriendlyNames
-  ? PHASE_DISPLAY[phase].friendly
-  : PHASE_DISPLAY[phase].technical
-```
-
-#### Acceptance Criteria
-- [ ] All user-facing phase names use friendly versions
-- [ ] Icons consistently represent phases
-- [ ] Training Science section explains both names
-- [ ] Optional toggle in settings for technical names
-
-#### Files to Create
-- `lib/constants/phases.ts`
-
-#### Files to Modify
-- `app/(athlete)/index.tsx` - Dashboard phase display
-- `app/(athlete)/program.tsx` - Program browser
-- `components/workout/PhaseBadge.tsx` - Badge component
-- `app/(onboarding)/` - Onboarding screens
-
----
-
-### 1.5 Fun Factor & Gamification
-
-**Priority:** 🟠 High
-**Effort:** Medium-Large (ongoing)
-**Dependencies:** 1.1 Streak Calculation
-
-> **Deep Dive:** See [FUN_FACTOR_PLAN.md](./FUN_FACTOR_PLAN.md) for comprehensive gamification planning.
-
-#### Overview
-
-**Loukman's Note:** "Can we make the app more fun and approachable for the kid?"
-
-This is a major initiative covering multiple pillars:
-
-| Pillar | Description | Status |
-|--------|-------------|--------|
-| **Streaks** | Daily engagement, streak freezes, milestones | Partially built (needs calculation) |
-| **Avatar & Gear** | Create athlete, unlock sport-specific gear | Not started |
-| **Achievements** | Badges, collectibles, trophies | Not started |
-| **Social** | Leaderboards, friends, squads | Not started |
-| **Parent Verification** | Ensure workout integrity | Not started |
-
-#### Key Decisions Needed
-
-1. **Avatar system:** Phased approach or wait for full build?
-2. **Social features:** What scope? Friends-only or leaderboards?
-3. **Verification:** Every workout, milestones only, or trust-based?
-4. **Mascot:** Do we need one? What style?
-
-#### Implementation Phases
-
-| Phase | Focus | Effort |
-|-------|-------|--------|
-| Phase 1 | Streaks + Basic Achievements | 2-3 weeks |
-| Phase 2 | Avatar MVP (basic customization) | 3-4 weeks |
-| Phase 3 | Expanded Rewards (gear, collectibles) | 2-3 weeks |
-| Phase 4 | Social Layer (friends, squads) | 3-4 weeks |
-| Phase 5 | Verification & Polish | 2-3 weeks |
-
-See [FUN_FACTOR_PLAN.md](./FUN_FACTOR_PLAN.md) for full details on each pillar.
-
----
-
-## Phase 2: COPPA Compliance
-
-> **Note:** Detailed in [PARENT_EXPERIENCE_PLAN.md](./PARENT_EXPERIENCE_PLAN.md)
-
-### 2.1 Age Gate at Sign-Up
-
-**Priority:** 🔴 Critical (Legal)
-**Effort:** Small (2-3 days)
-
-Add age question before account creation. Under-13 users directed to parent sign-up flow.
-
-### 2.2 Parent Creates Child Account
-
-**Priority:** 🔴 Critical (Legal)
-**Effort:** Medium (1 week)
-
-Parents can create child accounts without collecting child's email.
-
-### 2.3 Child Access Without Email
-
-**Priority:** 🔴 Critical (Legal)
-**Effort:** Medium (1 week)
-
-Children access app via device-based auth or PIN, no email required.
-
-### 2.4 Data Anonymization
-
-**Priority:** 🔴 Critical (Legal)
-**Effort:** Small (2-3 days)
-
-Ensure minimal PII collection for minors.
-
----
-
-## Phase 3: Notifications
-
-### 3.1 Push Notification System
-
-**Priority:** 🟠 High
-**Effort:** Large (1-2 weeks)
-**Dependencies:** None (can run parallel to other work)
-
-#### Problem Statement
-Users have no reminders to complete workouts, and parents have no visibility without opening the app.
-
-#### Notification Types
-
-**Athlete Notifications:**
-| Type | Trigger | Message |
-|------|---------|---------|
-| Workout Reminder | Daily at set time | "Time to train! Today's workout is ready." |
-| Streak at Risk | 24h before break | "Don't lose your 7-day streak!" |
-| Achievement Unlocked | On badge unlock | "You earned Week Warrior!" |
-| Phase Complete | On phase finish | "You completed Build Your Base!" |
-
-**Parent Notifications:** (detailed in PARENT_EXPERIENCE_PLAN.md)
-
-#### Technical Requirements
-
-**Setup:**
-```typescript
-// lib/notifications/setup.ts
-import * as Notifications from 'expo-notifications'
-
-export async function registerForPushNotifications() {
-  // Request permissions
-  // Get Expo push token
-  // Store in Convex
-}
-```
-
-**Schema:**
-```typescript
-users: defineTable({
-  // ... existing
-  expoPushToken: v.optional(v.string()),
-  notificationPreferences: v.optional(v.object({
-    workoutReminders: v.boolean(),
-    reminderTime: v.string(), // "09:00"
-    streakAlerts: v.boolean(),
-    achievements: v.boolean(),
-  })),
-})
-```
-
-#### Acceptance Criteria
-- [ ] Permission requested during onboarding
-- [ ] Users can set reminder time
-- [ ] Daily workout reminders work
-- [ ] Streak-at-risk alerts work
-- [ ] Preferences toggleable in settings
-
-#### Files to Create
-- `lib/notifications/setup.ts`
-- `lib/notifications/handlers.ts`
-- `convex/notifications.ts`
-- `app/(athlete)/profile/notifications.tsx`
-
----
-
-### 3.2 Email Notifications (Parents Only)
-
-**Priority:** 🟡 Medium
-**Effort:** Medium (1 week)
-**Dependencies:** Parent features (PR #30)
-
-See [PARENT_EXPERIENCE_PLAN.md](./PARENT_EXPERIENCE_PLAN.md) for details.
-
----
-
-## Phase 4: Achievement System
-
-### 4.1 Full Badge/Achievement System
-
-**Priority:** 🟡 Medium
-**Effort:** Medium (1 week)
-**Dependencies:** 1.3 Streak Celebrations
-
-#### Badge Categories
-
-**Consistency:**
-- First Workout, Week One, Streak milestones
-
-**Progress:**
-- Phase Pioneer (GPP done), Level Up (SPP done), Peak Performer (SSP done)
-
-**Strength:**
-- First Max, Stronger (beat PR), 10% Gain
-
-**Dedication:**
-- Early Bird (before 8am), Weekend Warrior
-
-#### Technical Requirements
-
-**Schema:**
-```typescript
-achievements: defineTable({
-  slug: v.string(),
-  name: v.string(),
-  description: v.string(),
-  category: v.union(
-    v.literal("consistency"),
-    v.literal("progress"),
-    v.literal("strength"),
-    v.literal("dedication")
-  ),
-  iconUrl: v.optional(v.string()),
-})
-```
-
-**Achievement Gallery Screen:**
-- Show all badges (locked/unlocked)
-- Tap for details
-- Share individual achievements
-
-#### Files to Create
-- `app/(athlete)/profile/achievements.tsx`
-- `components/achievements/BadgeCard.tsx`
-- `components/achievements/AchievementGallery.tsx`
-- `convex/seed/achievements.ts`
-
----
-
-## Phase 5: Future Enhancements
-
-| Feature | Notes | Priority |
-|---------|-------|----------|
-| **Wearable Integration** | Apple Watch companion app | 🟢 Future |
-| **Advanced Analytics** | Strength progression charts | 🟢 Future |
-| **Social/Leaderboards** | Compare with friends | 🟢 Future |
-| **Custom Rewards** | Parent-set goals/rewards | 🟢 Future |
-
----
-
-## Priority Matrix
-
-| Feature | Impact | Effort | Priority | Phase |
-|---------|--------|--------|----------|-------|
-| Fix Streak Calculation | High | Small | 🔴 Critical | 1 |
-| Workout Celebrations | High | Small | 🔴 Critical | 1 |
-| Streak Milestones | High | Medium | 🟠 High | 1 |
-| Kid-Friendly Naming | Medium | Small | 🟡 Medium | 1 |
-| Fun & Approachable UX | High | Medium | 🟠 High | 1 |
-| Age Gate (COPPA) | High | Small | 🔴 Critical | 2 |
-| Parent Creates Child | High | Medium | 🔴 Critical | 2 |
-| Child Access No Email | High | Medium | 🔴 Critical | 2 |
-| Push Notifications | High | Large | 🟠 High | 3 |
-| Email Notifications | Medium | Medium | 🟡 Medium | 3 |
-| Achievement System | Medium | Medium | 🟡 Medium | 4 |
-| Wearable Integration | Low | Very Large | 🟢 Future | 5 |
-
----
-
-## Related Documents
-
-- [FUN_FACTOR_PLAN.md](./FUN_FACTOR_PLAN.md) - Gamification deep dive (avatars, achievements, social)
-- [PARENT_EXPERIENCE_PLAN.md](./PARENT_EXPERIENCE_PLAN.md) - Parent features & COPPA details
-- [DISTRIBUTION_GTM_PLAN.md](./DISTRIBUTION_GTM_PLAN.md) - Go-to-market strategy
-- [INTAKE_ONBOARDING_PLAN.md](./INTAKE_ONBOARDING_PLAN.md) - Onboarding flow
-- [CATEGORY_EXERCISE_EXPANSION_PLAN.md](./CATEGORY_EXERCISE_EXPANSION_PLAN.md) - Exercise content
+## Quick Links
+
+**Product Features:**
+- [Workout Celebrations](./WORKOUT_CELEBRATIONS_PLAN.md)
+- [Streak Milestones](./STREAK_MILESTONES_PLAN.md)
+- [Phase Naming](./PHASE_NAMING_PLAN.md)
+- [Notifications](./NOTIFICATIONS_PLAN.md)
+- [Achievement System](./ACHIEVEMENT_SYSTEM_PLAN.md)
+- [Fun Factor / Gamification](./FUN_FACTOR_PLAN.md)
+
+**Business & Strategy:**
+- [Parent Experience](./PARENT_EXPERIENCE_PLAN.md)
+- [Distribution & GTM](./DISTRIBUTION_GTM_PLAN.md)
+
+**Technical Reference:**
+- [Exercise Expansion](./CATEGORY_EXERCISE_EXPANSION_PLAN.md)
+- [Intake/Onboarding](./INTAKE_ONBOARDING_PLAN.md)
 
 ---
 
