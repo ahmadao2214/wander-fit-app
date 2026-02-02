@@ -29,6 +29,7 @@ import type * as sports from "../sports.js";
 import type * as userMaxes from "../userMaxes.js";
 import type * as userPrograms from "../userPrograms.js";
 import type * as users from "../users.js";
+import type * as workoutCalendar from "../workoutCalendar.js";
 import type * as workoutSessions from "../workoutSessions.js";
 import type * as workouts from "../workouts.js";
 
@@ -57,6 +58,7 @@ declare const fullApi: ApiFromModules<{
   userMaxes: typeof userMaxes;
   userPrograms: typeof userPrograms;
   users: typeof users;
+  workoutCalendar: typeof workoutCalendar;
   workoutSessions: typeof workoutSessions;
   workouts: typeof workouts;
 }>;
