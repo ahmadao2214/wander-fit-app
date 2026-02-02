@@ -277,6 +277,7 @@ export default defineSchema({
     sportId: v.id("sports"),
     yearsOfExperience: v.number(), // How many years of training
     preferredTrainingDaysPerWeek: v.number(), // 1-7
+    selectedTrainingDays: v.optional(v.array(v.number())), // [1, 3, 5] = Mon, Wed, Fri (0=Sun, 6=Sat)
 
     // Age group - determines intensity ceiling
     ageGroup: v.optional(ageGroupValidator), // "10-13", "14-17", "18+" (optional for migration)

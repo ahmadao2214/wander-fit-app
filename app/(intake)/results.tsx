@@ -34,10 +34,11 @@ import { TimelineView, createPhaseTimeline } from '../../components/onboarding'
 export default function ResultsScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
-  const { sportId, yearsOfExperience, trainingDays, weeksUntilSeason, ageGroup } = useLocalSearchParams<{
+  const { sportId, yearsOfExperience, trainingDays, selectedTrainingDays, weeksUntilSeason, ageGroup } = useLocalSearchParams<{
     sportId: string
     yearsOfExperience: string
     trainingDays: string
+    selectedTrainingDays: string
     weeksUntilSeason: string
     ageGroup: AgeGroup
   }>()
@@ -60,7 +61,7 @@ export default function ResultsScreen() {
   const savedMaxes = coreLiftExercises?.filter(ex => ex.currentMax !== null) ?? []
 
   // Redirect back if missing params
-  if (!sportId || !yearsOfExperience || !trainingDays || !weeksUntilSeason || !ageGroup) {
+  if (!sportId || !yearsOfExperience || !trainingDays || !selectedTrainingDays || !weeksUntilSeason || !ageGroup) {
     router.replace('/(intake)/sport')
     return null
   }
@@ -105,7 +106,7 @@ export default function ResultsScreen() {
     if (route) {
       router.push({
         pathname: route,
-        params: { sportId, yearsOfExperience, trainingDays, weeksUntilSeason, ageGroup },
+        params: { sportId, yearsOfExperience, trainingDays, selectedTrainingDays, weeksUntilSeason, ageGroup },
       } as any)
     }
   }
@@ -118,6 +119,7 @@ export default function ResultsScreen() {
         sportId,
         yearsOfExperience,
         trainingDays,
+        selectedTrainingDays,
         weeksUntilSeason,
         ageGroup,
       },

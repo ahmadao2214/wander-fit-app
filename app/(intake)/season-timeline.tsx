@@ -479,11 +479,12 @@ const WeeksDisplay = ({ weeks, sportName }: WeeksDisplayProps) => {
 export default function SeasonTimelineScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
-  const { sportId, ageGroup, yearsOfExperience, trainingDays } = useLocalSearchParams<{
+  const { sportId, ageGroup, yearsOfExperience, trainingDays, selectedTrainingDays } = useLocalSearchParams<{
     sportId: string
     ageGroup: string
     yearsOfExperience: string
     trainingDays: string
+    selectedTrainingDays: string
   }>()
 
   // Query sport to get name for the icon
@@ -507,7 +508,7 @@ export default function SeasonTimelineScreen() {
   }, [today])
 
   // Redirect if missing params
-  if (!sportId || !ageGroup || !yearsOfExperience || !trainingDays) {
+  if (!sportId || !ageGroup || !yearsOfExperience || !trainingDays || !selectedTrainingDays) {
     router.replace('/(intake)/sport')
     return null
   }
@@ -543,7 +544,7 @@ export default function SeasonTimelineScreen() {
     if (route) {
       router.push({
         pathname: route,
-        params: { sportId, ageGroup, yearsOfExperience, trainingDays },
+        params: { sportId, ageGroup, yearsOfExperience, trainingDays, selectedTrainingDays },
       } as any)
     }
   }
@@ -558,6 +559,7 @@ export default function SeasonTimelineScreen() {
           ageGroup,
           yearsOfExperience,
           trainingDays,
+          selectedTrainingDays,
           weeksUntilSeason: weeks.toString(),
         },
       } as any)

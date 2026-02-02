@@ -62,6 +62,39 @@ const intakeTypeValidator = v.union(
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Get default training days based on days per week count
+ * Used as fallback when selectedTrainingDays not provided (migration support)
+ *
+ * @param daysPerWeek - Number of training days (1-7)
+ * @returns Array of day indices (0=Sun, 1=Mon, ..., 6=Sat)
+ */
+function getDefaultTrainingDays(daysPerWeek: number): number[] {
+  // Common training patterns
+  switch (daysPerWeek) {
+    case 1:
+      return [1]; // Monday
+    case 2:
+      return [1, 4]; // Mon, Thu
+    case 3:
+      return [1, 3, 5]; // Mon, Wed, Fri
+    case 4:
+      return [1, 2, 4, 5]; // Mon, Tue, Thu, Fri
+    case 5:
+      return [1, 2, 3, 4, 5]; // Mon-Fri
+    case 6:
+      return [1, 2, 3, 4, 5, 6]; // Mon-Sat
+    case 7:
+      return [0, 1, 2, 3, 4, 5, 6]; // Every day
+    default:
+      return [1, 3, 5]; // Default to Mon, Wed, Fri
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // QUERIES
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -330,6 +363,7 @@ export const completeIntake = mutation({
     sportId: v.id("sports"),
     yearsOfExperience: v.number(),
     preferredTrainingDaysPerWeek: v.number(), // 1-7
+    selectedTrainingDays: v.optional(v.array(v.number())), // [1, 3, 5] = Mon, Wed, Fri (0=Sun, 6=Sat)
     weeksUntilSeason: v.optional(v.number()),
     ageGroup: v.union(v.literal("10-13"), v.literal("14-17"), v.literal("18+")),
     intakeType: v.optional(intakeTypeValidator), // Defaults to "initial"
@@ -368,12 +402,18 @@ export const completeIntake = mutation({
     const now = Date.now();
     const intakeType = args.intakeType ?? "initial";
 
+    // Generate default training days if not provided (based on count)
+    // Common patterns: 3 days = Mon/Wed/Fri, 4 days = Mon/Tue/Thu/Fri, etc.
+    const selectedTrainingDays = args.selectedTrainingDays ??
+      getDefaultTrainingDays(args.preferredTrainingDaysPerWeek);
+
     // 1. Create intake_responses record (always created, preserved for history)
     const intakeResponseId = await ctx.db.insert("intake_responses", {
       userId: user._id,
       sportId: args.sportId,
       yearsOfExperience: args.yearsOfExperience,
       preferredTrainingDaysPerWeek: args.preferredTrainingDaysPerWeek,
+      selectedTrainingDays,
       weeksUntilSeason: args.weeksUntilSeason,
       assignedGppCategoryId: sport.gppCategoryId,
       assignedSkillLevel: skillLevel,
