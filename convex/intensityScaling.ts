@@ -20,7 +20,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export type Intensity = "Low" | "Moderate" | "High";
-export type AgeGroup = "10-13" | "14-17" | "18+";
+export type AgeGroup = "14-17" | "18-35" | "36+";
 export type Phase = "GPP" | "SPP" | "SSP";
 
 // Category-specific intensity types
@@ -209,18 +209,11 @@ export const BODYWEIGHT_INTENSITY_CONFIG: Record<Intensity, { repsMultiplier: nu
  *
  * | Age Group | Max Intensity | 1RM Ceiling | Plyometrics | Max Sets |
  * |-----------|---------------|-------------|-------------|----------|
- * | 10-13     | Moderate      | 65%         | Yes         | 3        |
  * | 14-17     | High          | 85%         | Yes         | 5        |
- * | 18+       | High          | 90%         | Yes         | 6        |
+ * | 18-35     | High          | 90%         | Yes         | 6        |
+ * | 36+       | High          | 90%         | Yes         | 6        |
  */
 export const AGE_INTENSITY_RULES: Record<AgeGroup, AgeIntensityRules> = {
-  "10-13": {
-    maxIntensity: "Moderate",
-    oneRepMaxCeiling: 0.65,
-    plyometricAllowed: true,
-    maxSetsPerExercise: 3,
-    maxRepsMultiplier: 1.2, // Higher reps, lower weight for younger athletes
-  },
   "14-17": {
     maxIntensity: "High",
     oneRepMaxCeiling: 0.85,
@@ -228,9 +221,16 @@ export const AGE_INTENSITY_RULES: Record<AgeGroup, AgeIntensityRules> = {
     maxSetsPerExercise: 5,
     maxRepsMultiplier: 1.0,
   },
-  "18+": {
+  "18-35": {
     maxIntensity: "High",
-    oneRepMaxCeiling: 0.90, // Cap at 90%, can push to 95% for peaking
+    oneRepMaxCeiling: 0.90,
+    plyometricAllowed: true,
+    maxSetsPerExercise: 6,
+    maxRepsMultiplier: 1.0,
+  },
+  "36+": {
+    maxIntensity: "High",
+    oneRepMaxCeiling: 0.90, // Same as 18-35 for now
     plyometricAllowed: true,
     maxSetsPerExercise: 6,
     maxRepsMultiplier: 1.0,
@@ -395,17 +395,17 @@ export const CATEGORY_PHASE_CONFIG: Record<CategoryId, Record<Phase, CategoryPha
  * - "max" = 6
  */
 export const AGE_EXPERIENCE_MATRIX: Record<AgeGroup, Record<ExperienceBucket, AgeExperienceModifier>> = {
-  "10-13": {
-    "0-1": { setsPosition: "lowest", repsPosition: "lowest" },
-    "2-5": { setsPosition: "lowest_plus_1", repsPosition: "lowest_plus_2" },
-    "6+": { setsPosition: "second_lowest", repsPosition: "max_minus_1" },
-  },
   "14-17": {
     "0-1": { setsPosition: "middle", repsPosition: "middle" },
     "2-5": { setsPosition: "max", repsPosition: "max_minus_1" },
     "6+": { setsPosition: "max", repsPosition: "max" },
   },
-  "18+": {
+  "18-35": {
+    "0-1": { setsPosition: "max", repsPosition: "max_minus_2" },
+    "2-5": { setsPosition: "max", repsPosition: "max_minus_1" },
+    "6+": { setsPosition: "max", repsPosition: "max" },
+  },
+  "36+": {
     "0-1": { setsPosition: "max", repsPosition: "max_minus_2" },
     "2-5": { setsPosition: "max", repsPosition: "max_minus_1" },
     "6+": { setsPosition: "max", repsPosition: "max" },
@@ -416,13 +416,13 @@ export const AGE_EXPERIENCE_MATRIX: Record<AgeGroup, Record<ExperienceBucket, Ag
  * Age Group Safety Constraints
  *
  * Additional safety caps that override category-specific values for younger athletes.
- * - 10-13: Hard cap at 3 sets, 65% 1RM ceiling
- * - 14-17 and 18+: Use category ranges (no additional caps)
+ * - 14-17: Uses category ranges with 85% 1RM ceiling
+ * - 18-35 and 36+: Use full category ranges (no additional caps)
  */
 export const AGE_SAFETY_CONSTRAINTS: Record<AgeGroup, { maxSets: number | null; oneRepMaxCeiling: number }> = {
-  "10-13": { maxSets: 3, oneRepMaxCeiling: 0.65 },
   "14-17": { maxSets: null, oneRepMaxCeiling: 0.85 },
-  "18+": { maxSets: null, oneRepMaxCeiling: 0.90 },
+  "18-35": { maxSets: null, oneRepMaxCeiling: 0.90 },
+  "36+": { maxSets: null, oneRepMaxCeiling: 0.90 },
 };
 
 /**
@@ -911,7 +911,7 @@ export function getCategoryExerciseParameters(
   // Calculate sets from range using age+experience position
   let sets = getValueFromPosition(config.sets, ageExpModifier.setsPosition);
 
-  // Apply age safety cap for 10-13
+  // Apply age safety cap if applicable
   if (safetyConstraints.maxSets !== null) {
     sets = Math.min(sets, safetyConstraints.maxSets);
   }

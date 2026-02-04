@@ -12,9 +12,9 @@ const skillLevelValidator = v.union(
 );
 
 const ageGroupValidator = v.union(
-  v.literal("10-13"),
   v.literal("14-17"),
-  v.literal("18+")
+  v.literal("18-35"),
+  v.literal("36+")
 );
 
 /**
@@ -279,7 +279,7 @@ export default defineSchema({
     preferredTrainingDaysPerWeek: v.number(), // 1-7
 
     // Age group - determines intensity ceiling
-    ageGroup: v.optional(ageGroupValidator), // "10-13", "14-17", "18+" (optional for migration)
+    ageGroup: v.optional(ageGroupValidator), // "14-17", "18-35", "36+" (optional for migration)
     dateOfBirth: v.optional(v.number()), // Timestamp for auto-calculation
 
     // Time-based intake (for planning)
@@ -312,7 +312,7 @@ export default defineSchema({
     // Assignment Results (from linked intake)
     gppCategoryId: v.number(), // 1-4
     skillLevel: skillLevelValidator, // "Novice", "Moderate", "Advanced"
-    ageGroup: v.optional(ageGroupValidator), // "10-13", "14-17", "18+" - affects intensity ceiling (optional for migration)
+    ageGroup: v.optional(ageGroupValidator), // "14-17", "18-35", "36+" - affects intensity ceiling (optional for migration)
 
     // "Scheduled Workout" pointer
     currentPhase: phaseValidator, // The active phase
@@ -409,7 +409,7 @@ export default defineSchema({
     scalingSnapshot: v.optional(v.object({
       categoryId: v.number(), // 1-4 (Endurance, Power, Rotational, Strength)
       phase: phaseValidator,  // GPP, SPP, SSP
-      ageGroup: ageGroupValidator, // 10-13, 14-17, 18+
+      ageGroup: ageGroupValidator, // 14-17, 18-35, 36+
       yearsOfExperience: v.number(), // Used to determine experience bucket
     })),
   })
