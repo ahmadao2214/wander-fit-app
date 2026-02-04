@@ -847,3 +847,274 @@ export const getProgramCalendarMeta = query({
     };
   },
 });
+
+/**
+ * Get FULL calendar view for entire program duration
+ *
+ * Fetches ALL workouts mapped to calendar dates upfront.
+ * No date range filtering - loads everything once.
+ * This eliminates loading when scrolling between weeks/months.
+ *
+ * Returns:
+ * - All workout dates for the program (12 weeks, all phases)
+ * - Completion status
+ * - Phase information for color coding
+ * - Program metadata (start/end dates, progress)
+ */
+export const getFullProgramCalendar = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) {
+      return null;
+    }
+
+    // Get user's program
+    const program = await ctx.db
+      .query("user_programs")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .first();
+
+    if (!program) {
+      return null;
+    }
+
+    // Get intake response for training days
+    const intakeResponse = await ctx.db.get(program.intakeResponseId);
+    if (!intakeResponse) {
+      return null;
+    }
+
+    // Get training days
+    const trainingDays =
+      intakeResponse.selectedTrainingDays ??
+      DEFAULT_TRAINING_DAYS[intakeResponse.preferredTrainingDaysPerWeek] ??
+      DEFAULT_TRAINING_DAYS[3];
+
+    const programStartDate = new Date(program.createdAt);
+
+    // Calculate program end date (last workout of SSP)
+    const lastWorkoutSlot: WorkoutSlot = {
+      phase: "SSP",
+      week: WEEKS_PER_PHASE,
+      day: trainingDays.length,
+    };
+    const programEndDate = getDateForWorkout(
+      programStartDate,
+      trainingDays,
+      lastWorkoutSlot
+    );
+
+    // Get schedule overrides
+    const scheduleOverride = await ctx.db
+      .query("user_schedule_overrides")
+      .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
+      .first();
+
+    // Get completed sessions
+    const completedSessions = await ctx.db
+      .query("gpp_workout_sessions")
+      .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
+      .filter((q) => q.eq(q.field("status"), "completed"))
+      .collect();
+
+    // Build set of completed template IDs and completion dates
+    const completedTemplateIds = new Set(
+      completedSessions.map((s) => s.templateId.toString())
+    );
+    const completionDates = new Map<string, string>();
+    for (const session of completedSessions) {
+      if (session.completedAt) {
+        const completionDate = formatDateISO(new Date(session.completedAt));
+        completionDates.set(session.templateId.toString(), completionDate);
+      }
+    }
+
+    // Get all templates for user's category and skill level
+    const templates = await ctx.db
+      .query("program_templates")
+      .withIndex("by_category_phase", (q) =>
+        q.eq("gppCategoryId", program.gppCategoryId)
+      )
+      .filter((q) => q.eq(q.field("skillLevel"), program.skillLevel))
+      .collect();
+
+    // Build template lookup
+    const templateLookup = new Map<string, (typeof templates)[0]>();
+    for (const template of templates) {
+      const key = `${template.phase}-${template.week}-${template.day}`;
+      templateLookup.set(key, template);
+    }
+
+    // Apply slot overrides
+    const slotOverrides = scheduleOverride?.slotOverrides ?? [];
+    const overrideLookup = new Map<string, string>();
+    for (const override of slotOverrides) {
+      const key = `${override.phase}-${override.week}-${override.day}`;
+      overrideLookup.set(key, override.templateId.toString());
+    }
+
+    // Determine unlocked phases
+    const unlockedPhases: Phase[] = ["GPP"];
+    if (program.sppUnlockedAt) unlockedPhases.push("SPP");
+    if (program.sspUnlockedAt) unlockedPhases.push("SSP");
+
+    // Today's info
+    const today = startOfDay(new Date());
+    const todayISO = formatDateISO(today);
+
+    // Current slot
+    const currentSlot: WorkoutSlot = {
+      phase: program.currentPhase as Phase,
+      week: program.currentWeek,
+      day: program.currentDay,
+    };
+
+    // Check for in-progress session
+    const inProgressSession = await ctx.db
+      .query("gpp_workout_sessions")
+      .withIndex("by_user_status", (q) =>
+        q.eq("userId", user._id).eq("status", "in_progress")
+      )
+      .first();
+
+    // Build calendar data for ALL dates
+    const calendarData: Record<
+      string,
+      {
+        date: string;
+        workouts: Array<{
+          templateId: string;
+          name: string;
+          phase: Phase;
+          week: number;
+          day: number;
+          exerciseCount: number;
+          estimatedDurationMinutes: number;
+          isCompleted: boolean;
+          isToday: boolean;
+          isInProgress: boolean;
+          completedOnDate?: string;
+        }>;
+      }
+    > = {};
+
+    // Generate dates from 2 weeks before program start to 2 weeks after end
+    const bufferDays = 14;
+    const startDate = addDays(programStartDate, -bufferDays);
+    const endDate = addDays(programEndDate, bufferDays);
+
+    let currentDate = startDate;
+    while (currentDate <= endDate) {
+      const dateISO = formatDateISO(currentDate);
+      calendarData[dateISO] = {
+        date: dateISO,
+        workouts: [],
+      };
+
+      // Get scheduled workout for this date
+      const slot = getWorkoutForDate(programStartDate, trainingDays, currentDate);
+
+      if (slot && unlockedPhases.includes(slot.phase)) {
+        const slotKey = `${slot.phase}-${slot.week}-${slot.day}`;
+
+        // Check for override
+        const overrideTemplateId = overrideLookup.get(slotKey);
+        let template: (typeof templates)[0] | undefined;
+
+        if (overrideTemplateId) {
+          template = templates.find(
+            (t) => t._id.toString() === overrideTemplateId
+          );
+        } else {
+          template = templateLookup.get(slotKey);
+        }
+
+        if (template) {
+          const isCompleted = completedTemplateIds.has(template._id.toString());
+          const isCurrentSlot =
+            slot.phase === currentSlot.phase &&
+            slot.week === currentSlot.week &&
+            slot.day === currentSlot.day;
+          const isTodayDate = dateISO === todayISO;
+          const isInProgress =
+            inProgressSession?.templateId.toString() === template._id.toString();
+
+          calendarData[dateISO].workouts.push({
+            templateId: template._id.toString(),
+            name: template.name,
+            phase: slot.phase,
+            week: slot.week,
+            day: slot.day,
+            exerciseCount: template.exercises.length,
+            estimatedDurationMinutes: template.estimatedDurationMinutes,
+            isCompleted,
+            isToday: isTodayDate && (isCurrentSlot || isInProgress),
+            isInProgress,
+            completedOnDate: completionDates.get(template._id.toString()),
+          });
+        }
+      }
+
+      // Add workouts completed on this date (even if not scheduled)
+      for (const session of completedSessions) {
+        if (session.completedAt) {
+          const completionDateISO = formatDateISO(new Date(session.completedAt));
+          if (completionDateISO === dateISO) {
+            const alreadyAdded = calendarData[dateISO].workouts.some(
+              (w) => w.templateId === session.templateId.toString()
+            );
+            if (!alreadyAdded) {
+              const template = templates.find(
+                (t) => t._id.toString() === session.templateId.toString()
+              );
+              if (template) {
+                calendarData[dateISO].workouts.push({
+                  templateId: template._id.toString(),
+                  name: template.name,
+                  phase: template.phase as Phase,
+                  week: template.week,
+                  day: template.day,
+                  exerciseCount: template.exercises.length,
+                  estimatedDurationMinutes: template.estimatedDurationMinutes,
+                  isCompleted: true,
+                  isToday: false,
+                  isInProgress: false,
+                  completedOnDate: completionDateISO,
+                });
+              }
+            }
+          }
+        }
+      }
+
+      currentDate = addDays(currentDate, 1);
+    }
+
+    // Calculate totals
+    const totalWorkouts = PHASE_ORDER.length * WEEKS_PER_PHASE * trainingDays.length;
+
+    return {
+      calendarData,
+      programStartDate: formatDateISO(programStartDate),
+      programEndDate: formatDateISO(programEndDate),
+      trainingDays,
+      totalWorkouts,
+      completedWorkouts: completedSessions.length,
+      currentPhase: program.currentPhase,
+      currentWeek: program.currentWeek,
+      currentDay: program.currentDay,
+      unlockedPhases,
+      todayFocusTemplateId: scheduleOverride?.todayFocusTemplateId?.toString(),
+    };
+  },
+});

@@ -1,16 +1,10 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { YStack, XStack, Text, Button, Spinner, Card } from 'tamagui'
 import { Calendar, CalendarDays, Dumbbell } from '@tamagui/lucide-icons'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { CalendarWeekView } from './CalendarWeekView'
 import { CalendarMonthView } from './CalendarMonthView'
-import {
-  startOfWeek,
-  endOfWeek,
-  formatDateISO,
-  addDays,
-} from '../../lib/calendarUtils'
 import type { Phase } from '../../types'
 
 type ViewMode = 'week' | 'month'
@@ -30,7 +24,7 @@ export interface WorkoutCalendarProps {
  * WorkoutCalendar - Main calendar component
  *
  * Provides week and month views of the workout schedule.
- * Fetches calendar data from the backend and renders appropriate view.
+ * Fetches ALL calendar data upfront for smooth navigation without loading.
  */
 export function WorkoutCalendar({
   onWorkoutPress,
@@ -39,38 +33,9 @@ export function WorkoutCalendar({
   const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode)
   const [currentDate, setCurrentDate] = useState(new Date())
 
-  // Calculate date range for query based on view mode
-  const dateRange = useMemo(() => {
-    if (viewMode === 'week') {
-      // Get current week (Sunday to Saturday)
-      const start = startOfWeek(currentDate)
-      const end = endOfWeek(currentDate)
-      return {
-        startDate: formatDateISO(start),
-        endDate: formatDateISO(end),
-      }
-    } else {
-      // Get current month with padding (for calendar grid)
-      const year = currentDate.getFullYear()
-      const month = currentDate.getMonth()
-      // Start from first day of calendar grid (might be previous month)
-      const firstOfMonth = new Date(year, month, 1)
-      const startPadding = firstOfMonth.getDay()
-      const start = addDays(firstOfMonth, -startPadding)
-      // End at last day of calendar grid (might be next month)
-      const lastOfMonth = new Date(year, month + 1, 0)
-      const endPadding = 6 - lastOfMonth.getDay()
-      const end = addDays(lastOfMonth, endPadding)
-      return {
-        startDate: formatDateISO(start),
-        endDate: formatDateISO(end),
-      }
-    }
-  }, [viewMode, currentDate])
-
-  // Fetch calendar data
-  const calendarView = useQuery(api.workoutCalendar.getCalendarView, dateRange)
-  const programMeta = useQuery(api.workoutCalendar.getProgramCalendarMeta)
+  // Fetch ALL calendar data upfront - no date range filtering
+  // This ensures smooth navigation without loading states when scrolling
+  const fullCalendar = useQuery(api.workoutCalendar.getFullProgramCalendar)
 
   // Handle week navigation
   const handleWeekChange = (newWeek: Date) => {
@@ -89,7 +54,7 @@ export function WorkoutCalendar({
   }
 
   // Loading state
-  if (calendarView === undefined || programMeta === undefined) {
+  if (fullCalendar === undefined) {
     return (
       <YStack flex={1} items="center" justify="center" gap="$4">
         <Spinner size="large" color="$primary" />
@@ -99,7 +64,7 @@ export function WorkoutCalendar({
   }
 
   // No program state
-  if (calendarView === null || programMeta === null) {
+  if (fullCalendar === null) {
     return (
       <YStack flex={1} items="center" justify="center" gap="$4" p="$6">
         <Dumbbell size={48} color="$color8" />
@@ -113,8 +78,8 @@ export function WorkoutCalendar({
     )
   }
 
-  // Transform calendar data for components
-  const calendarData = calendarView.calendarData as Record<
+  // Extract calendar data - all dates loaded upfront
+  const calendarData = fullCalendar.calendarData as Record<
     string,
     {
       date: string
@@ -165,11 +130,11 @@ export function WorkoutCalendar({
           <XStack items="center" gap="$2">
             <Dumbbell size={16} color="$primary" />
             <Text fontSize={13} color="$color11">
-              {programMeta.completedWorkouts} / {programMeta.totalWorkouts} workouts completed
+              {fullCalendar.completedWorkouts} / {fullCalendar.totalWorkouts} workouts completed
             </Text>
           </XStack>
           <Text fontSize={13} fontWeight="600" color="$primary">
-            {Math.round((programMeta.completedWorkouts / programMeta.totalWorkouts) * 100)}%
+            {Math.round((fullCalendar.completedWorkouts / fullCalendar.totalWorkouts) * 100)}%
           </Text>
         </XStack>
       </Card>
