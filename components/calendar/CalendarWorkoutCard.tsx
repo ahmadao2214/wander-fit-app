@@ -92,45 +92,35 @@ export function CalendarWorkoutCard({
     )
   }
 
-  // Full card for week view
+  // Compact card for week view - fits 5+ days on screen
   return (
     <Card
       pressStyle={{ opacity: 0.8, scale: 0.98 }}
       onPress={onPress}
       onLongPress={onLongPress}
-      bg={getBgColor()}
+      backgroundColor={getBgColor()}
       borderColor={getBorderColor()}
       borderWidth={isToday || isInProgress ? 2 : 1}
-      p="$2"
-      rounded="$3"
-      opacity={isCompleted ? 0.8 : 1}
+      p="$1.5"
+      borderRadius="$2"
+      opacity={isCompleted ? 0.7 : 1}
     >
-      <YStack gap="$1">
-        {/* Phase indicator and status */}
-        <XStack items="center" justify="space-between">
-          <XStack items="center" gap="$1">
-            <YStack
-              width={8}
-              height={8}
-              rounded="$10"
-              bg={colors.dot}
-            />
-            <Text fontSize={10} color="$color9" fontWeight="500">
-              {phase}
-            </Text>
-          </XStack>
-          {isCompleted && <CheckCircle size={12} color="$gray9" />}
-          {isInProgress && <Play size={12} color="$green9" />}
-          {isToday && !isCompleted && !isInProgress && (
-            <Text fontSize={10} fontWeight="700" color={colors.dot}>
-              TODAY
-            </Text>
-          )}
+      <YStack gap="$0.5">
+        {/* Phase dot with status */}
+        <XStack alignItems="center" justifyContent="space-between">
+          <YStack
+            width={6}
+            height={6}
+            borderRadius={10}
+            backgroundColor={colors.dot}
+          />
+          {isCompleted && <CheckCircle size={10} color="$gray9" />}
+          {isInProgress && <Play size={10} color="$green9" />}
         </XStack>
 
-        {/* Workout name */}
+        {/* Workout name - truncated */}
         <Text
-          fontSize={12}
+          fontSize={10}
           fontWeight="600"
           color={isCompleted ? '$color10' : '$color12'}
           numberOfLines={2}
@@ -138,18 +128,10 @@ export function CalendarWorkoutCard({
           {name}
         </Text>
 
-        {/* Meta info */}
-        <XStack items="center" gap="$2">
-          <Text fontSize={10} color="$color9">
-            {exerciseCount} ex
-          </Text>
-          <XStack items="center" gap="$0.5">
-            <Clock size={10} color="$color9" />
-            <Text fontSize={10} color="$color9">
-              {estimatedDurationMinutes}m
-            </Text>
-          </XStack>
-        </XStack>
+        {/* Meta info - minimal */}
+        <Text fontSize={9} color="$color9">
+          {exerciseCount}ex · {estimatedDurationMinutes}m
+        </Text>
       </YStack>
     </Card>
   )

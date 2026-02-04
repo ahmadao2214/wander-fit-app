@@ -1,5 +1,7 @@
-import { YStack, XStack, Text, Button, Card, ScrollView } from 'tamagui'
+import { useState, useRef, useCallback } from 'react'
+import { YStack, XStack, Text, Button } from 'tamagui'
 import { ChevronLeft, ChevronRight } from '@tamagui/lucide-icons'
+import { FlatList, Dimensions, NativeScrollEvent, NativeSyntheticEvent } from 'react-native'
 import { CalendarDayCell } from './CalendarDayCell'
 import { CalendarWorkoutCardProps } from './CalendarWorkoutCard'
 import {
@@ -8,8 +10,11 @@ import {
   addDays,
   isSameDay,
   formatDateISO,
+  startOfWeek,
 } from '../../lib/calendarUtils'
 import type { Phase } from '../../types'
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
 export interface CalendarWorkout {
   templateId: string
@@ -25,9 +30,6 @@ export interface CalendarWorkout {
 }
 
 export interface CalendarWeekViewProps {
-  /**
-   * Calendar data keyed by ISO date string
-   */
   calendarData: Record<
     string,
     {
@@ -35,29 +37,31 @@ export interface CalendarWeekViewProps {
       workouts: CalendarWorkout[]
     }
   >
-  /**
-   * Currently viewed week (any date within that week)
-   */
   currentWeek: Date
-  /**
-   * Callback when week changes
-   */
   onWeekChange: (newWeek: Date) => void
-  /**
-   * Callback when a workout is pressed
-   */
   onWorkoutPress?: (templateId: string) => void
-  /**
-   * Callback when a workout is long pressed (for drag)
-   */
   onWorkoutLongPress?: (templateId: string) => void
 }
 
+// Generate array of weeks around current date for infinite scroll feel
+function generateWeeks(centerDate: Date, count: number = 5): Date[] {
+  const weeks: Date[] = []
+  const center = startOfWeek(centerDate)
+  const halfCount = Math.floor(count / 2)
+
+  for (let i = -halfCount; i <= halfCount; i++) {
+    weeks.push(addDays(center, i * 7))
+  }
+
+  return weeks
+}
+
 /**
- * CalendarWeekView - Week-based calendar view
+ * CalendarWeekView - Week-based calendar view with swipe navigation
  *
- * Shows 7 days in a horizontal row with workout cards.
- * Navigation arrows to move between weeks.
+ * Shows 7 days with workout cards.
+ * Supports horizontal swipe to change weeks.
+ * Header updates automatically on swipe.
  */
 export function CalendarWeekView({
   calendarData,
@@ -66,39 +70,103 @@ export function CalendarWeekView({
   onWorkoutPress,
   onWorkoutLongPress,
 }: CalendarWeekViewProps) {
-  const weekDays = getWeekDays(currentWeek)
+  const flatListRef = useRef<FlatList>(null)
+  const [weeks] = useState(() => generateWeeks(currentWeek, 11))
+  const [currentIndex, setCurrentIndex] = useState(5) // Middle of 11 weeks
+
   const today = new Date()
-
-  const handlePreviousWeek = () => {
-    onWeekChange(addDays(currentWeek, -7))
-  }
-
-  const handleNextWeek = () => {
-    onWeekChange(addDays(currentWeek, 7))
-  }
-
-  const handleGoToToday = () => {
-    onWeekChange(today)
-  }
-
-  // Check if current week contains today
+  const displayedWeek = weeks[currentIndex] || currentWeek
+  const weekDays = getWeekDays(displayedWeek)
   const isCurrentWeekVisible = weekDays.some((d) => isSameDay(d, today))
 
+  const handlePreviousWeek = useCallback(() => {
+    if (currentIndex > 0) {
+      flatListRef.current?.scrollToIndex({ index: currentIndex - 1, animated: true })
+    }
+  }, [currentIndex])
+
+  const handleNextWeek = useCallback(() => {
+    if (currentIndex < weeks.length - 1) {
+      flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true })
+    }
+  }, [currentIndex, weeks.length])
+
+  const handleGoToToday = useCallback(() => {
+    // Find the week containing today
+    const todayWeekStart = startOfWeek(today)
+    const index = weeks.findIndex((w) => isSameDay(w, todayWeekStart))
+    if (index >= 0) {
+      flatListRef.current?.scrollToIndex({ index, animated: true })
+    } else {
+      // Today's week is outside our range, update the parent
+      onWeekChange(today)
+    }
+  }, [weeks, onWeekChange])
+
+  const handleMomentumScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetX = event.nativeEvent.contentOffset.x
+    const newIndex = Math.round(offsetX / SCREEN_WIDTH)
+    if (newIndex !== currentIndex && newIndex >= 0 && newIndex < weeks.length) {
+      setCurrentIndex(newIndex)
+      onWeekChange(weeks[newIndex])
+    }
+  }, [currentIndex, weeks, onWeekChange])
+
+  const renderWeek = useCallback(({ item: weekStart }: { item: Date }) => {
+    const days = getWeekDays(weekStart)
+
+    return (
+      <XStack width={SCREEN_WIDTH} px="$2">
+        {days.map((date) => {
+          const dateISO = formatDateISO(date)
+          const dayData = calendarData[dateISO]
+          const workouts: Omit<CalendarWorkoutCardProps, 'onPress' | 'onLongPress' | 'compact'>[] =
+            dayData?.workouts.map((w) => ({
+              templateId: w.templateId,
+              name: w.name,
+              phase: w.phase,
+              week: w.week,
+              day: w.day,
+              exerciseCount: w.exerciseCount,
+              estimatedDurationMinutes: w.estimatedDurationMinutes,
+              isCompleted: w.isCompleted,
+              isToday: w.isToday,
+              isInProgress: w.isInProgress,
+            })) ?? []
+
+          return (
+            <CalendarDayCell
+              key={dateISO}
+              date={date}
+              isToday={isSameDay(date, today)}
+              workouts={workouts}
+              compact={false}
+              onWorkoutPress={onWorkoutPress}
+              onWorkoutLongPress={onWorkoutLongPress}
+            />
+          )
+        })}
+      </XStack>
+    )
+  }, [calendarData, onWorkoutPress, onWorkoutLongPress])
+
+  const keyExtractor = useCallback((item: Date) => formatDateISO(item), [])
+
   return (
-    <YStack flex={1} gap="$3">
+    <YStack flex={1} gap="$2">
       {/* Navigation header */}
-      <XStack items="center" justify="space-between" px="$2">
+      <XStack alignItems="center" justifyContent="space-between" px="$2">
         <Button
-          size="$3"
+          size="$2"
           circular
           chromeless
           icon={ChevronLeft}
           onPress={handlePreviousWeek}
         />
 
-        <XStack items="center" gap="$2">
-          <Text fontSize="$5" fontWeight="600" color="$color12">
-            {formatWeekRange(currentWeek)}
+        <XStack alignItems="center" gap="$2">
+          <Text fontSize="$4" fontWeight="600" color="$color12">
+            {formatWeekRange(displayedWeek)}
           </Text>
           {!isCurrentWeekVisible && (
             <Button
@@ -113,7 +181,7 @@ export function CalendarWeekView({
         </XStack>
 
         <Button
-          size="$3"
+          size="$2"
           circular
           chromeless
           icon={ChevronRight}
@@ -121,66 +189,42 @@ export function CalendarWeekView({
         />
       </XStack>
 
-      {/* Phase legend */}
-      <XStack justify="center" gap="$4" pb="$2">
-        <XStack items="center" gap="$1">
-          <YStack width={8} height={8} rounded="$10" bg="$blue9" />
-          <Text fontSize={11} color="$color10">
-            GPP
-          </Text>
+      {/* Phase legend - compact */}
+      <XStack justifyContent="center" gap="$3">
+        <XStack alignItems="center" gap="$1">
+          <YStack width={6} height={6} borderRadius={10} backgroundColor="$blue9" />
+          <Text fontSize={10} color="$color10">GPP</Text>
         </XStack>
-        <XStack items="center" gap="$1">
-          <YStack width={8} height={8} rounded="$10" bg="$orange9" />
-          <Text fontSize={11} color="$color10">
-            SPP
-          </Text>
+        <XStack alignItems="center" gap="$1">
+          <YStack width={6} height={6} borderRadius={10} backgroundColor="$orange9" />
+          <Text fontSize={10} color="$color10">SPP</Text>
         </XStack>
-        <XStack items="center" gap="$1">
-          <YStack width={8} height={8} rounded="$10" bg="$green9" />
-          <Text fontSize={11} color="$color10">
-            SSP
-          </Text>
+        <XStack alignItems="center" gap="$1">
+          <YStack width={6} height={6} borderRadius={10} backgroundColor="$green9" />
+          <Text fontSize={10} color="$color10">SSP</Text>
         </XStack>
       </XStack>
 
-      {/* Week grid */}
-      <ScrollView
+      {/* Swipeable week view */}
+      <FlatList
+        ref={flatListRef}
+        data={weeks}
+        renderItem={renderWeek}
+        keyExtractor={keyExtractor}
         horizontal
+        pagingEnabled
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ flexGrow: 1 }}
-      >
-        <XStack flex={1} gap="$1" minWidth="100%">
-          {weekDays.map((date) => {
-            const dateISO = formatDateISO(date)
-            const dayData = calendarData[dateISO]
-            const workouts: Omit<CalendarWorkoutCardProps, 'onPress' | 'onLongPress' | 'compact'>[] =
-              dayData?.workouts.map((w) => ({
-                templateId: w.templateId,
-                name: w.name,
-                phase: w.phase,
-                week: w.week,
-                day: w.day,
-                exerciseCount: w.exerciseCount,
-                estimatedDurationMinutes: w.estimatedDurationMinutes,
-                isCompleted: w.isCompleted,
-                isToday: w.isToday,
-                isInProgress: w.isInProgress,
-              })) ?? []
-
-            return (
-              <CalendarDayCell
-                key={dateISO}
-                date={date}
-                isToday={isSameDay(date, today)}
-                workouts={workouts}
-                compact={false}
-                onWorkoutPress={onWorkoutPress}
-                onWorkoutLongPress={onWorkoutLongPress}
-              />
-            )
-          })}
-        </XStack>
-      </ScrollView>
+        initialScrollIndex={currentIndex}
+        getItemLayout={(_, index) => ({
+          length: SCREEN_WIDTH,
+          offset: SCREEN_WIDTH * index,
+          index,
+        })}
+        onMomentumScrollEnd={handleMomentumScrollEnd}
+        decelerationRate="fast"
+        snapToInterval={SCREEN_WIDTH}
+        snapToAlignment="start"
+      />
     </YStack>
   )
 }

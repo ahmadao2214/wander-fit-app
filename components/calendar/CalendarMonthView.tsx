@@ -1,5 +1,7 @@
+import { useState, useRef, useCallback } from 'react'
 import { YStack, XStack, Text, Button } from 'tamagui'
 import { ChevronLeft, ChevronRight } from '@tamagui/lucide-icons'
+import { FlatList, Dimensions, NativeScrollEvent, NativeSyntheticEvent } from 'react-native'
 import { CalendarDayCell } from './CalendarDayCell'
 import { CalendarWorkoutCardProps } from './CalendarWorkoutCard'
 import {
@@ -10,6 +12,8 @@ import {
   DAY_NAMES,
 } from '../../lib/calendarUtils'
 import type { Phase } from '../../types'
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
 export interface CalendarWorkout {
   templateId: string
@@ -25,9 +29,6 @@ export interface CalendarWorkout {
 }
 
 export interface CalendarMonthViewProps {
-  /**
-   * Calendar data keyed by ISO date string
-   */
   calendarData: Record<
     string,
     {
@@ -35,28 +36,29 @@ export interface CalendarMonthViewProps {
       workouts: CalendarWorkout[]
     }
   >
-  /**
-   * Currently viewed month (year and month)
-   */
   currentMonth: Date
-  /**
-   * Callback when month changes
-   */
   onMonthChange: (newMonth: Date) => void
-  /**
-   * Callback when a day is pressed (to switch to week view)
-   */
   onDayPress?: (date: Date) => void
-  /**
-   * Callback when a workout is pressed
-   */
   onWorkoutPress?: (templateId: string) => void
 }
 
+// Generate array of months around current date for swipe navigation
+function generateMonths(centerDate: Date, count: number = 5): Date[] {
+  const months: Date[] = []
+  const halfCount = Math.floor(count / 2)
+
+  for (let i = -halfCount; i <= halfCount; i++) {
+    months.push(new Date(centerDate.getFullYear(), centerDate.getMonth() + i, 1))
+  }
+
+  return months
+}
+
 /**
- * CalendarMonthView - Month-based calendar view
+ * CalendarMonthView - Month-based calendar view with swipe navigation
  *
  * Shows a full month grid with compact workout indicators.
+ * Supports horizontal swipe to change months.
  * Tap on a day to see week view.
  */
 export function CalendarMonthView({
@@ -66,49 +68,130 @@ export function CalendarMonthView({
   onDayPress,
   onWorkoutPress,
 }: CalendarMonthViewProps) {
+  const flatListRef = useRef<FlatList>(null)
+  const [months] = useState(() => generateMonths(currentMonth, 13))
+  const [currentIndex, setCurrentIndex] = useState(6) // Middle of 13 months
+
   const today = new Date()
-  const currentYear = currentMonth.getFullYear()
-  const currentMonthNum = currentMonth.getMonth()
+  const displayedMonth = months[currentIndex] || currentMonth
+  const currentYear = displayedMonth.getFullYear()
+  const currentMonthNum = displayedMonth.getMonth()
 
-  const calendarDays = getMonthCalendarDays(currentYear, currentMonthNum)
-
-  const handlePreviousMonth = () => {
-    onMonthChange(new Date(currentYear, currentMonthNum - 1, 1))
-  }
-
-  const handleNextMonth = () => {
-    onMonthChange(new Date(currentYear, currentMonthNum + 1, 1))
-  }
-
-  const handleGoToToday = () => {
-    onMonthChange(new Date(today.getFullYear(), today.getMonth(), 1))
-  }
-
-  // Check if current month contains today
   const isCurrentMonthVisible =
     currentYear === today.getFullYear() && currentMonthNum === today.getMonth()
 
-  // Split days into weeks (7 days per row)
-  const weeks: Date[][] = []
-  for (let i = 0; i < calendarDays.length; i += 7) {
-    weeks.push(calendarDays.slice(i, i + 7))
-  }
+  const handlePreviousMonth = useCallback(() => {
+    if (currentIndex > 0) {
+      flatListRef.current?.scrollToIndex({ index: currentIndex - 1, animated: true })
+    }
+  }, [currentIndex])
+
+  const handleNextMonth = useCallback(() => {
+    if (currentIndex < months.length - 1) {
+      flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true })
+    }
+  }, [currentIndex, months.length])
+
+  const handleGoToToday = useCallback(() => {
+    const todayMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+    const index = months.findIndex(
+      (m) => m.getFullYear() === todayMonth.getFullYear() && m.getMonth() === todayMonth.getMonth()
+    )
+    if (index >= 0) {
+      flatListRef.current?.scrollToIndex({ index, animated: true })
+    } else {
+      onMonthChange(todayMonth)
+    }
+  }, [months, onMonthChange])
+
+  const handleMomentumScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetX = event.nativeEvent.contentOffset.x
+    const newIndex = Math.round(offsetX / SCREEN_WIDTH)
+    if (newIndex !== currentIndex && newIndex >= 0 && newIndex < months.length) {
+      setCurrentIndex(newIndex)
+      onMonthChange(months[newIndex])
+    }
+  }, [currentIndex, months, onMonthChange])
+
+  const renderMonth = useCallback(({ item: monthDate }: { item: Date }) => {
+    const year = monthDate.getFullYear()
+    const month = monthDate.getMonth()
+    const calendarDays = getMonthCalendarDays(year, month)
+
+    // Split days into weeks
+    const weeks: Date[][] = []
+    for (let i = 0; i < calendarDays.length; i += 7) {
+      weeks.push(calendarDays.slice(i, i + 7))
+    }
+
+    return (
+      <YStack width={SCREEN_WIDTH} px="$2">
+        {/* Calendar grid */}
+        <YStack gap="$0.5">
+          {weeks.map((week, weekIdx) => (
+            <XStack key={weekIdx}>
+              {week.map((date) => {
+                const dateISO = formatDateISO(date)
+                const dayData = calendarData[dateISO]
+                const isMonthDate = date.getMonth() === month
+                const workouts: Omit<
+                  CalendarWorkoutCardProps,
+                  'onPress' | 'onLongPress' | 'compact'
+                >[] =
+                  dayData?.workouts.map((w) => ({
+                    templateId: w.templateId,
+                    name: w.name,
+                    phase: w.phase,
+                    week: w.week,
+                    day: w.day,
+                    exerciseCount: w.exerciseCount,
+                    estimatedDurationMinutes: w.estimatedDurationMinutes,
+                    isCompleted: w.isCompleted,
+                    isToday: w.isToday,
+                    isInProgress: w.isInProgress,
+                  })) ?? []
+
+                return (
+                  <YStack
+                    key={dateISO}
+                    flex={1}
+                    pressStyle={{ opacity: 0.7 }}
+                    onPress={() => onDayPress?.(date)}
+                  >
+                    <CalendarDayCell
+                      date={date}
+                      isToday={isSameDay(date, today)}
+                      isCurrentMonth={isMonthDate}
+                      workouts={workouts}
+                      compact={true}
+                    />
+                  </YStack>
+                )
+              })}
+            </XStack>
+          ))}
+        </YStack>
+      </YStack>
+    )
+  }, [calendarData, onDayPress])
+
+  const keyExtractor = useCallback((item: Date) => `${item.getFullYear()}-${item.getMonth()}`, [])
 
   return (
-    <YStack flex={1} gap="$3">
+    <YStack flex={1} gap="$2">
       {/* Navigation header */}
-      <XStack items="center" justify="space-between" px="$2">
+      <XStack alignItems="center" justifyContent="space-between" px="$2">
         <Button
-          size="$3"
+          size="$2"
           circular
           chromeless
           icon={ChevronLeft}
           onPress={handlePreviousMonth}
         />
 
-        <XStack items="center" gap="$2">
-          <Text fontSize="$5" fontWeight="600" color="$color12">
-            {formatMonthYear(currentMonth)}
+        <XStack alignItems="center" gap="$2">
+          <Text fontSize="$4" fontWeight="600" color="$color12">
+            {formatMonthYear(displayedMonth)}
           </Text>
           {!isCurrentMonthVisible && (
             <Button
@@ -123,7 +206,7 @@ export function CalendarMonthView({
         </XStack>
 
         <Button
-          size="$3"
+          size="$2"
           circular
           chromeless
           icon={ChevronRight}
@@ -131,84 +214,53 @@ export function CalendarMonthView({
         />
       </XStack>
 
-      {/* Phase legend */}
-      <XStack justify="center" gap="$4" pb="$2">
-        <XStack items="center" gap="$1">
-          <YStack width={8} height={8} rounded="$10" bg="$blue9" />
-          <Text fontSize={11} color="$color10">
-            GPP
-          </Text>
+      {/* Phase legend - compact */}
+      <XStack justifyContent="center" gap="$3">
+        <XStack alignItems="center" gap="$1">
+          <YStack width={6} height={6} borderRadius={10} backgroundColor="$blue9" />
+          <Text fontSize={10} color="$color10">GPP</Text>
         </XStack>
-        <XStack items="center" gap="$1">
-          <YStack width={8} height={8} rounded="$10" bg="$orange9" />
-          <Text fontSize={11} color="$color10">
-            SPP
-          </Text>
+        <XStack alignItems="center" gap="$1">
+          <YStack width={6} height={6} borderRadius={10} backgroundColor="$orange9" />
+          <Text fontSize={10} color="$color10">SPP</Text>
         </XStack>
-        <XStack items="center" gap="$1">
-          <YStack width={8} height={8} rounded="$10" bg="$green9" />
-          <Text fontSize={11} color="$color10">
-            SSP
-          </Text>
+        <XStack alignItems="center" gap="$1">
+          <YStack width={6} height={6} borderRadius={10} backgroundColor="$green9" />
+          <Text fontSize={10} color="$color10">SSP</Text>
         </XStack>
       </XStack>
 
       {/* Day names header */}
-      <XStack>
+      <XStack px="$2">
         {DAY_NAMES.map((day) => (
-          <YStack key={day} flex={1} items="center">
-            <Text fontSize={11} fontWeight="500" color="$color10">
+          <YStack key={day} flex={1} alignItems="center">
+            <Text fontSize={10} fontWeight="500" color="$color10">
               {day}
             </Text>
           </YStack>
         ))}
       </XStack>
 
-      {/* Calendar grid */}
-      <YStack flex={1} gap="$1">
-        {weeks.map((week, weekIdx) => (
-          <XStack key={weekIdx} flex={1}>
-            {week.map((date) => {
-              const dateISO = formatDateISO(date)
-              const dayData = calendarData[dateISO]
-              const isCurrentMonth = date.getMonth() === currentMonthNum
-              const workouts: Omit<
-                CalendarWorkoutCardProps,
-                'onPress' | 'onLongPress' | 'compact'
-              >[] =
-                dayData?.workouts.map((w) => ({
-                  templateId: w.templateId,
-                  name: w.name,
-                  phase: w.phase,
-                  week: w.week,
-                  day: w.day,
-                  exerciseCount: w.exerciseCount,
-                  estimatedDurationMinutes: w.estimatedDurationMinutes,
-                  isCompleted: w.isCompleted,
-                  isToday: w.isToday,
-                  isInProgress: w.isInProgress,
-                })) ?? []
-
-              return (
-                <YStack
-                  key={dateISO}
-                  flex={1}
-                  pressStyle={{ opacity: 0.7 }}
-                  onPress={() => onDayPress?.(date)}
-                >
-                  <CalendarDayCell
-                    date={date}
-                    isToday={isSameDay(date, today)}
-                    isCurrentMonth={isCurrentMonth}
-                    workouts={workouts}
-                    compact={true}
-                  />
-                </YStack>
-              )
-            })}
-          </XStack>
-        ))}
-      </YStack>
+      {/* Swipeable month view */}
+      <FlatList
+        ref={flatListRef}
+        data={months}
+        renderItem={renderMonth}
+        keyExtractor={keyExtractor}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        initialScrollIndex={currentIndex}
+        getItemLayout={(_, index) => ({
+          length: SCREEN_WIDTH,
+          offset: SCREEN_WIDTH * index,
+          index,
+        })}
+        onMomentumScrollEnd={handleMomentumScrollEnd}
+        decelerationRate="fast"
+        snapToInterval={SCREEN_WIDTH}
+        snapToAlignment="start"
+      />
     </YStack>
   )
 }

@@ -37,8 +37,8 @@ export function CalendarDayCell({
     return (
       <YStack
         flex={1}
-        minHeight={60}
-        p="$1"
+        minHeight={44}
+        p="$0.5"
         bg={isToday ? '$primary' : 'transparent'}
         rounded="$2"
         opacity={isCurrentMonth ? 1 : 0.4}
@@ -48,23 +48,23 @@ export function CalendarDayCell({
           fontSize={12}
           fontWeight={isToday ? '700' : '500'}
           color={isToday ? 'white' : '$color11'}
-          text="center"
+          textAlign="center"
         >
           {dayNumber}
         </Text>
 
         {/* Workout indicators */}
         {workouts.length > 0 && (
-          <YStack items="center" gap="$0.5" pt="$1">
+          <YStack alignItems="center" gap="$0.5" pt="$0.5">
             {/* Phase dots */}
-            <XStack gap="$1" justify="center">
+            <XStack gap="$1" justifyContent="center">
               {workouts.slice(0, 3).map((workout, idx) => (
                 <YStack
                   key={`${workout.templateId}-${idx}`}
-                  width={6}
-                  height={6}
-                  rounded="$10"
-                  bg={
+                  width={5}
+                  height={5}
+                  borderRadius={10}
+                  backgroundColor={
                     workout.phase === 'GPP'
                       ? '$blue9'
                       : workout.phase === 'SPP'
@@ -79,7 +79,7 @@ export function CalendarDayCell({
             {/* Completion indicator */}
             {completedCount > 0 && (
               <Text
-                fontSize={10}
+                fontSize={9}
                 fontWeight="600"
                 color={isToday ? 'white' : '$green9'}
               >
@@ -92,35 +92,35 @@ export function CalendarDayCell({
     )
   }
 
-  // Week view - full cards
+  // Week view - compact cards for 5+ days visible
   return (
     <YStack
       flex={1}
-      minWidth={100}
-      bg={isToday ? '$color2' : 'transparent'}
-      rounded="$3"
-      p="$2"
-      gap="$2"
+      minWidth={64}
+      backgroundColor={isToday ? '$color2' : 'transparent'}
+      borderRadius="$2"
+      p="$1"
+      gap="$1"
     >
-      {/* Day header */}
-      <YStack items="center" gap="$0.5">
+      {/* Day header - compact */}
+      <YStack alignItems="center" gap="$0.5">
         <Text
-          fontSize={11}
+          fontSize={10}
           fontWeight="500"
           color="$color10"
         >
           {dayOfWeek}
         </Text>
         <YStack
-          width={28}
-          height={28}
-          rounded="$10"
-          bg={isToday ? '$primary' : 'transparent'}
-          items="center"
-          justify="center"
+          width={24}
+          height={24}
+          borderRadius={12}
+          backgroundColor={isToday ? '$primary' : 'transparent'}
+          alignItems="center"
+          justifyContent="center"
         >
           <Text
-            fontSize={14}
+            fontSize={12}
             fontWeight={isToday ? '700' : '500'}
             color={isToday ? 'white' : '$color12'}
           >
@@ -129,27 +129,20 @@ export function CalendarDayCell({
         </YStack>
       </YStack>
 
-      {/* Workout cards */}
-      <YStack gap="$2" flex={1}>
-        {workouts.map((workout, idx) => (
-          <CalendarWorkoutCard
-            key={`${workout.templateId}-${idx}`}
-            {...workout}
-            compact={false}
-            onPress={() => onWorkoutPress?.(workout.templateId)}
-            onLongPress={() => onWorkoutLongPress?.(workout.templateId)}
-          />
-        ))}
-
-        {/* Empty state */}
-        {workouts.length === 0 && (
-          <YStack flex={1} items="center" justify="center" opacity={0.5}>
-            <Text fontSize={11} color="$color9">
-              Rest
-            </Text>
-          </YStack>
-        )}
-      </YStack>
+      {/* Workout cards - only show if there are workouts */}
+      {workouts.length > 0 && (
+        <YStack gap="$1">
+          {workouts.map((workout, idx) => (
+            <CalendarWorkoutCard
+              key={`${workout.templateId}-${idx}`}
+              {...workout}
+              compact={false}
+              onPress={() => onWorkoutPress?.(workout.templateId)}
+              onLongPress={() => onWorkoutLongPress?.(workout.templateId)}
+            />
+          ))}
+        </YStack>
+      )}
     </YStack>
   )
 }
