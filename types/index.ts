@@ -48,7 +48,7 @@ export const PHASE_NAMES: Record<Phase, string> = {
 export type SkillLevel = "Novice" | "Moderate" | "Advanced";
 
 // Age groups - determines intensity ceiling
-export type AgeGroup = "10-13" | "14-17" | "18+";
+export type AgeGroup = "14-17" | "18-35" | "36+";
 
 // Session status
 export type SessionStatus = "in_progress" | "completed" | "abandoned";
