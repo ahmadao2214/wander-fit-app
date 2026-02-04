@@ -1,5 +1,5 @@
 import { YStack, XStack, Text, Card } from 'tamagui'
-import { CheckCircle, Play, Clock } from '@tamagui/lucide-icons'
+import { CheckCircle, Play, Clock, Lock } from '@tamagui/lucide-icons'
 import type { Phase } from '../../types'
 
 /**
@@ -22,6 +22,7 @@ export interface CalendarWorkoutCardProps {
   isCompleted: boolean
   isToday: boolean
   isInProgress: boolean
+  isLocked?: boolean // Phase not yet unlocked (visible but not draggable)
   compact?: boolean
   onPress?: () => void
   onLongPress?: () => void
@@ -43,6 +44,7 @@ export function CalendarWorkoutCard({
   isCompleted,
   isToday,
   isInProgress,
+  isLocked = false,
   compact = false,
   onPress,
   onLongPress,
@@ -51,6 +53,7 @@ export function CalendarWorkoutCard({
 
   // Determine card styling based on state
   const getBgColor = () => {
+    if (isLocked) return '$gray2'
     if (isCompleted) return '$gray2'
     if (isInProgress) return '$green2'
     if (isToday) return colors.bg
@@ -58,35 +61,44 @@ export function CalendarWorkoutCard({
   }
 
   const getBorderColor = () => {
+    if (isLocked) return '$gray4'
     if (isCompleted) return '$gray5'
     if (isInProgress) return '$green7'
     if (isToday) return colors.border
     return '$gray5'
   }
 
+  // Determine status icon
+  const getStatusIcon = () => {
+    if (isLocked) return <Lock size={10} color="$gray8" />
+    if (isCompleted) return <CheckCircle size={10} color="$gray9" />
+    if (isInProgress) return <Play size={10} color="$green9" />
+    return null
+  }
+
   if (compact) {
     // Compact mode for month view - just shows phase dot and status
     return (
       <Card
-        pressStyle={{ opacity: 0.8, scale: 0.98 }}
-        onPress={onPress}
-        onLongPress={onLongPress}
+        pressStyle={isLocked ? undefined : { opacity: 0.8, scale: 0.98 }}
+        onPress={isLocked ? undefined : onPress}
+        onLongPress={isLocked ? undefined : onLongPress}
         bg={getBgColor()}
         borderColor={getBorderColor()}
         borderWidth={1}
         px="$2"
         py="$1"
         rounded="$2"
+        opacity={isLocked ? 0.5 : 1}
       >
         <XStack items="center" gap="$1">
           <YStack
             width={6}
             height={6}
             rounded="$10"
-            bg={colors.dot}
+            bg={isLocked ? '$gray6' : colors.dot}
           />
-          {isCompleted && <CheckCircle size={10} color="$gray9" />}
-          {isInProgress && <Play size={10} color="$green9" />}
+          {getStatusIcon()}
         </XStack>
       </Card>
     )
@@ -95,15 +107,15 @@ export function CalendarWorkoutCard({
   // Compact card for week view - fits 5+ days on screen
   return (
     <Card
-      pressStyle={{ opacity: 0.8, scale: 0.98 }}
-      onPress={onPress}
-      onLongPress={onLongPress}
+      pressStyle={isLocked ? undefined : { opacity: 0.8, scale: 0.98 }}
+      onPress={isLocked ? undefined : onPress}
+      onLongPress={isLocked ? undefined : onLongPress}
       backgroundColor={getBgColor()}
       borderColor={getBorderColor()}
       borderWidth={isToday || isInProgress ? 2 : 1}
       p="$1.5"
       borderRadius="$2"
-      opacity={isCompleted ? 0.7 : 1}
+      opacity={isLocked ? 0.5 : isCompleted ? 0.7 : 1}
     >
       <YStack gap="$0.5">
         {/* Phase dot with status */}
@@ -112,17 +124,16 @@ export function CalendarWorkoutCard({
             width={6}
             height={6}
             borderRadius={10}
-            backgroundColor={colors.dot}
+            backgroundColor={isLocked ? '$gray6' : colors.dot}
           />
-          {isCompleted && <CheckCircle size={10} color="$gray9" />}
-          {isInProgress && <Play size={10} color="$green9" />}
+          {getStatusIcon()}
         </XStack>
 
         {/* Workout name - truncated */}
         <Text
           fontSize={10}
           fontWeight="600"
-          color={isCompleted ? '$color10' : '$color12'}
+          color={isLocked || isCompleted ? '$color10' : '$color12'}
           numberOfLines={2}
         >
           {name}
@@ -130,7 +141,7 @@ export function CalendarWorkoutCard({
 
         {/* Meta info - minimal */}
         <Text fontSize={9} color="$color9">
-          {exerciseCount}ex · {estimatedDurationMinutes}m
+          {isLocked ? phase : `${exerciseCount}ex · ${estimatedDurationMinutes}m`}
         </Text>
       </YStack>
     </Card>

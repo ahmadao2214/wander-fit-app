@@ -315,10 +315,14 @@ export default defineSchema({
     skillLevel: skillLevelValidator, // "Novice", "Moderate", "Advanced"
     ageGroup: v.optional(ageGroupValidator), // "10-13", "14-17", "18+" - affects intensity ceiling (optional for migration)
 
+    // Dynamic Program Duration (from intake weeksUntilSeason)
+    totalProgramWeeks: v.optional(v.number()), // Total weeks from intake (weeksUntilSeason)
+    weeksPerPhase: v.optional(v.number()), // Calculated: totalProgramWeeks / 3, min 2, max 8
+
     // "Scheduled Workout" pointer
     currentPhase: phaseValidator, // The active phase
-    currentWeek: v.number(), // 1-4 (within current phase)
-    currentDay: v.number(), // Which day in the week (1-7)
+    currentWeek: v.number(), // 1 to weeksPerPhase (within current phase)
+    currentDay: v.number(), // Which day in the week (1 to trainingDaysPerWeek)
     lastWorkoutDate: v.optional(v.number()),
 
     // Phase Unlocking (Sequential Access)

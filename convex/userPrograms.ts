@@ -439,6 +439,17 @@ export const completeIntake = mutation({
       });
       programId = existingProgram._id;
     } else if (!existingProgram) {
+      // Calculate dynamic weeks per phase based on weeksUntilSeason
+      // Formula: totalProgramWeeks / 3 phases, clamped between 2 and 8
+      let totalProgramWeeks: number | undefined;
+      let weeksPerPhase: number | undefined;
+
+      if (args.weeksUntilSeason && args.weeksUntilSeason > 0) {
+        totalProgramWeeks = args.weeksUntilSeason;
+        // Divide by 3 phases, minimum 2 weeks, maximum 8 weeks
+        weeksPerPhase = Math.max(2, Math.min(8, Math.floor(totalProgramWeeks / 3)));
+      }
+
       // Initial intake: Create new program
       programId = await ctx.db.insert("user_programs", {
         userId: user._id,
@@ -446,6 +457,8 @@ export const completeIntake = mutation({
         gppCategoryId: sport.gppCategoryId,
         skillLevel,
         ageGroup: args.ageGroup,
+        totalProgramWeeks,
+        weeksPerPhase,
         currentPhase: "GPP",
         currentWeek: 1,
         currentDay: 1,

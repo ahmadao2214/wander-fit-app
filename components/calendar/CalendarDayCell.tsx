@@ -65,13 +65,15 @@ export function CalendarDayCell({
                   height={5}
                   borderRadius={10}
                   backgroundColor={
-                    workout.phase === 'GPP'
-                      ? '$blue9'
-                      : workout.phase === 'SPP'
-                        ? '$orange9'
-                        : '$green9'
+                    workout.isLocked
+                      ? '$gray6'
+                      : workout.phase === 'GPP'
+                        ? '$blue9'
+                        : workout.phase === 'SPP'
+                          ? '$orange9'
+                          : '$green9'
                   }
-                  opacity={workout.isCompleted ? 0.5 : 1}
+                  opacity={workout.isLocked || workout.isCompleted ? 0.5 : 1}
                 />
               ))}
             </XStack>
