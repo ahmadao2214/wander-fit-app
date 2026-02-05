@@ -1,15 +1,19 @@
 /**
  * Template Generator
  *
- * Generates all 432 program templates for the MVP:
- * 4 Categories × 3 Phases × 3 Skill Levels × 4 Weeks × 3 Days = 432 templates
+ * Generates all 1,008 program templates for full flexibility:
+ * 4 Categories × 3 Phases × 3 Skill Levels × 4 Weeks × 7 Days = 1,008 templates
  *
  * Run via Convex dashboard: generateTemplates.generateAllTemplates({})
  *
  * Template Structure:
- * - Day 1: Lower Body (Squat, Hinge, Lunge, Core)
- * - Day 2: Upper Body (Push H+V, Pull H+V, Core)
- * - Day 3: Power/Conditioning (Plyometrics, Carries, Conditioning)
+ * - Day 1: Lower Body A (Squat dominant)
+ * - Day 2: Upper Body A (Push emphasis)
+ * - Day 3: Power/Conditioning
+ * - Day 4: Lower Body B (Hinge dominant)
+ * - Day 5: Upper Body B (Pull emphasis)
+ * - Day 6: Full Body / Athletic
+ * - Day 7: Active Recovery / Mobility
  *
  * Phase Characteristics:
  * - GPP: Foundation (60-75% 1RM), tempo 3010, higher reps
@@ -66,7 +70,29 @@ const PHASES: Phase[] = ["GPP", "SPP", "SSP"];
 const SKILL_LEVELS: SkillLevel[] = ["Novice", "Moderate", "Advanced"];
 const CATEGORIES: GppCategoryId[] = [1, 2, 3, 4];
 const WEEKS = [1, 2, 3, 4];
-const DAYS = [1, 2, 3]; // 3 workout days per week
+const DAYS = [1, 2, 3, 4, 5, 6, 7]; // Support up to 7 workout days per week
+
+// Day type definitions for each workout day
+type DayType = "lower_a" | "upper_a" | "power" | "lower_b" | "upper_b" | "full_body" | "recovery";
+const DAY_TYPES: Record<number, DayType> = {
+  1: "lower_a",    // Lower Body A - Squat dominant
+  2: "upper_a",    // Upper Body A - Push emphasis
+  3: "power",      // Power/Conditioning
+  4: "lower_b",    // Lower Body B - Hinge dominant
+  5: "upper_b",    // Upper Body B - Pull emphasis
+  6: "full_body",  // Full Body / Athletic
+  7: "recovery",   // Active Recovery / Mobility
+};
+
+const DAY_NAMES: Record<number, string> = {
+  1: "Lower Body A",
+  2: "Upper Body A",
+  3: "Power & Conditioning",
+  4: "Lower Body B",
+  5: "Upper Body B",
+  6: "Full Body Athletic",
+  7: "Active Recovery",
+};
 
 // Week volume multipliers (relative to Week 3 = 100%)
 const WEEK_VOLUME_MULTIPLIERS: Record<number, number> = {
@@ -155,43 +181,74 @@ const CATEGORY_NAMES: Record<GppCategoryId, string> = {
  * - Complexity (basic, moderate, advanced)
  */
 
-// Warmup exercises (same for all categories)
-const WARMUP_EXERCISES = {
-  lower: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch"],
-  upper: ["cat_cow", "thoracic_rotation", "dead_bug"],
+// Warmup exercises by day type
+const WARMUP_EXERCISES: Record<DayType, string[]> = {
+  lower_a: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch"],
+  upper_a: ["cat_cow", "thoracic_rotation", "dead_bug"],
   power: ["cat_cow", "bird_dog", "worlds_greatest_stretch"],
+  lower_b: ["cat_cow", "90_90_hip_stretch", "hip_flexor_stretch"],
+  upper_b: ["cat_cow", "thoracic_rotation", "dead_bug"],
+  full_body: ["cat_cow", "worlds_greatest_stretch", "bird_dog"],
+  recovery: ["cat_cow", "90_90_hip_stretch", "thoracic_rotation"],
 };
 
 // Cooldown exercises
 const COOLDOWN_EXERCISES = ["90_90_hip_stretch", "hip_flexor_stretch"];
 
+// Exercise pool type for each day type
+type ExerciseComplexityPool = { basic: string[]; moderate: string[]; advanced: string[] };
+
 // Category-specific exercise pools
 const EXERCISE_POOLS: Record<
   GppCategoryId,
   {
-    lower: { basic: string[]; moderate: string[]; advanced: string[] };
-    upper: { basic: string[]; moderate: string[]; advanced: string[] };
-    power: { basic: string[]; moderate: string[]; advanced: string[] };
-    core: { basic: string[]; moderate: string[]; advanced: string[] };
+    lower_a: ExerciseComplexityPool;
+    lower_b: ExerciseComplexityPool;
+    upper_a: ExerciseComplexityPool;
+    upper_b: ExerciseComplexityPool;
+    power: ExerciseComplexityPool;
+    full_body: ExerciseComplexityPool;
+    recovery: ExerciseComplexityPool;
+    core: ExerciseComplexityPool;
   }
 > = {
   // Category 1: Continuous/Directional (Soccer, etc.)
   // Emphasis: Single-leg stability, rotational core, conditioning
   1: {
-    lower: {
+    lower_a: {
       basic: ["goblet_squat", "romanian_deadlift", "reverse_lunge", "glute_bridge"],
       moderate: ["back_squat", "romanian_deadlift", "bulgarian_split_squat", "single_leg_rdl"],
       advanced: ["back_squat", "trap_bar_deadlift", "bulgarian_split_squat", "single_leg_rdl", "single_leg_squat_box"],
     },
-    upper: {
+    lower_b: {
+      basic: ["romanian_deadlift", "goblet_squat", "lateral_lunge", "hip_thrust"],
+      moderate: ["trap_bar_deadlift", "back_squat", "single_leg_rdl", "hip_thrust"],
+      advanced: ["trap_bar_deadlift", "front_squat", "single_leg_rdl", "hip_thrust", "lateral_lunge"],
+    },
+    upper_a: {
       basic: ["push_up", "inverted_row", "db_shoulder_press", "face_pull"],
       moderate: ["db_bench_press", "db_row", "overhead_press", "pull_up", "face_pull"],
       advanced: ["db_bench_press", "db_row", "overhead_press", "weighted_pull_up", "incline_db_press"],
+    },
+    upper_b: {
+      basic: ["inverted_row", "push_up", "face_pull", "db_shoulder_press"],
+      moderate: ["pull_up", "db_bench_press", "face_pull", "db_row", "overhead_press"],
+      advanced: ["weighted_pull_up", "incline_db_press", "db_row", "overhead_press", "face_pull"],
     },
     power: {
       basic: ["broad_jump", "med_ball_slam", "kettlebell_swing", "skater_jump"],
       moderate: ["box_jump", "med_ball_rotational_throw", "kettlebell_swing", "shuttle_sprint"],
       advanced: ["depth_jump", "box_jump", "med_ball_rotational_throw", "sled_push", "shuttle_sprint"],
+    },
+    full_body: {
+      basic: ["goblet_squat", "push_up", "romanian_deadlift", "inverted_row", "kettlebell_swing"],
+      moderate: ["back_squat", "db_bench_press", "romanian_deadlift", "db_row", "box_jump"],
+      advanced: ["back_squat", "db_bench_press", "trap_bar_deadlift", "pull_up", "broad_jump"],
+    },
+    recovery: {
+      basic: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "hip_flexor_stretch"],
+      moderate: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "thoracic_rotation", "dead_bug"],
+      advanced: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "thoracic_rotation", "bird_dog"],
     },
     core: {
       basic: ["plank", "dead_bug", "bird_dog", "bicycle_crunch"],
@@ -203,20 +260,40 @@ const EXERCISE_POOLS: Record<
   // Category 2: Explosive/Vertical (Basketball, etc.)
   // Emphasis: Vertical power, landing mechanics, reactive strength
   2: {
-    lower: {
+    lower_a: {
       basic: ["goblet_squat", "hip_thrust", "reverse_lunge", "glute_bridge"],
       moderate: ["back_squat", "hip_thrust", "bulgarian_split_squat", "romanian_deadlift"],
       advanced: ["front_squat", "trap_bar_deadlift", "bulgarian_split_squat", "single_leg_squat_box"],
     },
-    upper: {
+    lower_b: {
+      basic: ["hip_thrust", "goblet_squat", "walking_lunge", "glute_bridge"],
+      moderate: ["romanian_deadlift", "back_squat", "hip_thrust", "reverse_lunge"],
+      advanced: ["trap_bar_deadlift", "front_squat", "hip_thrust", "single_leg_rdl", "reverse_lunge"],
+    },
+    upper_a: {
       basic: ["push_up", "inverted_row", "db_shoulder_press", "face_pull"],
       moderate: ["db_bench_press", "lat_pulldown", "overhead_press", "db_row"],
       advanced: ["db_bench_press", "pull_up", "overhead_press", "weighted_pull_up", "incline_db_press"],
+    },
+    upper_b: {
+      basic: ["inverted_row", "push_up", "face_pull", "db_row"],
+      moderate: ["lat_pulldown", "db_bench_press", "db_row", "overhead_press", "face_pull"],
+      advanced: ["pull_up", "incline_db_press", "db_row", "overhead_press", "weighted_pull_up"],
     },
     power: {
       basic: ["box_jump", "broad_jump", "med_ball_slam", "jump_squat"],
       moderate: ["box_jump", "depth_jump", "med_ball_slam", "skater_jump"],
       advanced: ["depth_jump", "box_jump", "plyo_push_up", "broad_jump", "med_ball_chest_pass"],
+    },
+    full_body: {
+      basic: ["goblet_squat", "push_up", "hip_thrust", "inverted_row", "box_jump"],
+      moderate: ["back_squat", "db_bench_press", "romanian_deadlift", "pull_up", "med_ball_slam"],
+      advanced: ["front_squat", "db_bench_press", "trap_bar_deadlift", "weighted_pull_up", "depth_jump"],
+    },
+    recovery: {
+      basic: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "hip_flexor_stretch"],
+      moderate: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "thoracic_rotation", "dead_bug"],
+      advanced: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "thoracic_rotation", "bird_dog"],
     },
     core: {
       basic: ["plank", "dead_bug", "glute_bridge", "bird_dog"],
@@ -228,20 +305,40 @@ const EXERCISE_POOLS: Record<
   // Category 3: Rotational/Unilateral (Baseball, etc.)
   // Emphasis: Anti-rotation, thoracic mobility, hip power
   3: {
-    lower: {
+    lower_a: {
       basic: ["goblet_squat", "romanian_deadlift", "lateral_lunge", "glute_bridge"],
       moderate: ["back_squat", "single_leg_rdl", "lateral_lunge", "bulgarian_split_squat"],
       advanced: ["back_squat", "trap_bar_deadlift", "single_leg_rdl", "single_leg_squat_box"],
     },
-    upper: {
+    lower_b: {
+      basic: ["romanian_deadlift", "goblet_squat", "reverse_lunge", "hip_thrust"],
+      moderate: ["single_leg_rdl", "back_squat", "lateral_lunge", "hip_thrust"],
+      advanced: ["trap_bar_deadlift", "back_squat", "lateral_lunge", "single_leg_rdl", "hip_thrust"],
+    },
+    upper_a: {
       basic: ["push_up", "db_row", "db_shoulder_press", "face_pull"],
       moderate: ["db_bench_press", "db_row", "overhead_press", "inverted_row"],
       advanced: ["incline_db_press", "db_row", "overhead_press", "pull_up", "face_pull"],
+    },
+    upper_b: {
+      basic: ["db_row", "push_up", "face_pull", "inverted_row"],
+      moderate: ["db_row", "db_bench_press", "inverted_row", "overhead_press", "face_pull"],
+      advanced: ["db_row", "incline_db_press", "pull_up", "overhead_press", "face_pull"],
     },
     power: {
       basic: ["med_ball_rotational_throw", "med_ball_slam", "kettlebell_swing", "broad_jump"],
       moderate: ["med_ball_rotational_throw", "cable_woodchop", "kettlebell_swing", "skater_jump"],
       advanced: ["med_ball_rotational_throw", "cable_woodchop", "box_jump", "sled_push", "sled_pull"],
+    },
+    full_body: {
+      basic: ["goblet_squat", "push_up", "romanian_deadlift", "db_row", "med_ball_slam"],
+      moderate: ["back_squat", "db_bench_press", "single_leg_rdl", "db_row", "med_ball_rotational_throw"],
+      advanced: ["back_squat", "incline_db_press", "trap_bar_deadlift", "pull_up", "cable_woodchop"],
+    },
+    recovery: {
+      basic: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "thoracic_rotation"],
+      moderate: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "thoracic_rotation", "dead_bug"],
+      advanced: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "thoracic_rotation", "bird_dog"],
     },
     core: {
       basic: ["pallof_press", "dead_bug", "side_plank", "bird_dog"],
@@ -253,20 +350,40 @@ const EXERCISE_POOLS: Record<
   // Category 4: General Strength (Football, Wrestling, etc.)
   // Emphasis: Bilateral strength, work capacity, grip
   4: {
-    lower: {
+    lower_a: {
       basic: ["goblet_squat", "romanian_deadlift", "walking_lunge", "hip_thrust"],
       moderate: ["back_squat", "trap_bar_deadlift", "walking_lunge", "romanian_deadlift"],
       advanced: ["back_squat", "trap_bar_deadlift", "front_squat", "bulgarian_split_squat"],
     },
-    upper: {
+    lower_b: {
+      basic: ["romanian_deadlift", "goblet_squat", "hip_thrust", "reverse_lunge"],
+      moderate: ["trap_bar_deadlift", "back_squat", "hip_thrust", "walking_lunge"],
+      advanced: ["trap_bar_deadlift", "front_squat", "hip_thrust", "bulgarian_split_squat", "single_leg_rdl"],
+    },
+    upper_a: {
       basic: ["push_up", "inverted_row", "db_shoulder_press", "db_bench_press"],
       moderate: ["db_bench_press", "db_row", "overhead_press", "pull_up"],
       advanced: ["db_bench_press", "weighted_pull_up", "overhead_press", "incline_db_press", "db_row"],
+    },
+    upper_b: {
+      basic: ["inverted_row", "push_up", "db_row", "face_pull"],
+      moderate: ["db_row", "db_bench_press", "pull_up", "overhead_press", "face_pull"],
+      advanced: ["weighted_pull_up", "incline_db_press", "db_row", "overhead_press", "face_pull"],
     },
     power: {
       basic: ["kettlebell_swing", "med_ball_slam", "broad_jump", "box_jump"],
       moderate: ["kettlebell_swing", "sled_push", "box_jump", "med_ball_slam"],
       advanced: ["sled_push", "sled_pull", "kettlebell_swing", "depth_jump", "plyo_push_up"],
+    },
+    full_body: {
+      basic: ["goblet_squat", "push_up", "romanian_deadlift", "inverted_row", "kettlebell_swing"],
+      moderate: ["back_squat", "db_bench_press", "trap_bar_deadlift", "db_row", "sled_push"],
+      advanced: ["back_squat", "db_bench_press", "trap_bar_deadlift", "weighted_pull_up", "sled_push"],
+    },
+    recovery: {
+      basic: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "hip_flexor_stretch"],
+      moderate: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "thoracic_rotation", "dead_bug"],
+      advanced: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "thoracic_rotation", "bird_dog"],
     },
     core: {
       basic: ["plank", "dead_bug", "glute_bridge", "bird_dog"],
@@ -301,8 +418,8 @@ function generateExercisePrescriptions(
   const adjustedReps = Math.round(skillConfig.baseReps * phaseConfig.repsModifier);
   const adjustedRest = Math.round(skillConfig.baseRest * phaseConfig.restModifier);
 
-  // Get day type
-  const dayType = day === 1 ? "lower" : day === 2 ? "upper" : "power";
+  // Get day type from DAY_TYPES mapping
+  const dayType = DAY_TYPES[day] || "lower_a";
 
   // 1. Warmup (2 exercises)
   const warmupExercises = WARMUP_EXERCISES[dayType].slice(0, 2);
@@ -310,19 +427,37 @@ function generateExercisePrescriptions(
     exercises.push({
       exerciseSlug: slug,
       sets: 1,
-      reps: dayType === "power" ? "8 each side" : "10",
+      reps: dayType === "power" || dayType === "full_body" ? "8 each side" : "10",
       restSeconds: 0,
       notes: "Warmup",
       orderIndex: orderIndex++,
     });
   }
 
-  // 2. Main exercises (4-6 based on skill level)
+  // Recovery day: all mobility/stretching exercises
+  if (dayType === "recovery") {
+    const recoveryPool = pools.recovery[complexity];
+    for (const slug of recoveryPool.slice(0, 5)) {
+      exercises.push({
+        exerciseSlug: slug,
+        sets: 2,
+        reps: "30s each side",
+        restSeconds: 30,
+        notes: "Mobility",
+        orderIndex: orderIndex++,
+      });
+    }
+    return exercises;
+  }
+
+  // 2. Main exercises (3-5 based on skill level)
   const mainPool = pools[dayType][complexity];
   const corePool = pools.core[complexity];
 
-  // Select exercises based on day
-  const mainExerciseCount = skillLevel === "Novice" ? 3 : skillLevel === "Moderate" ? 4 : 5;
+  // Full body day: fewer exercises per muscle group
+  const mainExerciseCount = dayType === "full_body"
+    ? (skillLevel === "Novice" ? 4 : skillLevel === "Moderate" ? 5 : 5)
+    : (skillLevel === "Novice" ? 3 : skillLevel === "Moderate" ? 4 : 5);
   const selectedMain = mainPool.slice(0, mainExerciseCount);
 
   for (const slug of selectedMain) {
@@ -338,23 +473,26 @@ function generateExercisePrescriptions(
     });
   }
 
-  // 3. Core exercise (1-2)
-  const coreCount = skillLevel === "Novice" ? 1 : 2;
-  const selectedCore = corePool.slice(0, coreCount);
+  // 3. Core exercise (1-2) - skip for full body to keep workout manageable
+  if (dayType !== "full_body") {
+    const coreCount = skillLevel === "Novice" ? 1 : 2;
+    const selectedCore = corePool.slice(0, coreCount);
 
-  for (const slug of selectedCore) {
-    const isPlank = slug.includes("plank");
-    exercises.push({
-      exerciseSlug: slug,
-      sets: Math.max(2, adjustedSets - 1),
-      reps: isPlank ? "30s" : `${adjustedReps}`,
-      restSeconds: 30,
-      orderIndex: orderIndex++,
-    });
+    for (const slug of selectedCore) {
+      const isPlank = slug.includes("plank");
+      exercises.push({
+        exerciseSlug: slug,
+        sets: Math.max(2, adjustedSets - 1),
+        reps: isPlank ? "30s" : `${adjustedReps}`,
+        restSeconds: 30,
+        orderIndex: orderIndex++,
+      });
+    }
   }
 
   // 4. Cooldown (1 exercise)
-  const cooldownSlug = COOLDOWN_EXERCISES[day === 1 ? 0 : 1];
+  const cooldownIndex = dayType.includes("lower") ? 0 : 1;
+  const cooldownSlug = COOLDOWN_EXERCISES[cooldownIndex];
   exercises.push({
     exerciseSlug: cooldownSlug,
     sets: 1,
@@ -374,12 +512,6 @@ function generateTemplateName(
   week: number,
   day: number
 ): string {
-  const dayNames = {
-    1: "Lower Body",
-    2: "Upper Body",
-    3: "Power & Conditioning",
-  };
-
   const weekDescriptors = {
     1: "Foundation",
     2: "Build",
@@ -387,7 +519,8 @@ function generateTemplateName(
     4: "Deload",
   };
 
-  return `${dayNames[day as 1 | 2 | 3]} - ${weekDescriptors[week as 1 | 2 | 3 | 4]}`;
+  const dayName = DAY_NAMES[day] || `Day ${day}`;
+  return `${dayName} - ${weekDescriptors[week as 1 | 2 | 3 | 4]}`;
 }
 
 function generateTemplateDescription(
@@ -457,7 +590,8 @@ function generateTemplate(
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Generate and seed all 432 templates
+ * Generate and seed all 1,008 templates
+ * 4 Categories × 3 Phases × 3 Skill Levels × 4 Weeks × 7 Days = 1,008
  */
 export const generateAllTemplates = mutation({
   args: {
