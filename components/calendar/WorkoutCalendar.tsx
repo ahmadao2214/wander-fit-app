@@ -1,13 +1,20 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { YStack, XStack, Text, Button, Spinner, Card } from 'tamagui'
-import { Calendar, CalendarDays, Dumbbell } from '@tamagui/lucide-icons'
-import { useQuery } from 'convex/react'
+import { Calendar, CalendarDays, Dumbbell, ArrowLeftRight } from '@tamagui/lucide-icons'
+import { useQuery, useMutation } from 'convex/react'
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { api } from '../../convex/_generated/api'
 import { CalendarWeekView } from './CalendarWeekView'
 import { CalendarMonthView } from './CalendarMonthView'
 import type { Phase } from '../../types'
 
 type ViewMode = 'week' | 'month'
+
+interface DragSource {
+  phase: Phase
+  week: number
+  day: number
+}
 
 export interface WorkoutCalendarProps {
   /**
@@ -32,10 +39,13 @@ export function WorkoutCalendar({
 }: WorkoutCalendarProps) {
   const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode)
   const [currentDate, setCurrentDate] = useState(new Date())
+  const [dragSource, setDragSource] = useState<DragSource | null>(null)
+  const [isSwapping, setIsSwapping] = useState(false)
 
   // Fetch ALL calendar data upfront - no date range filtering
   // This ensures smooth navigation without loading states when scrolling
   const fullCalendar = useQuery(api.workoutCalendar.getFullProgramCalendar)
+  const swapWorkouts = useMutation(api.workoutCalendar.swapWorkouts)
 
   // Handle week navigation
   const handleWeekChange = (newWeek: Date) => {
@@ -52,6 +62,45 @@ export function WorkoutCalendar({
     setCurrentDate(date)
     setViewMode('week')
   }
+
+  // Drag-drop handlers
+  const handleDragStart = useCallback((phase: Phase, week: number, day: number) => {
+    setDragSource({ phase, week, day })
+  }, [])
+
+  const handleDragEnd = useCallback(() => {
+    setDragSource(null)
+  }, [])
+
+  // Handle workout swap (for long-press swap UX)
+  const handleSwap = useCallback(async (
+    sourcePhase: Phase,
+    sourceWeek: number,
+    sourceDay: number,
+    targetPhase: Phase,
+    targetWeek: number,
+    targetDay: number
+  ) => {
+    if (isSwapping) return
+
+    try {
+      setIsSwapping(true)
+      await swapWorkouts({
+        sourcePhase,
+        sourceWeek,
+        sourceDay,
+        targetPhase,
+        targetWeek,
+        targetDay,
+      })
+    } catch (error) {
+      console.error('Failed to swap workouts:', error)
+      // Could show a toast/alert here
+    } finally {
+      setIsSwapping(false)
+      setDragSource(null)
+    }
+  }, [swapWorkouts, isSwapping])
 
   // Loading state
   if (fullCalendar === undefined) {
@@ -140,23 +189,40 @@ export function WorkoutCalendar({
         </XStack>
       </Card>
 
-      {/* Calendar view */}
-      {viewMode === 'week' ? (
-        <CalendarWeekView
-          calendarData={calendarData}
-          currentWeek={currentDate}
-          onWeekChange={handleWeekChange}
-          onWorkoutPress={onWorkoutPress}
-        />
-      ) : (
-        <CalendarMonthView
-          calendarData={calendarData}
-          currentMonth={currentDate}
-          onMonthChange={handleMonthChange}
-          onDayPress={handleDayPress}
-          onWorkoutPress={onWorkoutPress}
-        />
+      {/* Drag indicator */}
+      {dragSource && (
+        <Card p="$2" bg="$blue2" borderColor="$blue6" borderWidth={1}>
+          <XStack items="center" gap="$2">
+            <ArrowLeftRight size={14} color="$blue9" />
+            <Text fontSize={12} color="$blue11">
+              Drag to swap with another workout
+            </Text>
+          </XStack>
+        </Card>
       )}
+
+      {/* Calendar view */}
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        {viewMode === 'week' ? (
+          <CalendarWeekView
+            calendarData={calendarData}
+            currentWeek={currentDate}
+            onWeekChange={handleWeekChange}
+            onWorkoutPress={onWorkoutPress}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            dragTargetSlot={dragSource}
+          />
+        ) : (
+          <CalendarMonthView
+            calendarData={calendarData}
+            currentMonth={currentDate}
+            onMonthChange={handleMonthChange}
+            onDayPress={handleDayPress}
+            onWorkoutPress={onWorkoutPress}
+          />
+        )}
+      </GestureHandlerRootView>
     </YStack>
   )
 }

@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from 'react'
 import { YStack, XStack, Text, Button } from 'tamagui'
 import { ChevronLeft, ChevronRight } from '@tamagui/lucide-icons'
 import { FlatList, Dimensions, NativeScrollEvent, NativeSyntheticEvent } from 'react-native'
-import { CalendarDayCell } from './CalendarDayCell'
+import { CalendarDayCell, WorkoutWithSlot } from './CalendarDayCell'
 import { CalendarWorkoutCardProps } from './CalendarWorkoutCard'
 import {
   getWeekDays,
@@ -27,6 +27,7 @@ export interface CalendarWorkout {
   isCompleted: boolean
   isToday: boolean
   isInProgress: boolean
+  isLocked?: boolean
 }
 
 export interface CalendarWeekViewProps {
@@ -41,6 +42,12 @@ export interface CalendarWeekViewProps {
   onWeekChange: (newWeek: Date) => void
   onWorkoutPress?: (templateId: string) => void
   onWorkoutLongPress?: (templateId: string) => void
+  /** Called when drag starts on a workout */
+  onDragStart?: (phase: Phase, week: number, day: number) => void
+  /** Called when drag ends */
+  onDragEnd?: () => void
+  /** Current drag target slot for highlighting */
+  dragTargetSlot?: { phase: Phase; week: number; day: number } | null
 }
 
 // Generate array of weeks around current date for infinite scroll feel
@@ -69,6 +76,9 @@ export function CalendarWeekView({
   onWeekChange,
   onWorkoutPress,
   onWorkoutLongPress,
+  onDragStart,
+  onDragEnd,
+  dragTargetSlot,
 }: CalendarWeekViewProps) {
   const flatListRef = useRef<FlatList>(null)
   const [weeks] = useState(() => generateWeeks(currentWeek, 11))
@@ -120,7 +130,7 @@ export function CalendarWeekView({
         {days.map((date) => {
           const dateISO = formatDateISO(date)
           const dayData = calendarData[dateISO]
-          const workouts: Omit<CalendarWorkoutCardProps, 'onPress' | 'onLongPress' | 'compact'>[] =
+          const workouts: WorkoutWithSlot[] =
             dayData?.workouts.map((w) => ({
               templateId: w.templateId,
               name: w.name,
@@ -132,7 +142,20 @@ export function CalendarWeekView({
               isCompleted: w.isCompleted,
               isToday: w.isToday,
               isInProgress: w.isInProgress,
+              isLocked: w.isLocked,
+              // Pass slot info for drag-drop
+              slotPhase: w.phase,
+              slotWeek: w.week,
+              slotDay: w.day,
             })) ?? []
+
+          // Check if this cell is the current drop target
+          const isDropTarget = dragTargetSlot && workouts.some(
+            (w) =>
+              w.slotPhase === dragTargetSlot.phase &&
+              w.slotWeek === dragTargetSlot.week &&
+              w.slotDay === dragTargetSlot.day
+          )
 
           return (
             <CalendarDayCell
@@ -143,12 +166,15 @@ export function CalendarWeekView({
               compact={false}
               onWorkoutPress={onWorkoutPress}
               onWorkoutLongPress={onWorkoutLongPress}
+              onDragStart={onDragStart}
+              onDragEnd={onDragEnd}
+              isDropTarget={isDropTarget ?? false}
             />
           )
         })}
       </XStack>
     )
-  }, [calendarData, onWorkoutPress, onWorkoutLongPress])
+  }, [calendarData, onWorkoutPress, onWorkoutLongPress, onDragStart, onDragEnd, dragTargetSlot])
 
   const keyExtractor = useCallback((item: Date) => formatDateISO(item), [])
 

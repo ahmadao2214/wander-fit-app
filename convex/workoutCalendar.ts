@@ -781,6 +781,212 @@ export const cascadeWorkoutsToToday = mutation({
 });
 
 /**
+ * Swap two workouts in the schedule (for drag-drop reordering)
+ *
+ * Allows users to manually swap workout positions for planning ahead.
+ * Only works for unlocked phases.
+ *
+ * @param sourceSlot - The original slot being dragged from
+ * @param targetSlot - The slot being dropped onto
+ */
+export const swapWorkouts = mutation({
+  args: {
+    sourcePhase: phaseValidator,
+    sourceWeek: v.number(),
+    sourceDay: v.number(),
+    targetPhase: phaseValidator,
+    targetWeek: v.number(),
+    targetDay: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const program = await ctx.db
+      .query("user_programs")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .first();
+
+    if (!program) {
+      throw new Error("No active program found");
+    }
+
+    // Check phases are unlocked
+    const unlockedPhases: Phase[] = ["GPP"];
+    if (program.sppUnlockedAt) unlockedPhases.push("SPP");
+    if (program.sspUnlockedAt) unlockedPhases.push("SSP");
+
+    if (!unlockedPhases.includes(args.sourcePhase)) {
+      throw new Error(`Source phase ${args.sourcePhase} is locked`);
+    }
+    if (!unlockedPhases.includes(args.targetPhase)) {
+      throw new Error(`Target phase ${args.targetPhase} is locked`);
+    }
+
+    // Get intake for training days
+    const intakeResponse = await ctx.db.get(program.intakeResponseId);
+    if (!intakeResponse) {
+      throw new Error("Intake response not found");
+    }
+
+    const trainingDays =
+      intakeResponse.selectedTrainingDays ??
+      DEFAULT_TRAINING_DAYS[intakeResponse.preferredTrainingDaysPerWeek] ??
+      DEFAULT_TRAINING_DAYS[3];
+
+    // Get dynamic weeks per phase
+    const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
+
+    // Validate day numbers
+    if (args.sourceDay < 1 || args.sourceDay > trainingDays.length) {
+      throw new Error("Invalid source day");
+    }
+    if (args.targetDay < 1 || args.targetDay > trainingDays.length) {
+      throw new Error("Invalid target day");
+    }
+
+    // Validate week numbers
+    if (args.sourceWeek < 1 || args.sourceWeek > weeksPerPhase) {
+      throw new Error("Invalid source week");
+    }
+    if (args.targetWeek < 1 || args.targetWeek > weeksPerPhase) {
+      throw new Error("Invalid target week");
+    }
+
+    // Get all templates for user's category and skill level
+    const templates = await ctx.db
+      .query("program_templates")
+      .withIndex("by_category_phase", (q) =>
+        q.eq("gppCategoryId", program.gppCategoryId)
+      )
+      .filter((q) => q.eq(q.field("skillLevel"), program.skillLevel))
+      .collect();
+
+    // Build template lookup
+    const templateLookup = new Map<string, (typeof templates)[0]>();
+    for (const t of templates) {
+      const key = `${t.phase}-${t.week}-${t.day}`;
+      templateLookup.set(key, t);
+    }
+
+    // Get existing overrides
+    const existingOverride = await ctx.db
+      .query("user_schedule_overrides")
+      .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
+      .first();
+
+    const slotOverrides = existingOverride?.slotOverrides ?? [];
+    const overrideLookup = new Map<string, string>();
+    for (const override of slotOverrides) {
+      const key = `${override.phase}-${override.week}-${override.day}`;
+      overrideLookup.set(key, override.templateId.toString());
+    }
+
+    // Get templates currently in each slot
+    const getTemplateForSlot = (phase: Phase, week: number, day: number) => {
+      const key = `${phase}-${week}-${day}`;
+      const overrideId = overrideLookup.get(key);
+      if (overrideId) {
+        return templates.find((t) => t._id.toString() === overrideId);
+      }
+      // Map to template week preserving periodization
+      const templateWeek = mapUserWeekToTemplateWeek(week, weeksPerPhase);
+      const templateKey = `${phase}-${templateWeek}-${day}`;
+      return templateLookup.get(templateKey);
+    };
+
+    const sourceTemplate = getTemplateForSlot(args.sourcePhase, args.sourceWeek, args.sourceDay);
+    const targetTemplate = getTemplateForSlot(args.targetPhase, args.targetWeek, args.targetDay);
+
+    if (!sourceTemplate) {
+      throw new Error("No template found at source slot");
+    }
+    if (!targetTemplate) {
+      throw new Error("No template found at target slot");
+    }
+
+    // Check neither workout is completed
+    const completedSessions = await ctx.db
+      .query("gpp_workout_sessions")
+      .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
+      .filter((q) => q.eq(q.field("status"), "completed"))
+      .collect();
+    const completedTemplateIds = new Set(completedSessions.map((s) => s.templateId.toString()));
+
+    if (completedTemplateIds.has(sourceTemplate._id.toString())) {
+      throw new Error("Cannot move a completed workout");
+    }
+    if (completedTemplateIds.has(targetTemplate._id.toString())) {
+      throw new Error("Cannot swap with a completed workout");
+    }
+
+    // Build new overrides
+    const sourceKey = `${args.sourcePhase}-${args.sourceWeek}-${args.sourceDay}`;
+    const targetKey = `${args.targetPhase}-${args.targetWeek}-${args.targetDay}`;
+
+    // Remove existing overrides for these slots
+    const newSlotOverrides = slotOverrides.filter((o) => {
+      const k = `${o.phase}-${o.week}-${o.day}`;
+      return k !== sourceKey && k !== targetKey;
+    });
+
+    // Add new overrides (swap the templates)
+    // Source slot gets target's template
+    newSlotOverrides.push({
+      phase: args.sourcePhase,
+      week: args.sourceWeek,
+      day: args.sourceDay,
+      templateId: targetTemplate._id,
+    });
+
+    // Target slot gets source's template
+    newSlotOverrides.push({
+      phase: args.targetPhase,
+      week: args.targetWeek,
+      day: args.targetDay,
+      templateId: sourceTemplate._id,
+    });
+
+    const now = Date.now();
+
+    // Save overrides
+    if (existingOverride) {
+      await ctx.db.patch(existingOverride._id, {
+        slotOverrides: newSlotOverrides,
+        updatedAt: now,
+      });
+    } else {
+      await ctx.db.insert("user_schedule_overrides", {
+        userId: user._id,
+        userProgramId: program._id,
+        slotOverrides: newSlotOverrides,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    return {
+      success: true,
+      swapped: {
+        source: { phase: args.sourcePhase, week: args.sourceWeek, day: args.sourceDay },
+        target: { phase: args.targetPhase, week: args.targetWeek, day: args.targetDay },
+      },
+    };
+  },
+});
+
+/**
  * Get program metadata for calendar display
  */
 export const getProgramCalendarMeta = query({

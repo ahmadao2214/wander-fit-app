@@ -1,14 +1,31 @@
+import { useCallback, useRef, useEffect } from 'react'
 import { YStack, XStack, Text } from 'tamagui'
+import { View, LayoutChangeEvent } from 'react-native'
 import { CalendarWorkoutCard, CalendarWorkoutCardProps } from './CalendarWorkoutCard'
+import type { Phase } from '../../types'
+
+export interface WorkoutWithSlot extends Omit<CalendarWorkoutCardProps, 'onPress' | 'onLongPress' | 'compact'> {
+  /** Slot info for drag-drop */
+  slotPhase?: Phase
+  slotWeek?: number
+  slotDay?: number
+}
 
 export interface CalendarDayCellProps {
   date: Date
   isToday: boolean
   isCurrentMonth?: boolean
-  workouts: Omit<CalendarWorkoutCardProps, 'onPress' | 'onLongPress' | 'compact'>[]
+  workouts: WorkoutWithSlot[]
   compact?: boolean
   onWorkoutPress?: (templateId: string) => void
   onWorkoutLongPress?: (templateId: string) => void
+  /** Drag callbacks for swapping */
+  onDragStart?: (phase: Phase, week: number, day: number) => void
+  onDragEnd?: () => void
+  /** Whether this cell is a potential drop target */
+  isDropTarget?: boolean
+  /** Register this cell as a drop zone */
+  onLayout?: (phase: Phase, week: number, day: number, layout: { x: number; y: number; width: number; height: number }) => void
 }
 
 /**
@@ -25,9 +42,36 @@ export function CalendarDayCell({
   compact = false,
   onWorkoutPress,
   onWorkoutLongPress,
+  onDragStart,
+  onDragEnd,
+  isDropTarget = false,
+  onLayout,
 }: CalendarDayCellProps) {
   const dayNumber = date.getDate()
   const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'short' })
+  const viewRef = useRef<View>(null)
+
+  // Handle layout for drop zone registration
+  const handleLayout = useCallback((event: LayoutChangeEvent) => {
+    if (workouts.length > 0 && workouts[0].slotPhase && workouts[0].slotWeek && workouts[0].slotDay) {
+      viewRef.current?.measureInWindow((x, y, width, height) => {
+        onLayout?.(
+          workouts[0].slotPhase!,
+          workouts[0].slotWeek!,
+          workouts[0].slotDay!,
+          { x, y, width, height }
+        )
+      })
+    }
+  }, [workouts, onLayout])
+
+  // Handle long press on workout card to initiate drag
+  const handleWorkoutLongPress = useCallback((workout: WorkoutWithSlot) => {
+    if (workout.slotPhase && workout.slotWeek && workout.slotDay && !workout.isLocked && !workout.isCompleted) {
+      onDragStart?.(workout.slotPhase, workout.slotWeek, workout.slotDay)
+    }
+    onWorkoutLongPress?.(workout.templateId)
+  }, [onDragStart, onWorkoutLongPress])
 
   if (compact) {
     // Month view - compact display
@@ -96,13 +140,19 @@ export function CalendarDayCell({
 
   // Week view - compact cards for 5+ days visible
   return (
-    <YStack
-      flex={1}
-      minWidth={64}
-      backgroundColor={isToday ? '$color2' : 'transparent'}
-      borderRadius="$2"
-      p="$1"
-      gap="$1"
+    <View
+      ref={viewRef}
+      onLayout={handleLayout}
+      style={{
+        flex: 1,
+        minWidth: 64,
+        backgroundColor: isDropTarget ? '#dbeafe' : isToday ? 'rgba(0,0,0,0.03)' : 'transparent',
+        borderRadius: 8,
+        padding: 4,
+        borderWidth: isDropTarget ? 2 : 0,
+        borderColor: isDropTarget ? '#3b82f6' : 'transparent',
+        borderStyle: 'dashed',
+      }}
     >
       {/* Day header - compact */}
       <YStack alignItems="center" gap="$0.5">
@@ -133,18 +183,18 @@ export function CalendarDayCell({
 
       {/* Workout cards - only show if there are workouts */}
       {workouts.length > 0 && (
-        <YStack gap="$1">
+        <YStack gap="$1" mt="$1">
           {workouts.map((workout, idx) => (
             <CalendarWorkoutCard
               key={`${workout.templateId}-${idx}`}
               {...workout}
               compact={false}
               onPress={() => onWorkoutPress?.(workout.templateId)}
-              onLongPress={() => onWorkoutLongPress?.(workout.templateId)}
+              onLongPress={() => handleWorkoutLongPress(workout)}
             />
           ))}
         </YStack>
       )}
-    </YStack>
+    </View>
   )
 }
