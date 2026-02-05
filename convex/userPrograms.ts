@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { calculateWeeksPerPhase, DEFAULT_WEEKS_PER_PHASE } from "./weekMapping";
 
 /**
  * User Programs - Active State Management
@@ -240,9 +241,16 @@ export const getProgressSummary = query({
       .withIndex("by_program", (q) => q.eq("userProgramId", program._id))
       .first();
 
+    // Get intake record for training days per week
+    const intake = program.intakeResponseId
+      ? await ctx.db.get(program.intakeResponseId)
+      : null;
+    const trainingDaysPerWeek = intake?.preferredTrainingDaysPerWeek ?? 3;
+
     // Calculate weeks and blocks completed
-    const weeksCompleted = Math.floor(completedSessions.length / program.currentDay) || 0;
-    const blocksCompleted = Math.floor(weeksCompleted / 4);
+    const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
+    const weeksCompleted = Math.floor(completedSessions.length / trainingDaysPerWeek) || 0;
+    const blocksCompleted = Math.floor(weeksCompleted / weeksPerPhase);
 
     return {
       // Scheduled workout pointer (HYBRID MODEL)
@@ -439,16 +447,10 @@ export const completeIntake = mutation({
       });
       programId = existingProgram._id;
     } else if (!existingProgram) {
-      // Calculate dynamic weeks per phase based on weeksUntilSeason
-      // Formula: totalProgramWeeks / 3 phases, clamped between 2 and 8
-      let totalProgramWeeks: number | undefined;
-      let weeksPerPhase: number | undefined;
-
-      if (args.weeksUntilSeason && args.weeksUntilSeason > 0) {
-        totalProgramWeeks = args.weeksUntilSeason;
-        // Divide by 3 phases, minimum 2 weeks, maximum 8 weeks
-        weeksPerPhase = Math.max(2, Math.min(8, Math.floor(totalProgramWeeks / 3)));
-      }
+      // Calculate dynamic weeks per phase from intake
+      // Uses weeksUntilSeason if provided, otherwise defaults to 12 weeks (standard 4 weeks per phase)
+      const totalProgramWeeks = args.weeksUntilSeason ?? 12;
+      const weeksPerPhase = calculateWeeksPerPhase(totalProgramWeeks);
 
       // Initial intake: Create new program
       programId = await ctx.db.insert("user_programs", {
@@ -542,8 +544,9 @@ export const advanceToNextDay = mutation({
       currentWeek++;
     }
 
-    // Check if we need to advance phase (4 weeks per phase)
-    if (currentWeek > 4) {
+    // Check if we need to advance phase (dynamic weeks per phase)
+    const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
+    if (currentWeek > weeksPerPhase) {
       currentWeek = 1;
 
       const phaseOrder: ("GPP" | "SPP" | "SSP")[] = ["GPP", "SPP", "SSP"];

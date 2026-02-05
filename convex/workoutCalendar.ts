@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { mapUserWeekToTemplateWeek } from "./weekMapping";
 
 /**
  * Workout Calendar - Calendar View Queries and Mutations
@@ -402,8 +403,8 @@ export const getCalendarView = query({
             (t) => t._id.toString() === overrideTemplateId
           );
         } else {
-          // Map user week to template week (1-4) since templates only exist for weeks 1-4
-          const templateWeek = ((slot.week - 1) % 4) + 1;
+          // Map user week to template week (1-4) preserving periodization curve
+          const templateWeek = mapUserWeekToTemplateWeek(slot.week, weeksPerPhase);
           const templateSlotKey = `${slot.phase}-${templateWeek}-${slot.day}`;
           template = templateLookup.get(templateSlotKey);
         }
@@ -1063,9 +1064,8 @@ export const getFullProgramCalendar = query({
             (t) => t._id.toString() === overrideTemplateId
           );
         } else {
-          // For templates, we need to map user week to template week (1-4)
-          // Templates only exist for weeks 1-4, so we cycle through them
-          const templateWeek = ((slot.week - 1) % 4) + 1;
+          // Map user week to template week (1-4) preserving periodization curve
+          const templateWeek = mapUserWeekToTemplateWeek(slot.week, weeksPerPhase);
           const templateSlotKey = `${slot.phase}-${templateWeek}-${slot.day}`;
           template = templateLookup.get(templateSlotKey);
         }
