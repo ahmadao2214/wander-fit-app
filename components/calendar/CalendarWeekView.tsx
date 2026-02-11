@@ -225,15 +225,31 @@ export function CalendarWeekView({
       )
     }
 
+    // Check if rows have workouts to determine layout
+    const firstRowHasWorkouts = firstRowDays.some(d => {
+      const iso = formatDateISO(d)
+      return calendarData[iso]?.workouts?.length > 0
+    })
+    const secondRowHasWorkouts = secondRowDays.some(d => {
+      const iso = formatDateISO(d)
+      return calendarData[iso]?.workouts?.length > 0
+    })
+
+    // Dynamic flex: rows with workouts get more space
+    const firstRowFlex = firstRowHasWorkouts ? 1 : 0
+    const secondRowFlex = secondRowHasWorkouts ? 1 : 0
+    // If neither has workouts, split evenly
+    const equalSplit = !firstRowHasWorkouts && !secondRowHasWorkouts
+
     return (
-      <YStack width={SCREEN_WIDTH} flex={1} px="$1.5" gap="$2">
+      <YStack width={SCREEN_WIDTH} flex={1} px="$1.5" gap="$3">
         {/* First row: Sun, Mon, Tue, Wed */}
-        <XStack flex={1} gap="$1.5" minHeight={60}>
+        <XStack gap="$1.5" flex={equalSplit ? 1 : firstRowFlex} minHeight={70}>
           {firstRowDays.map(renderDayColumn)}
         </XStack>
 
         {/* Second row: Thu, Fri, Sat (+ empty spacer for alignment) */}
-        <XStack flex={1} gap="$1.5" minHeight={60}>
+        <XStack gap="$1.5" flex={equalSplit ? 1 : secondRowFlex} minHeight={70}>
           {secondRowDays.map(renderDayColumn)}
           {/* Empty spacer to match 4-column layout */}
           <YStack flex={1} minWidth={0} />
