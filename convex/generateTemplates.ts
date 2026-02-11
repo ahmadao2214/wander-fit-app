@@ -198,8 +198,8 @@ const COOLDOWN_EXERCISES = ["90_90_hip_stretch", "hip_flexor_stretch"];
 // Exercise pool type for each day type
 type ExerciseComplexityPool = { basic: string[]; moderate: string[]; advanced: string[] };
 
-// Category-specific exercise pools
-const EXERCISE_POOLS: Record<
+// Type for category exercise pools
+type CategoryExercisePools = Record<
   GppCategoryId,
   {
     lower_a: ExerciseComplexityPool;
@@ -211,14 +211,21 @@ const EXERCISE_POOLS: Record<
     recovery: ExerciseComplexityPool;
     core: ExerciseComplexityPool;
   }
-> = {
+>;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GPP EXERCISE POOLS (General Physical Preparation)
+// Focus: Foundation movements, movement quality, work capacity
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const GPP_EXERCISE_POOLS: CategoryExercisePools = {
   // Category 1: Continuous/Directional (Soccer, etc.)
   // Emphasis: Single-leg stability, rotational core, conditioning
   1: {
     lower_a: {
       basic: ["goblet_squat", "romanian_deadlift", "reverse_lunge", "glute_bridge"],
       moderate: ["back_squat", "romanian_deadlift", "bulgarian_split_squat", "single_leg_rdl"],
-      advanced: ["back_squat", "trap_bar_deadlift", "bulgarian_split_squat", "single_leg_rdl", "single_leg_squat_box"],
+      advanced: ["back_squat", "trap_bar_deadlift", "bulgarian_split_squat", "single_leg_deadlift"],
     },
     lower_b: {
       basic: ["romanian_deadlift", "goblet_squat", "lateral_lunge", "hip_thrust"],
@@ -226,9 +233,9 @@ const EXERCISE_POOLS: Record<
       advanced: ["trap_bar_deadlift", "front_squat", "single_leg_rdl", "hip_thrust", "lateral_lunge"],
     },
     upper_a: {
-      basic: ["push_up", "inverted_row", "db_shoulder_press", "face_pull"],
-      moderate: ["db_bench_press", "db_row", "overhead_press", "pull_up", "face_pull"],
-      advanced: ["db_bench_press", "db_row", "overhead_press", "weighted_pull_up", "incline_db_press"],
+      basic: ["push_up", "elevated_inverted_row", "db_shoulder_press", "face_pull"],
+      moderate: ["db_bench_press", "inverted_row", "overhead_press", "pull_up", "face_pull"],
+      advanced: ["db_bench_press", "feet_elevated_inverted_row", "overhead_press", "weighted_pull_up", "incline_db_press"],
     },
     upper_b: {
       basic: ["inverted_row", "push_up", "face_pull", "db_shoulder_press"],
@@ -236,9 +243,9 @@ const EXERCISE_POOLS: Record<
       advanced: ["weighted_pull_up", "incline_db_press", "db_row", "overhead_press", "face_pull"],
     },
     power: {
-      basic: ["broad_jump", "med_ball_slam", "kettlebell_swing", "skater_jump"],
-      moderate: ["box_jump", "med_ball_rotational_throw", "kettlebell_swing", "shuttle_sprint"],
-      advanced: ["depth_jump", "box_jump", "med_ball_rotational_throw", "sled_push", "shuttle_sprint"],
+      basic: ["pogo_hops", "med_ball_slam", "kettlebell_swing", "ascending_skater_jumps", "goblet_carry"],
+      moderate: ["broad_jump", "med_ball_rotational_throw", "deceleration_skater_jump", "farmers_carry"],
+      advanced: ["consecutive_broad_jumps", "box_jump", "lateral_single_leg_bounds", "suitcase_carry"],
     },
     full_body: {
       basic: ["goblet_squat", "push_up", "romanian_deadlift", "inverted_row", "kettlebell_swing"],
@@ -251,9 +258,9 @@ const EXERCISE_POOLS: Record<
       advanced: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "thoracic_rotation", "bird_dog"],
     },
     core: {
-      basic: ["plank", "dead_bug", "bird_dog", "bicycle_crunch"],
+      basic: ["plank", "dead_bug", "bird_dog", "knee_side_plank"],
       moderate: ["pallof_press", "plank_shoulder_taps", "side_plank", "band_woodchop"],
-      advanced: ["cable_woodchop", "hanging_leg_raise", "single_arm_plank", "stability_ball_plank"],
+      advanced: ["pallof_press_march", "hanging_leg_raise", "side_plank_hip_dip", "cable_woodchop"],
     },
   },
 
@@ -262,8 +269,8 @@ const EXERCISE_POOLS: Record<
   2: {
     lower_a: {
       basic: ["goblet_squat", "hip_thrust", "reverse_lunge", "glute_bridge"],
-      moderate: ["back_squat", "hip_thrust", "bulgarian_split_squat", "romanian_deadlift"],
-      advanced: ["front_squat", "trap_bar_deadlift", "bulgarian_split_squat", "single_leg_squat_box"],
+      moderate: ["back_squat", "hip_thrust", "bulgarian_split_squat", "single_leg_rdl"],
+      advanced: ["front_squat", "trap_bar_deadlift", "assisted_pistol_squat", "single_leg_hip_thrust"],
     },
     lower_b: {
       basic: ["hip_thrust", "goblet_squat", "walking_lunge", "glute_bridge"],
@@ -271,9 +278,9 @@ const EXERCISE_POOLS: Record<
       advanced: ["trap_bar_deadlift", "front_squat", "hip_thrust", "single_leg_rdl", "reverse_lunge"],
     },
     upper_a: {
-      basic: ["push_up", "inverted_row", "db_shoulder_press", "face_pull"],
-      moderate: ["db_bench_press", "lat_pulldown", "overhead_press", "db_row"],
-      advanced: ["db_bench_press", "pull_up", "overhead_press", "weighted_pull_up", "incline_db_press"],
+      basic: ["push_up", "elevated_inverted_row", "db_shoulder_press", "face_pull"],
+      moderate: ["db_bench_press", "lat_pulldown", "overhead_press", "inverted_row"],
+      advanced: ["db_bench_press", "pull_up", "push_press", "weighted_pull_up", "incline_db_press"],
     },
     upper_b: {
       basic: ["inverted_row", "push_up", "face_pull", "db_row"],
@@ -281,9 +288,9 @@ const EXERCISE_POOLS: Record<
       advanced: ["pull_up", "incline_db_press", "db_row", "overhead_press", "weighted_pull_up"],
     },
     power: {
-      basic: ["box_jump", "broad_jump", "med_ball_slam", "jump_squat"],
-      moderate: ["box_jump", "depth_jump", "med_ball_slam", "skater_jump"],
-      advanced: ["depth_jump", "box_jump", "plyo_push_up", "broad_jump", "med_ball_chest_pass"],
+      basic: ["jump_squat", "pogo_hops", "med_ball_slam", "ascending_skater_jumps"],
+      moderate: ["box_jump", "broad_jump", "med_ball_slam", "deceleration_skater_jump"],
+      advanced: ["depth_jump", "drop_jump", "consecutive_broad_jumps", "lateral_single_leg_bounds"],
     },
     full_body: {
       basic: ["goblet_squat", "push_up", "hip_thrust", "inverted_row", "box_jump"],
@@ -296,19 +303,19 @@ const EXERCISE_POOLS: Record<
       advanced: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "thoracic_rotation", "bird_dog"],
     },
     core: {
-      basic: ["plank", "dead_bug", "glute_bridge", "bird_dog"],
+      basic: ["plank", "dead_bug", "glute_bridge", "knee_side_plank"],
       moderate: ["pallof_press", "plank_shoulder_taps", "hanging_leg_raise", "side_plank"],
-      advanced: ["hanging_leg_raise", "cable_woodchop", "single_arm_plank", "stability_ball_plank"],
+      advanced: ["toes_to_bar", "pallof_press_march", "side_plank_hip_dip", "cable_woodchop"],
     },
   },
 
-  // Category 3: Rotational/Unilateral (Baseball, etc.)
+  // Category 3: Rotational/Unilateral (Baseball, Tennis, Golf, etc.)
   // Emphasis: Anti-rotation, thoracic mobility, hip power
   3: {
     lower_a: {
-      basic: ["goblet_squat", "romanian_deadlift", "lateral_lunge", "glute_bridge"],
-      moderate: ["back_squat", "single_leg_rdl", "lateral_lunge", "bulgarian_split_squat"],
-      advanced: ["back_squat", "trap_bar_deadlift", "single_leg_rdl", "single_leg_squat_box"],
+      basic: ["goblet_squat", "kickstand_rdl", "lateral_lunge", "glute_bridge"],
+      moderate: ["back_squat", "single_leg_rdl", "cossack_squat", "bulgarian_split_squat"],
+      advanced: ["back_squat", "single_leg_deadlift", "assisted_pistol_squat", "deficit_reverse_lunge"],
     },
     lower_b: {
       basic: ["romanian_deadlift", "goblet_squat", "reverse_lunge", "hip_thrust"],
@@ -316,9 +323,9 @@ const EXERCISE_POOLS: Record<
       advanced: ["trap_bar_deadlift", "back_squat", "lateral_lunge", "single_leg_rdl", "hip_thrust"],
     },
     upper_a: {
-      basic: ["push_up", "db_row", "db_shoulder_press", "face_pull"],
-      moderate: ["db_bench_press", "db_row", "overhead_press", "inverted_row"],
-      advanced: ["incline_db_press", "db_row", "overhead_press", "pull_up", "face_pull"],
+      basic: ["push_up", "db_row", "sa_db_floor_press", "face_pull"],
+      moderate: ["sa_db_bench_press", "db_row", "overhead_press", "inverted_row"],
+      advanced: ["sa_rotational_bench_press", "kroc_row", "push_press", "pull_up"],
     },
     upper_b: {
       basic: ["db_row", "push_up", "face_pull", "inverted_row"],
@@ -326,9 +333,9 @@ const EXERCISE_POOLS: Record<
       advanced: ["db_row", "incline_db_press", "pull_up", "overhead_press", "face_pull"],
     },
     power: {
-      basic: ["med_ball_rotational_throw", "med_ball_slam", "kettlebell_swing", "broad_jump"],
-      moderate: ["med_ball_rotational_throw", "cable_woodchop", "kettlebell_swing", "skater_jump"],
-      advanced: ["med_ball_rotational_throw", "cable_woodchop", "box_jump", "sled_push", "sled_pull"],
+      basic: ["kneeling_med_ball_rotation", "med_ball_slam", "kettlebell_swing", "pogo_hops"],
+      moderate: ["med_ball_rotational_throw", "cable_woodchop", "broad_jump", "deceleration_skater_jump"],
+      advanced: ["rotational_med_ball_slam", "low_high_woodchop", "box_jump", "lateral_single_leg_bounds"],
     },
     full_body: {
       basic: ["goblet_squat", "push_up", "romanian_deadlift", "db_row", "med_ball_slam"],
@@ -341,19 +348,19 @@ const EXERCISE_POOLS: Record<
       advanced: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "thoracic_rotation", "bird_dog"],
     },
     core: {
-      basic: ["pallof_press", "dead_bug", "side_plank", "bird_dog"],
+      basic: ["dead_bug", "bird_dog", "knee_side_plank", "lying_leg_raise"],
       moderate: ["pallof_press", "band_woodchop", "side_plank", "plank_shoulder_taps"],
-      advanced: ["cable_woodchop", "pallof_press", "single_arm_plank", "hanging_leg_raise"],
+      advanced: ["pallof_press_march", "cable_woodchop", "side_plank_hip_dip", "toes_to_bar"],
     },
   },
 
   // Category 4: General Strength (Football, Wrestling, etc.)
-  // Emphasis: Bilateral strength, work capacity, grip
+  // Emphasis: Bilateral strength, work capacity, grip endurance
   4: {
     lower_a: {
       basic: ["goblet_squat", "romanian_deadlift", "walking_lunge", "hip_thrust"],
-      moderate: ["back_squat", "trap_bar_deadlift", "walking_lunge", "romanian_deadlift"],
-      advanced: ["back_squat", "trap_bar_deadlift", "front_squat", "bulgarian_split_squat"],
+      moderate: ["back_squat", "trap_bar_deadlift", "walking_lunge", "single_leg_rdl"],
+      advanced: ["back_squat", "conventional_deadlift", "front_squat", "nordic_curl"],
     },
     lower_b: {
       basic: ["romanian_deadlift", "goblet_squat", "hip_thrust", "reverse_lunge"],
@@ -361,9 +368,9 @@ const EXERCISE_POOLS: Record<
       advanced: ["trap_bar_deadlift", "front_squat", "hip_thrust", "bulgarian_split_squat", "single_leg_rdl"],
     },
     upper_a: {
-      basic: ["push_up", "inverted_row", "db_shoulder_press", "db_bench_press"],
-      moderate: ["db_bench_press", "db_row", "overhead_press", "pull_up"],
-      advanced: ["db_bench_press", "weighted_pull_up", "overhead_press", "incline_db_press", "db_row"],
+      basic: ["push_up", "elevated_inverted_row", "db_shoulder_press", "db_bench_press"],
+      moderate: ["db_bench_press", "inverted_row", "overhead_press", "pull_up"],
+      advanced: ["bench_press", "weighted_pull_up", "push_press", "kroc_row"],
     },
     upper_b: {
       basic: ["inverted_row", "push_up", "db_row", "face_pull"],
@@ -371,9 +378,9 @@ const EXERCISE_POOLS: Record<
       advanced: ["weighted_pull_up", "incline_db_press", "db_row", "overhead_press", "face_pull"],
     },
     power: {
-      basic: ["kettlebell_swing", "med_ball_slam", "broad_jump", "box_jump"],
-      moderate: ["kettlebell_swing", "sled_push", "box_jump", "med_ball_slam"],
-      advanced: ["sled_push", "sled_pull", "kettlebell_swing", "depth_jump", "plyo_push_up"],
+      basic: ["kettlebell_swing", "med_ball_slam", "goblet_carry", "farmers_carry"],
+      moderate: ["kettlebell_swing", "sled_push", "farmers_carry", "suitcase_carry"],
+      advanced: ["sled_push", "sled_pull", "trap_bar_carry", "zercher_carry"],
     },
     full_body: {
       basic: ["goblet_squat", "push_up", "romanian_deadlift", "inverted_row", "kettlebell_swing"],
@@ -386,11 +393,395 @@ const EXERCISE_POOLS: Record<
       advanced: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "thoracic_rotation", "bird_dog"],
     },
     core: {
-      basic: ["plank", "dead_bug", "glute_bridge", "bird_dog"],
+      basic: ["plank", "dead_bug", "glute_bridge", "knee_side_plank"],
       moderate: ["pallof_press", "plank_shoulder_taps", "side_plank", "hanging_leg_raise"],
-      advanced: ["hanging_leg_raise", "cable_woodchop", "single_arm_plank", "stability_ball_plank"],
+      advanced: ["toes_to_bar", "pallof_press_march", "side_plank_hip_dip", "front_rack_carry"],
     },
   },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SPP EXERCISE POOLS (Sport-Specific Preparation)
+// Focus: Sport-specific power, skill transfer, moderate intensity
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const SPP_EXERCISE_POOLS: CategoryExercisePools = {
+  // Category 1: Continuous/Directional (Soccer, etc.)
+  // SPP Focus: Directional speed, reactive agility, endurance under fatigue
+  1: {
+    lower_a: {
+      basic: ["goblet_squat", "single_leg_rdl", "lateral_lunge", "single_leg_glute_bridge"],
+      moderate: ["back_squat", "single_leg_rdl", "lateral_step_up", "bulgarian_split_squat"],
+      advanced: ["back_squat", "single_leg_deadlift", "cossack_squat", "deficit_reverse_lunge"],
+    },
+    lower_b: {
+      basic: ["single_leg_rdl", "goblet_squat", "hip_thrust", "lateral_lunge"],
+      moderate: ["single_leg_rdl", "back_squat", "hip_thrust", "lateral_step_up"],
+      advanced: ["single_leg_deadlift", "back_squat", "hip_thrust", "cossack_squat"],
+    },
+    upper_a: {
+      basic: ["push_up", "inverted_row", "db_shoulder_press", "face_pull"],
+      moderate: ["db_bench_press", "pull_up", "push_press", "db_row"],
+      advanced: ["db_bench_press", "weighted_pull_up", "push_press", "kroc_row"],
+    },
+    upper_b: {
+      basic: ["inverted_row", "push_up", "face_pull", "db_row"],
+      moderate: ["pull_up", "db_bench_press", "db_row", "push_press", "face_pull"],
+      advanced: ["weighted_pull_up", "db_bench_press", "kroc_row", "push_press", "face_pull"],
+    },
+    power: {
+      basic: ["broad_jump", "deceleration_skater_jump", "kettlebell_swing", "farmers_carry"],
+      moderate: ["box_jump", "lateral_single_leg_bounds", "med_ball_rotational_throw", "suitcase_carry"],
+      advanced: ["depth_jump", "consecutive_broad_jumps", "shuttle_sprint", "trap_bar_carry"],
+    },
+    full_body: {
+      basic: ["goblet_squat", "push_up", "single_leg_rdl", "inverted_row", "broad_jump"],
+      moderate: ["back_squat", "db_bench_press", "single_leg_rdl", "pull_up", "box_jump"],
+      advanced: ["back_squat", "db_bench_press", "single_leg_deadlift", "weighted_pull_up", "depth_jump"],
+    },
+    recovery: {
+      basic: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "hip_flexor_stretch"],
+      moderate: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "thoracic_rotation", "dead_bug"],
+      advanced: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "thoracic_rotation", "bird_dog"],
+    },
+    core: {
+      basic: ["pallof_press", "side_plank", "plank_shoulder_taps", "dead_bug"],
+      moderate: ["pallof_press_march", "side_plank_hip_dip", "cable_woodchop", "hanging_leg_raise"],
+      advanced: ["cable_woodchop", "toes_to_bar", "side_plank_hip_dip", "pallof_press_march"],
+    },
+  },
+
+  // Category 2: Explosive/Vertical (Basketball, etc.)
+  // SPP Focus: Vertical power, reactive jumping, landing mechanics
+  2: {
+    lower_a: {
+      basic: ["back_squat", "hip_thrust", "step_up", "single_leg_glute_bridge"],
+      moderate: ["front_squat", "single_leg_hip_thrust", "bulgarian_split_squat", "lateral_step_up"],
+      advanced: ["front_squat", "trap_bar_deadlift", "assisted_pistol_squat", "nordic_curl"],
+    },
+    lower_b: {
+      basic: ["hip_thrust", "back_squat", "reverse_lunge", "glute_bridge"],
+      moderate: ["single_leg_hip_thrust", "front_squat", "step_up", "bulgarian_split_squat"],
+      advanced: ["trap_bar_deadlift", "front_squat", "assisted_pistol_squat", "single_leg_hip_thrust"],
+    },
+    upper_a: {
+      basic: ["push_up", "pull_up", "db_shoulder_press", "inverted_row"],
+      moderate: ["db_bench_press", "weighted_pull_up", "push_press", "lat_pulldown"],
+      advanced: ["bench_press", "weighted_pull_up", "push_press", "pull_up"],
+    },
+    upper_b: {
+      basic: ["pull_up", "push_up", "inverted_row", "db_row"],
+      moderate: ["weighted_pull_up", "db_bench_press", "lat_pulldown", "push_press", "face_pull"],
+      advanced: ["weighted_pull_up", "bench_press", "pull_up", "push_press", "db_row"],
+    },
+    power: {
+      basic: ["box_jump", "broad_jump", "med_ball_slam", "jump_squat"],
+      moderate: ["depth_jump", "consecutive_broad_jumps", "med_ball_chest_pass", "split_squat_jump"],
+      advanced: ["drop_jump", "depth_jump", "alternating_lunge_jump", "lateral_single_leg_bounds"],
+    },
+    full_body: {
+      basic: ["back_squat", "push_up", "hip_thrust", "pull_up", "box_jump"],
+      moderate: ["front_squat", "db_bench_press", "single_leg_hip_thrust", "weighted_pull_up", "depth_jump"],
+      advanced: ["front_squat", "bench_press", "trap_bar_deadlift", "weighted_pull_up", "drop_jump"],
+    },
+    recovery: {
+      basic: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "hip_flexor_stretch"],
+      moderate: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "thoracic_rotation", "dead_bug"],
+      advanced: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "thoracic_rotation", "bird_dog"],
+    },
+    core: {
+      basic: ["pallof_press", "hanging_leg_raise", "plank_shoulder_taps", "side_plank"],
+      moderate: ["toes_to_bar", "pallof_press_march", "cable_woodchop", "side_plank_hip_dip"],
+      advanced: ["toes_to_bar", "pallof_press_march", "cable_woodchop", "hanging_leg_raise"],
+    },
+  },
+
+  // Category 3: Rotational/Unilateral (Baseball, Tennis, Golf, etc.)
+  // SPP Focus: Rotational power transfer, hip-shoulder separation, anti-rotation
+  3: {
+    lower_a: {
+      basic: ["back_squat", "single_leg_rdl", "cossack_squat", "lateral_lunge"],
+      moderate: ["back_squat", "single_leg_deadlift", "lateral_step_up", "deficit_reverse_lunge"],
+      advanced: ["front_squat", "single_leg_deadlift", "assisted_pistol_squat", "cossack_squat"],
+    },
+    lower_b: {
+      basic: ["single_leg_rdl", "back_squat", "hip_thrust", "lateral_lunge"],
+      moderate: ["single_leg_deadlift", "back_squat", "cossack_squat", "hip_thrust"],
+      advanced: ["single_leg_deadlift", "front_squat", "cossack_squat", "hip_thrust", "lateral_step_up"],
+    },
+    upper_a: {
+      basic: ["sa_db_bench_press", "db_row", "landmine_press", "face_pull"],
+      moderate: ["sa_rotational_bench_press", "kroc_row", "push_press", "pull_up"],
+      advanced: ["sa_rotational_bench_press", "kroc_row", "push_press", "weighted_pull_up"],
+    },
+    upper_b: {
+      basic: ["db_row", "sa_db_bench_press", "face_pull", "inverted_row"],
+      moderate: ["kroc_row", "sa_rotational_bench_press", "pull_up", "push_press", "face_pull"],
+      advanced: ["kroc_row", "sa_rotational_bench_press", "weighted_pull_up", "push_press", "face_pull"],
+    },
+    power: {
+      basic: ["med_ball_rotational_throw", "kneeling_med_ball_rotation", "broad_jump", "kettlebell_swing"],
+      moderate: ["rotational_med_ball_slam", "med_ball_rotational_throw", "box_jump", "lateral_single_leg_bounds"],
+      advanced: ["rotational_med_ball_slam", "low_high_woodchop", "depth_jump", "deceleration_skater_jump"],
+    },
+    full_body: {
+      basic: ["back_squat", "sa_db_bench_press", "single_leg_rdl", "db_row", "med_ball_rotational_throw"],
+      moderate: ["back_squat", "sa_rotational_bench_press", "single_leg_deadlift", "kroc_row", "rotational_med_ball_slam"],
+      advanced: ["front_squat", "sa_rotational_bench_press", "single_leg_deadlift", "weighted_pull_up", "low_high_woodchop"],
+    },
+    recovery: {
+      basic: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "thoracic_rotation"],
+      moderate: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "thoracic_rotation", "dead_bug"],
+      advanced: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "thoracic_rotation", "bird_dog"],
+    },
+    core: {
+      basic: ["pallof_press", "cable_woodchop", "side_plank", "band_woodchop"],
+      moderate: ["pallof_press_march", "low_high_woodchop", "side_plank_hip_dip", "cable_woodchop"],
+      advanced: ["pallof_press_march", "low_high_woodchop", "toes_to_bar", "side_plank_hip_dip"],
+    },
+  },
+
+  // Category 4: General Strength (Football, Wrestling, etc.)
+  // SPP Focus: Maximal strength, power under load, grip strength
+  4: {
+    lower_a: {
+      basic: ["back_squat", "romanian_deadlift", "walking_lunge", "hip_thrust"],
+      moderate: ["back_squat", "trap_bar_deadlift", "front_squat", "bulgarian_split_squat"],
+      advanced: ["back_squat", "conventional_deadlift", "front_squat", "nordic_curl"],
+    },
+    lower_b: {
+      basic: ["romanian_deadlift", "back_squat", "hip_thrust", "walking_lunge"],
+      moderate: ["trap_bar_deadlift", "back_squat", "hip_thrust", "front_squat"],
+      advanced: ["conventional_deadlift", "back_squat", "hip_thrust", "nordic_curl", "front_squat"],
+    },
+    upper_a: {
+      basic: ["db_bench_press", "pull_up", "overhead_press", "inverted_row"],
+      moderate: ["bench_press", "weighted_pull_up", "push_press", "kroc_row"],
+      advanced: ["bench_press", "weighted_pull_up", "push_press", "chest_supported_row"],
+    },
+    upper_b: {
+      basic: ["pull_up", "db_bench_press", "inverted_row", "overhead_press", "face_pull"],
+      moderate: ["weighted_pull_up", "bench_press", "kroc_row", "push_press", "face_pull"],
+      advanced: ["weighted_pull_up", "bench_press", "chest_supported_row", "push_press", "face_pull"],
+    },
+    power: {
+      basic: ["kettlebell_swing", "sled_push", "farmers_carry", "med_ball_slam"],
+      moderate: ["sled_push", "sled_pull", "trap_bar_carry", "med_ball_chest_pass"],
+      advanced: ["sled_push", "sled_pull", "zercher_carry", "front_rack_carry"],
+    },
+    full_body: {
+      basic: ["back_squat", "db_bench_press", "romanian_deadlift", "pull_up", "kettlebell_swing"],
+      moderate: ["back_squat", "bench_press", "trap_bar_deadlift", "weighted_pull_up", "sled_push"],
+      advanced: ["back_squat", "bench_press", "conventional_deadlift", "weighted_pull_up", "sled_push"],
+    },
+    recovery: {
+      basic: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "hip_flexor_stretch"],
+      moderate: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "thoracic_rotation", "dead_bug"],
+      advanced: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "thoracic_rotation", "bird_dog"],
+    },
+    core: {
+      basic: ["pallof_press", "plank_shoulder_taps", "side_plank", "hanging_leg_raise"],
+      moderate: ["toes_to_bar", "pallof_press_march", "side_plank_hip_dip", "cable_woodchop"],
+      advanced: ["toes_to_bar", "front_rack_carry", "pallof_press_march", "cable_woodchop"],
+    },
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SSP EXERCISE POOLS (Sport-Specific Peaking)
+// Focus: Peak power expression, competition prep, maintain strength
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const SSP_EXERCISE_POOLS: CategoryExercisePools = {
+  // Category 1: Continuous/Directional (Soccer, etc.)
+  // SSP Focus: Game-speed movements, reactive power, minimal fatigue
+  1: {
+    lower_a: {
+      basic: ["back_squat", "single_leg_rdl", "bulgarian_split_squat", "hip_thrust"],
+      moderate: ["back_squat", "single_leg_deadlift", "lateral_step_up", "single_leg_hip_thrust"],
+      advanced: ["back_squat", "trap_bar_deadlift", "deficit_reverse_lunge", "single_leg_deadlift"],
+    },
+    lower_b: {
+      basic: ["single_leg_rdl", "back_squat", "hip_thrust", "bulgarian_split_squat"],
+      moderate: ["single_leg_deadlift", "back_squat", "single_leg_hip_thrust", "lateral_step_up"],
+      advanced: ["trap_bar_deadlift", "back_squat", "single_leg_deadlift", "deficit_reverse_lunge"],
+    },
+    upper_a: {
+      basic: ["db_bench_press", "pull_up", "push_press", "db_row"],
+      moderate: ["db_bench_press", "weighted_pull_up", "push_press", "kroc_row"],
+      advanced: ["bench_press", "weighted_pull_up", "push_press", "kroc_row"],
+    },
+    upper_b: {
+      basic: ["pull_up", "db_bench_press", "db_row", "push_press", "face_pull"],
+      moderate: ["weighted_pull_up", "db_bench_press", "kroc_row", "push_press", "face_pull"],
+      advanced: ["weighted_pull_up", "bench_press", "kroc_row", "push_press", "face_pull"],
+    },
+    power: {
+      basic: ["box_jump", "lateral_single_leg_bounds", "shuttle_sprint", "suitcase_carry"],
+      moderate: ["depth_jump", "consecutive_broad_jumps", "sprint", "trap_bar_carry"],
+      advanced: ["drop_jump", "lateral_single_leg_bounds", "sprint", "trap_bar_carry"],
+    },
+    full_body: {
+      basic: ["back_squat", "db_bench_press", "single_leg_rdl", "pull_up", "box_jump"],
+      moderate: ["back_squat", "db_bench_press", "single_leg_deadlift", "weighted_pull_up", "depth_jump"],
+      advanced: ["back_squat", "bench_press", "trap_bar_deadlift", "weighted_pull_up", "drop_jump"],
+    },
+    recovery: {
+      basic: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "hip_flexor_stretch"],
+      moderate: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "thoracic_rotation", "dead_bug"],
+      advanced: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "thoracic_rotation", "bird_dog"],
+    },
+    core: {
+      basic: ["pallof_press_march", "side_plank_hip_dip", "hanging_leg_raise", "cable_woodchop"],
+      moderate: ["pallof_press_march", "toes_to_bar", "cable_woodchop", "side_plank_hip_dip"],
+      advanced: ["toes_to_bar", "pallof_press_march", "cable_woodchop", "side_plank_hip_dip"],
+    },
+  },
+
+  // Category 2: Explosive/Vertical (Basketball, etc.)
+  // SSP Focus: Maximal vertical power, reactive strength, game-ready explosiveness
+  2: {
+    lower_a: {
+      basic: ["front_squat", "hip_thrust", "bulgarian_split_squat", "single_leg_hip_thrust"],
+      moderate: ["front_squat", "trap_bar_deadlift", "assisted_pistol_squat", "nordic_curl"],
+      advanced: ["front_squat", "trap_bar_deadlift", "assisted_pistol_squat", "single_leg_hip_thrust"],
+    },
+    lower_b: {
+      basic: ["hip_thrust", "front_squat", "single_leg_hip_thrust", "bulgarian_split_squat"],
+      moderate: ["trap_bar_deadlift", "front_squat", "nordic_curl", "assisted_pistol_squat"],
+      advanced: ["trap_bar_deadlift", "front_squat", "single_leg_hip_thrust", "assisted_pistol_squat"],
+    },
+    upper_a: {
+      basic: ["db_bench_press", "weighted_pull_up", "push_press", "pull_up"],
+      moderate: ["bench_press", "weighted_pull_up", "push_press", "explosive_pushup"],
+      advanced: ["bench_press", "weighted_pull_up", "push_press", "plyo_push_up"],
+    },
+    upper_b: {
+      basic: ["weighted_pull_up", "db_bench_press", "pull_up", "push_press", "face_pull"],
+      moderate: ["weighted_pull_up", "bench_press", "explosive_pushup", "push_press", "db_row"],
+      advanced: ["weighted_pull_up", "bench_press", "plyo_push_up", "push_press", "db_row"],
+    },
+    power: {
+      basic: ["depth_jump", "box_jump", "med_ball_chest_pass", "split_squat_jump"],
+      moderate: ["drop_jump", "depth_jump", "alternating_lunge_jump", "consecutive_broad_jumps"],
+      advanced: ["drop_jump", "depth_jump", "lateral_single_leg_bounds", "standing_long_jump"],
+    },
+    full_body: {
+      basic: ["front_squat", "db_bench_press", "hip_thrust", "weighted_pull_up", "depth_jump"],
+      moderate: ["front_squat", "bench_press", "trap_bar_deadlift", "weighted_pull_up", "drop_jump"],
+      advanced: ["front_squat", "bench_press", "trap_bar_deadlift", "weighted_pull_up", "drop_jump"],
+    },
+    recovery: {
+      basic: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "hip_flexor_stretch"],
+      moderate: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "thoracic_rotation", "dead_bug"],
+      advanced: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "thoracic_rotation", "bird_dog"],
+    },
+    core: {
+      basic: ["toes_to_bar", "pallof_press_march", "hanging_leg_raise", "side_plank_hip_dip"],
+      moderate: ["toes_to_bar", "pallof_press_march", "cable_woodchop", "side_plank_hip_dip"],
+      advanced: ["toes_to_bar", "pallof_press_march", "cable_woodchop", "hanging_leg_raise"],
+    },
+  },
+
+  // Category 3: Rotational/Unilateral (Baseball, Tennis, Golf, etc.)
+  // SSP Focus: Peak rotational power, explosive hip rotation, competition-ready
+  3: {
+    lower_a: {
+      basic: ["back_squat", "single_leg_deadlift", "cossack_squat", "lateral_step_up"],
+      moderate: ["front_squat", "single_leg_deadlift", "assisted_pistol_squat", "deficit_reverse_lunge"],
+      advanced: ["front_squat", "single_leg_deadlift", "assisted_pistol_squat", "cossack_squat"],
+    },
+    lower_b: {
+      basic: ["single_leg_deadlift", "back_squat", "lateral_step_up", "cossack_squat"],
+      moderate: ["single_leg_deadlift", "front_squat", "deficit_reverse_lunge", "assisted_pistol_squat"],
+      advanced: ["single_leg_deadlift", "front_squat", "cossack_squat", "assisted_pistol_squat"],
+    },
+    upper_a: {
+      basic: ["sa_rotational_bench_press", "kroc_row", "push_press", "pull_up"],
+      moderate: ["sa_rotational_bench_press", "kroc_row", "push_press", "weighted_pull_up"],
+      advanced: ["sa_rotational_bench_press", "kroc_row", "push_press", "weighted_pull_up"],
+    },
+    upper_b: {
+      basic: ["kroc_row", "sa_rotational_bench_press", "pull_up", "push_press", "face_pull"],
+      moderate: ["kroc_row", "sa_rotational_bench_press", "weighted_pull_up", "push_press", "face_pull"],
+      advanced: ["kroc_row", "sa_rotational_bench_press", "weighted_pull_up", "push_press", "face_pull"],
+    },
+    power: {
+      basic: ["rotational_med_ball_slam", "med_ball_rotational_throw", "box_jump", "deceleration_skater_jump"],
+      moderate: ["rotational_med_ball_slam", "low_high_woodchop", "depth_jump", "lateral_single_leg_bounds"],
+      advanced: ["rotational_med_ball_slam", "low_high_woodchop", "drop_jump", "lateral_single_leg_bounds"],
+    },
+    full_body: {
+      basic: ["back_squat", "sa_rotational_bench_press", "single_leg_deadlift", "kroc_row", "rotational_med_ball_slam"],
+      moderate: ["front_squat", "sa_rotational_bench_press", "single_leg_deadlift", "weighted_pull_up", "low_high_woodchop"],
+      advanced: ["front_squat", "sa_rotational_bench_press", "single_leg_deadlift", "weighted_pull_up", "low_high_woodchop"],
+    },
+    recovery: {
+      basic: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "thoracic_rotation"],
+      moderate: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "thoracic_rotation", "dead_bug"],
+      advanced: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "thoracic_rotation", "bird_dog"],
+    },
+    core: {
+      basic: ["pallof_press_march", "low_high_woodchop", "side_plank_hip_dip", "toes_to_bar"],
+      moderate: ["pallof_press_march", "low_high_woodchop", "toes_to_bar", "cable_woodchop"],
+      advanced: ["pallof_press_march", "low_high_woodchop", "toes_to_bar", "cable_woodchop"],
+    },
+  },
+
+  // Category 4: General Strength (Football, Wrestling, etc.)
+  // SSP Focus: Peak strength expression, power maintenance, competition prep
+  4: {
+    lower_a: {
+      basic: ["back_squat", "trap_bar_deadlift", "front_squat", "hip_thrust"],
+      moderate: ["back_squat", "conventional_deadlift", "front_squat", "nordic_curl"],
+      advanced: ["back_squat", "conventional_deadlift", "front_squat", "nordic_curl"],
+    },
+    lower_b: {
+      basic: ["trap_bar_deadlift", "back_squat", "hip_thrust", "front_squat"],
+      moderate: ["conventional_deadlift", "back_squat", "nordic_curl", "front_squat"],
+      advanced: ["conventional_deadlift", "back_squat", "nordic_curl", "front_squat"],
+    },
+    upper_a: {
+      basic: ["bench_press", "weighted_pull_up", "push_press", "kroc_row"],
+      moderate: ["bench_press", "weighted_pull_up", "push_press", "chest_supported_row"],
+      advanced: ["bench_press", "weighted_pull_up", "push_press", "kroc_row"],
+    },
+    upper_b: {
+      basic: ["weighted_pull_up", "bench_press", "kroc_row", "push_press", "face_pull"],
+      moderate: ["weighted_pull_up", "bench_press", "chest_supported_row", "push_press", "face_pull"],
+      advanced: ["weighted_pull_up", "bench_press", "kroc_row", "push_press", "face_pull"],
+    },
+    power: {
+      basic: ["sled_push", "sled_pull", "trap_bar_carry", "med_ball_chest_pass"],
+      moderate: ["sled_push", "sled_pull", "zercher_carry", "front_rack_carry"],
+      advanced: ["sled_push", "sled_pull", "zercher_carry", "front_rack_carry"],
+    },
+    full_body: {
+      basic: ["back_squat", "bench_press", "trap_bar_deadlift", "weighted_pull_up", "sled_push"],
+      moderate: ["back_squat", "bench_press", "conventional_deadlift", "weighted_pull_up", "sled_push"],
+      advanced: ["back_squat", "bench_press", "conventional_deadlift", "weighted_pull_up", "sled_push"],
+    },
+    recovery: {
+      basic: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "hip_flexor_stretch"],
+      moderate: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "thoracic_rotation", "dead_bug"],
+      advanced: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch", "thoracic_rotation", "bird_dog"],
+    },
+    core: {
+      basic: ["toes_to_bar", "pallof_press_march", "front_rack_carry", "side_plank_hip_dip"],
+      moderate: ["toes_to_bar", "front_rack_carry", "pallof_press_march", "cable_woodchop"],
+      advanced: ["toes_to_bar", "front_rack_carry", "pallof_press_march", "cable_woodchop"],
+    },
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PHASE-TO-POOL MAPPING
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const PHASE_EXERCISE_POOLS: Record<Phase, CategoryExercisePools> = {
+  GPP: GPP_EXERCISE_POOLS,
+  SPP: SPP_EXERCISE_POOLS,
+  SSP: SSP_EXERCISE_POOLS,
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -407,7 +798,7 @@ function generateExercisePrescriptions(
   const phaseConfig = PHASE_CONFIG[phase];
   const skillConfig = SKILL_CONFIG[skillLevel];
   const volumeMultiplier = WEEK_VOLUME_MULTIPLIERS[week];
-  const pools = EXERCISE_POOLS[categoryId];
+  const pools = PHASE_EXERCISE_POOLS[phase][categoryId];
   const complexity = skillConfig.complexity;
 
   const exercises: ExercisePrescription[] = [];
