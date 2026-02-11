@@ -235,31 +235,33 @@ export function CalendarWeekView({
       return calendarData[iso]?.workouts?.length > 0
     })
 
+    // Row without workouts: fixed 60px height for headers only
+    // Row with workouts: flex={1} to fill remaining space
     return (
       <YStack width={SCREEN_WIDTH} flex={1} px="$1.5" gap="$2">
         {/* First row: Sun, Mon, Tue, Wed */}
-        <XStack
-          gap="$1.5"
-          flexGrow={firstRowHasWorkouts ? 1 : 0}
-          flexShrink={firstRowHasWorkouts ? 1 : 0}
-          flexBasis={firstRowHasWorkouts ? 0 : 'auto'}
-          minHeight={60}
-        >
-          {firstRowDays.map(renderDayColumn)}
-        </XStack>
+        {firstRowHasWorkouts ? (
+          <XStack gap="$1.5" flex={1}>
+            {firstRowDays.map(renderDayColumn)}
+          </XStack>
+        ) : (
+          <XStack gap="$1.5" height={60}>
+            {firstRowDays.map(renderDayColumn)}
+          </XStack>
+        )}
 
         {/* Second row: Thu, Fri, Sat (+ empty spacer for alignment) */}
-        <XStack
-          gap="$1.5"
-          flexGrow={secondRowHasWorkouts ? 1 : 0}
-          flexShrink={secondRowHasWorkouts ? 1 : 0}
-          flexBasis={secondRowHasWorkouts ? 0 : 'auto'}
-          minHeight={60}
-        >
-          {secondRowDays.map(renderDayColumn)}
-          {/* Empty spacer to match 4-column layout */}
-          <YStack flex={1} minWidth={0} />
-        </XStack>
+        {secondRowHasWorkouts ? (
+          <XStack gap="$1.5" flex={1}>
+            {secondRowDays.map(renderDayColumn)}
+            <YStack flex={1} minWidth={0} />
+          </XStack>
+        ) : (
+          <XStack gap="$1.5" height={60}>
+            {secondRowDays.map(renderDayColumn)}
+            <YStack flex={1} minWidth={0} />
+          </XStack>
+        )}
       </YStack>
     )
   }, [calendarData, onWorkoutPress, onWorkoutLongPress, onDragStart, onDragEnd, onDragMove, dragTargetDate, dragSourceSlot, gppCategoryId, onDropZoneLayout, onDropZoneUnregister])
