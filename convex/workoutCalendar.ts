@@ -155,14 +155,14 @@ function getDateForWorkout(
     (slot.day - 1);
 
   const start = startOfDay(programStartDate);
-  let currentDate = findNextDayOfWeek(start, sortedDays[0]);
 
-  if (currentDate < start) {
-    currentDate = addDays(currentDate, 7);
-  }
+  // Use findFirstTrainingDate to handle mid-week program starts
+  // This ensures workouts start on the soonest training day (could be today)
+  const { date: firstTrainingDate, dayIndex: startDayIndex } = findFirstTrainingDate(start, sortedDays);
 
   let workoutCount = 0;
-  let currentDayIndex = 0;
+  let currentDate = firstTrainingDate;
+  let currentDayIndex = startDayIndex;
 
   while (workoutCount < absoluteIndex) {
     currentDayIndex = (currentDayIndex + 1) % sortedDays.length;
@@ -201,7 +201,10 @@ function getWorkoutForDate(
   }
 
   const start = startOfDay(programStartDate);
-  const firstTrainingDate = findNextDayOfWeek(start, sortedDays[0]);
+
+  // Use findFirstTrainingDate to handle mid-week program starts
+  // This ensures workouts start on the soonest training day (could be today)
+  const { date: firstTrainingDate, dayIndex: startDayIndex } = findFirstTrainingDate(start, sortedDays);
 
   if (targetDate < firstTrainingDate) {
     return null;
@@ -209,7 +212,7 @@ function getWorkoutForDate(
 
   let workoutIndex = 0;
   let currentDate = firstTrainingDate;
-  let currentDayIndex = 0;
+  let currentDayIndex = startDayIndex;
 
   // Increase limit for longer programs (max 8 weeks × 3 phases × 7 days = 168)
   const maxWorkouts = weeksPerPhase * PHASE_ORDER.length * sortedDays.length + 50;
@@ -217,6 +220,7 @@ function getWorkoutForDate(
   while (!isSameDay(currentDate, targetDate)) {
     currentDayIndex = (currentDayIndex + 1) % sortedDays.length;
     if (currentDayIndex === 0) {
+      // Moving to next week - jump to the first training day
       currentDate = addDays(
         currentDate,
         7 - (sortedDays[sortedDays.length - 1] - sortedDays[0])
