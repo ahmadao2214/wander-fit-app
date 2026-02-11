@@ -421,6 +421,7 @@ export function CalendarWeekView({
         data={weeks}
         renderItem={renderWeek}
         keyExtractor={keyExtractor}
+        extraData={{ dragSourceSlot, dragTargetDate, calendarData }}
         horizontal
         pagingEnabled
         scrollEnabled={!isDragging}
