@@ -144,90 +144,97 @@ export function CalendarWeekView({
 
   const renderWeek = useCallback(({ item: weekStart }: { item: Date }) => {
     const days = getWeekDays(weekStart)
+    // Split into two rows: Sun-Wed (0-3) and Thu-Sat (4-6)
+    const firstRowDays = days.slice(0, 4)
+    const secondRowDays = days.slice(4, 7)
+
+    const renderDayColumn = (date: Date) => {
+      const dateISO = formatDateISO(date)
+      const isDateToday = isSameDay(date, today)
+      const dayData = calendarData[dateISO]
+      const workouts: WorkoutWithSlot[] =
+        dayData?.workouts.map((w) => ({
+          templateId: w.templateId,
+          name: w.name,
+          phase: w.phase,
+          week: w.week,
+          day: w.day,
+          exerciseCount: w.exerciseCount,
+          estimatedDurationMinutes: w.estimatedDurationMinutes,
+          isCompleted: w.isCompleted,
+          isToday: w.isToday,
+          isInProgress: w.isInProgress,
+          isLocked: w.isLocked,
+          gppCategoryId,
+          slotPhase: w.phase,
+          slotWeek: w.week,
+          slotDay: w.day,
+        })) ?? []
+
+      const isDropTarget = dragTargetDate === dateISO && dragSourceSlot !== null
+
+      return (
+        <YStack key={dateISO} flex={1} gap="$1">
+          {/* Day header */}
+          <YStack alignItems="center" gap="$0.5">
+            <Text
+              fontSize={11}
+              fontWeight="500"
+              color={isDateToday ? '$primary' : '$color9'}
+            >
+              {DAY_NAMES[date.getDay()]}
+            </Text>
+            <YStack
+              width={28}
+              height={28}
+              borderRadius={14}
+              backgroundColor={isDateToday ? '$primary' : 'transparent'}
+              alignItems="center"
+              justifyContent="center"
+            >
+              <Text
+                fontSize={14}
+                fontWeight={isDateToday ? '700' : '500'}
+                color={isDateToday ? 'white' : '$color12'}
+              >
+                {date.getDate()}
+              </Text>
+            </YStack>
+          </YStack>
+
+          {/* Workout cell */}
+          <CalendarDayCell
+            date={date}
+            dateISO={dateISO}
+            isToday={isDateToday}
+            workouts={workouts}
+            compact={false}
+            onWorkoutPress={onWorkoutPress}
+            onWorkoutLongPress={onWorkoutLongPress}
+            onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
+            onDragMove={onDragMove}
+            isDropTarget={isDropTarget}
+            gppCategoryId={gppCategoryId}
+            onDropZoneLayout={onDropZoneLayout}
+            onDropZoneUnregister={onDropZoneUnregister}
+          />
+        </YStack>
+      )
+    }
 
     return (
-      <YStack width={SCREEN_WIDTH} flex={1} px="$1.5">
-        {/* Day headers row - compact to save space */}
-        <XStack mb="$1.5">
-          {days.map((date, idx) => {
-            const isDateToday = isSameDay(date, today)
-            return (
-              <YStack key={idx} flex={1} alignItems="center" gap="$0.5">
-                <Text
-                  fontSize={11}
-                  fontWeight="500"
-                  color={isDateToday ? '$primary' : '$color9'}
-                >
-                  {DAY_NAMES[date.getDay()]}
-                </Text>
-                <YStack
-                  width={28}
-                  height={28}
-                  borderRadius={14}
-                  backgroundColor={isDateToday ? '$primary' : 'transparent'}
-                  alignItems="center"
-                  justifyContent="center"
-                >
-                  <Text
-                    fontSize={14}
-                    fontWeight={isDateToday ? '700' : '500'}
-                    color={isDateToday ? 'white' : '$color12'}
-                  >
-                    {date.getDate()}
-                  </Text>
-                </YStack>
-              </YStack>
-            )
-          })}
+      <YStack width={SCREEN_WIDTH} flex={1} px="$2" gap="$3">
+        {/* First row: Sun, Mon, Tue, Wed */}
+        <XStack flex={1} gap="$2">
+          {firstRowDays.map(renderDayColumn)}
         </XStack>
 
-        {/* Workout cells row - fills remaining vertical space */}
-        <XStack flex={1} gap="$0.5">
-          {days.map((date) => {
-            const dateISO = formatDateISO(date)
-            const dayData = calendarData[dateISO]
-            const workouts: WorkoutWithSlot[] =
-              dayData?.workouts.map((w) => ({
-                templateId: w.templateId,
-                name: w.name,
-                phase: w.phase,
-                week: w.week,
-                day: w.day,
-                exerciseCount: w.exerciseCount,
-                estimatedDurationMinutes: w.estimatedDurationMinutes,
-                isCompleted: w.isCompleted,
-                isToday: w.isToday,
-                isInProgress: w.isInProgress,
-                isLocked: w.isLocked,
-                gppCategoryId,
-                slotPhase: w.phase,
-                slotWeek: w.week,
-                slotDay: w.day,
-              })) ?? []
-
-            // Check if this cell is a valid drop target (date matches)
-            const isDropTarget = dragTargetDate === dateISO && dragSourceSlot !== null
-
-            return (
-              <CalendarDayCell
-                key={dateISO}
-                date={date}
-                dateISO={dateISO}
-                isToday={isSameDay(date, today)}
-                workouts={workouts}
-                compact={false}
-                onWorkoutPress={onWorkoutPress}
-                onWorkoutLongPress={onWorkoutLongPress}
-                onDragStart={onDragStart}
-                onDragEnd={onDragEnd}
-                onDragMove={onDragMove}
-                isDropTarget={isDropTarget}
-                gppCategoryId={gppCategoryId}
-                onDropZoneLayout={onDropZoneLayout}
-                onDropZoneUnregister={onDropZoneUnregister}
-              />
-            )
-          })}
+        {/* Second row: Thu, Fri, Sat (+ empty spacer for alignment) */}
+        <XStack flex={1} gap="$2">
+          {secondRowDays.map(renderDayColumn)}
+          {/* Empty spacer to match 4-column layout */}
+          <YStack flex={1} />
         </XStack>
       </YStack>
     )
