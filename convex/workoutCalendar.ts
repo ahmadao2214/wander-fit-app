@@ -1162,11 +1162,6 @@ export const moveWorkoutToDate = mutation({
     const programEndDate = getDateForWorkout(programStartDate, trainingDays, lastWorkoutSlot, weeksPerPhase);
     const isLastWeek = isSameWeek(sourceDate, programEndDate);
 
-    // FORWARD-ONLY CONSTRAINT: Can't move workouts to earlier dates
-    if (targetDate < sourceDate) {
-      throw new Error("Cannot move workout to an earlier date");
-    }
-
     if (isLastWeek) {
       // Last week: allow moves up to LAST_WEEK_BUFFER_DAYS forward
       const maxDate = addDays(sourceDate, LAST_WEEK_BUFFER_DAYS);

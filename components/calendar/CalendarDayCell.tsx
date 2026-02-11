@@ -260,15 +260,17 @@ export function CalendarDayCell({
     return 'transparent'
   }
 
+  // During drag, empty cells should expand to match cells with workouts
+  const shouldExpand = hasWorkouts || isDragActive
+
   return (
     <View
       ref={viewRef}
       onLayout={handleLayout}
       style={{
-        flex: hasWorkouts ? 1 : 0,
-        flexGrow: hasWorkouts ? 1 : 0,
+        flex: shouldExpand ? 1 : 0,
+        flexGrow: shouldExpand ? 1 : 0,
         minWidth: 0,
-        minHeight: isDragActive ? 60 : 0, // Ensure empty cells have height during drag
         backgroundColor: getWeekViewBackground(),
         borderRadius: 8,
         padding: 2,
