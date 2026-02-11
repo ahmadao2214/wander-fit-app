@@ -494,7 +494,17 @@ export default defineSchema({
       day: v.number(),
       templateId: v.id("program_templates"), // The workout assigned to this slot
     })),
-    
+
+    // Date overrides - move workouts to specific calendar dates
+    // When a workout is moved to a different day (e.g., rest day), store the override here
+    // The key is the slot (phase/week/day), the value is the target date
+    dateOverrides: v.optional(v.array(v.object({
+      phase: phaseValidator,
+      week: v.number(),
+      day: v.number(),
+      dateISO: v.string(), // Target date in YYYY-MM-DD format
+    }))),
+
     createdAt: v.number(),
     updatedAt: v.number(),
   })

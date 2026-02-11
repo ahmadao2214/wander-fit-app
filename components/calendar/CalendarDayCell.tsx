@@ -28,6 +28,8 @@ export interface WorkoutWithSlot extends Omit<CalendarWorkoutCardProps, 'onPress
 
 export interface CalendarDayCellProps {
   date: Date
+  /** Date in ISO format for drop zone registration */
+  dateISO?: string
   isToday: boolean
   isCurrentMonth?: boolean
   workouts: WorkoutWithSlot[]
@@ -41,8 +43,8 @@ export interface CalendarDayCellProps {
   onDragMove?: (x: number, y: number) => void
   /** Whether this cell is a potential drop target */
   isDropTarget?: boolean
-  /** Register this cell as a drop zone */
-  onLayout?: (phase: Phase, week: number, day: number, layout: { x: number; y: number; width: number; height: number }) => void
+  /** Register this cell as a drop zone (date-based) */
+  onDropZoneLayout?: (dateISO: string, layout: { x: number; y: number; width: number; height: number }) => void
   /** Category ID for color coding (1-4) */
   gppCategoryId?: number
 }
@@ -53,8 +55,17 @@ export interface CalendarDayCellProps {
  * Week view: Shows full workout cards stacked vertically
  * Month view: Shows compact indicators with count badge
  */
+// Helper to format date as ISO
+function formatDateISO(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 export function CalendarDayCell({
   date,
+  dateISO: dateISOProp,
   isToday,
   isCurrentMonth = true,
   workouts,
@@ -65,25 +76,19 @@ export function CalendarDayCell({
   onDragEnd,
   onDragMove,
   isDropTarget = false,
-  onLayout,
+  onDropZoneLayout,
   gppCategoryId,
 }: CalendarDayCellProps) {
   const dayNumber = date.getDate()
+  const dateISO = dateISOProp ?? formatDateISO(date)
   const viewRef = useRef<View>(null)
 
-  // Handle layout for drop zone registration
+  // Handle layout for drop zone registration (all days are drop zones now)
   const handleLayout = useCallback((event: LayoutChangeEvent) => {
-    if (workouts.length > 0 && workouts[0].slotPhase && workouts[0].slotWeek && workouts[0].slotDay) {
-      viewRef.current?.measureInWindow((x, y, width, height) => {
-        onLayout?.(
-          workouts[0].slotPhase!,
-          workouts[0].slotWeek!,
-          workouts[0].slotDay!,
-          { x, y, width, height }
-        )
-      })
-    }
-  }, [workouts, onLayout])
+    viewRef.current?.measureInWindow((x, y, width, height) => {
+      onDropZoneLayout?.(dateISO, { x, y, width, height })
+    })
+  }, [dateISO, onDropZoneLayout])
 
   // Handle long press on workout card to initiate drag
   const handleWorkoutLongPress = useCallback((workout: WorkoutWithSlot) => {

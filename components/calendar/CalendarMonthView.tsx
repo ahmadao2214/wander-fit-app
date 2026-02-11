@@ -47,12 +47,12 @@ export interface CalendarMonthViewProps {
   onDragStart?: (phase: Phase, week: number, day: number) => void
   onDragEnd?: () => void
   onDragMove?: (x: number, y: number) => void
-  /** Current drag target slot for highlighting */
-  dragTargetSlot?: { phase: Phase; week: number; day: number } | null
-  /** Current drag source slot (for same-week validation) */
+  /** Current drag target date for highlighting (ISO format) */
+  dragTargetDate?: string | null
+  /** Current drag source slot */
   dragSourceSlot?: { phase: Phase; week: number; day: number } | null
-  /** Callback to register drop zones */
-  onDropZoneLayout?: (phase: Phase, week: number, day: number, layout: { x: number; y: number; width: number; height: number }) => void
+  /** Callback to register drop zones (date-based) */
+  onDropZoneLayout?: (dateISO: string, layout: { x: number; y: number; width: number; height: number }) => void
 }
 
 /**
@@ -72,7 +72,7 @@ export function CalendarMonthView({
   onDragStart,
   onDragEnd,
   onDragMove,
-  dragTargetSlot,
+  dragTargetDate,
   dragSourceSlot,
   onDropZoneLayout,
 }: CalendarMonthViewProps) {
@@ -208,18 +208,8 @@ export function CalendarMonthView({
                     slotDay: w.day,
                   })) ?? []
 
-                  // Check if this day is a valid drop target (same phase and week as source)
-                  const isDropTarget = workouts.some(
-                    (w) =>
-                      dragTargetSlot &&
-                      dragSourceSlot &&
-                      w.phase === dragTargetSlot.phase &&
-                      w.week === dragTargetSlot.week &&
-                      w.day === dragTargetSlot.day &&
-                      // Only highlight if same phase and week as source (same-week constraint)
-                      w.phase === dragSourceSlot.phase &&
-                      w.week === dragSourceSlot.week
-                  )
+                  // Check if this day is a valid drop target (date matches)
+                  const isDropTarget = dragTargetDate === dateISO && dragSourceSlot !== null
 
                   return (
                     <YStack
@@ -230,6 +220,7 @@ export function CalendarMonthView({
                     >
                       <CalendarDayCell
                         date={date}
+                        dateISO={dateISO}
                         isToday={isSameDay(date, today)}
                         isCurrentMonth={isMonthDate}
                         workouts={workouts}
@@ -240,7 +231,7 @@ export function CalendarMonthView({
                         onDragEnd={onDragEnd}
                         onDragMove={onDragMove}
                         isDropTarget={isDropTarget}
-                        onLayout={onDropZoneLayout}
+                        onDropZoneLayout={onDropZoneLayout}
                       />
                     </YStack>
                   )

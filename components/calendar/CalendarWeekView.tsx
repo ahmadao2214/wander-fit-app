@@ -49,14 +49,14 @@ export interface CalendarWeekViewProps {
   onDragEnd?: () => void
   /** Called during drag with absolute position */
   onDragMove?: (x: number, y: number) => void
-  /** Current drag target slot for highlighting */
-  dragTargetSlot?: { phase: Phase; week: number; day: number } | null
-  /** Current drag source slot (for same-week validation) */
+  /** Current drag target date for highlighting (ISO format) */
+  dragTargetDate?: string | null
+  /** Current drag source slot */
   dragSourceSlot?: { phase: Phase; week: number; day: number } | null
   /** Category ID for color coding (1-4) */
   gppCategoryId?: number
-  /** Callback to register drop zones */
-  onDropZoneLayout?: (phase: Phase, week: number, day: number, layout: { x: number; y: number; width: number; height: number }) => void
+  /** Callback to register drop zones (date-based) */
+  onDropZoneLayout?: (dateISO: string, layout: { x: number; y: number; width: number; height: number }) => void
 }
 
 // Generate array of weeks around current date for infinite scroll feel
@@ -88,7 +88,7 @@ export function CalendarWeekView({
   onDragStart,
   onDragEnd,
   onDragMove,
-  dragTargetSlot,
+  dragTargetDate,
   dragSourceSlot,
   gppCategoryId,
   onDropZoneLayout,
@@ -202,20 +202,14 @@ export function CalendarWeekView({
                 slotDay: w.day,
               })) ?? []
 
-            // Check if this cell is a valid drop target (same phase and week as source)
-            const isDropTarget = dragTargetSlot && dragSourceSlot && workouts.some(
-              (w) =>
-                w.slotPhase === dragTargetSlot.phase &&
-                w.slotWeek === dragTargetSlot.week &&
-                w.slotDay === dragTargetSlot.day &&
-                w.slotPhase === dragSourceSlot.phase &&
-                w.slotWeek === dragSourceSlot.week
-            )
+            // Check if this cell is a valid drop target (date matches)
+            const isDropTarget = dragTargetDate === dateISO && dragSourceSlot !== null
 
             return (
               <CalendarDayCell
                 key={dateISO}
                 date={date}
+                dateISO={dateISO}
                 isToday={isSameDay(date, today)}
                 workouts={workouts}
                 compact={false}
@@ -224,16 +218,16 @@ export function CalendarWeekView({
                 onDragStart={onDragStart}
                 onDragEnd={onDragEnd}
                 onDragMove={onDragMove}
-                isDropTarget={isDropTarget ?? false}
+                isDropTarget={isDropTarget}
                 gppCategoryId={gppCategoryId}
-                onLayout={onDropZoneLayout}
+                onDropZoneLayout={onDropZoneLayout}
               />
             )
           })}
         </XStack>
       </YStack>
     )
-  }, [calendarData, onWorkoutPress, onWorkoutLongPress, onDragStart, onDragEnd, onDragMove, dragTargetSlot, dragSourceSlot, gppCategoryId, onDropZoneLayout])
+  }, [calendarData, onWorkoutPress, onWorkoutLongPress, onDragStart, onDragEnd, onDragMove, dragTargetDate, dragSourceSlot, gppCategoryId, onDropZoneLayout])
 
   const keyExtractor = useCallback((item: Date) => formatDateISO(item), [])
 

@@ -17,7 +17,7 @@ interface WorkoutSlot {
 }
 
 interface DropZone {
-  slot: WorkoutSlot
+  dateISO: string // Calendar date in YYYY-MM-DD format
   layout: { x: number; y: number; width: number; height: number }
 }
 
@@ -25,6 +25,14 @@ interface DragSource {
   phase: Phase
   week: number
   day: number
+}
+
+// Helper to format date as ISO
+function formatDateISO(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 export interface WorkoutCalendarProps {
@@ -51,15 +59,15 @@ export function WorkoutCalendar({
   const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode)
   const [currentDate, setCurrentDate] = useState(new Date())
   const [dragSource, setDragSource] = useState<DragSource | null>(null)
-  const [dragTarget, setDragTarget] = useState<WorkoutSlot | null>(null)
-  const [isSwapping, setIsSwapping] = useState(false)
+  const [dragTargetDate, setDragTargetDate] = useState<string | null>(null) // Target date ISO
+  const [isMoving, setIsMoving] = useState(false)
   const dragPositionRef = useRef<{ x: number; y: number } | null>(null)
-  const dropZonesRef = useRef<Map<string, DropZone>>(new Map())
+  const dropZonesRef = useRef<Map<string, DropZone>>(new Map()) // key = dateISO
 
   // Fetch ALL calendar data upfront - no date range filtering
   // This ensures smooth navigation without loading states when scrolling
   const fullCalendar = useQuery(api.workoutCalendar.getFullProgramCalendar)
-  const swapWorkouts = useMutation(api.workoutCalendar.swapWorkouts)
+  const moveWorkoutToDate = useMutation(api.workoutCalendar.moveWorkoutToDate)
 
   // Handle week navigation
   const handleWeekChange = (newWeek: Date) => {
@@ -80,20 +88,17 @@ export function WorkoutCalendar({
   // Drag-drop handlers
   const handleDragStart = useCallback((phase: Phase, week: number, day: number) => {
     setDragSource({ phase, week, day })
-    setDragTarget(null)
+    setDragTargetDate(null)
     dragPositionRef.current = null
   }, [])
 
-  // Register drop zones when day cells report their layout
+  // Register drop zones when day cells report their layout (now date-based)
   const handleDropZoneLayout = useCallback((
-    phase: Phase,
-    week: number,
-    day: number,
+    dateISO: string,
     layout: { x: number; y: number; width: number; height: number }
   ) => {
-    const key = `${phase}-${week}-${day}`
-    dropZonesRef.current.set(key, {
-      slot: { phase, week, day },
+    dropZonesRef.current.set(dateISO, {
+      dateISO,
       layout,
     })
   }, [])
@@ -102,82 +107,69 @@ export function WorkoutCalendar({
     dragPositionRef.current = { x, y }
 
     // Find which drop zone contains this position
-    let foundTarget: WorkoutSlot | null = null
+    let foundTargetDate: string | null = null
 
     for (const [, dropZone] of dropZonesRef.current) {
-      const { layout, slot } = dropZone
+      const { layout, dateISO } = dropZone
       if (
         x >= layout.x &&
         x <= layout.x + layout.width &&
         y >= layout.y &&
         y <= layout.y + layout.height
       ) {
-        foundTarget = slot
+        foundTargetDate = dateISO
         break
       }
     }
 
-    setDragTarget(foundTarget)
+    setDragTargetDate(foundTargetDate)
   }, [])
 
-  // Handle workout swap - defined before handleDragEnd since it depends on this
-  const handleSwap = useCallback(async (
+  // Handle moving workout to a new date
+  const handleMoveToDate = useCallback(async (
     sourcePhase: Phase,
     sourceWeek: number,
     sourceDay: number,
-    targetPhase: Phase,
-    targetWeek: number,
-    targetDay: number
+    targetDateISO: string
   ) => {
-    if (isSwapping) return
+    if (isMoving) return
 
     try {
-      setIsSwapping(true)
-      await swapWorkouts({
+      setIsMoving(true)
+      await moveWorkoutToDate({
         sourcePhase,
         sourceWeek,
         sourceDay,
-        targetPhase,
-        targetWeek,
-        targetDay,
+        targetDateISO,
       })
     } catch (error) {
-      console.error('Failed to swap workouts:', error)
+      console.error('Failed to move workout:', error)
       // Could show a toast/alert here
     } finally {
-      setIsSwapping(false)
+      setIsMoving(false)
       setDragSource(null)
     }
-  }, [swapWorkouts, isSwapping])
+  }, [moveWorkoutToDate, isMoving])
 
   const handleDragEnd = useCallback(async () => {
     const source = dragSource
-    const target = dragTarget
+    const targetDate = dragTargetDate
 
     // Clear drag state first
     setDragSource(null)
-    setDragTarget(null)
+    setDragTargetDate(null)
     dragPositionRef.current = null
 
-    // If we have both source and target, and they're different, trigger swap
-    // But only if they're in the same phase AND week (same-week constraint)
-    if (
-      source &&
-      target &&
-      source.phase === target.phase &&
-      source.week === target.week &&
-      source.day !== target.day
-    ) {
-      await handleSwap(
+    // If we have both source and target date, move the workout
+    if (source && targetDate) {
+      await handleMoveToDate(
         source.phase,
         source.week,
         source.day,
-        target.phase,
-        target.week,
-        target.day
+        targetDate
       )
     }
-  }, [dragSource, dragTarget, handleSwap])
+  }, [dragSource, dragTargetDate, handleMoveToDate])
 
   // Loading state
   if (fullCalendar === undefined) {
@@ -280,7 +272,7 @@ export function WorkoutCalendar({
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
             onDragMove={handleDragMove}
-            dragTargetSlot={dragTarget}
+            dragTargetDate={dragTargetDate}
             dragSourceSlot={dragSource}
             gppCategoryId={gppCategoryId}
             onDropZoneLayout={handleDropZoneLayout}
@@ -296,7 +288,7 @@ export function WorkoutCalendar({
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
             onDragMove={handleDragMove}
-            dragTargetSlot={dragTarget}
+            dragTargetDate={dragTargetDate}
             dragSourceSlot={dragSource}
             onDropZoneLayout={handleDropZoneLayout}
           />
