@@ -4,6 +4,7 @@ import {
   startOfWeek,
   endOfWeek,
   isSameDay,
+  isSameWeek,
   isToday,
   formatDateISO,
   parseDateISO,
@@ -104,6 +105,43 @@ describe('calendarUtils', () => {
       const a = new Date(2026, 1, 2)
       const b = new Date(2026, 1, 3)
       expect(isSameDay(a, b)).toBe(false)
+    })
+  })
+
+  describe('isSameWeek', () => {
+    it('should return true for same week (Sunday-Saturday)', () => {
+      // Monday Feb 2 and Friday Feb 6 are same week
+      const mon = new Date(2026, 1, 2)
+      const fri = new Date(2026, 1, 6)
+      expect(isSameWeek(mon, fri)).toBe(true)
+    })
+
+    it('should return true for Sunday and Saturday of same week', () => {
+      // Sunday Feb 1 and Saturday Feb 7
+      const sun = new Date(2026, 1, 1)
+      const sat = new Date(2026, 1, 7)
+      expect(isSameWeek(sun, sat)).toBe(true)
+    })
+
+    it('should return false for different weeks', () => {
+      // Saturday Feb 7 and Sunday Feb 8 are different weeks
+      const sat = new Date(2026, 1, 7)
+      const sun = new Date(2026, 1, 8)
+      expect(isSameWeek(sat, sun)).toBe(false)
+    })
+
+    it('should return false for days a week apart', () => {
+      // Monday Feb 2 and Monday Feb 9
+      const mon1 = new Date(2026, 1, 2)
+      const mon2 = new Date(2026, 1, 9)
+      expect(isSameWeek(mon1, mon2)).toBe(false)
+    })
+
+    it('should handle cross-month weeks', () => {
+      // Jan 31 (Saturday) and Feb 1 (Sunday) are different weeks
+      const jan31 = new Date(2026, 0, 31) // Saturday
+      const feb1 = new Date(2026, 1, 1) // Sunday
+      expect(isSameWeek(jan31, feb1)).toBe(false)
     })
   })
 

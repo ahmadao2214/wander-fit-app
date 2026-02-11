@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
 import { YStack, XStack, Text, Button, Spinner } from 'tamagui'
-import { Calendar, CalendarDays, Dumbbell } from '@tamagui/lucide-icons'
+import { Dumbbell } from '@tamagui/lucide-icons'
 import { useQuery, useMutation } from 'convex/react'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { api } from '../../convex/_generated/api'
@@ -231,28 +231,36 @@ export function WorkoutCalendar({
 
   return (
     <YStack flex={1} gap="$4">
-      {/* View mode toggle */}
-      <XStack justify="center" gap="$2">
-        <Button
-          size="$3"
-          bg={viewMode === 'week' ? '$primary' : '$color3'}
-          color={viewMode === 'week' ? 'white' : '$color11'}
-          icon={CalendarDays}
-          onPress={() => setViewMode('week')}
-          pressStyle={{ opacity: 0.8 }}
+      {/* View mode toggle - segmented control style */}
+      <XStack justify="center">
+        <XStack
+          bg="$color3"
+          borderRadius="$4"
+          p="$1"
         >
-          Week
-        </Button>
-        <Button
-          size="$3"
-          bg={viewMode === 'month' ? '$primary' : '$color3'}
-          color={viewMode === 'month' ? 'white' : '$color11'}
-          icon={Calendar}
-          onPress={() => setViewMode('month')}
-          pressStyle={{ opacity: 0.8 }}
-        >
-          Month
-        </Button>
+          <Button
+            size="$2"
+            bg={viewMode === 'week' ? '$primary' : 'transparent'}
+            color={viewMode === 'week' ? 'white' : '$color11'}
+            onPress={() => setViewMode('week')}
+            pressStyle={{ opacity: 0.8 }}
+            borderRadius="$3"
+            px="$4"
+          >
+            Week
+          </Button>
+          <Button
+            size="$2"
+            bg={viewMode === 'month' ? '$primary' : 'transparent'}
+            color={viewMode === 'month' ? 'white' : '$color11'}
+            onPress={() => setViewMode('month')}
+            pressStyle={{ opacity: 0.8 }}
+            borderRadius="$3"
+            px="$4"
+          >
+            Month
+          </Button>
+        </XStack>
       </XStack>
 
       {/* Calendar view */}
