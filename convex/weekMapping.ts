@@ -45,6 +45,69 @@ export function calculateWeeksPerPhase(
 }
 
 /**
+ * Calculate weeks for each phase, distributing remainder weeks evenly.
+ * Later phases (SPP, SSP) get extra weeks before earlier phases.
+ *
+ * @param totalWeeks - Total program weeks (from weeksUntilSeason)
+ * @returns Array of weeks per phase [GPP, SPP, SSP]
+ *
+ * @example
+ * calculateWeeksPerPhaseArray(12) // [4, 4, 4] - divides evenly
+ * calculateWeeksPerPhaseArray(16) // [5, 5, 6] - SSP gets extra week
+ * calculateWeeksPerPhaseArray(14) // [4, 5, 5] - SPP and SSP get extra
+ * calculateWeeksPerPhaseArray(15) // [5, 5, 5] - divides evenly
+ */
+export function calculateWeeksPerPhaseArray(totalWeeks: number): [number, number, number] {
+  const baseWeeks = Math.floor(totalWeeks / NUMBER_OF_PHASES);
+  const remainder = totalWeeks % NUMBER_OF_PHASES;
+
+  // Clamp base weeks to valid range
+  const clampedBase = Math.max(MIN_WEEKS_PER_PHASE, Math.min(MAX_WEEKS_PER_PHASE, baseWeeks));
+
+  // Distribute remainder to later phases first (SSP, then SPP)
+  // This gives athletes more time to peak before their season
+  const sspWeeks = clampedBase + (remainder >= 1 ? 1 : 0);
+  const sppWeeks = clampedBase + (remainder >= 2 ? 1 : 0);
+  const gppWeeks = clampedBase;
+
+  // Ensure all phases are within valid range
+  return [
+    Math.min(MAX_WEEKS_PER_PHASE, gppWeeks),
+    Math.min(MAX_WEEKS_PER_PHASE, sppWeeks),
+    Math.min(MAX_WEEKS_PER_PHASE, sspWeeks),
+  ];
+}
+
+/**
+ * Get total program weeks from per-phase weeks array
+ * @param weeksPerPhaseArray - Array of weeks per phase [GPP, SPP, SSP]
+ * @returns Total weeks in the program
+ */
+export function getTotalProgramWeeks(weeksPerPhaseArray: [number, number, number]): number {
+  return weeksPerPhaseArray[0] + weeksPerPhaseArray[1] + weeksPerPhaseArray[2];
+}
+
+/**
+ * Get weeks for a specific phase from the per-phase array
+ * @param weeksPerPhaseArray - Array of weeks per phase [GPP, SPP, SSP]
+ * @param phase - The phase to get weeks for
+ * @returns Number of weeks in that phase
+ */
+export function getWeeksForPhase(
+  weeksPerPhaseArray: [number, number, number],
+  phase: "GPP" | "SPP" | "SSP"
+): number {
+  switch (phase) {
+    case "GPP":
+      return weeksPerPhaseArray[0];
+    case "SPP":
+      return weeksPerPhaseArray[1];
+    case "SSP":
+      return weeksPerPhaseArray[2];
+  }
+}
+
+/**
  * Maps user's actual week (1 to N) to template week (1-4)
  *
  * Preserves periodization curve:
