@@ -303,6 +303,11 @@ export function WorkoutCalendar({
             onDayPress={handleDayPress}
             onWorkoutPress={onWorkoutPress}
             gppCategoryId={gppCategoryId}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragMove={handleDragMove}
+            dragTargetSlot={dragTarget}
+            onDropZoneLayout={handleDropZoneLayout}
           />
         )}
       </GestureHandlerRootView>

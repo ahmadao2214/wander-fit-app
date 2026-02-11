@@ -43,6 +43,14 @@ export interface CalendarMonthViewProps {
   onWorkoutPress?: (templateId: string) => void
   /** Category ID for color coding (1-4) */
   gppCategoryId?: number
+  /** Drag callbacks for swapping */
+  onDragStart?: (phase: Phase, week: number, day: number) => void
+  onDragEnd?: () => void
+  onDragMove?: (x: number, y: number) => void
+  /** Current drag target slot for highlighting */
+  dragTargetSlot?: { phase: Phase; week: number; day: number } | null
+  /** Callback to register drop zones */
+  onDropZoneLayout?: (phase: Phase, week: number, day: number, layout: { x: number; y: number; width: number; height: number }) => void
 }
 
 /**
@@ -57,7 +65,13 @@ export function CalendarMonthView({
   currentMonth,
   onMonthChange,
   onDayPress,
+  onWorkoutPress,
   gppCategoryId,
+  onDragStart,
+  onDragEnd,
+  onDragMove,
+  dragTargetSlot,
+  onDropZoneLayout,
 }: CalendarMonthViewProps) {
   const today = new Date()
   const currentYear = currentMonth.getFullYear()
@@ -173,23 +187,32 @@ export function CalendarMonthView({
                   const dateISO = formatDateISO(date)
                   const dayData = calendarData[dateISO]
                   const isMonthDate = date.getMonth() === currentMonthNum
-                  const workouts: Omit<
-                    CalendarWorkoutCardProps,
-                    'onPress' | 'onLongPress' | 'compact'
-                  >[] =
-                    dayData?.workouts.map((w) => ({
-                      templateId: w.templateId,
-                      name: w.name,
-                      phase: w.phase,
-                      week: w.week,
-                      day: w.day,
-                      exerciseCount: w.exerciseCount,
-                      estimatedDurationMinutes: w.estimatedDurationMinutes,
-                      isCompleted: w.isCompleted,
-                      isToday: w.isToday,
-                      isInProgress: w.isInProgress,
-                      gppCategoryId, // Pass category for color coding
-                    })) ?? []
+                  const workouts = dayData?.workouts.map((w) => ({
+                    templateId: w.templateId,
+                    name: w.name,
+                    phase: w.phase,
+                    week: w.week,
+                    day: w.day,
+                    exerciseCount: w.exerciseCount,
+                    estimatedDurationMinutes: w.estimatedDurationMinutes,
+                    isCompleted: w.isCompleted,
+                    isToday: w.isToday,
+                    isInProgress: w.isInProgress,
+                    gppCategoryId,
+                    // Add slot info for drag-drop
+                    slotPhase: w.phase,
+                    slotWeek: w.week,
+                    slotDay: w.day,
+                  })) ?? []
+
+                  // Check if this day contains the drop target
+                  const isDropTarget = workouts.some(
+                    (w) =>
+                      dragTargetSlot &&
+                      w.phase === dragTargetSlot.phase &&
+                      w.week === dragTargetSlot.week &&
+                      w.day === dragTargetSlot.day
+                  )
 
                   return (
                     <YStack
@@ -205,6 +228,12 @@ export function CalendarMonthView({
                         workouts={workouts}
                         compact={true}
                         gppCategoryId={gppCategoryId}
+                        onWorkoutPress={onWorkoutPress}
+                        onDragStart={onDragStart}
+                        onDragEnd={onDragEnd}
+                        onDragMove={onDragMove}
+                        isDropTarget={isDropTarget}
+                        onLayout={onDropZoneLayout}
                       />
                     </YStack>
                   )

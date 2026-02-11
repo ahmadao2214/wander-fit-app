@@ -95,63 +95,84 @@ export function CalendarDayCell({
   }, [onDragStart, onWorkoutLongPress])
 
   if (compact) {
-    // Month view - compact display
-    const completedCount = workouts.filter((w) => w.isCompleted).length
-    const totalCount = workouts.length
-
+    // Month view - shows workout titles with drag-drop support
     return (
-      <YStack
-        flex={1}
-        minHeight={44}
-        p="$0.5"
-        bg={isToday ? '$primary' : 'transparent'}
-        rounded="$2"
-        opacity={isCurrentMonth ? 1 : 0.4}
+      <View
+        ref={viewRef}
+        onLayout={handleLayout}
+        style={{
+          flex: 1,
+          minHeight: 80,
+          padding: 2,
+          backgroundColor: isDropTarget ? '#dbeafe' : isToday ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+          borderRadius: 4,
+          borderWidth: isDropTarget ? 1 : 0,
+          borderColor: isDropTarget ? '#3b82f6' : 'transparent',
+          borderStyle: 'dashed',
+          opacity: isCurrentMonth ? 1 : 0.4,
+        }}
       >
         {/* Day number */}
-        <Text
-          fontSize={12}
-          fontWeight={isToday ? '700' : '500'}
-          color={isToday ? 'white' : '$color11'}
-          textAlign="center"
+        <YStack
+          alignItems="center"
+          pb="$0.5"
         >
-          {dayNumber}
-        </Text>
+          <YStack
+            width={20}
+            height={20}
+            borderRadius={10}
+            backgroundColor={isToday ? '$primary' : 'transparent'}
+            alignItems="center"
+            justifyContent="center"
+          >
+            <Text
+              fontSize={11}
+              fontWeight={isToday ? '700' : '500'}
+              color={isToday ? 'white' : '$color11'}
+            >
+              {dayNumber}
+            </Text>
+          </YStack>
+        </YStack>
 
-        {/* Workout indicators */}
+        {/* Workout cards - compact with titles */}
         {workouts.length > 0 && (
-          <YStack alignItems="center" gap="$0.5" pt="$0.5">
-            {/* Phase dots */}
-            <XStack gap="$1" justifyContent="center">
-              {workouts.slice(0, 3).map((workout, idx) => (
-                <YStack
-                  key={`${workout.templateId}-${idx}`}
-                  width={5}
-                  height={5}
-                  borderRadius={10}
-                  backgroundColor={
-                    workout.isLocked
-                      ? '$gray6'
-                      : PHASE_DOT_COLORS[workout.phase] ?? DEFAULT_DOT_COLOR
-                  }
-                  opacity={workout.isLocked || workout.isCompleted ? 0.5 : 1}
-                />
-              ))}
-            </XStack>
+          <YStack gap={2}>
+            {workouts.slice(0, 2).map((workout, idx) => {
+              const phaseColor = PHASE_DOT_COLORS[workout.phase] ?? DEFAULT_DOT_COLOR
+              const slotKey = workout.slotPhase && workout.slotWeek && workout.slotDay
+                ? `${workout.slotPhase}-${workout.slotWeek}-${workout.slotDay}`
+                : workout.templateId
 
-            {/* Completion indicator */}
-            {completedCount > 0 && (
-              <Text
-                fontSize={9}
-                fontWeight="600"
-                color={isToday ? 'white' : '$green9'}
-              >
-                {completedCount === totalCount ? '✓' : `${completedCount}/${totalCount}`}
+              return (
+                <DraggableWorkoutCard
+                  key={`${workout.templateId}-${idx}`}
+                  {...workout}
+                  slotKey={slotKey}
+                  compact={true}
+                  onPress={() => onWorkoutPress?.(workout.templateId)}
+                  onLongPress={() => handleWorkoutLongPress(workout)}
+                  onDragStart={() => {
+                    if (workout.slotPhase && workout.slotWeek && workout.slotDay) {
+                      onDragStart?.(workout.slotPhase, workout.slotWeek, workout.slotDay)
+                    }
+                  }}
+                  onDragMove={(_, x, y) => onDragMove?.(x, y)}
+                  onDragEnd={() => onDragEnd?.()}
+                  dragDisabled={workout.isLocked || workout.isCompleted}
+                  isDropTarget={isDropTarget}
+                />
+              )
+            })}
+            {/* Show +N more if there are more workouts */}
+            {workouts.length > 2 && (
+              <Text fontSize={8} color="$color9" textAlign="center">
+                +{workouts.length - 2} more
               </Text>
             )}
           </YStack>
         )}
-      </YStack>
+      </View>
     )
   }
 

@@ -83,7 +83,7 @@ export function CalendarWorkoutCard({
   }
 
   if (compact) {
-    // Compact mode for month view - just shows phase dot and status
+    // Compact mode for month view - shows phase dot, title, and status
     return (
       <Card
         pressStyle={isLocked ? undefined : { opacity: 0.8, scale: 0.98 }}
@@ -92,18 +92,23 @@ export function CalendarWorkoutCard({
         bg={getBgColor()}
         borderColor={getBorderColor()}
         borderWidth={1}
-        px="$2"
-        py="$1"
-        rounded="$2"
-        opacity={isLocked ? 0.5 : 1}
+        borderLeftWidth={3}
+        borderLeftColor={isLocked ? '$gray6' : colors.dot}
+        px="$1"
+        py="$0.5"
+        rounded="$1"
+        opacity={isLocked ? 0.5 : isCompleted ? 0.7 : 1}
       >
         <XStack items="center" gap="$1">
-          <YStack
-            width={6}
-            height={6}
-            rounded="$10"
-            bg={isLocked ? '$gray6' : colors.dot}
-          />
+          <Text
+            fontSize={9}
+            fontWeight="500"
+            color={isLocked || isCompleted ? '$color9' : '$color11'}
+            numberOfLines={1}
+            flex={1}
+          >
+            {name}
+          </Text>
           {getStatusIcon()}
         </XStack>
       </Card>
