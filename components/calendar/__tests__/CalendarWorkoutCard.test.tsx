@@ -50,20 +50,13 @@ describe('CalendarWorkoutCard', () => {
       expect(getByText('GPP')).toBeTruthy()
     })
 
-    it('renders exercise count', () => {
+    it('renders exercise count and duration', () => {
       const { getByText } = render(
         <CalendarWorkoutCard {...defaultProps} />,
         { wrapper: AllTheProviders }
       )
-      expect(getByText('8 exercises')).toBeTruthy()
-    })
-
-    it('renders duration', () => {
-      const { getByText } = render(
-        <CalendarWorkoutCard {...defaultProps} />,
-        { wrapper: AllTheProviders }
-      )
-      expect(getByText('~45m')).toBeTruthy()
+      // Combined format: "8 ex • 45m"
+      expect(getByText('8 ex • 45m')).toBeTruthy()
     })
 
     it('renders SPP phase correctly', () => {
@@ -97,7 +90,8 @@ describe('CalendarWorkoutCard', () => {
         <CalendarWorkoutCard {...defaultProps} compact />,
         { wrapper: AllTheProviders }
       )
-      expect(queryByText('8 exercises')).toBeNull()
+      // Combined format not shown in compact mode
+      expect(queryByText('8 ex • 45m')).toBeNull()
     })
   })
 

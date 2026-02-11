@@ -115,7 +115,7 @@ export function CalendarWorkoutCard({
     )
   }
 
-  // Week view card - fixed height for consistent layout
+  // Week view card - compact design that fits content
   return (
     <Card
       pressStyle={isLocked ? undefined : { opacity: 0.8, scale: 0.98 }}
@@ -127,13 +127,12 @@ export function CalendarWorkoutCard({
       borderLeftWidth={3}
       borderLeftColor={isLocked ? '$gray6' : colors.dot}
       px="$2"
-      py="$2"
+      py="$1.5"
       borderRadius="$3"
       opacity={isLocked ? 0.5 : isCompleted ? 0.7 : 1}
-      minHeight={120}
     >
-      <YStack gap="$1" height="100%">
-        {/* Phase badge at top */}
+      <YStack gap="$1">
+        {/* Phase badge and status icon */}
         <XStack alignItems="center" justifyContent="space-between">
           <Text
             fontSize={10}
@@ -145,34 +144,21 @@ export function CalendarWorkoutCard({
           {getStatusIcon()}
         </XStack>
 
-        {/* Workout name - main content */}
+        {/* Workout name - limit to 2 lines for cleaner look */}
         <Text
-          fontSize={11}
+          fontSize={12}
           fontWeight="600"
+          lineHeight={16}
           color={isLocked || isCompleted ? '$color10' : '$color12'}
-          numberOfLines={4}
+          numberOfLines={2}
         >
           {name}
         </Text>
 
-        {/* Spacer to push info to bottom */}
-        <YStack flex={1} />
-
-        {/* Exercise count and duration at bottom */}
-        <YStack gap="$0.5">
-          <XStack alignItems="center" gap="$1">
-            <Dumbbell size={10} color="$color9" />
-            <Text fontSize={10} color="$color9">
-              {exerciseCount} exercises
-            </Text>
-          </XStack>
-          <XStack alignItems="center" gap="$1">
-            <Clock size={10} color="$color9" />
-            <Text fontSize={10} color="$color9">
-              ~{estimatedDurationMinutes}m
-            </Text>
-          </XStack>
-        </YStack>
+        {/* Exercise count and duration on one line */}
+        <Text fontSize={10} color="$color9">
+          {exerciseCount} ex • {estimatedDurationMinutes}m
+        </Text>
       </YStack>
     </Card>
   )
