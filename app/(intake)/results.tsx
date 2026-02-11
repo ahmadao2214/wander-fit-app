@@ -19,8 +19,8 @@ import {
   User,
 } from '@tamagui/lucide-icons'
 
-import { AgeGroup } from '../../types'
-import { getSkillLevel, getTrainingPhase } from '../../lib'
+import { PHASE_NAMES, AgeGroup } from '../../types'
+import { getSkillLevel, getTrainingPhase, calculateWeeksPerPhase } from '../../lib'
 import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT, COMBINED_FLOW_ROUTES } from '../../components/IntakeProgressDots'
 import { TimelineView, createPhaseTimeline } from '../../components/onboarding'
 
@@ -34,10 +34,11 @@ import { TimelineView, createPhaseTimeline } from '../../components/onboarding'
 export default function ResultsScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
-  const { sportId, yearsOfExperience, trainingDays, weeksUntilSeason, ageGroup } = useLocalSearchParams<{
+  const { sportId, yearsOfExperience, trainingDays, selectedTrainingDays, weeksUntilSeason, ageGroup } = useLocalSearchParams<{
     sportId: string
     yearsOfExperience: string
     trainingDays: string
+    selectedTrainingDays: string
     weeksUntilSeason: string
     ageGroup: AgeGroup
   }>()
@@ -60,7 +61,7 @@ export default function ResultsScreen() {
   const savedMaxes = coreLiftExercises?.filter(ex => ex.currentMax !== null) ?? []
 
   // Redirect back if missing params
-  if (!sportId || !yearsOfExperience || !trainingDays || !weeksUntilSeason || !ageGroup) {
+  if (!sportId || !yearsOfExperience || !trainingDays || !selectedTrainingDays || !weeksUntilSeason || !ageGroup) {
     router.replace('/(intake)/sport')
     return null
   }
@@ -72,6 +73,7 @@ export default function ResultsScreen() {
   // Use extracted pure functions for calculations
   const trainingPhase = getTrainingPhase(weeks)
   const skillLevel = getSkillLevel(years)
+  const weeksPerPhase = calculateWeeksPerPhase(weeks)
 
   // Helper: Get category-specific colors
   const getCategoryColor = (categoryId: number) => {
@@ -105,7 +107,7 @@ export default function ResultsScreen() {
     if (route) {
       router.push({
         pathname: route,
-        params: { sportId, yearsOfExperience, trainingDays, weeksUntilSeason, ageGroup },
+        params: { sportId, yearsOfExperience, trainingDays, selectedTrainingDays, weeksUntilSeason, ageGroup },
       } as any)
     }
   }
@@ -118,6 +120,7 @@ export default function ResultsScreen() {
         sportId,
         yearsOfExperience,
         trainingDays,
+        selectedTrainingDays,
         weeksUntilSeason,
         ageGroup,
       },
@@ -306,11 +309,11 @@ export default function ResultsScreen() {
           {/* Training Journey - Timeline View */}
           <Card p="$4" bg="$background" borderColor="$borderColor" borderWidth={1}>
             <YStack gap="$4">
-              <H3 fontSize="$5" color="$color12">Your 12-Week Journey</H3>
+              <H3 fontSize="$5" color="$color12">Your {weeks}-Week Journey</H3>
 
               {/* Timeline visualization */}
               <TimelineView
-                phases={createPhaseTimeline(new Date())}
+                phases={createPhaseTimeline(new Date(), weeksPerPhase)}
                 seasonStartDate={weeks ? new Date(Date.now() + weeks * 7 * 24 * 60 * 60 * 1000) : undefined}
                 orientation="vertical"
               />

@@ -185,10 +185,11 @@ export function TimelineView({
 /**
  * Helper to create phase timeline data from a start date
  * Note: Creates new Date objects to avoid mutating the input date
+ * @param startDate - Program start date
+ * @param weeksPerPhase - Weeks per phase (dynamic, defaults to 4)
  */
-export function createPhaseTimeline(startDate: Date): TimelinePhase[] {
+export function createPhaseTimeline(startDate: Date, weeksPerPhase: number = 4): TimelinePhase[] {
   const phases: Phase[] = ['GPP', 'SPP', 'SSP']
-  const weeksPerPhase = 4
 
   return phases.map((phase, index) => {
     // Create new Date objects to avoid mutation

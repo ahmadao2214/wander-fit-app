@@ -277,6 +277,7 @@ export default defineSchema({
     sportId: v.id("sports"),
     yearsOfExperience: v.number(), // How many years of training
     preferredTrainingDaysPerWeek: v.number(), // 1-7
+    selectedTrainingDays: v.optional(v.array(v.number())), // [1, 3, 5] = Mon, Wed, Fri (0=Sun, 6=Sat)
 
     // Age group - determines intensity ceiling
     ageGroup: v.optional(ageGroupValidator), // "10-13", "14-17", "18+" (optional for migration)
@@ -314,10 +315,14 @@ export default defineSchema({
     skillLevel: skillLevelValidator, // "Novice", "Moderate", "Advanced"
     ageGroup: v.optional(ageGroupValidator), // "10-13", "14-17", "18+" - affects intensity ceiling (optional for migration)
 
+    // Dynamic Program Duration (from intake weeksUntilSeason)
+    totalProgramWeeks: v.optional(v.number()), // Total weeks from intake (weeksUntilSeason)
+    weeksPerPhase: v.optional(v.number()), // Calculated: totalProgramWeeks / 3, min 2, max 8
+
     // "Scheduled Workout" pointer
     currentPhase: phaseValidator, // The active phase
-    currentWeek: v.number(), // 1-4 (within current phase)
-    currentDay: v.number(), // Which day in the week (1-7)
+    currentWeek: v.number(), // 1 to weeksPerPhase (within current phase)
+    currentDay: v.number(), // Which day in the week (1 to trainingDaysPerWeek)
     lastWorkoutDate: v.optional(v.number()),
 
     // Phase Unlocking (Sequential Access)
@@ -489,7 +494,17 @@ export default defineSchema({
       day: v.number(),
       templateId: v.id("program_templates"), // The workout assigned to this slot
     })),
-    
+
+    // Date overrides - move workouts to specific calendar dates
+    // When a workout is moved to a different day (e.g., rest day), store the override here
+    // The key is the slot (phase/week/day), the value is the target date
+    dateOverrides: v.optional(v.array(v.object({
+      phase: phaseValidator,
+      week: v.number(),
+      day: v.number(),
+      dateISO: v.string(), // Target date in YYYY-MM-DD format
+    }))),
+
     createdAt: v.number(),
     updatedAt: v.number(),
   })

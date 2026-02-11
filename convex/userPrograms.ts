@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { calculateWeeksPerPhase, DEFAULT_WEEKS_PER_PHASE } from "./weekMapping";
 
 /**
  * User Programs - Active State Management
@@ -60,6 +61,39 @@ const intakeTypeValidator = v.union(
   v.literal("initial"),
   v.literal("reassessment")
 );
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Get default training days based on days per week count
+ * Used as fallback when selectedTrainingDays not provided (migration support)
+ *
+ * @param daysPerWeek - Number of training days (1-7)
+ * @returns Array of day indices (0=Sun, 1=Mon, ..., 6=Sat)
+ */
+function getDefaultTrainingDays(daysPerWeek: number): number[] {
+  // Common training patterns
+  switch (daysPerWeek) {
+    case 1:
+      return [1]; // Monday
+    case 2:
+      return [1, 4]; // Mon, Thu
+    case 3:
+      return [1, 3, 5]; // Mon, Wed, Fri
+    case 4:
+      return [1, 2, 4, 5]; // Mon, Tue, Thu, Fri
+    case 5:
+      return [1, 2, 3, 4, 5]; // Mon-Fri
+    case 6:
+      return [1, 2, 3, 4, 5, 6]; // Mon-Sat
+    case 7:
+      return [0, 1, 2, 3, 4, 5, 6]; // Every day
+    default:
+      return [1, 3, 5]; // Default to Mon, Wed, Fri
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // QUERIES
@@ -132,6 +166,28 @@ export const getCurrentProgramState = query({
       .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
       .first();
 
+    // Get intake response for sport info
+    const intake = await ctx.db.get(program.intakeResponseId);
+
+    // Get sport name
+    let sportName: string | null = null;
+    if (intake?.sportId) {
+      const sport = await ctx.db.get(intake.sportId);
+      sportName = sport?.name ?? null;
+    }
+
+    // Get GPP category info
+    let categoryName: string | null = null;
+    let categoryShortName: string | null = null;
+    const gppCategory = await ctx.db
+      .query("gpp_categories")
+      .withIndex("by_category_id", (q) => q.eq("categoryId", program.gppCategoryId))
+      .first();
+    if (gppCategory) {
+      categoryName = gppCategory.name;
+      categoryShortName = gppCategory.shortName;
+    }
+
     return {
       gppCategoryId: program.gppCategoryId,
       phase: program.currentPhase,
@@ -139,6 +195,13 @@ export const getCurrentProgramState = query({
       week: program.currentWeek,
       day: program.currentDay,
       programId: program._id,
+      // Program duration
+      totalProgramWeeks: program.totalProgramWeeks ?? null,
+      weeksPerPhase: program.weeksPerPhase ?? null,
+      // Sport and category info
+      sportName,
+      categoryName,
+      categoryShortName,
       // Override info
       todayFocusTemplateId: scheduleOverride?.todayFocusTemplateId,
       hasTodayFocusOverride: !!scheduleOverride?.todayFocusTemplateId,
@@ -207,9 +270,16 @@ export const getProgressSummary = query({
       .withIndex("by_program", (q) => q.eq("userProgramId", program._id))
       .first();
 
+    // Get intake record for training days per week
+    const intake = program.intakeResponseId
+      ? await ctx.db.get(program.intakeResponseId)
+      : null;
+    const trainingDaysPerWeek = intake?.preferredTrainingDaysPerWeek ?? 3;
+
     // Calculate weeks and blocks completed
-    const weeksCompleted = Math.floor(completedSessions.length / program.currentDay) || 0;
-    const blocksCompleted = Math.floor(weeksCompleted / 4);
+    const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
+    const weeksCompleted = Math.floor(completedSessions.length / trainingDaysPerWeek) || 0;
+    const blocksCompleted = Math.floor(weeksCompleted / weeksPerPhase);
 
     return {
       // Scheduled workout pointer (HYBRID MODEL)
@@ -330,6 +400,7 @@ export const completeIntake = mutation({
     sportId: v.id("sports"),
     yearsOfExperience: v.number(),
     preferredTrainingDaysPerWeek: v.number(), // 1-7
+    selectedTrainingDays: v.optional(v.array(v.number())), // [1, 3, 5] = Mon, Wed, Fri (0=Sun, 6=Sat)
     weeksUntilSeason: v.optional(v.number()),
     ageGroup: v.union(v.literal("10-13"), v.literal("14-17"), v.literal("18+")),
     intakeType: v.optional(intakeTypeValidator), // Defaults to "initial"
@@ -368,12 +439,18 @@ export const completeIntake = mutation({
     const now = Date.now();
     const intakeType = args.intakeType ?? "initial";
 
+    // Generate default training days if not provided (based on count)
+    // Common patterns: 3 days = Mon/Wed/Fri, 4 days = Mon/Tue/Thu/Fri, etc.
+    const selectedTrainingDays = args.selectedTrainingDays ??
+      getDefaultTrainingDays(args.preferredTrainingDaysPerWeek);
+
     // 1. Create intake_responses record (always created, preserved for history)
     const intakeResponseId = await ctx.db.insert("intake_responses", {
       userId: user._id,
       sportId: args.sportId,
       yearsOfExperience: args.yearsOfExperience,
       preferredTrainingDaysPerWeek: args.preferredTrainingDaysPerWeek,
+      selectedTrainingDays,
       weeksUntilSeason: args.weeksUntilSeason,
       assignedGppCategoryId: sport.gppCategoryId,
       assignedSkillLevel: skillLevel,
@@ -399,6 +476,11 @@ export const completeIntake = mutation({
       });
       programId = existingProgram._id;
     } else if (!existingProgram) {
+      // Calculate dynamic weeks per phase from intake
+      // Uses weeksUntilSeason if provided, otherwise defaults to 12 weeks (standard 4 weeks per phase)
+      const totalProgramWeeks = args.weeksUntilSeason ?? 12;
+      const weeksPerPhase = calculateWeeksPerPhase(totalProgramWeeks);
+
       // Initial intake: Create new program
       programId = await ctx.db.insert("user_programs", {
         userId: user._id,
@@ -406,6 +488,8 @@ export const completeIntake = mutation({
         gppCategoryId: sport.gppCategoryId,
         skillLevel,
         ageGroup: args.ageGroup,
+        totalProgramWeeks,
+        weeksPerPhase,
         currentPhase: "GPP",
         currentWeek: 1,
         currentDay: 1,
@@ -489,8 +573,9 @@ export const advanceToNextDay = mutation({
       currentWeek++;
     }
 
-    // Check if we need to advance phase (4 weeks per phase)
-    if (currentWeek > 4) {
+    // Check if we need to advance phase (dynamic weeks per phase)
+    const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
+    if (currentWeek > weeksPerPhase) {
       currentWeek = 1;
 
       const phaseOrder: ("GPP" | "SPP" | "SSP")[] = ["GPP", "SPP", "SSP"];

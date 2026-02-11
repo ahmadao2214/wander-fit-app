@@ -167,6 +167,8 @@ export default function TrainingDaysScreen() {
 
   const handleContinue = () => {
     if (selectedDays.size >= MIN_DAYS) {
+      // Sort days in order (0=Sun through 6=Sat)
+      const sortedDays = Array.from(selectedDays).sort((a, b) => a - b)
       router.push({
         pathname: '/(intake)/season-timeline',
         params: {
@@ -174,6 +176,7 @@ export default function TrainingDaysScreen() {
           ageGroup,
           yearsOfExperience,
           trainingDays: selectedDays.size.toString(),
+          selectedTrainingDays: sortedDays.join(','), // "1,3,5" for Mon,Wed,Fri
         },
       })
     }

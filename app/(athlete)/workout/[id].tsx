@@ -212,8 +212,7 @@ export default function WorkoutDetailScreen() {
     }
   }, [isStarting, isCompleted, template, startSession, router, hasCustomOrder, orderIndices, todayWorkout, setTodayFocus])
 
-  // Intensity color for personalized workouts (based on session target intensity)
-  // Intensity is determined when session starts, defaults to 'Moderate' for preview
+  // Intensity for the badge (based on session target intensity)
   const targetIntensity = session?.targetIntensity || 'Moderate'
   const intensityColor = targetIntensity === 'Low'
     ? '$intensityLow6'
@@ -225,6 +224,14 @@ export default function WorkoutDetailScreen() {
     : targetIntensity === 'High'
       ? 'HIGH'
       : 'MODERATE'
+
+  // Phase color for UI elements (exercise numbers, Start button)
+  // GPP = blue, SPP = orange, SSP = green
+  const phaseColor = template?.phase === 'GPP'
+    ? '$blue9'
+    : template?.phase === 'SPP'
+      ? '$orange9'
+      : '$green9'
 
   // Render item for DraggableFlatList
   const renderExerciseItem = useCallback(
@@ -239,12 +246,12 @@ export default function WorkoutDetailScreen() {
             onToggle={() => toggleExpanded(item.exerciseId)}
             drag={canReorder ? drag : undefined}
             isActive={isActive}
-            intensityColor={intensityColor}
+            intensityColor={phaseColor}
           />
         </ScaleDecorator>
       )
     },
-    [expandedExerciseIds, toggleExpanded, canReorder, intensityColor]
+    [expandedExerciseIds, toggleExpanded, canReorder, phaseColor]
   )
 
   // Key extractor for FlatList
@@ -295,9 +302,18 @@ export default function WorkoutDetailScreen() {
       <YStack gap="$3" pb="$3">
         {/* Phase and Intensity Badges */}
         <XStack gap="$2" flexWrap="wrap" items="center">
-          {/* Phase Badge - neutral brand colors */}
-          <Card bg="$brand2" px="$3" py="$1" rounded="$10">
-            <Text fontSize="$2" color="$primary" fontWeight="600">
+          {/* Phase Badge - phase-specific colors (GPP=blue, SPP=orange, SSP=green) */}
+          <Card
+            bg={template.phase === 'GPP' ? '$blue2' : template.phase === 'SPP' ? '$orange2' : '$green2'}
+            px="$3"
+            py="$1"
+            rounded="$10"
+          >
+            <Text
+              fontSize="$2"
+              color={template.phase === 'GPP' ? '$blue9' : template.phase === 'SPP' ? '$orange9' : '$green9'}
+              fontWeight="600"
+            >
               {template.phase}
             </Text>
           </Card>
@@ -580,7 +596,7 @@ export default function WorkoutDetailScreen() {
           {isPhaseUnlocked && !isCompleted && (
             <Button
               size="$4"
-              bg={intensityColor}
+              bg={phaseColor}
               color="white"
               onPress={startWorkout}
               icon={isStarting ? undefined : Play}

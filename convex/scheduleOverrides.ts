@@ -1,6 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
+import { mapUserWeekToTemplateWeek, DEFAULT_WEEKS_PER_PHASE } from "./weekMapping";
 
 /**
  * Schedule Overrides - User Schedule Customization
@@ -84,6 +85,10 @@ export const getWeekSchedule = query({
 
     if (!program) return null;
 
+    // Map user week to template week (templates only exist for weeks 1-4)
+    const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
+    const templateWeek = mapUserWeekToTemplateWeek(args.week, weeksPerPhase);
+
     // Get default templates for this week
     const defaultTemplates = await ctx.db
       .query("program_templates")
@@ -92,7 +97,7 @@ export const getWeekSchedule = query({
           .eq("gppCategoryId", program.gppCategoryId)
           .eq("phase", args.phase)
           .eq("skillLevel", program.skillLevel)
-          .eq("week", args.week)
+          .eq("week", templateWeek)
       )
       .collect();
 
@@ -250,6 +255,10 @@ export const getTodayWorkout = query({
       }
     }
 
+    // Map user week to template week (templates only exist for weeks 1-4)
+    const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
+    const templateWeek = mapUserWeekToTemplateWeek(program.currentWeek, weeksPerPhase);
+
     // Get all workouts for current week (considering slot overrides)
     const weekWorkouts = await ctx.db
       .query("program_templates")
@@ -258,7 +267,7 @@ export const getTodayWorkout = query({
           .eq("gppCategoryId", program.gppCategoryId)
           .eq("phase", program.currentPhase)
           .eq("skillLevel", program.skillLevel)
-          .eq("week", program.currentWeek)
+          .eq("week", templateWeek)
       )
       .collect();
 
@@ -331,6 +340,9 @@ export const getTodayWorkout = query({
  * 
  * The key insight: slot overrides store which template is assigned to each slot.
  * When displaying, we need to show the overridden template in each slot's position.
+ *
+ * For dynamic weeks: This returns data organized by USER weeks (1 to weeksPerPhase),
+ * not template weeks (1-4). Each user week maps to a template week for content.
  */
 export const getPhaseOverviewWithOverrides = query({
   args: {
@@ -354,7 +366,10 @@ export const getPhaseOverviewWithOverrides = query({
 
     if (!program) return null;
 
-    // Get all templates for this phase
+    // Get dynamic weeks per phase (fallback to 4 for existing users)
+    const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
+
+    // Get all templates for this phase (these are template weeks 1-4)
     const allTemplates = await ctx.db
       .query("program_templates")
       .withIndex("by_category_phase", (q) =>
@@ -362,8 +377,15 @@ export const getPhaseOverviewWithOverrides = query({
       )
       .collect();
 
-    // Filter by skill level
-    const templates = allTemplates.filter((t) => t.skillLevel === program.skillLevel);
+    // Filter by skill level and create a map by template week
+    const templatesByWeek = new Map<number, typeof allTemplates>();
+    allTemplates
+      .filter((t) => t.skillLevel === program.skillLevel)
+      .forEach((t) => {
+        const week = templatesByWeek.get(t.week) || [];
+        week.push(t);
+        templatesByWeek.set(t.week, week);
+      });
 
     // Get user's override record
     const overrideRecord = await ctx.db
@@ -371,62 +393,65 @@ export const getPhaseOverviewWithOverrides = query({
       .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
       .first();
 
-    // Get phase-specific slot overrides
+    // Get phase-specific slot overrides (keyed by USER week, not template week)
     const phaseOverrides = overrideRecord?.slotOverrides.filter(
       (o) => o.phase === args.phase
     ) || [];
 
-    // Create a map of slot -> overridden templateId
+    // Create a map of slot -> overridden templateId (using user week)
     const slotOverrideMap = new Map<string, Id<"program_templates">>();
     phaseOverrides.forEach((o) => {
       slotOverrideMap.set(`${o.week}-${o.day}`, o.templateId);
     });
 
-    // Create a map of all templates by ID for lookup
-    const templateMap = new Map(templates.map((t) => [t._id, t]));
+    // Create a map of all templates by ID for override lookup
+    const templateById = new Map(allTemplates.map((t) => [t._id, t]));
 
-    // Organize templates by week, applying overrides
-    const byWeek = new Map<number, typeof templates>();
+    // Build result for each USER week (1 to weeksPerPhase)
+    const result: { week: number; workouts: typeof allTemplates }[] = [];
 
-    templates.forEach((t) => {
-      const slotKey = `${t.week}-${t.day}`;
-      const overriddenTemplateId = slotOverrideMap.get(slotKey);
+    for (let userWeek = 1; userWeek <= weeksPerPhase; userWeek++) {
+      // Map user week to template week (1-4)
+      const templateWeek = mapUserWeekToTemplateWeek(userWeek, weeksPerPhase);
 
-      // If this slot has an override, use the overridden template
-      // but keep the original slot's week/day for display
-      let workoutToShow = t;
-      if (overriddenTemplateId) {
-        const overriddenTemplate = templateMap.get(overriddenTemplateId);
-        if (overriddenTemplate) {
-          // Create a "virtual" template with the overridden workout's content
-          // but displayed in this slot's position
-          workoutToShow = {
-            ...overriddenTemplate,
-            // Keep the slot's week/day for UI positioning
-            week: t.week,
-            day: t.day,
-            // Mark as overridden
-            _isOverridden: true,
-          } as typeof t;
-        } else {
-          // Override references a template not in current phase/skill level (stale data)
+      // Get templates for this template week
+      const weekTemplates = templatesByWeek.get(templateWeek) || [];
+
+      // Apply overrides for this user week
+      const workouts = weekTemplates.map((t) => {
+        const slotKey = `${userWeek}-${t.day}`;
+        const overriddenTemplateId = slotOverrideMap.get(slotKey);
+
+        if (overriddenTemplateId) {
+          const overriddenTemplate = templateById.get(overriddenTemplateId);
+          if (overriddenTemplate) {
+            return {
+              ...overriddenTemplate,
+              // Display in this user week's position
+              week: userWeek,
+              day: t.day,
+              _isOverridden: true,
+            } as typeof t;
+          }
           console.warn(
-            `Slot override references missing template: ${overriddenTemplateId} for slot week=${t.week} day=${t.day}. Falling back to original.`
+            `Slot override references missing template: ${overriddenTemplateId} for slot week=${userWeek} day=${t.day}. Falling back to original.`
           );
         }
-      }
 
-      const week = byWeek.get(t.week) || [];
-      week.push(workoutToShow);
-      byWeek.set(t.week, week);
-    });
+        // Return template with user week (not template week) for display
+        return {
+          ...t,
+          week: userWeek,
+        };
+      });
 
-    return Array.from(byWeek.entries())
-      .sort(([a], [b]) => a - b)
-      .map(([week, workouts]) => ({
-        week,
+      result.push({
+        week: userWeek,
         workouts: workouts.sort((a, b) => a.day - b.day),
-      }));
+      });
+    }
+
+    return result;
   },
 });
 
@@ -620,6 +645,9 @@ export const swapWorkouts = mutation({
       .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
       .first();
 
+    // Map user week to template week (templates only exist for weeks 1-4)
+    const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
+
     // Helper to get the current template for a slot (considering existing overrides)
     const getTemplateForSlot = async (slot: { phase: string; week: number; day: number }) => {
       // Check if there's already an override for this slot
@@ -632,6 +660,9 @@ export const swapWorkouts = mutation({
         }
       }
 
+      // Map user week to template week for database lookup
+      const templateWeek = mapUserWeekToTemplateWeek(slot.week, weeksPerPhase);
+
       // Otherwise get the default template
       return await ctx.db
         .query("program_templates")
@@ -640,7 +671,7 @@ export const swapWorkouts = mutation({
             .eq("gppCategoryId", program.gppCategoryId)
             .eq("phase", slot.phase as "GPP" | "SPP" | "SSP")
             .eq("skillLevel", program.skillLevel)
-            .eq("week", slot.week)
+            .eq("week", templateWeek)
             .eq("day", slot.day)
         )
         .first();
@@ -791,7 +822,10 @@ export const setTodayFocusWithSwap = mutation({
 
     // If autoSwap is enabled, find first incomplete slot across ALL weeks and swap
     if (args.autoSwap !== false) {
-      // Get ALL workouts in the current phase (not just current week)
+      // Get dynamic weeks per phase
+      const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
+
+      // Get ALL templates in the current phase (template weeks 1-4)
       const allPhaseWorkouts = await ctx.db
         .query("program_templates")
         .withIndex("by_category_phase", (q) =>
@@ -801,44 +835,56 @@ export const setTodayFocusWithSwap = mutation({
         )
         .collect();
 
-      // Filter by skill level
-      const phaseWorkouts = allPhaseWorkouts.filter((t) => t.skillLevel === program.skillLevel);
+      // Filter by skill level and organize by template week
+      const templatesByWeek = new Map<number, typeof allPhaseWorkouts>();
+      allPhaseWorkouts
+        .filter((t) => t.skillLevel === program.skillLevel)
+        .forEach((t) => {
+          const week = templatesByWeek.get(t.week) || [];
+          week.push(t);
+          templatesByWeek.set(t.week, week);
+        });
 
-      // Get unique weeks sorted
-      const weeks = [...new Set(phaseWorkouts.map((w) => w.week))].sort((a, b) => a - b);
+      // Generate user weeks (1 to weeksPerPhase)
+      const userWeeks = Array.from({ length: weeksPerPhase }, (_, i) => i + 1);
 
       // Helper to get current template for a slot (considering overrides)
-      const getTemplateForSlot = async (week: number, day: number) => {
+      // Uses USER week for override lookup, maps to template week for default lookup
+      const getTemplateForSlot = async (userWeek: number, day: number) => {
         const slotOverride = newSlotOverrides.find(
-          (o) => o.phase === program.currentPhase && o.week === week && o.day === day
+          (o) => o.phase === program.currentPhase && o.week === userWeek && o.day === day
         );
         if (slotOverride) {
           return await ctx.db.get(slotOverride.templateId);
         }
-        return phaseWorkouts.find((w) => w.week === week && w.day === day) ?? null;
+        // Map user week to template week for default lookup
+        const templateWeek = mapUserWeekToTemplateWeek(userWeek, weeksPerPhase);
+        const weekTemplates = templatesByWeek.get(templateWeek) || [];
+        return weekTemplates.find((w) => w.day === day) ?? null;
       };
 
-      // Find first incomplete slot across ALL weeks (sorted by week then day)
+      // Get days from template week 1 (all weeks have same days)
+      const templateDays = [...new Set((templatesByWeek.get(1) || []).map((t) => t.day))].sort((a, b) => a - b);
+
+      // Find first incomplete slot across ALL user weeks (sorted by week then day)
       let firstIncompleteSlot: { week: number; day: number; templateId: string } | null = null;
-      outerLoop: for (const week of weeks) {
-        const weekDays = [...new Set(phaseWorkouts.filter((w) => w.week === week).map((w) => w.day))].sort((a, b) => a - b);
-        for (const day of weekDays) {
-          const slotTemplate = await getTemplateForSlot(week, day);
+      outerLoop: for (const userWeek of userWeeks) {
+        for (const day of templateDays) {
+          const slotTemplate = await getTemplateForSlot(userWeek, day);
           if (slotTemplate && !completedTemplateIds.has(slotTemplate._id)) {
-            firstIncompleteSlot = { week, day, templateId: slotTemplate._id };
+            firstIncompleteSlot = { week: userWeek, day, templateId: slotTemplate._id };
             break outerLoop;
           }
         }
       }
 
-      // Find which slot the selected template is currently in (search all weeks)
+      // Find which slot the selected template is currently in (search all user weeks)
       let selectedTemplateSlot: { week: number; day: number } | null = null;
-      outerLoop2: for (const week of weeks) {
-        const weekDays = [...new Set(phaseWorkouts.filter((w) => w.week === week).map((w) => w.day))].sort((a, b) => a - b);
-        for (const day of weekDays) {
-          const slotTemplate = await getTemplateForSlot(week, day);
+      outerLoop2: for (const userWeek of userWeeks) {
+        for (const day of templateDays) {
+          const slotTemplate = await getTemplateForSlot(userWeek, day);
           if (slotTemplate && slotTemplate._id === args.templateId) {
-            selectedTemplateSlot = { week, day };
+            selectedTemplateSlot = { week: userWeek, day };
             break outerLoop2;
           }
         }

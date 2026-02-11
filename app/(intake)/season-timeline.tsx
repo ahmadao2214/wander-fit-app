@@ -479,11 +479,12 @@ const WeeksDisplay = ({ weeks, sportName }: WeeksDisplayProps) => {
 export default function SeasonTimelineScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
-  const { sportId, ageGroup, yearsOfExperience, trainingDays } = useLocalSearchParams<{
+  const { sportId, ageGroup, yearsOfExperience, trainingDays, selectedTrainingDays } = useLocalSearchParams<{
     sportId: string
     ageGroup: string
     yearsOfExperience: string
     trainingDays: string
+    selectedTrainingDays: string
   }>()
 
   // Query sport to get name for the icon
@@ -496,10 +497,10 @@ export default function SeasonTimelineScreen() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [currentMonthIndex, setCurrentMonthIndex] = useState(0)
 
-  // Generate next 4 months for the calendar
+  // Generate next 12 months for the calendar (allows planning up to 1 year ahead)
   const months = useMemo((): { year: number; month: number }[] => {
     const result: { year: number; month: number }[] = []
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 12; i++) {
       const date = new Date(today.getFullYear(), today.getMonth() + i, 1)
       result.push({ year: date.getFullYear(), month: date.getMonth() })
     }
@@ -507,7 +508,7 @@ export default function SeasonTimelineScreen() {
   }, [today])
 
   // Redirect if missing params
-  if (!sportId || !ageGroup || !yearsOfExperience || !trainingDays) {
+  if (!sportId || !ageGroup || !yearsOfExperience || !trainingDays || !selectedTrainingDays) {
     router.replace('/(intake)/sport')
     return null
   }
@@ -543,7 +544,7 @@ export default function SeasonTimelineScreen() {
     if (route) {
       router.push({
         pathname: route,
-        params: { sportId, ageGroup, yearsOfExperience, trainingDays },
+        params: { sportId, ageGroup, yearsOfExperience, trainingDays, selectedTrainingDays },
       } as any)
     }
   }
@@ -558,6 +559,7 @@ export default function SeasonTimelineScreen() {
           ageGroup,
           yearsOfExperience,
           trainingDays,
+          selectedTrainingDays,
           weeksUntilSeason: weeks.toString(),
         },
       } as any)
@@ -634,16 +636,11 @@ export default function SeasonTimelineScreen() {
             </Button>
           </XStack>
 
-          {/* Month Indicator Dots */}
-          <XStack gap="$2" mt="$3" justify="center">
-            {months.map((_, i) => (
-              <Circle
-                key={i}
-                size={8}
-                bg={i === currentMonthIndex ? '$primary' : '$color6'}
-                animation="quick"
-              />
-            ))}
+          {/* Month Indicator */}
+          <XStack gap="$2" mt="$3" justify="center" items="center">
+            <Text fontSize={13} fontFamily="$body" color="$color10">
+              {currentMonthIndex + 1} of {months.length}
+            </Text>
           </XStack>
 
           {/* Weeks Display - directly below calendar */}

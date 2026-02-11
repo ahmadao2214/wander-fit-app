@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router'
 import { useColorScheme } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Dumbbell, Calendar, User, BookOpen } from '@tamagui/lucide-icons'
+import { Dumbbell, Calendar, User, Clock } from '@tamagui/lucide-icons'
 import { AthleteOnlyRoute } from '../../components/AuthGuard'
 import { brandPrimary } from '../../tamagui.config'
 
@@ -61,14 +61,14 @@ export default function AthleteLayout() {
           name="program"
           options={{
             title: 'Program',
-            tabBarIcon: ({ color, size }) => <BookOpen size={size} color={color as any} />,
+            tabBarIcon: ({ color, size }) => <Calendar size={size} color={color as any} />,
           }}
         />
         <Tabs.Screen
           name="history"
           options={{
             title: 'History',
-            tabBarIcon: ({ color, size }) => <Calendar size={size} color={color as any} />,
+            tabBarIcon: ({ color, size }) => <Clock size={size} color={color as any} />,
           }}
         />
         <Tabs.Screen

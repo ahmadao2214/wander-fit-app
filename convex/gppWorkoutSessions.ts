@@ -19,10 +19,139 @@ import {
 
 /**
  * GPP Workout Sessions - Execution Tracking
- * 
+ *
  * Tracks workout execution against program templates.
  * Athletes create sessions for their scheduled workout of the day.
+ *
+ * UX Model: "Start = Swap" with Cascade
+ * When starting a workout scheduled for a future date:
+ * 1. That workout moves to today's slot
+ * 2. Today's original workout shifts to the next slot
+ * 3. All workouts between cascade down
  */
+
+// Calendar date mapping types
+type CalendarPhase = "GPP" | "SPP" | "SSP";
+
+interface WorkoutSlot {
+  phase: CalendarPhase;
+  week: number;
+  day: number;
+}
+
+// Constants for calendar calculations
+const PHASE_ORDER: CalendarPhase[] = ["GPP", "SPP", "SSP"];
+const WEEKS_PER_PHASE = 4;
+
+const DEFAULT_TRAINING_DAYS: Record<number, number[]> = {
+  1: [1],
+  2: [1, 4],
+  3: [1, 3, 5],
+  4: [1, 2, 4, 5],
+  5: [1, 2, 3, 4, 5],
+  6: [1, 2, 3, 4, 5, 6],
+  7: [0, 1, 2, 3, 4, 5, 6],
+};
+
+// Date helpers for cascade calculation
+function startOfDay(date: Date): Date {
+  const result = new Date(date);
+  result.setHours(0, 0, 0, 0);
+  return result;
+}
+
+function addDays(date: Date, days: number): Date {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+}
+
+function isSameDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+function findNextDayOfWeek(startDate: Date, dayOfWeek: number): Date {
+  const result = startOfDay(startDate);
+  const currentDay = result.getDay();
+  const daysUntil = (dayOfWeek - currentDay + 7) % 7;
+  result.setDate(result.getDate() + daysUntil);
+  return result;
+}
+
+function getWorkoutForDate(
+  programStartDate: Date,
+  trainingDays: number[],
+  date: Date
+): WorkoutSlot | null {
+  const targetDate = startOfDay(date);
+  const targetDayOfWeek = targetDate.getDay();
+
+  const sortedDays = [...trainingDays].sort((a, b) => a - b);
+  if (!sortedDays.includes(targetDayOfWeek)) {
+    return null;
+  }
+
+  const start = startOfDay(programStartDate);
+  const firstTrainingDate = findNextDayOfWeek(start, sortedDays[0]);
+
+  if (targetDate < firstTrainingDate) {
+    return null;
+  }
+
+  let workoutIndex = 0;
+  let currentDate = firstTrainingDate;
+  let currentDayIndex = 0;
+
+  while (!isSameDay(currentDate, targetDate)) {
+    currentDayIndex = (currentDayIndex + 1) % sortedDays.length;
+    if (currentDayIndex === 0) {
+      currentDate = addDays(
+        currentDate,
+        7 - (sortedDays[sortedDays.length - 1] - sortedDays[0])
+      );
+      currentDate = findNextDayOfWeek(currentDate, sortedDays[0]);
+    } else {
+      const daysDiff = sortedDays[currentDayIndex] - sortedDays[currentDayIndex - 1];
+      currentDate = addDays(currentDate, daysDiff);
+    }
+    workoutIndex++;
+
+    if (workoutIndex > 100) {
+      return null;
+    }
+  }
+
+  const workoutsPerWeek = sortedDays.length;
+  const totalWorkoutsPerPhase = WEEKS_PER_PHASE * workoutsPerWeek;
+
+  const phaseIndex = Math.floor(workoutIndex / totalWorkoutsPerPhase);
+  if (phaseIndex >= PHASE_ORDER.length) {
+    return null;
+  }
+
+  const withinPhaseIndex = workoutIndex % totalWorkoutsPerPhase;
+  const week = Math.floor(withinPhaseIndex / workoutsPerWeek) + 1;
+  const day = (withinPhaseIndex % workoutsPerWeek) + 1;
+
+  return {
+    phase: PHASE_ORDER[phaseIndex],
+    week,
+    day,
+  };
+}
+
+function getAbsoluteIndex(slot: WorkoutSlot, workoutsPerWeek: number): number {
+  const phaseIdx = PHASE_ORDER.indexOf(slot.phase);
+  return (
+    phaseIdx * WEEKS_PER_PHASE * workoutsPerWeek +
+    (slot.week - 1) * workoutsPerWeek +
+    (slot.day - 1)
+  );
+}
 
 // Validators
 const phaseValidator = v.union(
@@ -470,7 +599,7 @@ export const getCompletedTemplateIds = query({
       .collect();
 
     // Return unique template IDs
-    const templateIds = [...new Set(completedSessions.map((s) => s.templateId))];
+    const templateIds = Array.from(new Set(completedSessions.map((s) => s.templateId)));
     return templateIds;
   },
 });
@@ -568,12 +697,25 @@ const intensityValidator = v.union(
 
 /**
  * Start a new workout session
+ *
+ * UX Model: "Start = Swap" with Cascade
+ * When starting a workout scheduled for a future date, the schedule
+ * automatically cascades so that:
+ * 1. The started workout moves to today's slot
+ * 2. Today's original workout shifts to the next slot
+ * 3. All workouts between cascade down
+ *
+ * @param templateId - The workout template to start
+ * @param exerciseOrder - Optional custom exercise order
+ * @param targetIntensity - Optional target intensity
+ * @param skipCascade - Optional flag to skip cascade (default false)
  */
 export const startSession = mutation({
   args: {
     templateId: v.id("program_templates"),
-    exerciseOrder: v.optional(v.array(v.number())), // Custom exercise order from workout summary
-    targetIntensity: v.optional(intensityValidator), // Target intensity for this session
+    exerciseOrder: v.optional(v.array(v.number())),
+    targetIntensity: v.optional(intensityValidator),
+    skipCascade: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -614,6 +756,7 @@ export const startSession = mutation({
         sessionId: existingSession._id,
         isExisting: true,
         message: "Resuming existing workout session",
+        cascadeApplied: false,
       };
     }
 
@@ -622,6 +765,223 @@ export const startSession = mutation({
     if (!template) {
       throw new Error("Workout template not found");
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CASCADE LOGIC: Auto-swap when starting a future workout
+    // ─────────────────────────────────────────────────────────────────────────
+    let cascadeApplied = false;
+    let cascadeAffectedSlots = 0;
+
+    if (!args.skipCascade) {
+      // Get intake for training days
+      const intake = await ctx.db.get(userProgram.intakeResponseId);
+
+      if (intake) {
+        const trainingDays =
+          intake.selectedTrainingDays ??
+          DEFAULT_TRAINING_DAYS[intake.preferredTrainingDaysPerWeek] ??
+          DEFAULT_TRAINING_DAYS[3];
+
+        const programStartDate = new Date(userProgram.createdAt);
+        const today = startOfDay(new Date());
+
+        // Get today's scheduled slot
+        const todaySlot = getWorkoutForDate(programStartDate, trainingDays, today);
+
+        if (todaySlot) {
+          const selectedSlot: WorkoutSlot = {
+            phase: template.phase as CalendarPhase,
+            week: template.week,
+            day: template.day,
+          };
+
+          const workoutsPerWeek = trainingDays.length;
+          const todayIndex = getAbsoluteIndex(todaySlot, workoutsPerWeek);
+
+          // Get existing schedule overrides
+          const existingOverride = await ctx.db
+            .query("user_schedule_overrides")
+            .withIndex("by_user_program", (q) => q.eq("userProgramId", userProgram._id))
+            .first();
+
+          // Get all templates for user's category and skill level
+          const allTemplates = await ctx.db
+            .query("program_templates")
+            .withIndex("by_category_phase", (q) =>
+              q.eq("gppCategoryId", userProgram.gppCategoryId)
+            )
+            .filter((q) => q.eq(q.field("skillLevel"), userProgram.skillLevel))
+            .collect();
+
+          // Build template lookup
+          const templateLookup = new Map<string, (typeof allTemplates)[0]>();
+          for (const t of allTemplates) {
+            const key = `${t.phase}-${t.week}-${t.day}`;
+            templateLookup.set(key, t);
+          }
+
+          // Build current slot assignments (considering existing overrides)
+          const slotOverrides = existingOverride?.slotOverrides ?? [];
+          const overrideLookup = new Map<string, string>();
+          for (const override of slotOverrides) {
+            const key = `${override.phase}-${override.week}-${override.day}`;
+            overrideLookup.set(key, override.templateId.toString());
+          }
+
+          // Get current template for a slot
+          const getTemplateForSlot = (slot: WorkoutSlot) => {
+            const key = `${slot.phase}-${slot.week}-${slot.day}`;
+            const overrideId = overrideLookup.get(key);
+            if (overrideId) {
+              return allTemplates.find((t) => t._id.toString() === overrideId);
+            }
+            return templateLookup.get(key);
+          };
+
+          // Find which slot currently contains the selected template
+          let selectedTemplateCurrentSlot: WorkoutSlot | null = null;
+          for (const phase of PHASE_ORDER) {
+            for (let week = 1; week <= WEEKS_PER_PHASE; week++) {
+              for (let day = 1; day <= workoutsPerWeek; day++) {
+                const slot: WorkoutSlot = { phase, week, day };
+                const slotTemplate = getTemplateForSlot(slot);
+                if (slotTemplate && slotTemplate._id.toString() === args.templateId.toString()) {
+                  selectedTemplateCurrentSlot = slot;
+                  break;
+                }
+              }
+              if (selectedTemplateCurrentSlot) break;
+            }
+            if (selectedTemplateCurrentSlot) break;
+          }
+
+          if (selectedTemplateCurrentSlot) {
+            const selectedIndex = getAbsoluteIndex(selectedTemplateCurrentSlot, workoutsPerWeek);
+
+            // Only cascade if selected workout is in the future (not today or past)
+            if (selectedIndex > todayIndex) {
+              // Generate all slots in order
+              const allSlots: WorkoutSlot[] = [];
+              for (const phase of PHASE_ORDER) {
+                for (let week = 1; week <= WEEKS_PER_PHASE; week++) {
+                  for (let day = 1; day <= workoutsPerWeek; day++) {
+                    allSlots.push({ phase, week, day });
+                  }
+                }
+              }
+
+              // Get completed template IDs
+              const completedSessions = await ctx.db
+                .query("gpp_workout_sessions")
+                .withIndex("by_user", (q) => q.eq("userId", user._id))
+                .filter((q) => q.eq(q.field("status"), "completed"))
+                .collect();
+              const completedTemplateIds = new Set(
+                completedSessions.map((s) => s.templateId.toString())
+              );
+
+              // Get slots in the cascade range
+              const slotsInRange = allSlots.slice(todayIndex, selectedIndex + 1);
+
+              // Check if any workout in the cascade range is completed
+              let canCascade = true;
+              for (const slot of slotsInRange) {
+                const slotTemplate = getTemplateForSlot(slot);
+                if (slotTemplate && completedTemplateIds.has(slotTemplate._id.toString())) {
+                  canCascade = false;
+                  break;
+                }
+              }
+
+              if (canCascade) {
+                // Build new slot overrides with cascade
+                const rangeTemplates: Array<{ slot: WorkoutSlot; template: (typeof allTemplates)[0] }> = [];
+                for (const slot of slotsInRange) {
+                  const t = getTemplateForSlot(slot);
+                  if (t) {
+                    rangeTemplates.push({ slot, template: t });
+                  }
+                }
+
+                // Create new assignments
+                const newAssignments: Array<{ slot: WorkoutSlot; templateId: string }> = [];
+
+                // Today's slot gets the selected template
+                newAssignments.push({
+                  slot: slotsInRange[0],
+                  templateId: args.templateId.toString(),
+                });
+
+                // Each subsequent slot gets what was in the previous slot
+                for (let i = 1; i < slotsInRange.length; i++) {
+                  const prevSlotTemplate = rangeTemplates[i - 1]?.template;
+                  if (prevSlotTemplate) {
+                    newAssignments.push({
+                      slot: slotsInRange[i],
+                      templateId: prevSlotTemplate._id.toString(),
+                    });
+                  }
+                }
+
+                // Build final slot overrides
+                const newSlotOverrides = slotOverrides.filter((o) => {
+                  const oIndex = getAbsoluteIndex(
+                    { phase: o.phase as CalendarPhase, week: o.week, day: o.day },
+                    workoutsPerWeek
+                  );
+                  return oIndex < todayIndex || oIndex > selectedIndex;
+                });
+
+                // Add new cascade overrides
+                for (const assignment of newAssignments) {
+                  const defaultTemplate = templateLookup.get(
+                    `${assignment.slot.phase}-${assignment.slot.week}-${assignment.slot.day}`
+                  );
+                  if (!defaultTemplate || defaultTemplate._id.toString() !== assignment.templateId) {
+                    const assignedTemplate = allTemplates.find(
+                      (t) => t._id.toString() === assignment.templateId
+                    );
+                    if (assignedTemplate) {
+                      newSlotOverrides.push({
+                        phase: assignment.slot.phase,
+                        week: assignment.slot.week,
+                        day: assignment.slot.day,
+                        templateId: assignedTemplate._id,
+                      });
+                    }
+                  }
+                }
+
+                const now = Date.now();
+
+                // Save override record
+                if (existingOverride) {
+                  await ctx.db.patch(existingOverride._id, {
+                    slotOverrides: newSlotOverrides,
+                    updatedAt: now,
+                  });
+                } else {
+                  await ctx.db.insert("user_schedule_overrides", {
+                    userId: user._id,
+                    userProgramId: userProgram._id,
+                    slotOverrides: newSlotOverrides,
+                    createdAt: now,
+                    updatedAt: now,
+                  });
+                }
+
+                cascadeApplied = true;
+                cascadeAffectedSlots = slotsInRange.length;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CREATE SESSION
+    // ─────────────────────────────────────────────────────────────────────────
 
     // Get the latest intake for years of experience (for scaling snapshot)
     const intake = await ctx.db
@@ -664,11 +1024,8 @@ export const startSession = mutation({
       startedAt: now,
       status: "in_progress",
       exercises: initialExercises,
-      // Persist custom exercise order if provided from workout summary
       exerciseOrder: args.exerciseOrder,
-      // Target intensity for this session (defaults to Moderate if not specified)
       targetIntensity: args.targetIntensity,
-      // Category-specific scaling snapshot - captures athlete profile at workout time
       scalingSnapshot,
       templateSnapshot: {
         name: template.name,
@@ -682,7 +1039,11 @@ export const startSession = mutation({
     return {
       sessionId,
       isExisting: false,
-      message: "Workout session started",
+      message: cascadeApplied
+        ? `Workout started! Schedule cascaded (${cascadeAffectedSlots} workouts shifted).`
+        : "Workout session started",
+      cascadeApplied,
+      cascadeAffectedSlots,
     };
   },
 });
