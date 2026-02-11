@@ -28,6 +28,7 @@ import { ExerciseTypeIcon } from '../../../../components/workout/ExerciseTypeIco
 import { SetTracker } from '../../../../components/workout/SetTracker'
 import { InstructionsAccordion } from '../../../../components/workout/InstructionsAccordion'
 import { ExerciseQueue } from '../../../../components/workout/ExerciseQueue'
+import { ConfettiEffect } from '../../../../components/workout/ConfettiEffect'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { PanResponder, Platform, Vibration, Animated, useColorScheme } from 'react-native'
 import { mapIntensityToLevel, IntensityLevel } from '../../../../lib'
@@ -925,6 +926,9 @@ export default function WorkoutExecutionScreen() {
       {/* Completion Dialog */}
       <AlertDialog open={showCompletionDialog} onOpenChange={setShowCompletionDialog}>
         <AlertDialog.Portal>
+          {/* Confetti celebration effect */}
+          <ConfettiEffect trigger={showCompletionDialog} />
+
           <AlertDialog.Overlay
             key="overlay"
             animation="quick"

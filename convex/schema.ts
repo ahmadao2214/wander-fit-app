@@ -12,9 +12,9 @@ const skillLevelValidator = v.union(
 );
 
 const ageGroupValidator = v.union(
-  v.literal("10-13"),
   v.literal("14-17"),
-  v.literal("18+")
+  v.literal("18-35"),
+  v.literal("36+")
 );
 
 /**
@@ -280,7 +280,7 @@ export default defineSchema({
     selectedTrainingDays: v.optional(v.array(v.number())), // [1, 3, 5] = Mon, Wed, Fri (0=Sun, 6=Sat)
 
     // Age group - determines intensity ceiling
-    ageGroup: v.optional(ageGroupValidator), // "10-13", "14-17", "18+" (optional for migration)
+    ageGroup: v.optional(ageGroupValidator), // "14-17", "18-35", "36+" (optional for migration)
     dateOfBirth: v.optional(v.number()), // Timestamp for auto-calculation
 
     // Time-based intake (for planning)
@@ -313,7 +313,7 @@ export default defineSchema({
     // Assignment Results (from linked intake)
     gppCategoryId: v.number(), // 1-4
     skillLevel: skillLevelValidator, // "Novice", "Moderate", "Advanced"
-    ageGroup: v.optional(ageGroupValidator), // "10-13", "14-17", "18+" - affects intensity ceiling (optional for migration)
+    ageGroup: v.optional(ageGroupValidator), // "14-17", "18-35", "36+" - affects intensity ceiling (optional for migration)
 
     // Dynamic Program Duration (from intake weeksUntilSeason)
     totalProgramWeeks: v.optional(v.number()), // Total weeks from intake (weeksUntilSeason)
@@ -414,7 +414,7 @@ export default defineSchema({
     scalingSnapshot: v.optional(v.object({
       categoryId: v.number(), // 1-4 (Endurance, Power, Rotational, Strength)
       phase: phaseValidator,  // GPP, SPP, SSP
-      ageGroup: ageGroupValidator, // 10-13, 14-17, 18+
+      ageGroup: ageGroupValidator, // 14-17, 18-35, 36+
       yearsOfExperience: v.number(), // Used to determine experience bucket
     })),
   })
