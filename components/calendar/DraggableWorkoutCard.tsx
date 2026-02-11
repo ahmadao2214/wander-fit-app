@@ -72,13 +72,15 @@ export function DraggableWorkoutCard({
     onDragEnd?.(slotKey)
   }, [onDragEnd, slotKey])
 
+  // Pan gesture that activates after a long press (300ms hold to start drag)
   const panGesture = Gesture.Pan()
     .enabled(canDrag)
+    .activateAfterLongPress(300)
     .onStart(() => {
       'worklet'
-      scale.value = withSpring(1.05, { damping: 15 })
+      scale.value = withSpring(1.08, { damping: 12 })
       zIndex.value = 100
-      opacity.value = 0.9
+      opacity.value = 0.85
       runOnJS(onDragStartJS)()
     })
     .onUpdate((event) => {
@@ -97,23 +99,8 @@ export function DraggableWorkoutCard({
       runOnJS(onDragEndJS)()
     })
 
-  const longPressGesture = Gesture.LongPress()
-    .enabled(canDrag)
-    .minDuration(250)
-    .onStart(() => {
-      'worklet'
-      // Visual feedback for long press
-      scale.value = withSpring(1.02, { damping: 15 })
-    })
-    .onEnd((_, success) => {
-      'worklet'
-      if (!success) {
-        scale.value = withSpring(1, { damping: 15 })
-      }
-    })
-
-  // Combine gestures: long press to activate, then pan to drag
-  const composedGesture = Gesture.Simultaneous(longPressGesture, panGesture)
+  // Composed gesture is just the pan (which has built-in long press activation)
+  const composedGesture = panGesture
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [

@@ -268,18 +268,6 @@ export function WorkoutCalendar({
         </XStack>
       </Card>
 
-      {/* Drag indicator */}
-      {dragSource && (
-        <Card p="$2" bg="$blue2" borderColor="$blue6" borderWidth={1}>
-          <XStack items="center" gap="$2">
-            <ArrowLeftRight size={14} color="$blue9" />
-            <Text fontSize={12} color="$blue11">
-              Drag to swap with another workout
-            </Text>
-          </XStack>
-        </Card>
-      )}
-
       {/* Calendar view */}
       <GestureHandlerRootView style={{ flex: 1 }}>
         {viewMode === 'week' ? (

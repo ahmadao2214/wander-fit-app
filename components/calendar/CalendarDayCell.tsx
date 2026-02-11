@@ -102,8 +102,8 @@ export function CalendarDayCell({
         onLayout={handleLayout}
         style={{
           flex: 1,
-          minHeight: 80,
-          padding: 2,
+          minHeight: 100,
+          padding: 3,
           backgroundColor: isDropTarget ? '#dbeafe' : isToday ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
           borderRadius: 4,
           borderWidth: isDropTarget ? 1 : 0,
@@ -138,7 +138,7 @@ export function CalendarDayCell({
         {/* Workout cards - compact with titles */}
         {workouts.length > 0 && (
           <YStack gap={2}>
-            {workouts.slice(0, 2).map((workout, idx) => {
+            {workouts.slice(0, 3).map((workout, idx) => {
               const phaseColor = PHASE_DOT_COLORS[workout.phase] ?? DEFAULT_DOT_COLOR
               const slotKey = workout.slotPhase && workout.slotWeek && workout.slotDay
                 ? `${workout.slotPhase}-${workout.slotWeek}-${workout.slotDay}`
@@ -165,9 +165,9 @@ export function CalendarDayCell({
               )
             })}
             {/* Show +N more if there are more workouts */}
-            {workouts.length > 2 && (
+            {workouts.length > 3 && (
               <Text fontSize={8} color="$color9" textAlign="center">
-                +{workouts.length - 2} more
+                +{workouts.length - 3} more
               </Text>
             )}
           </YStack>

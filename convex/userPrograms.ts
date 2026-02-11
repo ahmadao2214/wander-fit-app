@@ -195,6 +195,9 @@ export const getCurrentProgramState = query({
       week: program.currentWeek,
       day: program.currentDay,
       programId: program._id,
+      // Program duration
+      totalProgramWeeks: program.totalProgramWeeks ?? null,
+      weeksPerPhase: program.weeksPerPhase ?? null,
       // Sport and category info
       sportName,
       categoryName,
