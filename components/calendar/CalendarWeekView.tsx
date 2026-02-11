@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useMemo } from 'react'
 import { YStack, XStack, Text, Button, ScrollView } from 'tamagui'
 import { ChevronLeft, ChevronRight } from '@tamagui/lucide-icons'
 import { FlatList, Dimensions, NativeScrollEvent, NativeSyntheticEvent, View } from 'react-native'
@@ -11,11 +11,13 @@ import {
   isSameDay,
   formatDateISO,
   startOfWeek,
+  parseDateISO,
 } from '../../lib/calendarUtils'
 import type { Phase } from '../../types'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const LAST_WEEK_BUFFER_DAYS = 7 // Allow last week workouts to be moved up to 7 days forward
 
 export interface CalendarWorkout {
   templateId: string
@@ -60,19 +62,41 @@ export interface CalendarWeekViewProps {
   onDropZoneLayout?: (dateISO: string, layout: { x: number; y: number; width: number; height: number }) => void
   /** Callback to unregister drop zones on unmount */
   onDropZoneUnregister?: (dateISO: string) => void
+  /** Program start date (ISO format) - limits navigation */
+  programStartDate?: string
+  /** Program end date (ISO format) - limits navigation */
+  programEndDate?: string
 }
 
-// Generate array of weeks around current date for infinite scroll feel
-function generateWeeks(centerDate: Date, count: number = 5): Date[] {
+/**
+ * Generate array of weeks within program bounds
+ * Only includes weeks from program start to program end + buffer
+ */
+function generateProgramWeeks(
+  programStartDate: Date,
+  programEndDate: Date,
+  bufferDays: number = LAST_WEEK_BUFFER_DAYS
+): Date[] {
   const weeks: Date[] = []
-  const center = startOfWeek(centerDate)
-  const halfCount = Math.floor(count / 2)
+  const startWeek = startOfWeek(programStartDate)
+  const endWithBuffer = addDays(programEndDate, bufferDays)
+  const endWeek = startOfWeek(endWithBuffer)
 
-  for (let i = -halfCount; i <= halfCount; i++) {
-    weeks.push(addDays(center, i * 7))
+  let currentWeek = startWeek
+  while (currentWeek <= endWeek) {
+    weeks.push(new Date(currentWeek))
+    currentWeek = addDays(currentWeek, 7)
   }
 
   return weeks
+}
+
+/**
+ * Find the index of the week containing a given date
+ */
+function findWeekIndex(weeks: Date[], targetDate: Date): number {
+  const targetWeekStart = startOfWeek(targetDate)
+  return weeks.findIndex(w => isSameDay(w, targetWeekStart))
 }
 
 /**
@@ -96,17 +120,51 @@ export function CalendarWeekView({
   gppCategoryId,
   onDropZoneLayout,
   onDropZoneUnregister,
+  programStartDate,
+  programEndDate,
 }: CalendarWeekViewProps) {
   // Disable FlatList scrolling while dragging to prevent gesture conflicts
   const isDragging = dragSourceSlot !== null && dragSourceSlot !== undefined
   const flatListRef = useRef<FlatList>(null)
-  const [weeks] = useState(() => generateWeeks(currentWeek, 11))
-  const [currentIndex, setCurrentIndex] = useState(5) // Middle of 11 weeks
-
   const today = new Date()
+
+  // Generate weeks within program bounds (memoized)
+  const weeks = useMemo(() => {
+    if (programStartDate && programEndDate) {
+      const startDate = parseDateISO(programStartDate)
+      const endDate = parseDateISO(programEndDate)
+      return generateProgramWeeks(startDate, endDate)
+    }
+    // Fallback: generate weeks around current week if no program bounds
+    const fallbackWeeks: Date[] = []
+    const center = startOfWeek(currentWeek)
+    for (let i = -5; i <= 5; i++) {
+      fallbackWeeks.push(addDays(center, i * 7))
+    }
+    return fallbackWeeks
+  }, [programStartDate, programEndDate, currentWeek])
+
+  // Find initial index - prefer today's week if within bounds, else first week
+  const initialIndex = useMemo(() => {
+    const todayIndex = findWeekIndex(weeks, today)
+    if (todayIndex >= 0) return todayIndex
+    // If today is not in program range, default to first week
+    return 0
+  }, [weeks, today])
+
+  const [currentIndex, setCurrentIndex] = useState(initialIndex)
+
   const displayedWeek = weeks[currentIndex] || currentWeek
   const weekDays = getWeekDays(displayedWeek)
   const isCurrentWeekVisible = weekDays.some((d) => isSameDay(d, today))
+
+  // Check if today is within the program bounds
+  const isTodayInProgram = useMemo(() => {
+    if (!programStartDate || !programEndDate) return true
+    const start = parseDateISO(programStartDate)
+    const endWithBuffer = addDays(parseDateISO(programEndDate), LAST_WEEK_BUFFER_DAYS)
+    return today >= start && today <= endWithBuffer
+  }, [programStartDate, programEndDate, today])
 
   const handlePreviousWeek = useCallback(() => {
     if (currentIndex > 0) {
@@ -122,8 +180,7 @@ export function CalendarWeekView({
 
   const handleGoToToday = useCallback(() => {
     // Find the week containing today
-    const todayWeekStart = startOfWeek(today)
-    const index = weeks.findIndex((w) => isSameDay(w, todayWeekStart))
+    const index = findWeekIndex(weeks, today)
     if (index >= 0) {
       setCurrentIndex(index)
       flatListRef.current?.scrollToIndex({ index, animated: true })
@@ -284,7 +341,7 @@ export function CalendarWeekView({
           <Text fontSize="$4" fontWeight="600" color="$color12">
             {formatWeekRange(displayedWeek)}
           </Text>
-          {!isCurrentWeekVisible && (
+          {!isCurrentWeekVisible && isTodayInProgram && (
             <Button
               size="$2"
               chromeless

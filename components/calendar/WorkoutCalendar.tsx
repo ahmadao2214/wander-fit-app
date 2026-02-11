@@ -225,6 +225,10 @@ export function WorkoutCalendar({
   // Extract category for consistent color scheme
   const gppCategoryId = fullCalendar.gppCategoryId
 
+  // Extract program bounds for navigation limits
+  const programStartDate = fullCalendar.programStartDate
+  const programEndDate = fullCalendar.programEndDate
+
   return (
     <YStack flex={1} gap="$4">
       {/* View mode toggle */}
@@ -267,6 +271,8 @@ export function WorkoutCalendar({
             gppCategoryId={gppCategoryId}
             onDropZoneLayout={handleDropZoneLayout}
             onDropZoneUnregister={handleDropZoneUnregister}
+            programStartDate={programStartDate}
+            programEndDate={programEndDate}
           />
         ) : (
           <CalendarMonthView
@@ -283,6 +289,8 @@ export function WorkoutCalendar({
             dragSourceSlot={dragSource}
             onDropZoneLayout={handleDropZoneLayout}
             onDropZoneUnregister={handleDropZoneUnregister}
+            programStartDate={programStartDate}
+            programEndDate={programEndDate}
           />
         )}
       </GestureHandlerRootView>

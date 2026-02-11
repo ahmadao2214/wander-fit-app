@@ -10,6 +10,8 @@ import {
   isSameDay,
   formatDateISO,
   DAY_NAMES,
+  parseDateISO,
+  addDays,
 } from '../../lib/calendarUtils'
 import type { Phase } from '../../types'
 
@@ -29,6 +31,8 @@ export interface CalendarWorkout {
   isInProgress: boolean
   exercisePreview?: string[] // First 3 exercise names for preview
 }
+
+const LAST_WEEK_BUFFER_DAYS = 7 // Allow last week workouts to be moved up to 7 days forward
 
 export interface CalendarMonthViewProps {
   calendarData: Record<
@@ -56,6 +60,10 @@ export interface CalendarMonthViewProps {
   onDropZoneLayout?: (dateISO: string, layout: { x: number; y: number; width: number; height: number }) => void
   /** Callback to unregister drop zones on unmount */
   onDropZoneUnregister?: (dateISO: string) => void
+  /** Program start date (ISO format) - limits navigation */
+  programStartDate?: string
+  /** Program end date (ISO format) - limits navigation */
+  programEndDate?: string
 }
 
 /**
@@ -79,12 +87,22 @@ export function CalendarMonthView({
   dragSourceSlot,
   onDropZoneLayout,
   onDropZoneUnregister,
+  programStartDate,
+  programEndDate,
 }: CalendarMonthViewProps) {
   const today = new Date()
   const currentYear = currentMonth.getFullYear()
   const currentMonthNum = currentMonth.getMonth()
 
   const calendarDays = getMonthCalendarDays(currentYear, currentMonthNum)
+
+  // Check if today is within program bounds
+  const isTodayInProgram = (() => {
+    if (!programStartDate || !programEndDate) return true
+    const start = parseDateISO(programStartDate)
+    const endWithBuffer = addDays(parseDateISO(programEndDate), LAST_WEEK_BUFFER_DAYS)
+    return today >= start && today <= endWithBuffer
+  })()
 
   // Split days into weeks
   const weeks: Date[][] = []
@@ -148,7 +166,7 @@ export function CalendarMonthView({
           <Text fontSize="$4" fontWeight="600" color="$color12">
             {formatMonthYear(currentMonth)}
           </Text>
-          {!isCurrentMonthVisible && (
+          {!isCurrentMonthVisible && isTodayInProgram && (
             <Button
               size="$2"
               chromeless
