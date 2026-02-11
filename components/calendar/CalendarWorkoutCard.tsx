@@ -156,25 +156,27 @@ export function CalendarWorkoutCard({
           lineHeight={16}
           color={isLocked || isCompleted ? '$color10' : '$color12'}
           numberOfLines={2}
+          // @ts-ignore - Android prop to prevent mid-word breaks
+          textBreakStrategy="simple"
         >
           {name}
         </Text>
 
-        {/* Exercise preview list */}
+        {/* Exercise preview list - no bullets to save space */}
         {exercisePreview.length > 0 && (
           <YStack gap="$0.5" pt="$1" borderTopWidth={1} borderTopColor="$gray4">
             {exercisePreview.map((exerciseName, idx) => (
               <Text
                 key={idx}
-                fontSize={10}
+                fontSize={9}
                 color="$color9"
                 numberOfLines={1}
               >
-                • {exerciseName}
+                {exerciseName}
               </Text>
             ))}
             {remainingExercises > 0 && (
-              <Text fontSize={10} color="$color8" fontStyle="italic">
+              <Text fontSize={9} color="$color8" fontStyle="italic">
                 +{remainingExercises} more
               </Text>
             )}
