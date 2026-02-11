@@ -246,6 +246,6 @@ export function CalendarWorkoutCard({
 
 const styles = StyleSheet.create({
   gradient: {
-    flex: 1,
+    // No flex - just wrap content naturally
   },
 })
