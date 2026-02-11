@@ -254,6 +254,36 @@ export default function ProfilePage() {
                 borderColor="$borderColor"
               >
                 <YStack gap="$4">
+                  {/* Sport */}
+                  {programState.sportName && (
+                    <XStack items="center" gap="$3">
+                      <Award size={20} color="$color9" />
+                      <YStack flex={1}>
+                        <Text fontSize={12} color="$color10" fontFamily="$body">
+                          Sport
+                        </Text>
+                        <Text fontSize={15} fontFamily="$body" fontWeight="600" color="$color12">
+                          {programState.sportName}
+                        </Text>
+                      </YStack>
+                    </XStack>
+                  )}
+
+                  {/* Training Category */}
+                  {programState.categoryName && (
+                    <XStack items="center" gap="$3">
+                      <Dumbbell size={20} color="$color9" />
+                      <YStack flex={1}>
+                        <Text fontSize={12} color="$color10" fontFamily="$body">
+                          Training Focus
+                        </Text>
+                        <Text fontSize={15} fontFamily="$body" fontWeight="600" color="$color12">
+                          {programState.categoryName}
+                        </Text>
+                      </YStack>
+                    </XStack>
+                  )}
+
                   <XStack items="center" gap="$3">
                     <Target size={20} color="$color9" />
                     <YStack flex={1}>

@@ -166,6 +166,28 @@ export const getCurrentProgramState = query({
       .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
       .first();
 
+    // Get intake response for sport info
+    const intake = await ctx.db.get(program.intakeResponseId);
+
+    // Get sport name
+    let sportName: string | null = null;
+    if (intake?.sportId) {
+      const sport = await ctx.db.get(intake.sportId);
+      sportName = sport?.name ?? null;
+    }
+
+    // Get GPP category info
+    let categoryName: string | null = null;
+    let categoryShortName: string | null = null;
+    const gppCategory = await ctx.db
+      .query("gpp_categories")
+      .withIndex("by_category_id", (q) => q.eq("categoryId", program.gppCategoryId))
+      .first();
+    if (gppCategory) {
+      categoryName = gppCategory.name;
+      categoryShortName = gppCategory.shortName;
+    }
+
     return {
       gppCategoryId: program.gppCategoryId,
       phase: program.currentPhase,
@@ -173,6 +195,10 @@ export const getCurrentProgramState = query({
       week: program.currentWeek,
       day: program.currentDay,
       programId: program._id,
+      // Sport and category info
+      sportName,
+      categoryName,
+      categoryShortName,
       // Override info
       todayFocusTemplateId: scheduleOverride?.todayFocusTemplateId,
       hasTodayFocusOverride: !!scheduleOverride?.todayFocusTemplateId,

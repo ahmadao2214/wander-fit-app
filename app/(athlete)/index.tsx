@@ -215,14 +215,27 @@ export default function AthleteDashboard() {
         >
           {/* Header */}
           <YStack gap="$1">
-            <Text 
-              color="$color10" 
-              fontSize={14} 
+            <Text
+              color="$color10"
+              fontSize={14}
               fontFamily="$body"
             >
               Welcome back, {user.name?.split(' ')[0] || 'Athlete'}
             </Text>
             <DisplayHeading>READY TO TRAIN?</DisplayHeading>
+            {/* Sport and Training Focus */}
+            {programState.sportName && (
+              <XStack items="center" gap="$2" pt="$1">
+                <Text
+                  fontSize={13}
+                  color="$color10"
+                  fontFamily="$body"
+                >
+                  {programState.sportName}
+                  {programState.categoryShortName && ` • ${programState.categoryShortName}`}
+                </Text>
+              </XStack>
+            )}
           </YStack>
 
           {/* Active Session Alert */}
