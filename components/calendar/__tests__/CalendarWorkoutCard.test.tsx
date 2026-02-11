@@ -4,6 +4,11 @@ import { TamaguiProvider } from 'tamagui'
 import config from '../../../tamagui.config'
 import { CalendarWorkoutCard, CalendarWorkoutCardProps } from '../CalendarWorkoutCard'
 
+// Mock expo-linear-gradient
+jest.mock('expo-linear-gradient', () => ({
+  LinearGradient: ({ children }: { children: React.ReactNode }) => children,
+}))
+
 // Wrapper for Tamagui components
 const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
   return <TamaguiProvider config={config}>{children}</TamaguiProvider>
@@ -141,6 +146,17 @@ describe('CalendarWorkoutCard', () => {
         { wrapper: AllTheProviders }
       )
       expect(getByText('Lower Body Foundation')).toBeTruthy()
+    })
+
+    it('renders gradient background for today card (not completed/locked/in-progress)', () => {
+      // When isToday=true and not completed/locked/inProgress, should show gradient
+      const { getByText } = render(
+        <CalendarWorkoutCard {...defaultProps} isToday />,
+        { wrapper: AllTheProviders }
+      )
+      // Card should still render with gradient (mock just passes through children)
+      expect(getByText('Lower Body Foundation')).toBeTruthy()
+      expect(getByText('GPP')).toBeTruthy()
     })
   })
 
