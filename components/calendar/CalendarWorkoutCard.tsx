@@ -102,33 +102,50 @@ export function CalendarWorkoutCard({
 
   if (compact) {
     // Compact mode for month view - shows phase dot, title, and status
+    const showCompactGradient = isToday && !isLocked && !isCompleted && !isInProgress
+
+    const compactContent = (
+      <XStack items="center" gap="$1" px="$1" py="$0.5">
+        <Text
+          fontSize={9}
+          fontWeight="500"
+          color={isLocked || isCompleted ? '$color9' : '$color11'}
+          numberOfLines={1}
+          flex={1}
+        >
+          {name}
+        </Text>
+        {getStatusIcon()}
+      </XStack>
+    )
+
     return (
       <Card
         pressStyle={isLocked ? undefined : { opacity: 0.8, scale: 0.98 }}
         onPress={isLocked ? undefined : onPress}
         onLongPress={isLocked ? undefined : onLongPress}
-        bg={getBgColor()}
+        bg={showCompactGradient ? 'transparent' : getBgColor()}
         borderColor={getBorderColor()}
         borderWidth={1}
         borderLeftWidth={3}
         borderLeftColor={isLocked ? '$gray6' : colors.dot}
-        px="$1"
-        py="$0.5"
         rounded="$1"
         opacity={isLocked ? 0.5 : isCompleted ? 0.7 : 1}
+        overflow="hidden"
+        padding={0}
       >
-        <XStack items="center" gap="$1">
-          <Text
-            fontSize={9}
-            fontWeight="500"
-            color={isLocked || isCompleted ? '$color9' : '$color11'}
-            numberOfLines={1}
-            flex={1}
+        {showCompactGradient ? (
+          <LinearGradient
+            colors={PHASE_GRADIENTS[phase]}
+            start={GRADIENT_START}
+            end={GRADIENT_END}
+            style={styles.gradient}
           >
-            {name}
-          </Text>
-          {getStatusIcon()}
-        </XStack>
+            {compactContent}
+          </LinearGradient>
+        ) : (
+          compactContent
+        )}
       </Card>
     )
   }
