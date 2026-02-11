@@ -3,19 +3,16 @@ import { CheckCircle, Play, Clock, Lock } from '@tamagui/lucide-icons'
 import type { Phase } from '../../types'
 
 /**
- * Category colors for visual distinction
- * Colors match the GPP training categories, not training phases
- * 1 = Endurance (Teal), 2 = Power (Purple), 3 = Rotation (Orange), 4 = Strength (Blue)
+ * Phase colors for visual distinction
+ * GPP = Blue (foundation phase)
+ * SPP = Orange (sport-specific phase)
+ * SSP = Green (competition prep phase)
  */
-const CATEGORY_COLORS: Record<number, { bg: string; border: string; dot: string }> = {
-  1: { bg: '$teal2', border: '$teal6', dot: '$teal9' },      // Endurance
-  2: { bg: '$purple2', border: '$purple6', dot: '$purple9' }, // Power
-  3: { bg: '$orange2', border: '$orange6', dot: '$orange9' }, // Rotation
-  4: { bg: '$blue2', border: '$blue6', dot: '$blue9' },       // Strength
+const PHASE_COLORS: Record<Phase, { bg: string; border: string; dot: string }> = {
+  GPP: { bg: '$blue2', border: '$blue6', dot: '$blue9' },
+  SPP: { bg: '$orange2', border: '$orange6', dot: '$orange9' },
+  SSP: { bg: '$green2', border: '$green6', dot: '$green9' },
 }
-
-// Default colors if category not provided
-const DEFAULT_COLORS = { bg: '$gray2', border: '$gray6', dot: '$gray9' }
 
 export interface CalendarWorkoutCardProps {
   templateId: string
@@ -30,7 +27,7 @@ export interface CalendarWorkoutCardProps {
   isInProgress: boolean
   isLocked?: boolean // Phase not yet unlocked (visible but not draggable)
   compact?: boolean
-  gppCategoryId?: number // Category for color coding (1-4)
+  gppCategoryId?: number // Category ID (not used for coloring, kept for data)
   onPress?: () => void
   onLongPress?: () => void
 }
@@ -57,8 +54,8 @@ export function CalendarWorkoutCard({
   onPress,
   onLongPress,
 }: CalendarWorkoutCardProps) {
-  // Use category colors for consistent branding
-  const colors = gppCategoryId ? CATEGORY_COLORS[gppCategoryId] ?? DEFAULT_COLORS : DEFAULT_COLORS
+  // Use phase colors for visual distinction
+  const colors = PHASE_COLORS[phase]
 
   // Determine card styling based on state
   const getBgColor = () => {

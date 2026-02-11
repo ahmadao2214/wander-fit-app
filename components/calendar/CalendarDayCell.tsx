@@ -6,15 +6,15 @@ import { DraggableWorkoutCard } from './DraggableWorkoutCard'
 import type { Phase } from '../../types'
 
 /**
- * Category colors for visual distinction
- * Colors match the GPP training categories, not training phases
- * 1 = Endurance (Teal), 2 = Power (Purple), 3 = Rotation (Orange), 4 = Strength (Blue)
+ * Phase colors for visual distinction
+ * GPP = Blue (foundation phase)
+ * SPP = Orange (sport-specific phase)
+ * SSP = Green (competition prep phase)
  */
-const CATEGORY_DOT_COLORS: Record<number, string> = {
-  1: '$teal9',      // Endurance
-  2: '$purple9',    // Power
-  3: '$orange9',    // Rotation
-  4: '$blue9',      // Strength
+const PHASE_DOT_COLORS: Record<Phase, string> = {
+  GPP: '$blue9',
+  SPP: '$orange9',
+  SSP: '$green9',
 }
 
 const DEFAULT_DOT_COLOR = '$gray9'
@@ -121,7 +121,7 @@ export function CalendarDayCell({
         {/* Workout indicators */}
         {workouts.length > 0 && (
           <YStack alignItems="center" gap="$0.5" pt="$0.5">
-            {/* Category dots */}
+            {/* Phase dots */}
             <XStack gap="$1" justifyContent="center">
               {workouts.slice(0, 3).map((workout, idx) => (
                 <YStack
@@ -132,9 +132,7 @@ export function CalendarDayCell({
                   backgroundColor={
                     workout.isLocked
                       ? '$gray6'
-                      : gppCategoryId
-                        ? CATEGORY_DOT_COLORS[gppCategoryId] ?? DEFAULT_DOT_COLOR
-                        : DEFAULT_DOT_COLOR
+                      : PHASE_DOT_COLORS[workout.phase] ?? DEFAULT_DOT_COLOR
                   }
                   opacity={workout.isLocked || workout.isCompleted ? 0.5 : 1}
                 />
