@@ -48,6 +48,8 @@ export interface CalendarWeekViewProps {
   onDragEnd?: () => void
   /** Current drag target slot for highlighting */
   dragTargetSlot?: { phase: Phase; week: number; day: number } | null
+  /** Category ID for color coding (1-4) */
+  gppCategoryId?: number
 }
 
 // Generate array of weeks around current date for infinite scroll feel
@@ -79,6 +81,7 @@ export function CalendarWeekView({
   onDragStart,
   onDragEnd,
   dragTargetSlot,
+  gppCategoryId,
 }: CalendarWeekViewProps) {
   const flatListRef = useRef<FlatList>(null)
   const [weeks] = useState(() => generateWeeks(currentWeek, 11))
@@ -143,6 +146,7 @@ export function CalendarWeekView({
               isToday: w.isToday,
               isInProgress: w.isInProgress,
               isLocked: w.isLocked,
+              gppCategoryId, // Pass category for color coding
               // Pass slot info for drag-drop
               slotPhase: w.phase,
               slotWeek: w.week,
@@ -169,12 +173,13 @@ export function CalendarWeekView({
               onDragStart={onDragStart}
               onDragEnd={onDragEnd}
               isDropTarget={isDropTarget ?? false}
+              gppCategoryId={gppCategoryId}
             />
           )
         })}
       </XStack>
     )
-  }, [calendarData, onWorkoutPress, onWorkoutLongPress, onDragStart, onDragEnd, dragTargetSlot])
+  }, [calendarData, onWorkoutPress, onWorkoutLongPress, onDragStart, onDragEnd, dragTargetSlot, gppCategoryId])
 
   const keyExtractor = useCallback((item: Date) => formatDateISO(item), [])
 
@@ -215,21 +220,6 @@ export function CalendarWeekView({
         />
       </XStack>
 
-      {/* Phase legend - compact */}
-      <XStack justifyContent="center" gap="$3">
-        <XStack alignItems="center" gap="$1">
-          <YStack width={6} height={6} borderRadius={10} backgroundColor="$blue9" />
-          <Text fontSize={10} color="$color10">GPP</Text>
-        </XStack>
-        <XStack alignItems="center" gap="$1">
-          <YStack width={6} height={6} borderRadius={10} backgroundColor="$orange9" />
-          <Text fontSize={10} color="$color10">SPP</Text>
-        </XStack>
-        <XStack alignItems="center" gap="$1">
-          <YStack width={6} height={6} borderRadius={10} backgroundColor="$green9" />
-          <Text fontSize={10} color="$color10">SSP</Text>
-        </XStack>
-      </XStack>
 
       {/* Swipeable week view */}
       <FlatList

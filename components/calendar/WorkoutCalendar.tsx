@@ -148,6 +148,9 @@ export function WorkoutCalendar({
     }
   >
 
+  // Extract category for consistent color scheme
+  const gppCategoryId = fullCalendar.gppCategoryId
+
   return (
     <YStack flex={1} gap="$4">
       {/* View mode toggle */}
@@ -212,6 +215,7 @@ export function WorkoutCalendar({
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
             dragTargetSlot={dragSource}
+            gppCategoryId={gppCategoryId}
           />
         ) : (
           <CalendarMonthView
@@ -220,6 +224,7 @@ export function WorkoutCalendar({
             onMonthChange={handleMonthChange}
             onDayPress={handleDayPress}
             onWorkoutPress={onWorkoutPress}
+            gppCategoryId={gppCategoryId}
           />
         )}
       </GestureHandlerRootView>

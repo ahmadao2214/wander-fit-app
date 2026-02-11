@@ -41,6 +41,8 @@ export interface CalendarMonthViewProps {
   onMonthChange: (newMonth: Date) => void
   onDayPress?: (date: Date) => void
   onWorkoutPress?: (templateId: string) => void
+  /** Category ID for color coding (1-4) */
+  gppCategoryId?: number
 }
 
 /**
@@ -55,6 +57,7 @@ export function CalendarMonthView({
   currentMonth,
   onMonthChange,
   onDayPress,
+  gppCategoryId,
 }: CalendarMonthViewProps) {
   const today = new Date()
   const currentYear = currentMonth.getFullYear()
@@ -145,21 +148,6 @@ export function CalendarMonthView({
         />
       </XStack>
 
-      {/* Phase legend - compact */}
-      <XStack justifyContent="center" gap="$3">
-        <XStack alignItems="center" gap="$1">
-          <YStack width={6} height={6} borderRadius={10} backgroundColor="$blue9" />
-          <Text fontSize={10} color="$color10">GPP</Text>
-        </XStack>
-        <XStack alignItems="center" gap="$1">
-          <YStack width={6} height={6} borderRadius={10} backgroundColor="$orange9" />
-          <Text fontSize={10} color="$color10">SPP</Text>
-        </XStack>
-        <XStack alignItems="center" gap="$1">
-          <YStack width={6} height={6} borderRadius={10} backgroundColor="$green9" />
-          <Text fontSize={10} color="$color10">SSP</Text>
-        </XStack>
-      </XStack>
 
       {/* Day names header */}
       <XStack px="$2">
@@ -200,6 +188,7 @@ export function CalendarMonthView({
                       isCompleted: w.isCompleted,
                       isToday: w.isToday,
                       isInProgress: w.isInProgress,
+                      gppCategoryId, // Pass category for color coding
                     })) ?? []
 
                   return (
@@ -215,6 +204,7 @@ export function CalendarMonthView({
                         isCurrentMonth={isMonthDate}
                         workouts={workouts}
                         compact={true}
+                        gppCategoryId={gppCategoryId}
                       />
                     </YStack>
                   )

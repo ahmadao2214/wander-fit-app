@@ -1355,6 +1355,7 @@ export const getFullProgramCalendar = query({
       currentDay: program.currentDay,
       unlockedPhases,
       todayFocusTemplateId: scheduleOverride?.todayFocusTemplateId?.toString(),
+      gppCategoryId: program.gppCategoryId, // Category for consistent color scheme
     };
   },
 });

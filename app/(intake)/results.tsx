@@ -309,7 +309,7 @@ export default function ResultsScreen() {
           {/* Training Journey - Timeline View */}
           <Card p="$4" bg="$background" borderColor="$borderColor" borderWidth={1}>
             <YStack gap="$4">
-              <H3 fontSize="$5" color="$color12">Your {weeksPerPhase * 3}-Week Journey</H3>
+              <H3 fontSize="$5" color="$color12">Your {weeks}-Week Journey</H3>
 
               {/* Timeline visualization */}
               <TimelineView
