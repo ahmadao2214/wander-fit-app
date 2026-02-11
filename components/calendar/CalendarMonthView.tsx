@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useMemo, useCallback } from 'react'
 import { YStack, XStack, Text, Button, ScrollView } from 'tamagui'
 import { ChevronLeft, ChevronRight } from '@tamagui/lucide-icons'
 import { Animated, PanResponder, Dimensions } from 'react-native'
@@ -104,6 +104,18 @@ export function CalendarMonthView({
     return today >= start && today <= endWithBuffer
   })()
 
+  // Calculate navigation bounds
+  const programStart = programStartDate ? parseDateISO(programStartDate) : null
+  const programEnd = programEndDate ? addDays(parseDateISO(programEndDate), LAST_WEEK_BUFFER_DAYS) : null
+
+  // Check if current month is at navigation bounds
+  const isFirstMonth = programStart
+    ? currentYear === programStart.getFullYear() && currentMonthNum === programStart.getMonth()
+    : false
+  const isLastMonth = programEnd
+    ? currentYear === programEnd.getFullYear() && currentMonthNum === programEnd.getMonth()
+    : false
+
   // Split days into weeks
   const weeks: Date[][] = []
   for (let i = 0; i < calendarDays.length; i += 7) {
@@ -113,33 +125,47 @@ export function CalendarMonthView({
   const isCurrentMonthVisible =
     currentYear === today.getFullYear() && currentMonthNum === today.getMonth()
 
-  const handlePreviousMonth = () => {
-    onMonthChange(new Date(currentYear, currentMonthNum - 1, 1))
-  }
+  const handlePreviousMonth = useCallback(() => {
+    if (!isFirstMonth) {
+      onMonthChange(new Date(currentYear, currentMonthNum - 1, 1))
+    }
+  }, [isFirstMonth, onMonthChange, currentYear, currentMonthNum])
 
-  const handleNextMonth = () => {
-    onMonthChange(new Date(currentYear, currentMonthNum + 1, 1))
-  }
+  const handleNextMonth = useCallback(() => {
+    if (!isLastMonth) {
+      onMonthChange(new Date(currentYear, currentMonthNum + 1, 1))
+    }
+  }, [isLastMonth, onMonthChange, currentYear, currentMonthNum])
 
-  const handleGoToToday = () => {
+  const handleGoToToday = useCallback(() => {
     onMonthChange(new Date(today.getFullYear(), today.getMonth(), 1))
-  }
+  }, [onMonthChange, today])
 
   // Swipe gesture handling
   const panX = useRef(new Animated.Value(0)).current
 
-  const panResponder = useRef(
+  // Create pan responder with bound checks (recreated when bounds change)
+  const panResponder = useMemo(() =>
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gestureState) => {
         return Math.abs(gestureState.dx) > 10 && Math.abs(gestureState.dy) < 30
       },
       onPanResponderMove: (_, gestureState) => {
-        panX.setValue(gestureState.dx)
+        // Limit swipe if at bounds
+        if (isFirstMonth && gestureState.dx > 0) {
+          // At first month, limit right swipe (to go back)
+          panX.setValue(gestureState.dx * 0.3)
+        } else if (isLastMonth && gestureState.dx < 0) {
+          // At last month, limit left swipe (to go forward)
+          panX.setValue(gestureState.dx * 0.3)
+        } else {
+          panX.setValue(gestureState.dx)
+        }
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dx > SWIPE_THRESHOLD) {
+        if (gestureState.dx > SWIPE_THRESHOLD && !isFirstMonth) {
           handlePreviousMonth()
-        } else if (gestureState.dx < -SWIPE_THRESHOLD) {
+        } else if (gestureState.dx < -SWIPE_THRESHOLD && !isLastMonth) {
           handleNextMonth()
         }
         Animated.spring(panX, {
@@ -147,20 +173,25 @@ export function CalendarMonthView({
           useNativeDriver: true,
         }).start()
       },
-    })
-  ).current
+    }),
+  [isFirstMonth, isLastMonth, handlePreviousMonth, handleNextMonth, panX])
 
   return (
     <YStack flex={1} gap="$2">
       {/* Navigation header */}
       <XStack alignItems="center" justifyContent="space-between" px="$2">
-        <Button
-          size="$2"
-          circular
-          chromeless
-          icon={ChevronLeft}
-          onPress={handlePreviousMonth}
-        />
+        {/* Previous arrow - hidden at first month of program */}
+        {isFirstMonth ? (
+          <YStack width={32} height={32} />
+        ) : (
+          <Button
+            size="$2"
+            circular
+            chromeless
+            icon={ChevronLeft}
+            onPress={handlePreviousMonth}
+          />
+        )}
 
         <XStack alignItems="center" gap="$2">
           <Text fontSize="$4" fontWeight="600" color="$color12">
@@ -178,13 +209,18 @@ export function CalendarMonthView({
           )}
         </XStack>
 
-        <Button
-          size="$2"
-          circular
-          chromeless
-          icon={ChevronRight}
-          onPress={handleNextMonth}
-        />
+        {/* Next arrow - hidden at last month of program */}
+        {isLastMonth ? (
+          <YStack width={32} height={32} />
+        ) : (
+          <Button
+            size="$2"
+            circular
+            chromeless
+            icon={ChevronRight}
+            onPress={handleNextMonth}
+          />
+        )}
       </XStack>
 
 

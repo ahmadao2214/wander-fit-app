@@ -129,11 +129,22 @@ export function CalendarWeekView({
   const today = new Date()
 
   // Generate weeks within program bounds (memoized)
+  // Only includes weeks that contain workouts (based on calendarData)
   const weeks = useMemo(() => {
     if (programStartDate && programEndDate) {
       const startDate = parseDateISO(programStartDate)
       const endDate = parseDateISO(programEndDate)
-      return generateProgramWeeks(startDate, endDate)
+      const allWeeks = generateProgramWeeks(startDate, endDate)
+
+      // Filter to only weeks that have at least one workout
+      // This prevents showing empty weeks at the end of the program
+      return allWeeks.filter(weekStart => {
+        const weekDays = getWeekDays(weekStart)
+        return weekDays.some(d => {
+          const iso = formatDateISO(d)
+          return calendarData[iso]?.workouts?.length > 0
+        })
+      })
     }
     // Fallback: generate weeks around current week if no program bounds
     const fallbackWeeks: Date[] = []
@@ -142,7 +153,7 @@ export function CalendarWeekView({
       fallbackWeeks.push(addDays(center, i * 7))
     }
     return fallbackWeeks
-  }, [programStartDate, programEndDate, currentWeek])
+  }, [programStartDate, programEndDate, currentWeek, calendarData])
 
   // Find initial index - prefer today's week if within bounds, else first week
   const initialIndex = useMemo(() => {
@@ -157,6 +168,10 @@ export function CalendarWeekView({
   const displayedWeek = weeks[currentIndex] || currentWeek
   const weekDays = getWeekDays(displayedWeek)
   const isCurrentWeekVisible = weekDays.some((d) => isSameDay(d, today))
+
+  // Navigation bounds - hide arrows at first/last week
+  const isFirstWeek = currentIndex === 0
+  const isLastWeek = currentIndex === weeks.length - 1
 
   // Check if today is within the program bounds
   const isTodayInProgram = useMemo(() => {
@@ -329,13 +344,18 @@ export function CalendarWeekView({
     <YStack flex={1} gap="$2">
       {/* Navigation header */}
       <XStack alignItems="center" justifyContent="space-between" px="$2">
-        <Button
-          size="$2"
-          circular
-          chromeless
-          icon={ChevronLeft}
-          onPress={handlePreviousWeek}
-        />
+        {/* Previous arrow - hidden at first week */}
+        {isFirstWeek ? (
+          <YStack width={32} height={32} />
+        ) : (
+          <Button
+            size="$2"
+            circular
+            chromeless
+            icon={ChevronLeft}
+            onPress={handlePreviousWeek}
+          />
+        )}
 
         <XStack alignItems="center" gap="$2">
           <Text fontSize="$4" fontWeight="600" color="$color12">
@@ -353,13 +373,18 @@ export function CalendarWeekView({
           )}
         </XStack>
 
-        <Button
-          size="$2"
-          circular
-          chromeless
-          icon={ChevronRight}
-          onPress={handleNextWeek}
-        />
+        {/* Next arrow - hidden at last week */}
+        {isLastWeek ? (
+          <YStack width={32} height={32} />
+        ) : (
+          <Button
+            size="$2"
+            circular
+            chromeless
+            icon={ChevronRight}
+            onPress={handleNextWeek}
+          />
+        )}
       </XStack>
 
 

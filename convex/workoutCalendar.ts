@@ -71,6 +71,17 @@ function isSameDay(a: Date, b: Date): boolean {
   );
 }
 
+function startOfWeek(date: Date): Date {
+  const result = startOfDay(date);
+  const day = result.getDay();
+  result.setDate(result.getDate() - day);
+  return result;
+}
+
+function isSameWeek(a: Date, b: Date): boolean {
+  return isSameDay(startOfWeek(a), startOfWeek(b));
+}
+
 function findNextDayOfWeek(startDate: Date, dayOfWeek: number): Date {
   const result = startOfDay(startDate);
   const currentDay = result.getDay();
@@ -1137,6 +1148,38 @@ export const moveWorkoutToDate = mutation({
       return { success: true, noChange: true };
     }
 
+    // SAME-WEEK CONSTRAINT: Workouts can only move within the same calendar week
+    // Exception: Last week of program allows moves up to 7 days forward
+    const LAST_WEEK_BUFFER_DAYS = 7;
+    const sourceDate = parseDateISO(sourceCurrentDate);
+
+    // Calculate the last workout date in the program
+    const lastWorkoutSlot: WorkoutSlot = {
+      phase: "SSP",
+      week: weeksPerPhase,
+      day: trainingDays.length,
+    };
+    const programEndDate = getDateForWorkout(programStartDate, trainingDays, lastWorkoutSlot, weeksPerPhase);
+    const isLastWeek = isSameWeek(sourceDate, programEndDate);
+
+    if (isLastWeek) {
+      // Last week: allow moves up to LAST_WEEK_BUFFER_DAYS forward
+      const maxDate = addDays(sourceDate, LAST_WEEK_BUFFER_DAYS);
+      if (targetDate > maxDate) {
+        throw new Error(`Cannot move workout more than ${LAST_WEEK_BUFFER_DAYS} days forward from the last week`);
+      }
+      // Also prevent moving too far back (before the week starts)
+      const weekStart = startOfWeek(sourceDate);
+      if (targetDate < weekStart) {
+        throw new Error("Cannot move workout to a previous week");
+      }
+    } else {
+      // Normal weeks: must stay within the same calendar week
+      if (!isSameWeek(sourceDate, targetDate)) {
+        throw new Error("Workouts can only be moved within the same week");
+      }
+    }
+
     // Find if any slot is currently on the target date
     let targetSlot: WorkoutSlot | null = null;
     for (const phase of PHASE_ORDER) {
@@ -1631,10 +1674,6 @@ export const getFullProgramCalendar = query({
 
           if (template) {
             const isCompleted = completedTemplateIds.has(template._id.toString());
-            const isCurrentSlot =
-              slot.phase === currentSlot.phase &&
-              slot.week === currentSlot.week &&
-              slot.day === currentSlot.day;
             const isTodayDate = effectiveDateISO === todayISO;
             const isInProgress =
               inProgressSession?.templateId.toString() === template._id.toString();
@@ -1648,7 +1687,8 @@ export const getFullProgramCalendar = query({
               exerciseCount: template.exercises.length,
               estimatedDurationMinutes: template.estimatedDurationMinutes,
               isCompleted,
-              isToday: isTodayDate && (isCurrentSlot || isInProgress),
+              // isToday follows the date, not the slot - gradient shows on today's workout
+              isToday: isTodayDate && !isCompleted,
               isInProgress,
               isLocked,
               completedOnDate: completionDates.get(template._id.toString()),
