@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { YStack, XStack, Text, Button, Spinner, Card } from 'tamagui'
 import { Calendar, CalendarDays, Dumbbell, ArrowLeftRight } from '@tamagui/lucide-icons'
 import { useQuery, useMutation } from 'convex/react'
@@ -9,6 +9,17 @@ import { CalendarMonthView } from './CalendarMonthView'
 import type { Phase } from '../../types'
 
 type ViewMode = 'week' | 'month'
+
+interface WorkoutSlot {
+  phase: Phase
+  week: number
+  day: number
+}
+
+interface DropZone {
+  slot: WorkoutSlot
+  layout: { x: number; y: number; width: number; height: number }
+}
 
 interface DragSource {
   phase: Phase
@@ -40,7 +51,10 @@ export function WorkoutCalendar({
   const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode)
   const [currentDate, setCurrentDate] = useState(new Date())
   const [dragSource, setDragSource] = useState<DragSource | null>(null)
+  const [dragTarget, setDragTarget] = useState<WorkoutSlot | null>(null)
   const [isSwapping, setIsSwapping] = useState(false)
+  const dragPositionRef = useRef<{ x: number; y: number } | null>(null)
+  const dropZonesRef = useRef<Map<string, DropZone>>(new Map())
 
   // Fetch ALL calendar data upfront - no date range filtering
   // This ensures smooth navigation without loading states when scrolling
@@ -66,13 +80,47 @@ export function WorkoutCalendar({
   // Drag-drop handlers
   const handleDragStart = useCallback((phase: Phase, week: number, day: number) => {
     setDragSource({ phase, week, day })
+    setDragTarget(null)
+    dragPositionRef.current = null
   }, [])
 
-  const handleDragEnd = useCallback(() => {
-    setDragSource(null)
+  // Register drop zones when day cells report their layout
+  const handleDropZoneLayout = useCallback((
+    phase: Phase,
+    week: number,
+    day: number,
+    layout: { x: number; y: number; width: number; height: number }
+  ) => {
+    const key = `${phase}-${week}-${day}`
+    dropZonesRef.current.set(key, {
+      slot: { phase, week, day },
+      layout,
+    })
   }, [])
 
-  // Handle workout swap (for long-press swap UX)
+  const handleDragMove = useCallback((x: number, y: number) => {
+    dragPositionRef.current = { x, y }
+
+    // Find which drop zone contains this position
+    let foundTarget: WorkoutSlot | null = null
+
+    for (const [, dropZone] of dropZonesRef.current) {
+      const { layout, slot } = dropZone
+      if (
+        x >= layout.x &&
+        x <= layout.x + layout.width &&
+        y >= layout.y &&
+        y <= layout.y + layout.height
+      ) {
+        foundTarget = slot
+        break
+      }
+    }
+
+    setDragTarget(foundTarget)
+  }, [])
+
+  // Handle workout swap - defined before handleDragEnd since it depends on this
   const handleSwap = useCallback(async (
     sourcePhase: Phase,
     sourceWeek: number,
@@ -101,6 +149,34 @@ export function WorkoutCalendar({
       setDragSource(null)
     }
   }, [swapWorkouts, isSwapping])
+
+  const handleDragEnd = useCallback(async () => {
+    const source = dragSource
+    const target = dragTarget
+
+    // Clear drag state first
+    setDragSource(null)
+    setDragTarget(null)
+    dragPositionRef.current = null
+
+    // If we have both source and target, and they're different, trigger swap
+    if (
+      source &&
+      target &&
+      (source.phase !== target.phase ||
+        source.week !== target.week ||
+        source.day !== target.day)
+    ) {
+      await handleSwap(
+        source.phase,
+        source.week,
+        source.day,
+        target.phase,
+        target.week,
+        target.day
+      )
+    }
+  }, [dragSource, dragTarget, handleSwap])
 
   // Loading state
   if (fullCalendar === undefined) {
@@ -214,8 +290,10 @@ export function WorkoutCalendar({
             onWorkoutPress={onWorkoutPress}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
-            dragTargetSlot={dragSource}
+            onDragMove={handleDragMove}
+            dragTargetSlot={dragTarget}
             gppCategoryId={gppCategoryId}
+            onDropZoneLayout={handleDropZoneLayout}
           />
         ) : (
           <CalendarMonthView

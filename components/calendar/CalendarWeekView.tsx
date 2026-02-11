@@ -46,10 +46,14 @@ export interface CalendarWeekViewProps {
   onDragStart?: (phase: Phase, week: number, day: number) => void
   /** Called when drag ends */
   onDragEnd?: () => void
+  /** Called during drag with absolute position */
+  onDragMove?: (x: number, y: number) => void
   /** Current drag target slot for highlighting */
   dragTargetSlot?: { phase: Phase; week: number; day: number } | null
   /** Category ID for color coding (1-4) */
   gppCategoryId?: number
+  /** Callback to register drop zones */
+  onDropZoneLayout?: (phase: Phase, week: number, day: number, layout: { x: number; y: number; width: number; height: number }) => void
 }
 
 // Generate array of weeks around current date for infinite scroll feel
@@ -80,8 +84,10 @@ export function CalendarWeekView({
   onWorkoutLongPress,
   onDragStart,
   onDragEnd,
+  onDragMove,
   dragTargetSlot,
   gppCategoryId,
+  onDropZoneLayout,
 }: CalendarWeekViewProps) {
   const flatListRef = useRef<FlatList>(null)
   const [weeks] = useState(() => generateWeeks(currentWeek, 11))
@@ -172,14 +178,16 @@ export function CalendarWeekView({
               onWorkoutLongPress={onWorkoutLongPress}
               onDragStart={onDragStart}
               onDragEnd={onDragEnd}
+              onDragMove={onDragMove}
               isDropTarget={isDropTarget ?? false}
               gppCategoryId={gppCategoryId}
+              onLayout={onDropZoneLayout}
             />
           )
         })}
       </XStack>
     )
-  }, [calendarData, onWorkoutPress, onWorkoutLongPress, onDragStart, onDragEnd, dragTargetSlot, gppCategoryId])
+  }, [calendarData, onWorkoutPress, onWorkoutLongPress, onDragStart, onDragEnd, onDragMove, dragTargetSlot, gppCategoryId, onDropZoneLayout])
 
   const keyExtractor = useCallback((item: Date) => formatDateISO(item), [])
 
