@@ -79,6 +79,39 @@ function findNextDayOfWeek(startDate: Date, dayOfWeek: number): Date {
   return result;
 }
 
+/**
+ * Find the soonest training day on or after the start date
+ * This handles the case where the program is created mid-week
+ *
+ * @param startDate - The date to start looking from
+ * @param trainingDays - Array of day indices (0=Sun, 6=Sat), must be sorted
+ * @returns Object with the first training date and the index in trainingDays
+ */
+function findFirstTrainingDate(
+  startDate: Date,
+  trainingDays: number[]
+): { date: Date; dayIndex: number } {
+  const start = startOfDay(startDate);
+  const startDayOfWeek = start.getDay();
+
+  // Find the first training day on or after startDayOfWeek
+  let dayIndex = trainingDays.findIndex(d => d >= startDayOfWeek);
+
+  if (dayIndex === -1) {
+    // All training days are before startDayOfWeek in the week
+    // So we wrap to the first training day next week
+    dayIndex = 0;
+    const daysUntil = (trainingDays[0] - startDayOfWeek + 7) % 7;
+    const date = addDays(start, daysUntil === 0 ? 7 : daysUntil);
+    return { date, dayIndex };
+  }
+
+  // Found a training day in the current week
+  const daysUntil = trainingDays[dayIndex] - startDayOfWeek;
+  const date = addDays(start, daysUntil);
+  return { date, dayIndex };
+}
+
 function formatDateISO(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -1300,6 +1333,14 @@ export const getFullProgramCalendar = query({
             isLocked,
             completedOnDate: completionDates.get(template._id.toString()),
           });
+        } else {
+          // Template not found - this usually means templates need to be regenerated
+          // Run generateTemplates.generateAllTemplates({}) from Convex dashboard
+          const templateWeek = mapUserWeekToTemplateWeek(slot.week, weeksPerPhase);
+          console.warn(
+            `No template found for ${slot.phase}-W${templateWeek}-D${slot.day} ` +
+            `(userWeek: ${slot.week}) - templates may need regeneration`
+          );
         }
       }
 
