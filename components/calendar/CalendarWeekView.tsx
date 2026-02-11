@@ -226,14 +226,14 @@ export function CalendarWeekView({
     }
 
     return (
-      <YStack width={SCREEN_WIDTH} flex={1} px="$2" gap="$3">
+      <YStack width={SCREEN_WIDTH} flex={1} px="$1.5" gap="$3">
         {/* First row: Sun, Mon, Tue, Wed */}
-        <XStack flex={1} gap="$2">
+        <XStack flex={1} gap="$1.5">
           {firstRowDays.map(renderDayColumn)}
         </XStack>
 
         {/* Second row: Thu, Fri, Sat (+ empty spacer for alignment) */}
-        <XStack flex={1} gap="$2">
+        <XStack flex={1} gap="$1.5">
           {secondRowDays.map(renderDayColumn)}
           {/* Empty spacer to match 4-column layout */}
           <YStack flex={1} />
