@@ -28,7 +28,7 @@ export interface CalendarWorkout {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const PHASE_ORDER: Phase[] = ['GPP', 'SPP', 'SSP']
-export const WEEKS_PER_PHASE = 4
+export const DEFAULT_WEEKS_PER_PHASE = 4 // Fallback for backwards compatibility
 
 // Day names for display
 export const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
@@ -139,17 +139,52 @@ export function findNextDayOfWeek(startDate: Date, dayOfWeek: number): Date {
 }
 
 /**
+ * Find the soonest training day on or after the start date
+ * This handles the case where the program is created mid-week
+ *
+ * @param startDate - The date to start looking from
+ * @param trainingDays - Array of day indices (0=Sun, 6=Sat), must be sorted
+ * @returns Object with the first training date and the index in trainingDays
+ */
+export function findFirstTrainingDate(
+  startDate: Date,
+  trainingDays: number[]
+): { date: Date; dayIndex: number } {
+  const start = startOfDay(startDate)
+  const startDayOfWeek = start.getDay()
+
+  // Find the first training day on or after startDayOfWeek
+  let dayIndex = trainingDays.findIndex(d => d >= startDayOfWeek)
+
+  if (dayIndex === -1) {
+    // All training days are before startDayOfWeek in the week
+    // So we wrap to the first training day next week
+    dayIndex = 0
+    const daysUntil = (trainingDays[0] - startDayOfWeek + 7) % 7
+    const date = addDays(start, daysUntil === 0 ? 7 : daysUntil)
+    return { date, dayIndex }
+  }
+
+  // Found a training day in the current week
+  const daysUntil = trainingDays[dayIndex] - startDayOfWeek
+  const date = addDays(start, daysUntil)
+  return { date, dayIndex }
+}
+
+/**
  * Get the date for a specific workout given program parameters
  *
  * @param programStartDate - When the program started (user_programs.createdAt)
  * @param trainingDays - Array of training day indices [1, 3, 5] for Mon/Wed/Fri (0=Sun, 6=Sat)
  * @param slot - The workout slot (phase, week, day)
+ * @param weeksPerPhase - Number of weeks per phase (defaults to 4 for backwards compatibility)
  * @returns The calendar date for this workout
  */
 export function getDateForWorkout(
   programStartDate: Date,
   trainingDays: number[],
-  slot: WorkoutSlot
+  slot: WorkoutSlot,
+  weeksPerPhase: number = DEFAULT_WEEKS_PER_PHASE
 ): Date {
   // Validate inputs
   if (trainingDays.length === 0) {
@@ -168,29 +203,28 @@ export function getDateForWorkout(
 
   const workoutsPerWeek = sortedDays.length
   const absoluteIndex =
-    phaseIndex * WEEKS_PER_PHASE * workoutsPerWeek +
+    phaseIndex * weeksPerPhase * workoutsPerWeek +
     (slot.week - 1) * workoutsPerWeek +
     (slot.day - 1)
 
-  // Find the first training day on or after program start
   const start = startOfDay(programStartDate)
-  let currentDate = findNextDayOfWeek(start, sortedDays[0])
 
-  // If the first training day is before program start, move to next week
-  if (currentDate < start) {
-    currentDate = addDays(currentDate, 7)
-  }
+  // Use findFirstTrainingDate to handle mid-week program starts
+  // This ensures workouts start on the soonest training day (could be today)
+  const { date: firstTrainingDate, dayIndex: startDayIndex } = findFirstTrainingDate(start, sortedDays)
 
-  // Iterate through workouts until we reach the target index
   let workoutCount = 0
-  let currentDayIndex = 0
+  let currentDate = firstTrainingDate
+  let currentDayIndex = startDayIndex
 
   while (workoutCount < absoluteIndex) {
-    // Move to next training day
     currentDayIndex = (currentDayIndex + 1) % sortedDays.length
     if (currentDayIndex === 0) {
       // Wrapped around to start of week - move to next calendar week
-      currentDate = addDays(currentDate, 7 - (sortedDays[sortedDays.length - 1] - sortedDays[0]))
+      currentDate = addDays(
+        currentDate,
+        7 - (sortedDays[sortedDays.length - 1] - sortedDays[0])
+      )
       currentDate = findNextDayOfWeek(currentDate, sortedDays[0])
     } else {
       // Move to next training day in same week
@@ -209,12 +243,14 @@ export function getDateForWorkout(
  * @param programStartDate - When the program started
  * @param trainingDays - Array of training day indices
  * @param date - The date to look up
+ * @param weeksPerPhase - Number of weeks per phase (defaults to 4 for backwards compatibility)
  * @returns The workout slot for this date, or null if no workout on this date
  */
 export function getWorkoutForDate(
   programStartDate: Date,
   trainingDays: number[],
-  date: Date
+  date: Date,
+  weeksPerPhase: number = DEFAULT_WEEKS_PER_PHASE
 ): WorkoutSlot | null {
   const targetDate = startOfDay(date)
   const targetDayOfWeek = targetDate.getDay()
@@ -225,9 +261,10 @@ export function getWorkoutForDate(
     return null // Not a training day
   }
 
-  // Calculate which workout index this date corresponds to
   const start = startOfDay(programStartDate)
-  const firstTrainingDate = findNextDayOfWeek(start, sortedDays[0])
+
+  // Use findFirstTrainingDate to handle mid-week program starts
+  const { date: firstTrainingDate, dayIndex: startDayIndex } = findFirstTrainingDate(start, sortedDays)
 
   if (targetDate < firstTrainingDate) {
     return null // Before program start
@@ -236,13 +273,19 @@ export function getWorkoutForDate(
   // Count how many workouts from start to this date
   let workoutIndex = 0
   let currentDate = firstTrainingDate
-  let currentDayIndex = 0
+  let currentDayIndex = startDayIndex
+
+  // Increase limit for longer programs (max 8 weeks × 3 phases × 7 days = 168)
+  const maxWorkouts = weeksPerPhase * PHASE_ORDER.length * sortedDays.length + 50
 
   while (!isSameDay(currentDate, targetDate)) {
-    // Move to next training day
     currentDayIndex = (currentDayIndex + 1) % sortedDays.length
     if (currentDayIndex === 0) {
-      currentDate = addDays(currentDate, 7 - (sortedDays[sortedDays.length - 1] - sortedDays[0]))
+      // Moving to next week - jump to the first training day
+      currentDate = addDays(
+        currentDate,
+        7 - (sortedDays[sortedDays.length - 1] - sortedDays[0])
+      )
       currentDate = findNextDayOfWeek(currentDate, sortedDays[0])
     } else {
       const daysDiff = sortedDays[currentDayIndex] - sortedDays[currentDayIndex - 1]
@@ -250,15 +293,14 @@ export function getWorkoutForDate(
     }
     workoutIndex++
 
-    // Safety: don't loop forever (max 12 weeks * 7 days = 84 workouts)
-    if (workoutIndex > 100) {
+    if (workoutIndex > maxWorkouts) {
       return null
     }
   }
 
   // Convert workout index back to (phase, week, day)
   const workoutsPerWeek = sortedDays.length
-  const totalWorkoutsPerPhase = WEEKS_PER_PHASE * workoutsPerWeek
+  const totalWorkoutsPerPhase = weeksPerPhase * workoutsPerWeek
 
   const phaseIndex = Math.floor(workoutIndex / totalWorkoutsPerPhase)
   if (phaseIndex >= PHASE_ORDER.length) {
@@ -283,13 +325,15 @@ export function getWorkoutForDate(
  * @param trainingDays - Array of training day indices
  * @param startDate - Start of date range
  * @param endDate - End of date range
+ * @param weeksPerPhase - Number of weeks per phase (defaults to 4)
  * @returns Array of calendar workouts within the range
  */
 export function getWorkoutsInRange(
   programStartDate: Date,
   trainingDays: number[],
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  weeksPerPhase: number = DEFAULT_WEEKS_PER_PHASE
 ): CalendarWorkout[] {
   const workouts: CalendarWorkout[] = []
   const sortedDays = [...trainingDays].sort((a, b) => a - b)
@@ -300,11 +344,11 @@ export function getWorkoutsInRange(
   const end = startOfDay(endDate)
 
   while (currentDate <= end) {
-    const slot = getWorkoutForDate(programStartDate, trainingDays, currentDate)
+    const slot = getWorkoutForDate(programStartDate, trainingDays, currentDate, weeksPerPhase)
     if (slot) {
       const phaseIndex = PHASE_ORDER.indexOf(slot.phase)
       const absoluteWorkoutIndex =
-        phaseIndex * WEEKS_PER_PHASE * workoutsPerWeek +
+        phaseIndex * weeksPerPhase * workoutsPerWeek +
         (slot.week - 1) * workoutsPerWeek +
         (slot.day - 1)
 
@@ -324,10 +368,14 @@ export function getWorkoutsInRange(
  * Get the total number of workouts in the program
  *
  * @param trainingDays - Array of training day indices
+ * @param weeksPerPhase - Number of weeks per phase (defaults to 4)
  * @returns Total workout count
  */
-export function getTotalWorkouts(trainingDays: number[]): number {
-  return PHASE_ORDER.length * WEEKS_PER_PHASE * trainingDays.length
+export function getTotalWorkouts(
+  trainingDays: number[],
+  weeksPerPhase: number = DEFAULT_WEEKS_PER_PHASE
+): number {
+  return PHASE_ORDER.length * weeksPerPhase * trainingDays.length
 }
 
 /**
@@ -335,18 +383,19 @@ export function getTotalWorkouts(trainingDays: number[]): number {
  *
  * @param programStartDate - When the program started
  * @param trainingDays - Array of training day indices
+ * @param weeksPerPhase - Number of weeks per phase (defaults to 4)
  * @returns The date of the last workout
  */
 export function getProgramEndDate(
   programStartDate: Date,
-  trainingDays: number[]
+  trainingDays: number[],
+  weeksPerPhase: number = DEFAULT_WEEKS_PER_PHASE
 ): Date {
-  const totalWorkouts = getTotalWorkouts(trainingDays)
   return getDateForWorkout(programStartDate, trainingDays, {
     phase: 'SSP',
-    week: WEEKS_PER_PHASE,
+    week: weeksPerPhase,
     day: trainingDays.length,
-  })
+  }, weeksPerPhase)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

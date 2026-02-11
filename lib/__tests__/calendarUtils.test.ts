@@ -8,6 +8,7 @@ import {
   formatDateISO,
   parseDateISO,
   findNextDayOfWeek,
+  findFirstTrainingDate,
   getDateForWorkout,
   getWorkoutForDate,
   getWorkoutsInRange,
@@ -18,7 +19,7 @@ import {
   getMonthCalendarDays,
   formatMonthYear,
   PHASE_ORDER,
-  WEEKS_PER_PHASE,
+  DEFAULT_WEEKS_PER_PHASE,
 } from '../calendarUtils'
 
 describe('calendarUtils', () => {
