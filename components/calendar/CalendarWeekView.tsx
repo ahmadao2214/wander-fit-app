@@ -267,9 +267,11 @@ export function CalendarWeekView({
 
       const isDropTarget = dragTargetDate === dateISO && dragSourceSlot !== null
 
-      // Check if this date is a valid drop target (same week as source)
+      // Check if this date is a valid drop target:
+      // 1. Must be same week as source
+      // 2. Must be on or after source date (no backward movement)
       const isValidDropTarget = sourceEffectiveDate
-        ? isSameWeek(date, sourceEffectiveDate)
+        ? isSameWeek(date, sourceEffectiveDate) && date >= sourceEffectiveDate
         : true
 
       return (
@@ -324,43 +326,20 @@ export function CalendarWeekView({
       )
     }
 
-    // Check if rows have workouts to determine layout
-    const firstRowHasWorkouts = firstRowDays.some(d => {
-      const iso = formatDateISO(d)
-      return calendarData[iso]?.workouts?.length > 0
-    })
-    const secondRowHasWorkouts = secondRowDays.some(d => {
-      const iso = formatDateISO(d)
-      return calendarData[iso]?.workouts?.length > 0
-    })
-
-    // Row without workouts: fixed 60px height for headers only
-    // Row with workouts: flex={1} to fill remaining space
+    // Both rows split the space evenly (flex={1} each)
+    // This prevents the disparity where one row takes all space
     return (
       <YStack width={SCREEN_WIDTH} flex={1} px="$1.5" gap="$2">
-        {/* First row: Sun, Mon, Tue, Wed */}
-        {firstRowHasWorkouts ? (
-          <XStack gap="$1.5" flex={1}>
-            {firstRowDays.map(renderDayColumn)}
-          </XStack>
-        ) : (
-          <XStack gap="$1.5" height={60}>
-            {firstRowDays.map(renderDayColumn)}
-          </XStack>
-        )}
+        {/* First row: Sun, Mon, Tue, Wed - always takes half the space */}
+        <XStack gap="$1.5" flex={1}>
+          {firstRowDays.map(renderDayColumn)}
+        </XStack>
 
-        {/* Second row: Thu, Fri, Sat (+ empty spacer for alignment) */}
-        {secondRowHasWorkouts ? (
-          <XStack gap="$1.5" flex={1}>
-            {secondRowDays.map(renderDayColumn)}
-            <YStack flex={1} minWidth={0} />
-          </XStack>
-        ) : (
-          <XStack gap="$1.5" height={60}>
-            {secondRowDays.map(renderDayColumn)}
-            <YStack flex={1} minWidth={0} />
-          </XStack>
-        )}
+        {/* Second row: Thu, Fri, Sat (+ empty spacer for alignment) - always takes half the space */}
+        <XStack gap="$1.5" flex={1}>
+          {secondRowDays.map(renderDayColumn)}
+          <YStack flex={1} minWidth={0} />
+        </XStack>
       </YStack>
     )
   }, [calendarData, onWorkoutPress, onWorkoutLongPress, onDragStart, onDragEnd, onDragMove, dragTargetDate, dragSourceSlot, gppCategoryId, onDropZoneLayout, onDropZoneUnregister])

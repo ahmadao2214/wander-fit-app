@@ -289,9 +289,11 @@ export function CalendarMonthView({
                     // Check if hovering over this cell
                     const isDropTarget = dragTargetDate === dateISO && dragSourceSlot !== null
 
-                    // Check if this date is a valid drop target (same week as source)
+                    // Check if this date is a valid drop target:
+                    // 1. Must be same week as source
+                    // 2. Must be on or after source date (no backward movement)
                     const isValidDropTarget = sourceEffectiveDate
-                      ? isSameWeek(date, sourceEffectiveDate)
+                      ? isSameWeek(date, sourceEffectiveDate) && date >= sourceEffectiveDate
                       : true
 
                     return (
