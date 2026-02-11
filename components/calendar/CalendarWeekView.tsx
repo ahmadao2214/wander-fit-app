@@ -176,7 +176,7 @@ export function CalendarWeekView({
       const isDropTarget = dragTargetDate === dateISO && dragSourceSlot !== null
 
       return (
-        <YStack key={dateISO} flex={1} gap="$1">
+        <YStack key={dateISO} flex={1} gap="$1" minWidth={0}>
           {/* Day header */}
           <YStack alignItems="center" gap="$0.5">
             <Text
@@ -236,7 +236,7 @@ export function CalendarWeekView({
         <XStack flex={1} gap="$1.5">
           {secondRowDays.map(renderDayColumn)}
           {/* Empty spacer to match 4-column layout */}
-          <YStack flex={1} />
+          <YStack flex={1} minWidth={0} />
         </XStack>
       </YStack>
     )
