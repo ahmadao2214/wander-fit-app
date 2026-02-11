@@ -290,10 +290,12 @@ export function CalendarMonthView({
                     const isDropTarget = dragTargetDate === dateISO && dragSourceSlot !== null
 
                     // Check if this date is a valid drop target:
-                    // Must be same week as source (can move to any day within the week)
+                    // 1. Must be same week as source
+                    // 2. Cannot be in the past (before today)
+                    const isInPast = date < today && !isSameDay(date, today)
                     const isValidDropTarget = sourceEffectiveDate
-                      ? isSameWeek(date, sourceEffectiveDate)
-                      : true
+                      ? isSameWeek(date, sourceEffectiveDate) && !isInPast
+                      : !isInPast
 
                     return (
                       <YStack

@@ -1153,6 +1153,12 @@ export const moveWorkoutToDate = mutation({
     const LAST_WEEK_BUFFER_DAYS = 7;
     const sourceDate = parseDateISO(sourceCurrentDate);
 
+    // NO PAST DATES CONSTRAINT: Cannot move workouts to dates in the past
+    const todayStart = startOfDay(new Date());
+    if (targetDate < todayStart) {
+      throw new Error("Cannot move workout to a past date");
+    }
+
     // Calculate the last workout date in the program
     const lastWorkoutSlot: WorkoutSlot = {
       phase: "SSP",
