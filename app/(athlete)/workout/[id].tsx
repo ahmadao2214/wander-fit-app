@@ -295,9 +295,18 @@ export default function WorkoutDetailScreen() {
       <YStack gap="$3" pb="$3">
         {/* Phase and Intensity Badges */}
         <XStack gap="$2" flexWrap="wrap" items="center">
-          {/* Phase Badge - neutral brand colors */}
-          <Card bg="$brand2" px="$3" py="$1" rounded="$10">
-            <Text fontSize="$2" color="$primary" fontWeight="600">
+          {/* Phase Badge - phase-specific colors (GPP=blue, SPP=orange, SSP=green) */}
+          <Card
+            bg={template.phase === 'GPP' ? '$blue2' : template.phase === 'SPP' ? '$orange2' : '$green2'}
+            px="$3"
+            py="$1"
+            rounded="$10"
+          >
+            <Text
+              fontSize="$2"
+              color={template.phase === 'GPP' ? '$blue9' : template.phase === 'SPP' ? '$orange9' : '$green9'}
+              fontWeight="600"
+            >
               {template.phase}
             </Text>
           </Card>

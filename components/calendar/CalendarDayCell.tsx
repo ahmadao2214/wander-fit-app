@@ -176,41 +176,41 @@ export function CalendarDayCell({
     )
   }
 
-  // Week view - compact cards for 5+ days visible
+  // Week view - expanded cards to fill vertical space
   return (
     <View
       ref={viewRef}
       onLayout={handleLayout}
       style={{
         flex: 1,
-        minWidth: 64,
-        backgroundColor: isDropTarget ? '#dbeafe' : isToday ? 'rgba(0,0,0,0.03)' : 'transparent',
+        minWidth: 48,
+        backgroundColor: isDropTarget ? '#dbeafe' : isToday ? 'rgba(59, 130, 246, 0.05)' : 'transparent',
         borderRadius: 8,
         padding: 4,
-        borderWidth: isDropTarget ? 2 : 0,
-        borderColor: isDropTarget ? '#3b82f6' : 'transparent',
-        borderStyle: 'dashed',
+        borderWidth: isDropTarget ? 2 : isToday ? 1 : 0,
+        borderColor: isDropTarget ? '#3b82f6' : isToday ? 'rgba(59, 130, 246, 0.3)' : 'transparent',
+        borderStyle: isDropTarget ? 'dashed' : 'solid',
       }}
     >
-      {/* Day header - compact */}
-      <YStack alignItems="center" gap="$0.5">
+      {/* Day header */}
+      <YStack alignItems="center" gap="$0.5" pb="$1.5">
         <Text
-          fontSize={10}
+          fontSize={11}
           fontWeight="500"
-          color="$color10"
+          color={isToday ? '$primary' : '$color10'}
         >
           {dayOfWeek}
         </Text>
         <YStack
-          width={24}
-          height={24}
-          borderRadius={12}
+          width={28}
+          height={28}
+          borderRadius={14}
           backgroundColor={isToday ? '$primary' : 'transparent'}
           alignItems="center"
           justifyContent="center"
         >
           <Text
-            fontSize={12}
+            fontSize={14}
             fontWeight={isToday ? '700' : '500'}
             color={isToday ? 'white' : '$color12'}
           >
@@ -219,9 +219,9 @@ export function CalendarDayCell({
         </YStack>
       </YStack>
 
-      {/* Workout cards - only show if there are workouts */}
-      {workouts.length > 0 && (
-        <YStack gap="$1" mt="$1">
+      {/* Workout cards - expand to fill space */}
+      {workouts.length > 0 ? (
+        <YStack gap="$2" flex={1}>
           {workouts.map((workout, idx) => {
             const slotKey = workout.slotPhase && workout.slotWeek && workout.slotDay
               ? `${workout.slotPhase}-${workout.slotWeek}-${workout.slotDay}`
@@ -247,6 +247,13 @@ export function CalendarDayCell({
               />
             )
           })}
+        </YStack>
+      ) : (
+        // Rest day indicator
+        <YStack flex={1} alignItems="center" justifyContent="center" opacity={0.4}>
+          <Text fontSize={10} color="$color9" textAlign="center">
+            Rest
+          </Text>
         </YStack>
       )}
     </View>

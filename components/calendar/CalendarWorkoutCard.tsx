@@ -115,7 +115,7 @@ export function CalendarWorkoutCard({
     )
   }
 
-  // Compact card for week view - fits 5+ days on screen
+  // Week view card - expanded with more details
   return (
     <Card
       pressStyle={isLocked ? undefined : { opacity: 0.8, scale: 0.98 }}
@@ -124,36 +124,59 @@ export function CalendarWorkoutCard({
       backgroundColor={getBgColor()}
       borderColor={getBorderColor()}
       borderWidth={isToday || isInProgress ? 2 : 1}
-      p="$1.5"
-      borderRadius="$2"
+      borderLeftWidth={4}
+      borderLeftColor={isLocked ? '$gray6' : colors.dot}
+      p="$2"
+      borderRadius="$3"
       opacity={isLocked ? 0.5 : isCompleted ? 0.7 : 1}
+      flex={1}
     >
-      <YStack gap="$0.5">
-        {/* Phase dot with status */}
+      <YStack gap="$1.5" flex={1}>
+        {/* Phase badge and status row */}
         <XStack alignItems="center" justifyContent="space-between">
-          <YStack
-            width={6}
-            height={6}
-            borderRadius={10}
-            backgroundColor={isLocked ? '$gray6' : colors.dot}
-          />
+          <XStack
+            bg={isLocked ? '$gray4' : colors.bg}
+            px="$1.5"
+            py="$0.5"
+            borderRadius="$2"
+          >
+            <Text
+              fontSize={9}
+              fontWeight="600"
+              color={isLocked ? '$gray9' : colors.dot}
+            >
+              {phase} W{week}D{day}
+            </Text>
+          </XStack>
           {getStatusIcon()}
         </XStack>
 
-        {/* Workout name - truncated */}
+        {/* Workout name - allow more lines */}
         <Text
-          fontSize={10}
-          fontWeight="600"
+          fontSize={12}
+          fontWeight="700"
           color={isLocked || isCompleted ? '$color10' : '$color12'}
-          numberOfLines={2}
+          numberOfLines={3}
+          lineHeight={16}
         >
           {name}
         </Text>
 
-        {/* Meta info - minimal */}
-        <Text fontSize={9} color="$color9">
-          {isLocked ? phase : `${exerciseCount}ex · ${estimatedDurationMinutes}m`}
-        </Text>
+        {/* Spacer to push meta to bottom */}
+        <YStack flex={1} />
+
+        {/* Meta info row */}
+        <XStack alignItems="center" gap="$2" flexWrap="wrap">
+          <XStack alignItems="center" gap="$1">
+            <Clock size={10} color="$color9" />
+            <Text fontSize={10} color="$color9">
+              {estimatedDurationMinutes}m
+            </Text>
+          </XStack>
+          <Text fontSize={10} color="$color9">
+            {exerciseCount} exercises
+          </Text>
+        </XStack>
       </YStack>
     </Card>
   )

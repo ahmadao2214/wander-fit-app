@@ -120,7 +120,9 @@ export function CalendarWeekView({
     const todayWeekStart = startOfWeek(today)
     const index = weeks.findIndex((w) => isSameDay(w, todayWeekStart))
     if (index >= 0) {
+      setCurrentIndex(index)
       flatListRef.current?.scrollToIndex({ index, animated: true })
+      onWeekChange(weeks[index])
     } else {
       // Today's week is outside our range, update the parent
       onWeekChange(today)
@@ -140,7 +142,7 @@ export function CalendarWeekView({
     const days = getWeekDays(weekStart)
 
     return (
-      <XStack width={SCREEN_WIDTH} px="$2">
+      <XStack width={SCREEN_WIDTH} px="$2" flex={1}>
         {days.map((date) => {
           const dateISO = formatDateISO(date)
           const dayData = calendarData[dateISO]
@@ -195,7 +197,7 @@ export function CalendarWeekView({
         })}
       </XStack>
     )
-  }, [calendarData, onWorkoutPress, onWorkoutLongPress, onDragStart, onDragEnd, onDragMove, dragTargetSlot, gppCategoryId, onDropZoneLayout])
+  }, [calendarData, onWorkoutPress, onWorkoutLongPress, onDragStart, onDragEnd, onDragMove, dragTargetSlot, dragSourceSlot, gppCategoryId, onDropZoneLayout])
 
   const keyExtractor = useCallback((item: Date) => formatDateISO(item), [])
 
@@ -257,6 +259,8 @@ export function CalendarWeekView({
         decelerationRate="fast"
         snapToInterval={SCREEN_WIDTH}
         snapToAlignment="start"
+        style={{ flex: 1 }}
+        contentContainerStyle={{ alignItems: 'stretch' }}
       />
     </YStack>
   )
