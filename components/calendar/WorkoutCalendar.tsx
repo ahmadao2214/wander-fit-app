@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
-import { YStack, XStack, Text, Button, Spinner, Card } from 'tamagui'
-import { Calendar, CalendarDays, Dumbbell, ArrowLeftRight } from '@tamagui/lucide-icons'
+import { YStack, XStack, Text, Button, Spinner } from 'tamagui'
+import { Calendar, CalendarDays, Dumbbell } from '@tamagui/lucide-icons'
 import { useQuery, useMutation } from 'convex/react'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { api } from '../../convex/_generated/api'
@@ -101,6 +101,11 @@ export function WorkoutCalendar({
       dateISO,
       layout,
     })
+  }, [])
+
+  // Unregister drop zone when day cell unmounts (prevents stale zones)
+  const handleDropZoneUnregister = useCallback((dateISO: string) => {
+    dropZonesRef.current.delete(dateISO)
   }, [])
 
   const handleDragMove = useCallback((x: number, y: number) => {
@@ -246,21 +251,6 @@ export function WorkoutCalendar({
         </Button>
       </XStack>
 
-      {/* Progress summary */}
-      <Card p="$3" bg="$color2" borderColor="$borderColor" borderWidth={1}>
-        <XStack items="center" justify="space-between">
-          <XStack items="center" gap="$2">
-            <Dumbbell size={16} color="$primary" />
-            <Text fontSize={13} color="$color11">
-              {fullCalendar.completedWorkouts} / {fullCalendar.totalWorkouts} workouts completed
-            </Text>
-          </XStack>
-          <Text fontSize={13} fontWeight="600" color="$primary">
-            {Math.round((fullCalendar.completedWorkouts / fullCalendar.totalWorkouts) * 100)}%
-          </Text>
-        </XStack>
-      </Card>
-
       {/* Calendar view */}
       <GestureHandlerRootView style={{ flex: 1 }}>
         {viewMode === 'week' ? (
@@ -276,6 +266,7 @@ export function WorkoutCalendar({
             dragSourceSlot={dragSource}
             gppCategoryId={gppCategoryId}
             onDropZoneLayout={handleDropZoneLayout}
+            onDropZoneUnregister={handleDropZoneUnregister}
           />
         ) : (
           <CalendarMonthView
@@ -291,6 +282,7 @@ export function WorkoutCalendar({
             dragTargetDate={dragTargetDate}
             dragSourceSlot={dragSource}
             onDropZoneLayout={handleDropZoneLayout}
+            onDropZoneUnregister={handleDropZoneUnregister}
           />
         )}
       </GestureHandlerRootView>

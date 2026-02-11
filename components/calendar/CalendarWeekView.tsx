@@ -57,6 +57,8 @@ export interface CalendarWeekViewProps {
   gppCategoryId?: number
   /** Callback to register drop zones (date-based) */
   onDropZoneLayout?: (dateISO: string, layout: { x: number; y: number; width: number; height: number }) => void
+  /** Callback to unregister drop zones on unmount */
+  onDropZoneUnregister?: (dateISO: string) => void
 }
 
 // Generate array of weeks around current date for infinite scroll feel
@@ -92,6 +94,7 @@ export function CalendarWeekView({
   dragSourceSlot,
   gppCategoryId,
   onDropZoneLayout,
+  onDropZoneUnregister,
 }: CalendarWeekViewProps) {
   // Disable FlatList scrolling while dragging to prevent gesture conflicts
   const isDragging = dragSourceSlot !== null && dragSourceSlot !== undefined
@@ -221,13 +224,14 @@ export function CalendarWeekView({
                 isDropTarget={isDropTarget}
                 gppCategoryId={gppCategoryId}
                 onDropZoneLayout={onDropZoneLayout}
+                onDropZoneUnregister={onDropZoneUnregister}
               />
             )
           })}
         </XStack>
       </YStack>
     )
-  }, [calendarData, onWorkoutPress, onWorkoutLongPress, onDragStart, onDragEnd, onDragMove, dragTargetDate, dragSourceSlot, gppCategoryId, onDropZoneLayout])
+  }, [calendarData, onWorkoutPress, onWorkoutLongPress, onDragStart, onDragEnd, onDragMove, dragTargetDate, dragSourceSlot, gppCategoryId, onDropZoneLayout, onDropZoneUnregister])
 
   const keyExtractor = useCallback((item: Date) => formatDateISO(item), [])
 

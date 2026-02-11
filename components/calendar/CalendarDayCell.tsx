@@ -1,4 +1,4 @@
-import { useCallback, useRef, useEffect } from 'react'
+import { useCallback, useRef, useEffect, useMemo } from 'react'
 import { YStack, XStack, Text } from 'tamagui'
 import { View, LayoutChangeEvent } from 'react-native'
 import { CalendarWorkoutCard, CalendarWorkoutCardProps } from './CalendarWorkoutCard'
@@ -45,6 +45,8 @@ export interface CalendarDayCellProps {
   isDropTarget?: boolean
   /** Register this cell as a drop zone (date-based) */
   onDropZoneLayout?: (dateISO: string, layout: { x: number; y: number; width: number; height: number }) => void
+  /** Unregister this cell as a drop zone (cleanup on unmount) */
+  onDropZoneUnregister?: (dateISO: string) => void
   /** Category ID for color coding (1-4) */
   gppCategoryId?: number
 }
@@ -77,6 +79,7 @@ export function CalendarDayCell({
   onDragMove,
   isDropTarget = false,
   onDropZoneLayout,
+  onDropZoneUnregister,
   gppCategoryId,
 }: CalendarDayCellProps) {
   const dayNumber = date.getDate()
@@ -89,6 +92,13 @@ export function CalendarDayCell({
       onDropZoneLayout?.(dateISO, { x, y, width, height })
     })
   }, [dateISO, onDropZoneLayout])
+
+  // Cleanup: unregister drop zone when component unmounts
+  useEffect(() => {
+    return () => {
+      onDropZoneUnregister?.(dateISO)
+    }
+  }, [dateISO, onDropZoneUnregister])
 
   // Handle long press on workout card to initiate drag
   const handleWorkoutLongPress = useCallback((workout: WorkoutWithSlot) => {

@@ -1,5 +1,5 @@
 import { YStack, XStack, Text, Card } from 'tamagui'
-import { CheckCircle, Play, Clock, Lock } from '@tamagui/lucide-icons'
+import { CheckCircle, Play, Clock, Lock, Dumbbell } from '@tamagui/lucide-icons'
 import type { Phase } from '../../types'
 
 /**
@@ -155,16 +155,24 @@ export function CalendarWorkoutCard({
           {name}
         </Text>
 
-        {/* Spacer to push duration to bottom */}
+        {/* Spacer to push info to bottom */}
         <YStack flex={1} />
 
-        {/* Duration at bottom */}
-        <XStack alignItems="center" gap="$1">
-          <Clock size={10} color="$color9" />
-          <Text fontSize={10} color="$color9">
-            {estimatedDurationMinutes}m
-          </Text>
-        </XStack>
+        {/* Exercise count and duration at bottom */}
+        <YStack gap="$0.5">
+          <XStack alignItems="center" gap="$1">
+            <Dumbbell size={10} color="$color9" />
+            <Text fontSize={10} color="$color9">
+              {exerciseCount} exercises
+            </Text>
+          </XStack>
+          <XStack alignItems="center" gap="$1">
+            <Clock size={10} color="$color9" />
+            <Text fontSize={10} color="$color9">
+              ~{estimatedDurationMinutes}m
+            </Text>
+          </XStack>
+        </YStack>
       </YStack>
     </Card>
   )

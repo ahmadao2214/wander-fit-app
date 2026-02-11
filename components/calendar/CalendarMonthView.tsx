@@ -53,6 +53,8 @@ export interface CalendarMonthViewProps {
   dragSourceSlot?: { phase: Phase; week: number; day: number } | null
   /** Callback to register drop zones (date-based) */
   onDropZoneLayout?: (dateISO: string, layout: { x: number; y: number; width: number; height: number }) => void
+  /** Callback to unregister drop zones on unmount */
+  onDropZoneUnregister?: (dateISO: string) => void
 }
 
 /**
@@ -75,6 +77,7 @@ export function CalendarMonthView({
   dragTargetDate,
   dragSourceSlot,
   onDropZoneLayout,
+  onDropZoneUnregister,
 }: CalendarMonthViewProps) {
   const today = new Date()
   const currentYear = currentMonth.getFullYear()
@@ -232,6 +235,7 @@ export function CalendarMonthView({
                         onDragMove={onDragMove}
                         isDropTarget={isDropTarget}
                         onDropZoneLayout={onDropZoneLayout}
+                        onDropZoneUnregister={onDropZoneUnregister}
                       />
                     </YStack>
                   )
