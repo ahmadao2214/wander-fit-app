@@ -60,7 +60,6 @@ export default function ProgramPage() {
         bg="$background"
         pt={insets.top + 16}
         pb={insets.bottom}
-        px="$4"
       >
         <WorkoutCalendar
           onWorkoutPress={handleWorkoutPress}
