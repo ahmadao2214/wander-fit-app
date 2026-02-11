@@ -115,7 +115,7 @@ export function CalendarWorkoutCard({
     )
   }
 
-  // Week view card - compact design for narrow columns
+  // Week view card - fills available height
   return (
     <Card
       pressStyle={isLocked ? undefined : { opacity: 0.8, scale: 0.98 }}
@@ -126,51 +126,45 @@ export function CalendarWorkoutCard({
       borderWidth={isToday || isInProgress ? 2 : 1}
       borderLeftWidth={3}
       borderLeftColor={isLocked ? '$gray6' : colors.dot}
-      px="$1.5"
+      px="$2"
       py="$2"
-      borderRadius="$2"
+      borderRadius="$3"
       opacity={isLocked ? 0.5 : isCompleted ? 0.7 : 1}
       flex={1}
-      minHeight={80}
     >
-      <YStack gap="$1" flex={1}>
-        {/* Status icon at top right */}
-        {(isLocked || isCompleted || isInProgress) && (
-          <XStack justifyContent="flex-end">
-            {getStatusIcon()}
-          </XStack>
-        )}
-
-        {/* Workout name - primary content */}
-        <Text
-          fontSize={11}
-          fontWeight="600"
-          color={isLocked || isCompleted ? '$color10' : '$color12'}
-          numberOfLines={4}
-          lineHeight={14}
-        >
-          {name}
-        </Text>
-
-        {/* Spacer */}
-        <YStack flex={1} minHeight={4} />
-
-        {/* Phase and duration at bottom */}
-        <YStack gap="$0.5">
+      <YStack gap="$1.5" flex={1}>
+        {/* Phase badge at top */}
+        <XStack alignItems="center" justifyContent="space-between">
           <Text
-            fontSize={9}
-            fontWeight="600"
+            fontSize={10}
+            fontWeight="700"
             color={isLocked ? '$gray8' : colors.dot}
           >
             {phase}
           </Text>
-          <XStack alignItems="center" gap="$0.5">
-            <Clock size={9} color="$color8" />
-            <Text fontSize={9} color="$color8">
-              {estimatedDurationMinutes}m
-            </Text>
-          </XStack>
-        </YStack>
+          {getStatusIcon()}
+        </XStack>
+
+        {/* Workout name - main content */}
+        <Text
+          fontSize={11}
+          fontWeight="600"
+          color={isLocked || isCompleted ? '$color10' : '$color12'}
+          numberOfLines={3}
+        >
+          {name}
+        </Text>
+
+        {/* Spacer to push duration to bottom */}
+        <YStack flex={1} />
+
+        {/* Duration at bottom */}
+        <XStack alignItems="center" gap="$1">
+          <Clock size={10} color="$color9" />
+          <Text fontSize={10} color="$color9">
+            {estimatedDurationMinutes}m
+          </Text>
+        </XStack>
       </YStack>
     </Card>
   )

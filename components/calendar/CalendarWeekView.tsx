@@ -143,30 +143,30 @@ export function CalendarWeekView({
     const days = getWeekDays(weekStart)
 
     return (
-      <YStack width={SCREEN_WIDTH} flex={1} px="$2">
-        {/* Day headers row */}
-        <XStack mb="$2">
+      <YStack width={SCREEN_WIDTH} flex={1} px="$1.5">
+        {/* Day headers row - compact to save space */}
+        <XStack mb="$1.5">
           {days.map((date, idx) => {
             const isDateToday = isSameDay(date, today)
             return (
-              <YStack key={idx} flex={1} alignItems="center" gap="$1">
+              <YStack key={idx} flex={1} alignItems="center" gap="$0.5">
                 <Text
-                  fontSize={12}
+                  fontSize={11}
                   fontWeight="500"
                   color={isDateToday ? '$primary' : '$color9'}
                 >
                   {DAY_NAMES[date.getDay()]}
                 </Text>
                 <YStack
-                  width={32}
-                  height={32}
-                  borderRadius={16}
+                  width={28}
+                  height={28}
+                  borderRadius={14}
                   backgroundColor={isDateToday ? '$primary' : 'transparent'}
                   alignItems="center"
                   justifyContent="center"
                 >
                   <Text
-                    fontSize={15}
+                    fontSize={14}
                     fontWeight={isDateToday ? '700' : '500'}
                     color={isDateToday ? 'white' : '$color12'}
                   >
@@ -179,7 +179,7 @@ export function CalendarWeekView({
         </XStack>
 
         {/* Workout cells row - fills remaining vertical space */}
-        <XStack flex={1} gap="$1">
+        <XStack flex={1} gap="$0.5">
           {days.map((date) => {
             const dateISO = formatDateISO(date)
             const dayData = calendarData[dateISO]

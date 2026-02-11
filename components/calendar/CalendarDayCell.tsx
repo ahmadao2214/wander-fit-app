@@ -180,25 +180,27 @@ export function CalendarDayCell({
     )
   }
 
-  // Week view - just workout cards, header is rendered by CalendarWeekView
+  // Week view - workout cards fill available height
+  const hasWorkouts = workouts.length > 0
+
   return (
     <View
       ref={viewRef}
       onLayout={handleLayout}
       style={{
         flex: 1,
-        minWidth: 44,
-        backgroundColor: isDropTarget ? '#dbeafe' : 'transparent',
+        minWidth: 40,
+        backgroundColor: isDropTarget ? '#dbeafe' : hasWorkouts ? 'transparent' : 'rgba(0,0,0,0.02)',
         borderRadius: 8,
         padding: 2,
-        borderWidth: isDropTarget ? 2 : 0,
-        borderColor: isDropTarget ? '#3b82f6' : 'transparent',
-        borderStyle: 'dashed',
+        borderWidth: isDropTarget ? 2 : hasWorkouts ? 0 : 1,
+        borderColor: isDropTarget ? '#3b82f6' : 'rgba(0,0,0,0.05)',
+        borderStyle: isDropTarget ? 'dashed' : 'solid',
       }}
     >
-      {/* Workout cards - fill vertical space */}
-      {workouts.length > 0 ? (
-        <YStack gap="$1.5" flex={1}>
+      {/* Workout cards - expand to fill available height */}
+      {hasWorkouts ? (
+        <YStack gap="$1" flex={1}>
           {workouts.map((workout, idx) => {
             const slotKey = workout.slotPhase && workout.slotWeek && workout.slotDay
               ? `${workout.slotPhase}-${workout.slotWeek}-${workout.slotDay}`
@@ -226,7 +228,7 @@ export function CalendarDayCell({
           })}
         </YStack>
       ) : (
-        // Empty day - still a valid drop target
+        // Empty day - subtle indicator it's a valid drop target
         <YStack flex={1} />
       )}
     </View>
