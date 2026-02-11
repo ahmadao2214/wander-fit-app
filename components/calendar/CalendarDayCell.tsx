@@ -190,7 +190,7 @@ export function CalendarDayCell({
     )
   }
 
-  // Week view - workout cards with fixed height
+  // Week view - workout cards
   const hasWorkouts = workouts.length > 0
 
   return (
@@ -198,7 +198,8 @@ export function CalendarDayCell({
       ref={viewRef}
       onLayout={handleLayout}
       style={{
-        flex: 1,
+        flex: hasWorkouts ? 1 : 0,
+        flexGrow: hasWorkouts ? 1 : 0,
         minWidth: 0,
         backgroundColor: isDropTarget ? '#dbeafe' : 'transparent',
         borderRadius: 8,
@@ -238,10 +239,7 @@ export function CalendarDayCell({
             )
           })}
         </YStack>
-      ) : (
-        // Empty day - subtle indicator it's a valid drop target
-        <YStack flex={1} />
-      )}
+      ) : null}
     </View>
   )
 }
