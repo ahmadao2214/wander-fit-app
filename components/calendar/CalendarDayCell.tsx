@@ -115,12 +115,16 @@ export function CalendarDayCell({
   }, [onDragStart, onWorkoutLongPress])
 
   // Determine background color for compact (month) view
+  // Priority: Blue (hovering) > Green (valid target) > Red (invalid) > Today
   const getCompactBackground = () => {
     if (isDropTarget && isValidDropTarget) {
-      return '#dbeafe' // Blue - valid and hovering
+      return '#dbeafe' // Blue - hovering and about to drop
     }
     if (isDragActive && !isValidDropTarget) {
       return '#fee2e2' // Light red - invalid
+    }
+    if (isDragActive && isValidDropTarget) {
+      return '#f0fdf4' // Light green - valid drop target
     }
     if (isToday) {
       return 'rgba(59, 130, 246, 0.1)' // Light blue for today
@@ -130,16 +134,21 @@ export function CalendarDayCell({
 
   const getCompactBorderColor = () => {
     if (isDropTarget && isValidDropTarget) {
-      return '#3b82f6' // Blue - valid hover
+      return '#3b82f6' // Blue - hovering and about to drop
     }
     if (isDragActive && !isValidDropTarget) {
       return '#ef4444' // Red - invalid
+    }
+    if (isDragActive && isValidDropTarget) {
+      return '#22c55e' // Green - valid drop target
     }
     return 'transparent'
   }
 
   if (compact) {
     // Month view - shows workout titles with drag-drop support
+    // Show border for all targets during drag (valid = green, invalid = red, hovering = blue)
+    const showCompactBorder = isDragActive || isDropTarget
     return (
       <View
         ref={viewRef}
@@ -150,7 +159,7 @@ export function CalendarDayCell({
           padding: 3,
           backgroundColor: getCompactBackground(),
           borderRadius: 4,
-          borderWidth: (isDropTarget || (isDragActive && !isValidDropTarget)) ? 1 : 0,
+          borderWidth: showCompactBorder ? 1 : 0,
           borderColor: getCompactBorderColor(),
           borderStyle: 'dashed',
           opacity: isCurrentMonth ? 1 : 0.4,
@@ -224,28 +233,29 @@ export function CalendarDayCell({
   const hasWorkouts = workouts.length > 0
 
   // Determine background color based on drag state
+  // Priority: Blue (hovering) > Green (valid target) > Red (invalid)
   const getWeekViewBackground = () => {
     if (isDropTarget && isValidDropTarget) {
-      return '#dbeafe' // Blue highlight - valid and hovering
+      return '#dbeafe' // Blue highlight - hovering and about to drop
     }
     if (isDragActive && !isValidDropTarget) {
       return '#fee2e2' // Red tint - invalid drop target
     }
-    if (isDragActive && isValidDropTarget && !hasWorkouts) {
-      return '#f0fdf4' // Light green tint - valid empty drop target
+    if (isDragActive && isValidDropTarget) {
+      return '#f0fdf4' // Light green tint - valid drop target (any cell)
     }
     return 'transparent'
   }
 
   const getBorderColor = () => {
     if (isDropTarget && isValidDropTarget) {
-      return '#3b82f6' // Blue - valid and hovering
+      return '#3b82f6' // Blue - hovering and about to drop
     }
     if (isDragActive && !isValidDropTarget) {
       return '#ef4444' // Red - invalid
     }
-    if (isDragActive && isValidDropTarget && !hasWorkouts) {
-      return '#22c55e' // Green - valid empty cell
+    if (isDragActive && isValidDropTarget) {
+      return '#22c55e' // Green - valid drop target (any cell)
     }
     return 'transparent'
   }
