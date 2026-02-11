@@ -8,6 +8,7 @@ import {
   getMonthCalendarDays,
   formatMonthYear,
   isSameDay,
+  isSameWeek,
   formatDateISO,
   DAY_NAMES,
   parseDateISO,
@@ -242,61 +243,88 @@ export function CalendarMonthView({
       >
         <ScrollView flex={1} px="$2">
           <YStack gap="$0.5">
-            {weeks.map((week, weekIdx) => (
-              <XStack key={weekIdx}>
-                {week.map((date) => {
-                  const dateISO = formatDateISO(date)
-                  const dayData = calendarData[dateISO]
-                  const isMonthDate = date.getMonth() === currentMonthNum
-                  const workouts = dayData?.workouts.map((w) => ({
-                    templateId: w.templateId,
-                    name: w.name,
-                    phase: w.phase,
-                    week: w.week,
-                    day: w.day,
-                    exerciseCount: w.exerciseCount,
-                    estimatedDurationMinutes: w.estimatedDurationMinutes,
-                    isCompleted: w.isCompleted,
-                    isToday: w.isToday,
-                    isInProgress: w.isInProgress,
-                    gppCategoryId,
-                    // Add slot info for drag-drop
-                    slotPhase: w.phase,
-                    slotWeek: w.week,
-                    slotDay: w.day,
-                  })) ?? []
+            {(() => {
+              // Find the source workout's effective date when dragging
+              const isDragActive = dragSourceSlot !== null
+              let sourceEffectiveDate: Date | null = null
 
-                  // Check if this day is a valid drop target (date matches)
-                  const isDropTarget = dragTargetDate === dateISO && dragSourceSlot !== null
-
-                  return (
-                    <YStack
-                      key={dateISO}
-                      flex={1}
-                      pressStyle={{ opacity: 0.7 }}
-                      onPress={() => onDayPress?.(date)}
-                    >
-                      <CalendarDayCell
-                        date={date}
-                        dateISO={dateISO}
-                        isToday={isSameDay(date, today)}
-                        isCurrentMonth={isMonthDate}
-                        workouts={workouts}
-                        compact={true}
-                        gppCategoryId={gppCategoryId}
-                        onWorkoutPress={onWorkoutPress}
-                        onDragStart={onDragStart}
-                        onDragEnd={onDragEnd}
-                        onDragMove={onDragMove}
-                        isDropTarget={isDropTarget}
-                        onDropZoneLayout={onDropZoneLayout}
-                        onDropZoneUnregister={onDropZoneUnregister}
-                      />
-                    </YStack>
+              if (isDragActive && dragSourceSlot) {
+                for (const [dateKey, dayData] of Object.entries(calendarData)) {
+                  const workout = dayData.workouts.find(
+                    w => w.phase === dragSourceSlot.phase &&
+                         w.week === dragSourceSlot.week &&
+                         w.day === dragSourceSlot.day
                   )
-                })}
-              </XStack>
-            ))}
+                  if (workout) {
+                    sourceEffectiveDate = parseDateISO(dateKey)
+                    break
+                  }
+                }
+              }
+
+              return weeks.map((week, weekIdx) => (
+                <XStack key={weekIdx}>
+                  {week.map((date) => {
+                    const dateISO = formatDateISO(date)
+                    const dayData = calendarData[dateISO]
+                    const isMonthDate = date.getMonth() === currentMonthNum
+                    const workouts = dayData?.workouts.map((w) => ({
+                      templateId: w.templateId,
+                      name: w.name,
+                      phase: w.phase,
+                      week: w.week,
+                      day: w.day,
+                      exerciseCount: w.exerciseCount,
+                      estimatedDurationMinutes: w.estimatedDurationMinutes,
+                      isCompleted: w.isCompleted,
+                      isToday: w.isToday,
+                      isInProgress: w.isInProgress,
+                      gppCategoryId,
+                      // Add slot info for drag-drop
+                      slotPhase: w.phase,
+                      slotWeek: w.week,
+                      slotDay: w.day,
+                    })) ?? []
+
+                    // Check if hovering over this cell
+                    const isDropTarget = dragTargetDate === dateISO && dragSourceSlot !== null
+
+                    // Check if this date is a valid drop target (same week as source)
+                    const isValidDropTarget = sourceEffectiveDate
+                      ? isSameWeek(date, sourceEffectiveDate)
+                      : true
+
+                    return (
+                      <YStack
+                        key={dateISO}
+                        flex={1}
+                        pressStyle={{ opacity: 0.7 }}
+                        onPress={() => onDayPress?.(date)}
+                      >
+                        <CalendarDayCell
+                          date={date}
+                          dateISO={dateISO}
+                          isToday={isSameDay(date, today)}
+                          isCurrentMonth={isMonthDate}
+                          workouts={workouts}
+                          compact={true}
+                          gppCategoryId={gppCategoryId}
+                          onWorkoutPress={onWorkoutPress}
+                          onDragStart={onDragStart}
+                          onDragEnd={onDragEnd}
+                          onDragMove={onDragMove}
+                          isDropTarget={isDropTarget}
+                          isDragActive={isDragActive}
+                          isValidDropTarget={isValidDropTarget}
+                          onDropZoneLayout={onDropZoneLayout}
+                          onDropZoneUnregister={onDropZoneUnregister}
+                        />
+                      </YStack>
+                    )
+                  })}
+                </XStack>
+              ))
+            })()}
           </YStack>
         </ScrollView>
       </Animated.View>

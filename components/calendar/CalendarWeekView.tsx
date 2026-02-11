@@ -9,6 +9,7 @@ import {
   formatWeekRange,
   addDays,
   isSameDay,
+  isSameWeek,
   formatDateISO,
   startOfWeek,
   parseDateISO,
@@ -221,6 +222,25 @@ export function CalendarWeekView({
     const firstRowDays = days.slice(0, 4)
     const secondRowDays = days.slice(4, 7)
 
+    // Find the source workout's effective date when dragging
+    const isDragActive = dragSourceSlot !== null
+    let sourceEffectiveDate: Date | null = null
+
+    if (isDragActive && dragSourceSlot) {
+      // Find which date the source workout is currently on
+      for (const [dateKey, dayData] of Object.entries(calendarData)) {
+        const workout = dayData.workouts.find(
+          w => w.phase === dragSourceSlot.phase &&
+               w.week === dragSourceSlot.week &&
+               w.day === dragSourceSlot.day
+        )
+        if (workout) {
+          sourceEffectiveDate = parseDateISO(dateKey)
+          break
+        }
+      }
+    }
+
     const renderDayColumn = (date: Date) => {
       const dateISO = formatDateISO(date)
       const isDateToday = isSameDay(date, today)
@@ -246,6 +266,11 @@ export function CalendarWeekView({
         })) ?? []
 
       const isDropTarget = dragTargetDate === dateISO && dragSourceSlot !== null
+
+      // Check if this date is a valid drop target (same week as source)
+      const isValidDropTarget = sourceEffectiveDate
+        ? isSameWeek(date, sourceEffectiveDate)
+        : true
 
       return (
         <YStack key={dateISO} flex={1} gap="$1" minWidth={0}>
@@ -289,6 +314,8 @@ export function CalendarWeekView({
             onDragEnd={onDragEnd}
             onDragMove={onDragMove}
             isDropTarget={isDropTarget}
+            isDragActive={isDragActive}
+            isValidDropTarget={isValidDropTarget}
             gppCategoryId={gppCategoryId}
             onDropZoneLayout={onDropZoneLayout}
             onDropZoneUnregister={onDropZoneUnregister}

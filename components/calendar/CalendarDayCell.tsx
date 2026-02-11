@@ -43,6 +43,10 @@ export interface CalendarDayCellProps {
   onDragMove?: (x: number, y: number) => void
   /** Whether this cell is a potential drop target */
   isDropTarget?: boolean
+  /** Whether a drag is currently active (for showing valid/invalid states) */
+  isDragActive?: boolean
+  /** Whether this cell is a valid drop target (same week as source) */
+  isValidDropTarget?: boolean
   /** Register this cell as a drop zone (date-based) */
   onDropZoneLayout?: (dateISO: string, layout: { x: number; y: number; width: number; height: number }) => void
   /** Unregister this cell as a drop zone (cleanup on unmount) */
@@ -78,6 +82,8 @@ export function CalendarDayCell({
   onDragEnd,
   onDragMove,
   isDropTarget = false,
+  isDragActive = false,
+  isValidDropTarget = true,
   onDropZoneLayout,
   onDropZoneUnregister,
   gppCategoryId,
@@ -108,6 +114,30 @@ export function CalendarDayCell({
     onWorkoutLongPress?.(workout.templateId)
   }, [onDragStart, onWorkoutLongPress])
 
+  // Determine background color for compact (month) view
+  const getCompactBackground = () => {
+    if (isDropTarget && isValidDropTarget) {
+      return '#dbeafe' // Blue - valid and hovering
+    }
+    if (isDragActive && !isValidDropTarget) {
+      return '#fee2e2' // Light red - invalid
+    }
+    if (isToday) {
+      return 'rgba(59, 130, 246, 0.1)' // Light blue for today
+    }
+    return 'transparent'
+  }
+
+  const getCompactBorderColor = () => {
+    if (isDropTarget && isValidDropTarget) {
+      return '#3b82f6' // Blue - valid hover
+    }
+    if (isDragActive && !isValidDropTarget) {
+      return '#ef4444' // Red - invalid
+    }
+    return 'transparent'
+  }
+
   if (compact) {
     // Month view - shows workout titles with drag-drop support
     return (
@@ -118,10 +148,10 @@ export function CalendarDayCell({
           flex: 1,
           minHeight: 100,
           padding: 3,
-          backgroundColor: isDropTarget ? '#dbeafe' : isToday ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+          backgroundColor: getCompactBackground(),
           borderRadius: 4,
-          borderWidth: isDropTarget ? 1 : 0,
-          borderColor: isDropTarget ? '#3b82f6' : 'transparent',
+          borderWidth: (isDropTarget || (isDragActive && !isValidDropTarget)) ? 1 : 0,
+          borderColor: getCompactBorderColor(),
           borderStyle: 'dashed',
           opacity: isCurrentMonth ? 1 : 0.4,
         }}
@@ -193,6 +223,33 @@ export function CalendarDayCell({
   // Week view - workout cards
   const hasWorkouts = workouts.length > 0
 
+  // Determine background color based on drag state
+  const getWeekViewBackground = () => {
+    if (isDropTarget && isValidDropTarget) {
+      return '#dbeafe' // Blue highlight - valid and hovering
+    }
+    if (isDragActive && !isValidDropTarget) {
+      return '#fee2e2' // Red tint - invalid drop target
+    }
+    if (isDragActive && isValidDropTarget && !hasWorkouts) {
+      return '#f0fdf4' // Light green tint - valid empty drop target
+    }
+    return 'transparent'
+  }
+
+  const getBorderColor = () => {
+    if (isDropTarget && isValidDropTarget) {
+      return '#3b82f6' // Blue - valid and hovering
+    }
+    if (isDragActive && !isValidDropTarget) {
+      return '#ef4444' // Red - invalid
+    }
+    if (isDragActive && isValidDropTarget && !hasWorkouts) {
+      return '#22c55e' // Green - valid empty cell
+    }
+    return 'transparent'
+  }
+
   return (
     <View
       ref={viewRef}
@@ -201,11 +258,12 @@ export function CalendarDayCell({
         flex: hasWorkouts ? 1 : 0,
         flexGrow: hasWorkouts ? 1 : 0,
         minWidth: 0,
-        backgroundColor: isDropTarget ? '#dbeafe' : 'transparent',
+        minHeight: isDragActive ? 60 : 0, // Ensure empty cells have height during drag
+        backgroundColor: getWeekViewBackground(),
         borderRadius: 8,
         padding: 2,
-        borderWidth: isDropTarget ? 2 : 0,
-        borderColor: isDropTarget ? '#3b82f6' : 'transparent',
+        borderWidth: isDragActive || isDropTarget ? 2 : 0,
+        borderColor: getBorderColor(),
         borderStyle: 'dashed',
         overflow: 'hidden',
       }}

@@ -95,6 +95,13 @@ export function isSameDay(a: Date, b: Date): boolean {
 }
 
 /**
+ * Check if two dates are in the same calendar week (Sunday-Saturday)
+ */
+export function isSameWeek(a: Date, b: Date): boolean {
+  return isSameDay(startOfWeek(a), startOfWeek(b))
+}
+
+/**
  * Check if a date is today
  */
 export function isToday(date: Date): boolean {
