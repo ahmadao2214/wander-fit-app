@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react'
-import { YStack, XStack, Text, Button } from 'tamagui'
+import { YStack, XStack, Text, Button, ScrollView } from 'tamagui'
 import { ChevronLeft, ChevronRight } from '@tamagui/lucide-icons'
-import { FlatList, Dimensions, NativeScrollEvent, NativeSyntheticEvent } from 'react-native'
+import { FlatList, Dimensions, NativeScrollEvent, NativeSyntheticEvent, View } from 'react-native'
 import { CalendarDayCell, WorkoutWithSlot } from './CalendarDayCell'
 import { CalendarWorkoutCardProps } from './CalendarWorkoutCard'
 import {
@@ -15,6 +15,7 @@ import {
 import type { Phase } from '../../types'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 export interface CalendarWorkout {
   templateId: string
@@ -142,60 +143,95 @@ export function CalendarWeekView({
     const days = getWeekDays(weekStart)
 
     return (
-      <XStack width={SCREEN_WIDTH} px="$2" flex={1}>
-        {days.map((date) => {
-          const dateISO = formatDateISO(date)
-          const dayData = calendarData[dateISO]
-          const workouts: WorkoutWithSlot[] =
-            dayData?.workouts.map((w) => ({
-              templateId: w.templateId,
-              name: w.name,
-              phase: w.phase,
-              week: w.week,
-              day: w.day,
-              exerciseCount: w.exerciseCount,
-              estimatedDurationMinutes: w.estimatedDurationMinutes,
-              isCompleted: w.isCompleted,
-              isToday: w.isToday,
-              isInProgress: w.isInProgress,
-              isLocked: w.isLocked,
-              gppCategoryId, // Pass category for color coding
-              // Pass slot info for drag-drop
-              slotPhase: w.phase,
-              slotWeek: w.week,
-              slotDay: w.day,
-            })) ?? []
+      <YStack width={SCREEN_WIDTH} flex={1} px="$2">
+        {/* Day headers row */}
+        <XStack mb="$2">
+          {days.map((date, idx) => {
+            const isDateToday = isSameDay(date, today)
+            return (
+              <YStack key={idx} flex={1} alignItems="center" gap="$1">
+                <Text
+                  fontSize={12}
+                  fontWeight="500"
+                  color={isDateToday ? '$primary' : '$color9'}
+                >
+                  {DAY_NAMES[date.getDay()]}
+                </Text>
+                <YStack
+                  width={32}
+                  height={32}
+                  borderRadius={16}
+                  backgroundColor={isDateToday ? '$primary' : 'transparent'}
+                  alignItems="center"
+                  justifyContent="center"
+                >
+                  <Text
+                    fontSize={15}
+                    fontWeight={isDateToday ? '700' : '500'}
+                    color={isDateToday ? 'white' : '$color12'}
+                  >
+                    {date.getDate()}
+                  </Text>
+                </YStack>
+              </YStack>
+            )
+          })}
+        </XStack>
 
-          // Check if this cell is a valid drop target (same phase and week as source)
-          const isDropTarget = dragTargetSlot && dragSourceSlot && workouts.some(
-            (w) =>
-              w.slotPhase === dragTargetSlot.phase &&
-              w.slotWeek === dragTargetSlot.week &&
-              w.slotDay === dragTargetSlot.day &&
-              // Only highlight if it's the same phase and week as source (same-week constraint)
-              w.slotPhase === dragSourceSlot.phase &&
-              w.slotWeek === dragSourceSlot.week
-          )
+        {/* Workout cells row - fills remaining vertical space */}
+        <XStack flex={1} gap="$1">
+          {days.map((date) => {
+            const dateISO = formatDateISO(date)
+            const dayData = calendarData[dateISO]
+            const workouts: WorkoutWithSlot[] =
+              dayData?.workouts.map((w) => ({
+                templateId: w.templateId,
+                name: w.name,
+                phase: w.phase,
+                week: w.week,
+                day: w.day,
+                exerciseCount: w.exerciseCount,
+                estimatedDurationMinutes: w.estimatedDurationMinutes,
+                isCompleted: w.isCompleted,
+                isToday: w.isToday,
+                isInProgress: w.isInProgress,
+                isLocked: w.isLocked,
+                gppCategoryId,
+                slotPhase: w.phase,
+                slotWeek: w.week,
+                slotDay: w.day,
+              })) ?? []
 
-          return (
-            <CalendarDayCell
-              key={dateISO}
-              date={date}
-              isToday={isSameDay(date, today)}
-              workouts={workouts}
-              compact={false}
-              onWorkoutPress={onWorkoutPress}
-              onWorkoutLongPress={onWorkoutLongPress}
-              onDragStart={onDragStart}
-              onDragEnd={onDragEnd}
-              onDragMove={onDragMove}
-              isDropTarget={isDropTarget ?? false}
-              gppCategoryId={gppCategoryId}
-              onLayout={onDropZoneLayout}
-            />
-          )
-        })}
-      </XStack>
+            // Check if this cell is a valid drop target (same phase and week as source)
+            const isDropTarget = dragTargetSlot && dragSourceSlot && workouts.some(
+              (w) =>
+                w.slotPhase === dragTargetSlot.phase &&
+                w.slotWeek === dragTargetSlot.week &&
+                w.slotDay === dragTargetSlot.day &&
+                w.slotPhase === dragSourceSlot.phase &&
+                w.slotWeek === dragSourceSlot.week
+            )
+
+            return (
+              <CalendarDayCell
+                key={dateISO}
+                date={date}
+                isToday={isSameDay(date, today)}
+                workouts={workouts}
+                compact={false}
+                onWorkoutPress={onWorkoutPress}
+                onWorkoutLongPress={onWorkoutLongPress}
+                onDragStart={onDragStart}
+                onDragEnd={onDragEnd}
+                onDragMove={onDragMove}
+                isDropTarget={isDropTarget ?? false}
+                gppCategoryId={gppCategoryId}
+                onLayout={onDropZoneLayout}
+              />
+            )
+          })}
+        </XStack>
+      </YStack>
     )
   }, [calendarData, onWorkoutPress, onWorkoutLongPress, onDragStart, onDragEnd, onDragMove, dragTargetSlot, dragSourceSlot, gppCategoryId, onDropZoneLayout])
 

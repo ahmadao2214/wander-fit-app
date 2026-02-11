@@ -69,7 +69,6 @@ export function CalendarDayCell({
   gppCategoryId,
 }: CalendarDayCellProps) {
   const dayNumber = date.getDate()
-  const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'short' })
   const viewRef = useRef<View>(null)
 
   // Handle layout for drop zone registration
@@ -176,52 +175,25 @@ export function CalendarDayCell({
     )
   }
 
-  // Week view - expanded cards to fill vertical space
+  // Week view - just workout cards, header is rendered by CalendarWeekView
   return (
     <View
       ref={viewRef}
       onLayout={handleLayout}
       style={{
         flex: 1,
-        minWidth: 48,
-        backgroundColor: isDropTarget ? '#dbeafe' : isToday ? 'rgba(59, 130, 246, 0.05)' : 'transparent',
+        minWidth: 44,
+        backgroundColor: isDropTarget ? '#dbeafe' : 'transparent',
         borderRadius: 8,
-        padding: 4,
-        borderWidth: isDropTarget ? 2 : isToday ? 1 : 0,
-        borderColor: isDropTarget ? '#3b82f6' : isToday ? 'rgba(59, 130, 246, 0.3)' : 'transparent',
-        borderStyle: isDropTarget ? 'dashed' : 'solid',
+        padding: 2,
+        borderWidth: isDropTarget ? 2 : 0,
+        borderColor: isDropTarget ? '#3b82f6' : 'transparent',
+        borderStyle: 'dashed',
       }}
     >
-      {/* Day header */}
-      <YStack alignItems="center" gap="$0.5" pb="$1.5">
-        <Text
-          fontSize={11}
-          fontWeight="500"
-          color={isToday ? '$primary' : '$color10'}
-        >
-          {dayOfWeek}
-        </Text>
-        <YStack
-          width={28}
-          height={28}
-          borderRadius={14}
-          backgroundColor={isToday ? '$primary' : 'transparent'}
-          alignItems="center"
-          justifyContent="center"
-        >
-          <Text
-            fontSize={14}
-            fontWeight={isToday ? '700' : '500'}
-            color={isToday ? 'white' : '$color12'}
-          >
-            {dayNumber}
-          </Text>
-        </YStack>
-      </YStack>
-
-      {/* Workout cards - expand to fill space */}
+      {/* Workout cards - fill vertical space */}
       {workouts.length > 0 ? (
-        <YStack gap="$2" flex={1}>
+        <YStack gap="$1.5" flex={1}>
           {workouts.map((workout, idx) => {
             const slotKey = workout.slotPhase && workout.slotWeek && workout.slotDay
               ? `${workout.slotPhase}-${workout.slotWeek}-${workout.slotDay}`
@@ -249,12 +221,8 @@ export function CalendarDayCell({
           })}
         </YStack>
       ) : (
-        // Rest day indicator
-        <YStack flex={1} alignItems="center" justifyContent="center" opacity={0.4}>
-          <Text fontSize={10} color="$color9" textAlign="center">
-            Rest
-          </Text>
-        </YStack>
+        // Empty day - still a valid drop target
+        <YStack flex={1} />
       )}
     </View>
   )
