@@ -871,6 +871,14 @@ export const swapWorkouts = mutation({
       throw new Error(`Target phase ${args.targetPhase} is locked`);
     }
 
+    // Enforce same-week constraint: swaps only allowed within the same phase AND week
+    if (args.sourcePhase !== args.targetPhase) {
+      throw new Error("Swaps must be within the same phase");
+    }
+    if (args.sourceWeek !== args.targetWeek) {
+      throw new Error("Swaps must be within the same week");
+    }
+
     // Get intake for training days
     const intakeResponse = await ctx.db.get(program.intakeResponseId);
     if (!intakeResponse) {

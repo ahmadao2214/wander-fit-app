@@ -50,6 +50,8 @@ export interface CalendarWeekViewProps {
   onDragMove?: (x: number, y: number) => void
   /** Current drag target slot for highlighting */
   dragTargetSlot?: { phase: Phase; week: number; day: number } | null
+  /** Current drag source slot (for same-week validation) */
+  dragSourceSlot?: { phase: Phase; week: number; day: number } | null
   /** Category ID for color coding (1-4) */
   gppCategoryId?: number
   /** Callback to register drop zones */
@@ -86,9 +88,12 @@ export function CalendarWeekView({
   onDragEnd,
   onDragMove,
   dragTargetSlot,
+  dragSourceSlot,
   gppCategoryId,
   onDropZoneLayout,
 }: CalendarWeekViewProps) {
+  // Disable FlatList scrolling while dragging to prevent gesture conflicts
+  const isDragging = dragSourceSlot !== null && dragSourceSlot !== undefined
   const flatListRef = useRef<FlatList>(null)
   const [weeks] = useState(() => generateWeeks(currentWeek, 11))
   const [currentIndex, setCurrentIndex] = useState(5) // Middle of 11 weeks
@@ -159,12 +164,15 @@ export function CalendarWeekView({
               slotDay: w.day,
             })) ?? []
 
-          // Check if this cell is the current drop target
-          const isDropTarget = dragTargetSlot && workouts.some(
+          // Check if this cell is a valid drop target (same phase and week as source)
+          const isDropTarget = dragTargetSlot && dragSourceSlot && workouts.some(
             (w) =>
               w.slotPhase === dragTargetSlot.phase &&
               w.slotWeek === dragTargetSlot.week &&
-              w.slotDay === dragTargetSlot.day
+              w.slotDay === dragTargetSlot.day &&
+              // Only highlight if it's the same phase and week as source (same-week constraint)
+              w.slotPhase === dragSourceSlot.phase &&
+              w.slotWeek === dragSourceSlot.week
           )
 
           return (
@@ -229,7 +237,7 @@ export function CalendarWeekView({
       </XStack>
 
 
-      {/* Swipeable week view */}
+      {/* Swipeable week view - scrolling disabled during drag to prevent gesture conflicts */}
       <FlatList
         ref={flatListRef}
         data={weeks}
@@ -237,6 +245,7 @@ export function CalendarWeekView({
         keyExtractor={keyExtractor}
         horizontal
         pagingEnabled
+        scrollEnabled={!isDragging}
         showsHorizontalScrollIndicator={false}
         initialScrollIndex={currentIndex}
         getItemLayout={(_, index) => ({

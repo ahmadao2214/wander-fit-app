@@ -49,6 +49,8 @@ export interface CalendarMonthViewProps {
   onDragMove?: (x: number, y: number) => void
   /** Current drag target slot for highlighting */
   dragTargetSlot?: { phase: Phase; week: number; day: number } | null
+  /** Current drag source slot (for same-week validation) */
+  dragSourceSlot?: { phase: Phase; week: number; day: number } | null
   /** Callback to register drop zones */
   onDropZoneLayout?: (phase: Phase, week: number, day: number, layout: { x: number; y: number; width: number; height: number }) => void
 }
@@ -71,6 +73,7 @@ export function CalendarMonthView({
   onDragEnd,
   onDragMove,
   dragTargetSlot,
+  dragSourceSlot,
   onDropZoneLayout,
 }: CalendarMonthViewProps) {
   const today = new Date()
@@ -205,13 +208,17 @@ export function CalendarMonthView({
                     slotDay: w.day,
                   })) ?? []
 
-                  // Check if this day contains the drop target
+                  // Check if this day is a valid drop target (same phase and week as source)
                   const isDropTarget = workouts.some(
                     (w) =>
                       dragTargetSlot &&
+                      dragSourceSlot &&
                       w.phase === dragTargetSlot.phase &&
                       w.week === dragTargetSlot.week &&
-                      w.day === dragTargetSlot.day
+                      w.day === dragTargetSlot.day &&
+                      // Only highlight if same phase and week as source (same-week constraint)
+                      w.phase === dragSourceSlot.phase &&
+                      w.week === dragSourceSlot.week
                   )
 
                   return (

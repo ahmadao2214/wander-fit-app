@@ -160,12 +160,13 @@ export function WorkoutCalendar({
     dragPositionRef.current = null
 
     // If we have both source and target, and they're different, trigger swap
+    // But only if they're in the same phase AND week (same-week constraint)
     if (
       source &&
       target &&
-      (source.phase !== target.phase ||
-        source.week !== target.week ||
-        source.day !== target.day)
+      source.phase === target.phase &&
+      source.week === target.week &&
+      source.day !== target.day
     ) {
       await handleSwap(
         source.phase,
@@ -280,6 +281,7 @@ export function WorkoutCalendar({
             onDragEnd={handleDragEnd}
             onDragMove={handleDragMove}
             dragTargetSlot={dragTarget}
+            dragSourceSlot={dragSource}
             gppCategoryId={gppCategoryId}
             onDropZoneLayout={handleDropZoneLayout}
           />
@@ -295,6 +297,7 @@ export function WorkoutCalendar({
             onDragEnd={handleDragEnd}
             onDragMove={handleDragMove}
             dragTargetSlot={dragTarget}
+            dragSourceSlot={dragSource}
             onDropZoneLayout={handleDropZoneLayout}
           />
         )}
