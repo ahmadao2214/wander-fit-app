@@ -115,7 +115,7 @@ export function CalendarWorkoutCard({
     )
   }
 
-  // Week view card - fills available height
+  // Week view card - fixed height for consistent layout
   return (
     <Card
       pressStyle={isLocked ? undefined : { opacity: 0.8, scale: 0.98 }}
@@ -130,9 +130,9 @@ export function CalendarWorkoutCard({
       py="$2"
       borderRadius="$3"
       opacity={isLocked ? 0.5 : isCompleted ? 0.7 : 1}
-      flex={1}
+      minHeight={120}
     >
-      <YStack gap="$1.5" flex={1}>
+      <YStack gap="$1" height="100%">
         {/* Phase badge at top */}
         <XStack alignItems="center" justifyContent="space-between">
           <Text
@@ -150,7 +150,7 @@ export function CalendarWorkoutCard({
           fontSize={11}
           fontWeight="600"
           color={isLocked || isCompleted ? '$color10' : '$color12'}
-          numberOfLines={3}
+          numberOfLines={4}
         >
           {name}
         </Text>

@@ -180,7 +180,7 @@ export function CalendarDayCell({
     )
   }
 
-  // Week view - workout cards fill available height
+  // Week view - workout cards with fixed height
   const hasWorkouts = workouts.length > 0
 
   return (
@@ -190,17 +190,17 @@ export function CalendarDayCell({
       style={{
         flex: 1,
         minWidth: 40,
-        backgroundColor: isDropTarget ? '#dbeafe' : hasWorkouts ? 'transparent' : 'rgba(0,0,0,0.02)',
+        backgroundColor: isDropTarget ? '#dbeafe' : 'transparent',
         borderRadius: 8,
         padding: 2,
-        borderWidth: isDropTarget ? 2 : hasWorkouts ? 0 : 1,
-        borderColor: isDropTarget ? '#3b82f6' : 'rgba(0,0,0,0.05)',
-        borderStyle: isDropTarget ? 'dashed' : 'solid',
+        borderWidth: isDropTarget ? 2 : 0,
+        borderColor: isDropTarget ? '#3b82f6' : 'transparent',
+        borderStyle: 'dashed',
       }}
     >
-      {/* Workout cards - expand to fill available height */}
+      {/* Workout cards */}
       {hasWorkouts ? (
-        <YStack gap="$1" flex={1}>
+        <YStack gap="$1">
           {workouts.map((workout, idx) => {
             const slotKey = workout.slotPhase && workout.slotWeek && workout.slotDay
               ? `${workout.slotPhase}-${workout.slotWeek}-${workout.slotDay}`
