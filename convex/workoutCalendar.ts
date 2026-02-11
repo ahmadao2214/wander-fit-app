@@ -1652,7 +1652,7 @@ export const getFullProgramCalendar = query({
               isInProgress,
               isLocked,
               completedOnDate: completionDates.get(template._id.toString()),
-              exercisePreview: getExercisePreview(template, 3),
+              exercisePreview: getExercisePreview(template, 5),
             });
           } else {
             // Template not found - this usually means templates need to be regenerated
@@ -1692,7 +1692,7 @@ export const getFullProgramCalendar = query({
                 isInProgress: false,
                 isLocked: false, // Completed workouts are never locked
                 completedOnDate: completionDateISO,
-                exercisePreview: getExercisePreview(template, 3),
+                exercisePreview: getExercisePreview(template, 5),
               });
             }
           }

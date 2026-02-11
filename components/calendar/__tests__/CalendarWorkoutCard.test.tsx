@@ -24,7 +24,7 @@ describe('CalendarWorkoutCard', () => {
     isCompleted: false,
     isToday: false,
     isInProgress: false,
-    exercisePreview: ['Back Squat', 'Romanian Deadlift', 'Leg Press'],
+    exercisePreview: ['Back Squat', 'Romanian Deadlift', 'Leg Press', 'Lunges', 'Calf Raises'],
     onPress: mockOnPress,
     onLongPress: mockOnLongPress,
   }
@@ -56,11 +56,13 @@ describe('CalendarWorkoutCard', () => {
         <CalendarWorkoutCard {...defaultProps} />,
         { wrapper: AllTheProviders }
       )
-      // Exercise preview shows first 3 exercises
+      // Exercise preview shows first 5 exercises
       expect(getByText('• Back Squat')).toBeTruthy()
       expect(getByText('• Romanian Deadlift')).toBeTruthy()
       expect(getByText('• Leg Press')).toBeTruthy()
-      expect(getByText('+5 more')).toBeTruthy() // 8 - 3 = 5 remaining
+      expect(getByText('• Lunges')).toBeTruthy()
+      expect(getByText('• Calf Raises')).toBeTruthy()
+      expect(getByText('+3 more')).toBeTruthy() // 8 - 5 = 3 remaining
     })
 
     it('renders duration', () => {
@@ -104,7 +106,7 @@ describe('CalendarWorkoutCard', () => {
       )
       // Exercise preview not shown in compact mode
       expect(queryByText('• Back Squat')).toBeNull()
-      expect(queryByText('+5 more')).toBeNull()
+      expect(queryByText('+3 more')).toBeNull()
     })
   })
 
