@@ -24,6 +24,7 @@ describe('CalendarWorkoutCard', () => {
     isCompleted: false,
     isToday: false,
     isInProgress: false,
+    exercisePreview: ['Back Squat', 'Romanian Deadlift', 'Leg Press'],
     onPress: mockOnPress,
     onLongPress: mockOnLongPress,
   }
@@ -50,13 +51,24 @@ describe('CalendarWorkoutCard', () => {
       expect(getByText('GPP')).toBeTruthy()
     })
 
-    it('renders exercise count and duration', () => {
+    it('renders exercise preview', () => {
       const { getByText } = render(
         <CalendarWorkoutCard {...defaultProps} />,
         { wrapper: AllTheProviders }
       )
-      // Combined format: "8 ex • 45m"
-      expect(getByText('8 ex • 45m')).toBeTruthy()
+      // Exercise preview shows first 3 exercises
+      expect(getByText('• Back Squat')).toBeTruthy()
+      expect(getByText('• Romanian Deadlift')).toBeTruthy()
+      expect(getByText('• Leg Press')).toBeTruthy()
+      expect(getByText('+5 more')).toBeTruthy() // 8 - 3 = 5 remaining
+    })
+
+    it('renders duration', () => {
+      const { getByText } = render(
+        <CalendarWorkoutCard {...defaultProps} />,
+        { wrapper: AllTheProviders }
+      )
+      expect(getByText('~45m')).toBeTruthy()
     })
 
     it('renders SPP phase correctly', () => {
@@ -85,13 +97,14 @@ describe('CalendarWorkoutCard', () => {
       expect(getByText('Lower Body Foundation')).toBeTruthy()
     })
 
-    it('does not render exercise count in compact mode', () => {
+    it('does not render exercise preview in compact mode', () => {
       const { queryByText } = render(
         <CalendarWorkoutCard {...defaultProps} compact />,
         { wrapper: AllTheProviders }
       )
-      // Combined format not shown in compact mode
-      expect(queryByText('8 ex • 45m')).toBeNull()
+      // Exercise preview not shown in compact mode
+      expect(queryByText('• Back Squat')).toBeNull()
+      expect(queryByText('+5 more')).toBeNull()
     })
   })
 

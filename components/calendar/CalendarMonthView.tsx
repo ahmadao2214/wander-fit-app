@@ -27,6 +27,7 @@ export interface CalendarWorkout {
   isCompleted: boolean
   isToday: boolean
   isInProgress: boolean
+  exercisePreview?: string[] // First 3 exercise names for preview
 }
 
 export interface CalendarMonthViewProps {
