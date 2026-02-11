@@ -199,13 +199,14 @@ export function CalendarDayCell({
       onLayout={handleLayout}
       style={{
         flex: 1,
-        minWidth: 40,
+        minWidth: 0,
         backgroundColor: isDropTarget ? '#dbeafe' : 'transparent',
         borderRadius: 8,
         padding: 2,
         borderWidth: isDropTarget ? 2 : 0,
         borderColor: isDropTarget ? '#3b82f6' : 'transparent',
         borderStyle: 'dashed',
+        overflow: 'hidden',
       }}
     >
       {/* Workout cards */}
