@@ -2,6 +2,7 @@ import { useCallback, useRef, useEffect } from 'react'
 import { YStack, XStack, Text } from 'tamagui'
 import { View, LayoutChangeEvent } from 'react-native'
 import { CalendarWorkoutCard, CalendarWorkoutCardProps } from './CalendarWorkoutCard'
+import { DraggableWorkoutCard } from './DraggableWorkoutCard'
 import type { Phase } from '../../types'
 
 /**
@@ -36,6 +37,8 @@ export interface CalendarDayCellProps {
   /** Drag callbacks for swapping */
   onDragStart?: (phase: Phase, week: number, day: number) => void
   onDragEnd?: () => void
+  /** Called during drag with absolute position */
+  onDragMove?: (x: number, y: number) => void
   /** Whether this cell is a potential drop target */
   isDropTarget?: boolean
   /** Register this cell as a drop zone */
@@ -60,6 +63,7 @@ export function CalendarDayCell({
   onWorkoutLongPress,
   onDragStart,
   onDragEnd,
+  onDragMove,
   isDropTarget = false,
   onLayout,
   gppCategoryId,
@@ -199,15 +203,31 @@ export function CalendarDayCell({
       {/* Workout cards - only show if there are workouts */}
       {workouts.length > 0 && (
         <YStack gap="$1" mt="$1">
-          {workouts.map((workout, idx) => (
-            <CalendarWorkoutCard
-              key={`${workout.templateId}-${idx}`}
-              {...workout}
-              compact={false}
-              onPress={() => onWorkoutPress?.(workout.templateId)}
-              onLongPress={() => handleWorkoutLongPress(workout)}
-            />
-          ))}
+          {workouts.map((workout, idx) => {
+            const slotKey = workout.slotPhase && workout.slotWeek && workout.slotDay
+              ? `${workout.slotPhase}-${workout.slotWeek}-${workout.slotDay}`
+              : workout.templateId
+
+            return (
+              <DraggableWorkoutCard
+                key={`${workout.templateId}-${idx}`}
+                {...workout}
+                slotKey={slotKey}
+                compact={false}
+                onPress={() => onWorkoutPress?.(workout.templateId)}
+                onLongPress={() => handleWorkoutLongPress(workout)}
+                onDragStart={() => {
+                  if (workout.slotPhase && workout.slotWeek && workout.slotDay) {
+                    onDragStart?.(workout.slotPhase, workout.slotWeek, workout.slotDay)
+                  }
+                }}
+                onDragMove={(_, x, y) => onDragMove?.(x, y)}
+                onDragEnd={() => onDragEnd?.()}
+                dragDisabled={workout.isLocked || workout.isCompleted}
+                isDropTarget={isDropTarget}
+              />
+            )
+          })}
         </YStack>
       )}
     </View>
