@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { YStack, XStack, Text, Card, Button, styled, Circle } from 'tamagui'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { ChevronRight, ChevronLeft, Check, Sprout, Zap, Mountain } from '@tamagui/lucide-icons'
+import { ChevronRight, ChevronLeft, Check, Zap, Mountain, Shield } from '@tamagui/lucide-icons'
 import { Vibration, Animated } from 'react-native'
 import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT, COMBINED_FLOW_ROUTES } from '../../components/IntakeProgressDots'
 import { useSwipeNavigation } from '../../hooks/useSwipeNavigation'
@@ -11,7 +11,7 @@ import { useSwipeNavigation } from '../../hooks/useSwipeNavigation'
 // TYPES
 // ─────────────────────────────────────────────────────────────────────────────
 
-type AgeGroup = '10-13' | '14-17' | '18+'
+type AgeGroup = '14-17' | '18-35' | '36+'
 
 interface DivisionData {
   id: AgeGroup
@@ -48,28 +48,28 @@ const Subtitle = styled(Text, {
 
 const DIVISIONS: DivisionData[] = [
   {
-    id: '10-13',
-    label: 'Youth',
-    subtitle: 'Ages 10-13',
-    icon: Sprout,
-    color: '$intensityLow11',
-    bgColor: '$intensityLow3',
-  },
-  {
     id: '14-17',
-    label: 'Junior',
+    label: 'Youth',
     subtitle: 'Ages 14-17',
     icon: Zap,
     color: '$intensityMed11',
     bgColor: '$intensityMed3',
   },
   {
-    id: '18+',
-    label: 'Adult',
-    subtitle: 'Ages 18+',
+    id: '18-35',
+    label: 'Performance',
+    subtitle: 'Ages 18-35',
     icon: Mountain,
-    color: '$intensityHigh11',
-    bgColor: '$intensityHigh3',
+    color: '$accent11',
+    bgColor: '$accent3',
+  },
+  {
+    id: '36+',
+    label: 'Vitality',
+    subtitle: 'Ages 36+',
+    icon: Shield,
+    color: '$intensityLow11',
+    bgColor: '$intensityLow3',
   },
 ]
 

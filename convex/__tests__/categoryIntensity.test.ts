@@ -80,13 +80,13 @@ describe("CATEGORY_PHASE_CONFIG", () => {
 
 describe("AGE_EXPERIENCE_MATRIX", () => {
   it("should have entries for all 3 age groups", () => {
-    expect(AGE_EXPERIENCE_MATRIX).toHaveProperty("10-13");
     expect(AGE_EXPERIENCE_MATRIX).toHaveProperty("14-17");
-    expect(AGE_EXPERIENCE_MATRIX).toHaveProperty("18+");
+    expect(AGE_EXPERIENCE_MATRIX).toHaveProperty("18-35");
+    expect(AGE_EXPERIENCE_MATRIX).toHaveProperty("36+");
   });
 
   it("should have entries for all 3 experience buckets per age group", () => {
-    const ageGroups = ["10-13", "14-17", "18+"] as const;
+    const ageGroups = ["14-17", "18-35", "36+"] as const;
     for (const age of ageGroups) {
       expect(AGE_EXPERIENCE_MATRIX[age]).toHaveProperty("0-1");
       expect(AGE_EXPERIENCE_MATRIX[age]).toHaveProperty("2-5");
@@ -94,48 +94,48 @@ describe("AGE_EXPERIENCE_MATRIX", () => {
     }
   });
 
-  it("10-13 with 0-1 years should have lowest positions", () => {
-    const modifier = AGE_EXPERIENCE_MATRIX["10-13"]["0-1"];
-    expect(modifier.setsPosition).toBe("lowest");
-    expect(modifier.repsPosition).toBe("lowest");
+  it("14-17 with 0-1 years should have middle positions", () => {
+    const modifier = AGE_EXPERIENCE_MATRIX["14-17"]["0-1"];
+    expect(modifier.setsPosition).toBe("middle");
+    expect(modifier.repsPosition).toBe("middle");
   });
 
-  it("18+ with 6+ years should have max positions", () => {
-    const modifier = AGE_EXPERIENCE_MATRIX["18+"]["6+"];
+  it("18-35 with 6+ years should have max positions", () => {
+    const modifier = AGE_EXPERIENCE_MATRIX["18-35"]["6+"];
     expect(modifier.setsPosition).toBe("max");
     expect(modifier.repsPosition).toBe("max");
   });
 
-  it("18+ with 0-1 years should have max sets but reduced reps", () => {
-    const modifier = AGE_EXPERIENCE_MATRIX["18+"]["0-1"];
+  it("18-35 with 0-1 years should have max sets but reduced reps", () => {
+    const modifier = AGE_EXPERIENCE_MATRIX["18-35"]["0-1"];
     expect(modifier.setsPosition).toBe("max");
     expect(modifier.repsPosition).toBe("max_minus_2");
   });
 });
 
 describe("AGE_SAFETY_CONSTRAINTS", () => {
-  it("10-13 should have 3 max sets cap", () => {
-    expect(AGE_SAFETY_CONSTRAINTS["10-13"].maxSets).toBe(3);
-  });
-
   it("14-17 should not have sets cap (null)", () => {
     expect(AGE_SAFETY_CONSTRAINTS["14-17"].maxSets).toBeNull();
   });
 
-  it("18+ should not have sets cap (null)", () => {
-    expect(AGE_SAFETY_CONSTRAINTS["18+"].maxSets).toBeNull();
+  it("18-35 should not have sets cap (null)", () => {
+    expect(AGE_SAFETY_CONSTRAINTS["18-35"].maxSets).toBeNull();
   });
 
-  it("10-13 should have 65% 1RM ceiling", () => {
-    expect(AGE_SAFETY_CONSTRAINTS["10-13"].oneRepMaxCeiling).toBe(0.65);
+  it("36+ should not have sets cap (null)", () => {
+    expect(AGE_SAFETY_CONSTRAINTS["36+"].maxSets).toBeNull();
   });
 
   it("14-17 should have 85% 1RM ceiling", () => {
     expect(AGE_SAFETY_CONSTRAINTS["14-17"].oneRepMaxCeiling).toBe(0.85);
   });
 
-  it("18+ should have 90% 1RM ceiling", () => {
-    expect(AGE_SAFETY_CONSTRAINTS["18+"].oneRepMaxCeiling).toBe(0.90);
+  it("18-35 should have 90% 1RM ceiling", () => {
+    expect(AGE_SAFETY_CONSTRAINTS["18-35"].oneRepMaxCeiling).toBe(0.90);
+  });
+
+  it("36+ should have 90% 1RM ceiling", () => {
+    expect(AGE_SAFETY_CONSTRAINTS["36+"].oneRepMaxCeiling).toBe(0.90);
   });
 });
 
@@ -291,10 +291,10 @@ describe("getExerciseFocus", () => {
 });
 
 describe("getCategoryExerciseParameters", () => {
-  it("should return correct parameters for Category 2 GPP 18+ 6+ years strength", () => {
-    const params = getCategoryExerciseParameters(2, "GPP", "18+", 7, "strength");
+  it("should return correct parameters for Category 2 GPP 18-35 6+ years strength", () => {
+    const params = getCategoryExerciseParameters(2, "GPP", "18-35", 7, "strength");
 
-    // 18+ with 6+ years gets max sets and max reps
+    // 18-35 with 6+ years gets max sets and max reps
     // Category 2 GPP sets: 4-6, so max = 6
     expect(params.sets).toBe(6);
 
@@ -304,7 +304,7 @@ describe("getCategoryExerciseParameters", () => {
     // Rest for strength: 30s
     expect(params.restSeconds).toBe(30);
 
-    // 1RM should be 55-65% (no cap for 18+)
+    // 1RM should be 55-65% (no cap for 18-35)
     expect(params.oneRepMaxPercent.min).toBe(0.55);
     expect(params.oneRepMaxPercent.max).toBe(0.65);
 
@@ -313,22 +313,21 @@ describe("getCategoryExerciseParameters", () => {
     expect(params.rpe.max).toBe(7);
   });
 
-  it("should apply 10-13 age safety constraints", () => {
-    const params = getCategoryExerciseParameters(2, "SSP", "10-13", 7, "strength");
+  it("should apply 14-17 age safety constraints", () => {
+    const params = getCategoryExerciseParameters(2, "SSP", "14-17", 7, "strength");
 
-    // 10-13 with 6+ years gets second_lowest sets position
-    // Category 2 SSP sets: 4-6, second_lowest = 5
-    // BUT 10-13 has 3 sets max cap
-    expect(params.sets).toBe(3);
+    // 14-17 with 6+ years gets max sets and max reps
+    // Category 2 SSP sets: 4-6, max = 6
+    expect(params.sets).toBe(6);
 
-    // 1RM should be capped at 65% (age ceiling)
-    // Category 2 SSP strength: 80-90%, but capped
-    expect(params.oneRepMaxPercent.min).toBe(0.65);
-    expect(params.oneRepMaxPercent.max).toBe(0.65);
+    // 1RM should be capped at 85% (age ceiling)
+    // Category 2 SSP strength: 80-90%, capped at 85%
+    expect(params.oneRepMaxPercent.min).toBe(0.80);
+    expect(params.oneRepMaxPercent.max).toBe(0.85);
   });
 
   it("should use power parameters for power exercises", () => {
-    const params = getCategoryExerciseParameters(2, "SSP", "18+", 7, "power");
+    const params = getCategoryExerciseParameters(2, "SSP", "18-35", 7, "power");
 
     // Power 1RM for Category 2 SSP: 50-60%
     expect(params.oneRepMaxPercent.min).toBe(0.50);
@@ -339,14 +338,14 @@ describe("getCategoryExerciseParameters", () => {
   });
 
   it("should return explosive tempo for SSP", () => {
-    const params = getCategoryExerciseParameters(1, "SSP", "18+", 5, "strength");
+    const params = getCategoryExerciseParameters(1, "SSP", "18-35", 5, "strength");
     expect(params.tempo.eccentric).toBe("x");
     expect(params.tempo.isometric).toBe("x");
     expect(params.tempo.concentric).toBe("x");
   });
 
   it("should return controlled tempo for GPP", () => {
-    const params = getCategoryExerciseParameters(1, "GPP", "18+", 5, "strength");
+    const params = getCategoryExerciseParameters(1, "GPP", "18-35", 5, "strength");
     expect(params.tempo.eccentric).toBe(2);
     expect(params.tempo.isometric).toBe(1);
     expect(params.tempo.concentric).toBe(2);
@@ -354,35 +353,6 @@ describe("getCategoryExerciseParameters", () => {
 });
 
 describe("applyAgeSafetyConstraints", () => {
-  it("should cap sets to 3 for 10-13", () => {
-    const params = {
-      oneRepMaxPercent: { min: 0.80, max: 0.90 },
-      sets: 5,
-      reps: 6,
-      restSeconds: 120,
-      tempo: { eccentric: "x" as const, isometric: "x" as const, concentric: "x" as const },
-      rpe: { min: 8, max: 9 },
-    };
-
-    const constrained = applyAgeSafetyConstraints(params, "10-13");
-    expect(constrained.sets).toBe(3);
-  });
-
-  it("should cap 1RM to 65% for 10-13", () => {
-    const params = {
-      oneRepMaxPercent: { min: 0.80, max: 0.90 },
-      sets: 5,
-      reps: 6,
-      restSeconds: 120,
-      tempo: { eccentric: "x" as const, isometric: "x" as const, concentric: "x" as const },
-      rpe: { min: 8, max: 9 },
-    };
-
-    const constrained = applyAgeSafetyConstraints(params, "10-13");
-    expect(constrained.oneRepMaxPercent.min).toBe(0.65);
-    expect(constrained.oneRepMaxPercent.max).toBe(0.65);
-  });
-
   it("should not modify sets for 14-17", () => {
     const params = {
       oneRepMaxPercent: { min: 0.80, max: 0.90 },
@@ -410,6 +380,64 @@ describe("applyAgeSafetyConstraints", () => {
     const constrained = applyAgeSafetyConstraints(params, "14-17");
     expect(constrained.oneRepMaxPercent.min).toBe(0.80);
     expect(constrained.oneRepMaxPercent.max).toBe(0.85);
+  });
+
+  it("should not modify sets for 18-35", () => {
+    const params = {
+      oneRepMaxPercent: { min: 0.80, max: 0.90 },
+      sets: 5,
+      reps: 6,
+      restSeconds: 120,
+      tempo: { eccentric: "x" as const, isometric: "x" as const, concentric: "x" as const },
+      rpe: { min: 8, max: 9 },
+    };
+
+    const constrained = applyAgeSafetyConstraints(params, "18-35");
+    expect(constrained.sets).toBe(5);
+  });
+
+  it("should allow full 1RM range for 18-35", () => {
+    const params = {
+      oneRepMaxPercent: { min: 0.80, max: 0.90 },
+      sets: 5,
+      reps: 6,
+      restSeconds: 120,
+      tempo: { eccentric: "x" as const, isometric: "x" as const, concentric: "x" as const },
+      rpe: { min: 8, max: 9 },
+    };
+
+    const constrained = applyAgeSafetyConstraints(params, "18-35");
+    expect(constrained.oneRepMaxPercent.min).toBe(0.80);
+    expect(constrained.oneRepMaxPercent.max).toBe(0.90);
+  });
+
+  it("should not modify sets for 36+", () => {
+    const params = {
+      oneRepMaxPercent: { min: 0.80, max: 0.90 },
+      sets: 5,
+      reps: 6,
+      restSeconds: 120,
+      tempo: { eccentric: "x" as const, isometric: "x" as const, concentric: "x" as const },
+      rpe: { min: 8, max: 9 },
+    };
+
+    const constrained = applyAgeSafetyConstraints(params, "36+");
+    expect(constrained.sets).toBe(5);
+  });
+
+  it("should allow full 1RM range for 36+", () => {
+    const params = {
+      oneRepMaxPercent: { min: 0.80, max: 0.90 },
+      sets: 5,
+      reps: 6,
+      restSeconds: 120,
+      tempo: { eccentric: "x" as const, isometric: "x" as const, concentric: "x" as const },
+      rpe: { min: 8, max: 9 },
+    };
+
+    const constrained = applyAgeSafetyConstraints(params, "36+");
+    expect(constrained.oneRepMaxPercent.min).toBe(0.80);
+    expect(constrained.oneRepMaxPercent.max).toBe(0.90);
   });
 });
 
@@ -513,24 +541,20 @@ describe("getCategorySports", () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe("Category-Specific Intensity Integration", () => {
-  it("12-year-old Category 2 athlete in SSP should have capped intensity", () => {
-    // This is the example from the plan
-    const params = getCategoryExerciseParameters(2, "SSP", "10-13", 3, "strength");
+  it("16-year-old Category 2 athlete in SSP should have 85% ceiling", () => {
+    const params = getCategoryExerciseParameters(2, "SSP", "14-17", 3, "strength");
 
-    // Category 2 SSP prescribes 80-90% but age cap is 65%
-    expect(params.oneRepMaxPercent.max).toBe(0.65);
-
-    // Sets should be capped at 3
-    expect(params.sets).toBeLessThanOrEqual(3);
+    // Category 2 SSP prescribes 80-90% but age cap is 85%
+    expect(params.oneRepMaxPercent.max).toBe(0.85);
   });
 
-  it("18+ beginner should get max sets but reduced reps", () => {
-    const params = getCategoryExerciseParameters(1, "GPP", "18+", 0.5, "strength");
+  it("18-35 beginner should get max sets but reduced reps", () => {
+    const params = getCategoryExerciseParameters(1, "GPP", "18-35", 0.5, "strength");
 
-    // Category 1 GPP sets: 4-6, 18+ 0-1 yrs gets max position = 6
+    // Category 1 GPP sets: 4-6, 18-35 0-1 yrs gets max position = 6
     expect(params.sets).toBe(6);
 
-    // Category 1 GPP strength reps: 10-14, 18+ 0-1 yrs gets max-2 = 12
+    // Category 1 GPP strength reps: 10-14, 18-35 0-1 yrs gets max-2 = 12
     expect(params.reps).toBe(12);
   });
 
@@ -548,13 +572,22 @@ describe("Category-Specific Intensity Integration", () => {
   });
 
   it("power exercise should use sub-maximal loading for all age groups", () => {
-    const params18 = getCategoryExerciseParameters(2, "SSP", "18+", 7, "power");
+    const params18_35 = getCategoryExerciseParameters(2, "SSP", "18-35", 7, "power");
     const params14 = getCategoryExerciseParameters(2, "SSP", "14-17", 7, "power");
-    const params10 = getCategoryExerciseParameters(2, "SSP", "10-13", 7, "power");
+    const params36 = getCategoryExerciseParameters(2, "SSP", "36+", 7, "power");
 
     // Power exercises use 50-60% for Category 2 SSP
-    expect(params18.oneRepMaxPercent.max).toBeLessThanOrEqual(0.60);
+    expect(params18_35.oneRepMaxPercent.max).toBeLessThanOrEqual(0.60);
     expect(params14.oneRepMaxPercent.max).toBeLessThanOrEqual(0.60);
-    expect(params10.oneRepMaxPercent.max).toBeLessThanOrEqual(0.60);
+    expect(params36.oneRepMaxPercent.max).toBeLessThanOrEqual(0.60);
+  });
+
+  it("36+ should have same constraints as 18-35", () => {
+    const params18_35 = getCategoryExerciseParameters(2, "GPP", "18-35", 7, "strength");
+    const params36 = getCategoryExerciseParameters(2, "GPP", "36+", 7, "strength");
+
+    expect(params18_35.sets).toBe(params36.sets);
+    expect(params18_35.reps).toBe(params36.reps);
+    expect(params18_35.oneRepMaxPercent.max).toBe(params36.oneRepMaxPercent.max);
   });
 });

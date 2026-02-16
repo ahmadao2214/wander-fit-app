@@ -15,6 +15,7 @@ import {
   getExperienceBucket,
   getBodyweightVariant,
   formatTempo,
+  normalizeAgeGroup,
 } from "./intensityScaling";
 
 /**
@@ -347,7 +348,8 @@ export const getById = query({
     // Check if we have the new scaling snapshot (category-specific system)
     if (session.scalingSnapshot) {
       // Use category-specific intensity system
-      const { categoryId, phase, ageGroup, yearsOfExperience } = session.scalingSnapshot;
+      const { categoryId, phase, ageGroup: rawAgeGroup, yearsOfExperience } = session.scalingSnapshot;
+      const ageGroup = normalizeAgeGroup(rawAgeGroup);
       const experienceBucket = getExperienceBucket(yearsOfExperience);
 
       const scaledExercises = template.exercises.map((prescription) => {
@@ -994,7 +996,7 @@ export const startSession = mutation({
     const scalingSnapshot = {
       categoryId: userProgram.gppCategoryId,
       phase: template.phase as "GPP" | "SPP" | "SSP",
-      ageGroup: (userProgram.ageGroup || "18+") as "10-13" | "14-17" | "18+",
+      ageGroup: normalizeAgeGroup(userProgram.ageGroup),
       yearsOfExperience: intake?.yearsOfExperience ?? 0,
     };
 

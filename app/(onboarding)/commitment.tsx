@@ -95,7 +95,7 @@ export default function CommitmentScreen() {
           preferredTrainingDaysPerWeek: days,
           selectedTrainingDays,
           weeksUntilSeason: weeks,
-          ageGroup: ageGroup as "10-13" | "14-17" | "18+",
+          ageGroup: ageGroup as "14-17" | "18-35" | "36+",
         })
       }
 

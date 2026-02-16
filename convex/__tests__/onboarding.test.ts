@@ -303,7 +303,7 @@ describe("Onboarding Data Structures", () => {
     skillLevel: "Novice" | "Moderate" | "Advanced";
     preferredDays: number;
     weeksUntilSeason: number | null;
-    ageGroup: "10-13" | "14-17" | "18+" | null;
+    ageGroup: "14-17" | "18-35" | "36+" | null;
   }
 
   describe("OnboardingData structure", () => {
@@ -315,7 +315,7 @@ describe("Onboarding Data Structures", () => {
         skillLevel: "Moderate",
         preferredDays: 4,
         weeksUntilSeason: 12,
-        ageGroup: "18+",
+        ageGroup: "18-35",
       };
 
       expect(data.userName).toBeDefined();
@@ -363,10 +363,10 @@ describe("Onboarding Data Structures", () => {
     });
 
     it("should support all age groups", () => {
-      const ageGroups: Array<"10-13" | "14-17" | "18+"> = [
-        "10-13",
+      const ageGroups: Array<"14-17" | "18-35" | "36+"> = [
         "14-17",
-        "18+",
+        "18-35",
+        "36+",
       ];
 
       ageGroups.forEach((ageGroup) => {

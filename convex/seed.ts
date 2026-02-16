@@ -760,7 +760,7 @@ export const seedExampleUserProgram = mutation({
       assignedGppCategoryId: EXAMPLE_INTAKE.assignedGppCategoryId,
       assignedSkillLevel: EXAMPLE_INTAKE.assignedSkillLevel,
       intakeType: EXAMPLE_INTAKE.intakeType,
-      ageGroup: "18+", // Default to adult
+      ageGroup: "18-35", // Default to adult
       completedAt: now,
     });
 
@@ -770,7 +770,7 @@ export const seedExampleUserProgram = mutation({
       intakeResponseId,
       gppCategoryId: EXAMPLE_INTAKE.assignedGppCategoryId,
       skillLevel: EXAMPLE_INTAKE.assignedSkillLevel,
-      ageGroup: "18+", // Default to adult
+      ageGroup: "18-35", // Default to adult
       currentPhase: "GPP",
       currentWeek: 1,
       currentDay: 1,
