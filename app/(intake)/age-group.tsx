@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { YStack, XStack, Text, Card, Button, styled, Circle } from 'tamagui'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { ChevronRight, ChevronLeft, Check, Zap, Mountain, Heart } from '@tamagui/lucide-icons'
+import { ChevronRight, ChevronLeft, Check, Zap, Mountain, Shield } from '@tamagui/lucide-icons'
 import { Vibration, Animated } from 'react-native'
 import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT, COMBINED_FLOW_ROUTES } from '../../components/IntakeProgressDots'
 import { useSwipeNavigation } from '../../hooks/useSwipeNavigation'
@@ -60,16 +60,16 @@ const DIVISIONS: DivisionData[] = [
     label: 'Performance',
     subtitle: 'Ages 18-35',
     icon: Mountain,
-    color: '$intensityHigh11',
-    bgColor: '$intensityHigh3',
+    color: '$accent11',
+    bgColor: '$accent3',
   },
   {
     id: '36+',
     label: 'Vitality',
     subtitle: 'Ages 36+',
-    icon: Heart,
-    color: '$brand11',
-    bgColor: '$brand3',
+    icon: Shield,
+    color: '$intensityLow11',
+    bgColor: '$intensityLow3',
   },
 ]
 
