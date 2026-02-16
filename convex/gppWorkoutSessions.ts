@@ -994,7 +994,7 @@ export const startSession = mutation({
     const scalingSnapshot = {
       categoryId: userProgram.gppCategoryId,
       phase: template.phase as "GPP" | "SPP" | "SSP",
-      ageGroup: (userProgram.ageGroup || "18+") as "10-13" | "14-17" | "18+",
+      ageGroup: (userProgram.ageGroup || "18-35") as "14-17" | "18-35" | "36+",
       yearsOfExperience: intake?.yearsOfExperience ?? 0,
     };
 

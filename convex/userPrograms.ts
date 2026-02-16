@@ -402,7 +402,7 @@ export const completeIntake = mutation({
     preferredTrainingDaysPerWeek: v.number(), // 1-7
     selectedTrainingDays: v.optional(v.array(v.number())), // [1, 3, 5] = Mon, Wed, Fri (0=Sun, 6=Sat)
     weeksUntilSeason: v.optional(v.number()),
-    ageGroup: v.union(v.literal("10-13"), v.literal("14-17"), v.literal("18+")),
+    ageGroup: v.union(v.literal("14-17"), v.literal("18-35"), v.literal("36+")),
     intakeType: v.optional(intakeTypeValidator), // Defaults to "initial"
   },
   handler: async (ctx, args) => {
