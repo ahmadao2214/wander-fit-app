@@ -29,6 +29,34 @@ export type ExperienceBucket = "0-1" | "2-5" | "6+";
 export type ExerciseFocus = "strength" | "power" | "bodyweight";
 export type PositionType = "lowest" | "lowest_plus_1" | "lowest_plus_2" | "second_lowest" | "middle" | "max_minus_2" | "max_minus_1" | "max";
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// AGE GROUP NORMALIZATION (Legacy Migration Safety)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Maps legacy age group values to current values.
+ * Exists because database records written before the age group migration
+ * may still contain old values. Convex validators enforce at write time only,
+ * so old values pass through reads and crash when used as config map keys.
+ */
+const LEGACY_AGE_GROUP_MAP: Record<string, AgeGroup> = {
+  "10-13": "14-17",
+  "18+": "18-35",
+};
+
+/**
+ * Normalize an age group value, converting legacy values to current ones.
+ * - Current valid values pass through unchanged
+ * - Legacy values ("10-13", "18+") are mapped to new equivalents
+ * - Null/undefined/unknown defaults to "18-35"
+ */
+export function normalizeAgeGroup(ageGroup: string | null | undefined): AgeGroup {
+  if (!ageGroup) return "18-35";
+  if (ageGroup in LEGACY_AGE_GROUP_MAP) return LEGACY_AGE_GROUP_MAP[ageGroup];
+  const valid: AgeGroup[] = ["14-17", "18-35", "36+"];
+  return valid.includes(ageGroup as AgeGroup) ? (ageGroup as AgeGroup) : "18-35";
+}
+
 export interface IntensityConfig {
   oneRepMaxPercent: { min: number; max: number };
   setsMultiplier: number;

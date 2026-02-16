@@ -15,6 +15,7 @@ import {
   getExperienceBucket,
   getBodyweightVariant,
   formatTempo,
+  normalizeAgeGroup,
 } from "./intensityScaling";
 
 /**
@@ -560,7 +561,7 @@ export const getWorkoutWithScaling = query({
     // Extract scaling parameters
     const categoryId = userProgram.gppCategoryId as CategoryId;
     const phase = template.phase as Phase;
-    const ageGroup = (userProgram.ageGroup || "18-35") as AgeGroup;
+    const ageGroup = normalizeAgeGroup(userProgram.ageGroup);
     const yearsOfExperience = intake?.yearsOfExperience ?? 0;
     const experienceBucket = getExperienceBucket(yearsOfExperience);
 
