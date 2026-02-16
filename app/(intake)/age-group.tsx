@@ -68,8 +68,8 @@ const DIVISIONS: DivisionData[] = [
     label: 'Vitality',
     subtitle: 'Ages 36+',
     icon: Heart,
-    color: '$primary11',
-    bgColor: '$primary3',
+    color: '$brand11',
+    bgColor: '$brand3',
   },
 ]
 
