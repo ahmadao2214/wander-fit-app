@@ -11,16 +11,10 @@ const skillLevelValidator = v.union(
   v.literal("Advanced")
 );
 
-// NOTE: Legacy values ("10-13", "18+") are temporarily included to allow
-// deployment while old data exists. Run the migration to clean up, then remove:
-//   npx convex run migrations/migrateAgeGroups:migrateAllAgeGroups
 const ageGroupValidator = v.union(
   v.literal("14-17"),
   v.literal("18-35"),
-  v.literal("36+"),
-  // Legacy values — remove after migration
-  v.literal("10-13"),
-  v.literal("18+")
+  v.literal("36+")
 );
 
 /**
