@@ -20,6 +20,7 @@ import type * as gppWorkoutSessions from "../gppWorkoutSessions.js";
 import type * as intensityScaling from "../intensityScaling.js";
 import type * as invitations from "../invitations.js";
 import type * as migrations_migrateAgeGroups from "../migrations/migrateAgeGroups.js";
+import type * as migrations from "../migrations.js";
 import type * as onboarding from "../onboarding.js";
 import type * as programTemplates from "../programTemplates.js";
 import type * as sampleData from "../sampleData.js";
@@ -51,6 +52,7 @@ declare const fullApi: ApiFromModules<{
   intensityScaling: typeof intensityScaling;
   invitations: typeof invitations;
   "migrations/migrateAgeGroups": typeof migrations_migrateAgeGroups;
+  migrations: typeof migrations;
   onboarding: typeof onboarding;
   programTemplates: typeof programTemplates;
   sampleData: typeof sampleData;
