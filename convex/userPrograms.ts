@@ -576,57 +576,35 @@ export const advanceToNextDay = mutation({
     // Check if we need to advance phase (dynamic weeks per phase)
     const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
     if (currentWeek > weeksPerPhase) {
-      currentWeek = 1;
+      // Phase is complete — set reassessment pending instead of advancing
+      // The athlete must complete a reassessment before the next phase unlocks
+      if (program.reassessmentPendingForPhase) {
+        throw new Error("Reassessment already pending. Complete it before advancing.");
+      }
+
+      await ctx.db.patch(args.programId, {
+        // Keep athlete at last position (don't advance to next phase)
+        currentWeek: weeksPerPhase,
+        currentDay: preferredDays,
+        reassessmentPendingForPhase: currentPhase,
+        lastWorkoutDate: now,
+        updatedAt: now,
+      });
 
       const phaseOrder: ("GPP" | "SPP" | "SSP")[] = ["GPP", "SPP", "SSP"];
       const currentPhaseIndex = phaseOrder.indexOf(currentPhase);
+      const isFullCycleComplete = currentPhaseIndex === phaseOrder.length - 1;
 
-      if (currentPhaseIndex < phaseOrder.length - 1) {
-        // Advance to next phase and UNLOCK it (Sequential Access)
-        const newPhase = phaseOrder[currentPhaseIndex + 1];
-        
-        // Determine which unlock field to set
-        const unlockField = currentPhase === "GPP" ? "sppUnlockedAt" : "sspUnlockedAt";
-
-        await ctx.db.patch(args.programId, {
-          currentPhase: newPhase,
-          currentWeek: 1,
-          currentDay: 1,
-          phaseStartDate: now,
-          lastWorkoutDate: now,
-          [unlockField]: now,
-          updatedAt: now,
-        });
-
-        return {
-          advanced: true,
-          currentPhase: newPhase,
-          currentWeek: 1,
-          currentDay: 1,
-          phaseComplete: true,
-          phaseUnlocked: newPhase,
-          programComplete: false,
-          // FUTURE: Trigger re-assessment prompt here
-          triggerReassessment: true,
-        };
-      } else {
-        // All phases complete - stay on SSP for maintenance
-        await ctx.db.patch(args.programId, {
-          currentWeek: 1,
-          currentDay: 1,
-          lastWorkoutDate: now,
-          updatedAt: now,
-        });
-
-        return {
-          advanced: true,
-          currentPhase: "SSP",
-          currentWeek: 1,
-          currentDay: 1,
-          phaseComplete: true,
-          programComplete: true,
-        };
-      }
+      return {
+        advanced: true,
+        currentPhase,
+        currentWeek: weeksPerPhase,
+        currentDay: preferredDays,
+        phaseComplete: true,
+        triggerReassessment: true,
+        completedPhase: currentPhase,
+        programComplete: isFullCycleComplete,
+      };
     }
 
     // Normal day/week advancement
@@ -892,5 +870,303 @@ export const updateSkillLevel = mutation({
     });
 
     return { success: true };
+  },
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REASSESSMENT
+// ─────────────────────────────────────────────────────────────────────────────
+
+const phaseDifficultyValidator = v.union(
+  v.literal("too_easy"),
+  v.literal("just_right"),
+  v.literal("challenging"),
+  v.literal("too_hard")
+);
+
+const energyLevelValidator = v.union(
+  v.literal("low"),
+  v.literal("moderate"),
+  v.literal("high")
+);
+
+/**
+ * Helper to get the next phase in sequence
+ */
+function getNextPhase(phase: "GPP" | "SPP" | "SSP"): "GPP" | "SPP" | "SSP" {
+  switch (phase) {
+    case "GPP": return "SPP";
+    case "SPP": return "SSP";
+    case "SSP": return "GPP"; // Full cycle wraps
+  }
+}
+
+/**
+ * Get reassessment status for the current user
+ * Returns whether a reassessment is pending, stats, and upgrade eligibility
+ */
+export const getReassessmentStatus = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) return null;
+
+    const program = await ctx.db
+      .query("user_programs")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .first();
+
+    if (!program) return null;
+
+    if (!program.reassessmentPendingForPhase) {
+      return {
+        reassessmentPending: false,
+        pendingForPhase: null,
+        completionStats: null,
+        nextPhase: null,
+        isFullCycleComplete: false,
+        currentSkillLevel: program.skillLevel,
+        canUpgradeSkillLevel: false,
+        nextSkillLevel: null,
+      };
+    }
+
+    const pendingPhase = program.reassessmentPendingForPhase;
+    const nextPhase = getNextPhase(pendingPhase);
+    const isFullCycleComplete = pendingPhase === "SSP";
+
+    // Calculate completion stats
+    const intake = await ctx.db.get(program.intakeResponseId);
+    const preferredDays = intake?.preferredTrainingDaysPerWeek ?? 4;
+    const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
+    const expectedWorkouts = weeksPerPhase * preferredDays;
+
+    // Count completed sessions for this phase
+    const sessions = await ctx.db
+      .query("gpp_workout_sessions")
+      .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
+      .collect();
+
+    const phaseCompletedSessions = sessions.filter(
+      (s) =>
+        s.status === "completed" &&
+        s.templateSnapshot?.phase === pendingPhase
+    );
+
+    const completedCount = phaseCompletedSessions.length;
+    const completionRate = expectedWorkouts > 0
+      ? Math.min(1, completedCount / expectedWorkouts)
+      : 0;
+
+    // Count completed reassessments for skill upgrade criteria
+    const completedReassessments = [
+      program.gppReassessmentCompletedAt,
+      program.sppReassessmentCompletedAt,
+      program.sspReassessmentCompletedAt,
+    ].filter(Boolean).length;
+
+    // Determine skill upgrade eligibility
+    let canUpgradeSkillLevel = false;
+    let nextSkillLevel: "Novice" | "Moderate" | "Advanced" | null = null;
+
+    if (program.skillLevel === "Novice" && completionRate >= 0.75) {
+      canUpgradeSkillLevel = true;
+      nextSkillLevel = "Moderate";
+    } else if (
+      program.skillLevel === "Moderate" &&
+      completionRate >= 0.80 &&
+      completedReassessments >= 2
+    ) {
+      canUpgradeSkillLevel = true;
+      nextSkillLevel = "Advanced";
+    }
+
+    return {
+      reassessmentPending: true,
+      pendingForPhase: pendingPhase,
+      completionStats: {
+        expected: expectedWorkouts,
+        completed: completedCount,
+        completionRate,
+        weeksPerPhase,
+      },
+      nextPhase,
+      isFullCycleComplete,
+      currentSkillLevel: program.skillLevel,
+      canUpgradeSkillLevel,
+      nextSkillLevel,
+      completedReassessments,
+    };
+  },
+});
+
+/**
+ * Complete a reassessment after a phase
+ * Advances to the next phase, optionally upgrades skill level
+ */
+export const completeReassessment = mutation({
+  args: {
+    phaseDifficulty: phaseDifficultyValidator,
+    energyLevel: v.optional(energyLevelValidator),
+    notes: v.optional(v.string()),
+    maxesUpdated: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const program = await ctx.db
+      .query("user_programs")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .first();
+
+    if (!program) {
+      throw new Error("Program not found");
+    }
+
+    if (!program.reassessmentPendingForPhase) {
+      throw new Error("No reassessment pending");
+    }
+
+    const completedPhase = program.reassessmentPendingForPhase;
+    const nextPhase = getNextPhase(completedPhase);
+    const isFullCycleComplete = completedPhase === "SSP";
+    const now = Date.now();
+
+    // Calculate completion stats for the intake record
+    const intake = await ctx.db.get(program.intakeResponseId);
+    const preferredDays = intake?.preferredTrainingDaysPerWeek ?? 4;
+    const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
+    const expectedWorkouts = weeksPerPhase * preferredDays;
+
+    const sessions = await ctx.db
+      .query("gpp_workout_sessions")
+      .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
+      .collect();
+
+    const phaseCompletedSessions = sessions.filter(
+      (s) =>
+        s.status === "completed" &&
+        s.templateSnapshot?.phase === completedPhase
+    );
+
+    const completionRate = expectedWorkouts > 0
+      ? Math.min(1, phaseCompletedSessions.length / expectedWorkouts)
+      : 0;
+
+    // Count already-completed reassessments
+    const completedReassessments = [
+      program.gppReassessmentCompletedAt,
+      program.sppReassessmentCompletedAt,
+      program.sspReassessmentCompletedAt,
+    ].filter(Boolean).length;
+
+    // Determine skill upgrade
+    const previousSkillLevel = program.skillLevel;
+    let newSkillLevel = previousSkillLevel;
+    let skillLevelChanged = false;
+
+    const isEasyOrRight = args.phaseDifficulty === "too_easy" || args.phaseDifficulty === "just_right";
+
+    if (isEasyOrRight) {
+      if (previousSkillLevel === "Novice" && completionRate >= 0.75) {
+        newSkillLevel = "Moderate";
+        skillLevelChanged = true;
+      } else if (
+        previousSkillLevel === "Moderate" &&
+        completionRate >= 0.80 &&
+        completedReassessments >= 2
+      ) {
+        newSkillLevel = "Advanced";
+        skillLevelChanged = true;
+      }
+    }
+
+    // Create intake_responses record for this reassessment
+    const intakeResponseId = await ctx.db.insert("intake_responses", {
+      userId: user._id,
+      sportId: intake?.sportId ?? ("" as any), // Should always have intake
+      yearsOfExperience: intake?.yearsOfExperience ?? 0,
+      preferredTrainingDaysPerWeek: preferredDays,
+      selectedTrainingDays: intake?.selectedTrainingDays,
+      weeksUntilSeason: intake?.weeksUntilSeason,
+      assignedGppCategoryId: program.gppCategoryId,
+      assignedSkillLevel: newSkillLevel,
+      ageGroup: intake?.ageGroup,
+      intakeType: "reassessment",
+      selfAssessment: {
+        phaseDifficulty: args.phaseDifficulty,
+        energyLevel: args.energyLevel,
+        completionRate,
+        notes: args.notes,
+      },
+      previousSkillLevel,
+      skillLevelChanged,
+      completedPhase,
+      maxesUpdated: args.maxesUpdated,
+      completedAt: now,
+    });
+
+    // Determine reassessment timestamp field
+    const reassessmentTimestampField =
+      completedPhase === "GPP" ? "gppReassessmentCompletedAt"
+        : completedPhase === "SPP" ? "sppReassessmentCompletedAt"
+          : "sspReassessmentCompletedAt";
+
+    // Build program update
+    const programUpdate: Record<string, any> = {
+      intakeResponseId,
+      currentPhase: nextPhase,
+      currentWeek: 1,
+      currentDay: 1,
+      phaseStartDate: now,
+      reassessmentPendingForPhase: undefined,
+      [reassessmentTimestampField]: now,
+      updatedAt: now,
+    };
+
+    // Unlock next phase (unless full cycle wrapping)
+    if (!isFullCycleComplete) {
+      const unlockField = completedPhase === "GPP" ? "sppUnlockedAt" : "sspUnlockedAt";
+      programUpdate[unlockField] = now;
+    } else {
+      // Full cycle complete: reset to GPP, clear phase unlocks
+      programUpdate.sppUnlockedAt = undefined;
+      programUpdate.sspUnlockedAt = undefined;
+    }
+
+    // Upgrade skill level if applicable
+    if (skillLevelChanged) {
+      programUpdate.skillLevel = newSkillLevel;
+    }
+
+    await ctx.db.patch(program._id, programUpdate);
+
+    return {
+      skillLevelChanged,
+      previousSkillLevel,
+      newSkillLevel,
+      nextPhase,
+      isFullCycleComplete,
+      completionRate,
+    };
   },
 });
