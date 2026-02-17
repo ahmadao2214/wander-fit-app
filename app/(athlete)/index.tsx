@@ -15,6 +15,7 @@ import {
   CheckCircle,
   RotateCcw,
   Zap,
+  Bell,
 } from '@tamagui/lucide-icons'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -114,6 +115,12 @@ export default function AthleteDashboard() {
   // Get today's workout (with override support)
   const todayWorkout = useQuery(
     api.scheduleOverrides.getTodayWorkout,
+    user ? {} : "skip"
+  )
+
+  // Check for pending reassessment
+  const reassessmentStatus = useQuery(
+    api.userPrograms.getReassessmentStatus,
     user ? {} : "skip"
   )
 
@@ -279,6 +286,49 @@ export default function AthleteDashboard() {
                   }}
                 >
                   Resume
+                </Button>
+              </XStack>
+            </Card>
+          )}
+
+          {/* Reassessment Banner */}
+          {reassessmentStatus?.reassessmentPending && (
+            <Card
+              bg="$brand1"
+              p="$4"
+              rounded="$4"
+              borderLeftWidth={4}
+              borderLeftColor="$primary"
+              borderCurve="continuous"
+            >
+              <XStack items="center" gap="$3">
+                <YStack
+                  bg="$primary"
+                  p="$2"
+                  rounded="$10"
+                >
+                  <Bell color="white" size={20} />
+                </YStack>
+                <YStack flex={1}>
+                  <Text fontFamily="$body" fontWeight="600" color="$brand9">
+                    Phase Assessment Ready
+                  </Text>
+                  <Text fontSize={13} color="$brand8" fontFamily="$body">
+                    Complete your check-in to unlock {reassessmentStatus.nextPhase}
+                  </Text>
+                </YStack>
+                <Button
+                  size="$3"
+                  bg="$primary"
+                  color="white"
+                  fontFamily="$body" fontWeight="700"
+                  rounded="$3"
+                  pressStyle={{ opacity: 0.9 }}
+                  onPress={() => {
+                    router.push('/(reassessment)/celebration' as any)
+                  }}
+                >
+                  Start Now
                 </Button>
               </XStack>
             </Card>

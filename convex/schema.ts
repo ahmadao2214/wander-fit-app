@@ -262,12 +262,12 @@ export default defineSchema({
 
   /**
    * intake_responses - Stores all intake questionnaire answers
-   * 
+   *
    * Separated from user_programs to:
    * 1. Preserve intake history even if program is deleted/reset
    * 2. Enable re-assessment intakes (multiple intakes over time)
    * 3. Track how athletes progress through assessments
-   * 
+   *
    * Each intake creates a new record; latest is used for current program.
    */
   intake_responses: defineTable({
@@ -295,6 +295,27 @@ export default defineSchema({
       v.literal("initial"),      // First time intake
       v.literal("reassessment")  // After training block completion
     ),
+
+    // Reassessment-specific fields (only present for intakeType: "reassessment")
+    selfAssessment: v.optional(v.object({
+      phaseDifficulty: v.union(
+        v.literal("too_easy"),
+        v.literal("just_right"),
+        v.literal("challenging"),
+        v.literal("too_hard")
+      ),
+      energyLevel: v.optional(v.union(
+        v.literal("low"),
+        v.literal("moderate"),
+        v.literal("high")
+      )),
+      completionRate: v.optional(v.number()),
+      notes: v.optional(v.string()),
+    })),
+    previousSkillLevel: v.optional(skillLevelValidator),
+    skillLevelChanged: v.optional(v.boolean()),
+    completedPhase: v.optional(phaseValidator),
+    maxesUpdated: v.optional(v.boolean()),
 
     // Meta
     completedAt: v.number(),
@@ -329,6 +350,12 @@ export default defineSchema({
     // GPP is always unlocked from start
     sppUnlockedAt: v.optional(v.number()), // Set when GPP completes
     sspUnlockedAt: v.optional(v.number()), // Set when SPP completes
+
+    // Reassessment tracking
+    reassessmentPendingForPhase: v.optional(phaseValidator), // Set when phase completes, cleared on reassessment
+    gppReassessmentCompletedAt: v.optional(v.number()),
+    sppReassessmentCompletedAt: v.optional(v.number()),
+    sspReassessmentCompletedAt: v.optional(v.number()),
 
     // Phase tracking
     phaseStartDate: v.number(),

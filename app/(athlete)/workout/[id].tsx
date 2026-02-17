@@ -29,6 +29,7 @@ import {
   Info,
   Zap,
   Flame,
+  Bell,
 } from '@tamagui/lucide-icons'
 import DraggableFlatList, {
   ScaleDecorator,
@@ -129,6 +130,12 @@ export default function WorkoutDetailScreen() {
   // Get unlocked phases to check access
   const unlockedPhases = useQuery(
     api.userPrograms.getUnlockedPhases,
+    user ? {} : "skip"
+  )
+
+  // Check for pending reassessment (to gate next-phase workouts)
+  const reassessmentStatus = useQuery(
+    api.userPrograms.getReassessmentStatus,
     user ? {} : "skip"
   )
 
@@ -339,8 +346,30 @@ export default function WorkoutDetailScreen() {
           )}
         </XStack>
 
-        {/* Phase Locked Banner */}
-        {!isPhaseUnlocked && (
+        {/* Reassessment Required Banner */}
+        {!isPhaseUnlocked && reassessmentStatus?.reassessmentPending && (
+          <Card p="$3" bg="$brand1" borderColor="$brand3">
+            <XStack items="center" gap="$2">
+              <Bell size={18} color="$primary" />
+              <Text fontSize="$3" color="$brand9" flex={1}>
+                Complete your reassessment to unlock {template.phase} workouts
+              </Text>
+              <Button
+                size="$2"
+                bg="$primary"
+                color="white"
+                fontFamily="$body" fontWeight="600"
+                rounded="$3"
+                onPress={() => router.push('/(reassessment)/celebration' as any)}
+              >
+                Take Assessment
+              </Button>
+            </XStack>
+          </Card>
+        )}
+
+        {/* Phase Locked Banner (only if not blocked by reassessment) */}
+        {!isPhaseUnlocked && !reassessmentStatus?.reassessmentPending && (
           <Card p="$3" bg="$orange2" borderColor="$orange6">
             <XStack items="center" gap="$2">
               <Lock size={18} color="$orange11" />
@@ -515,7 +544,7 @@ export default function WorkoutDetailScreen() {
         </XStack>
       </YStack>
     )
-  }, [template, isPhaseUnlocked, isCompleted, canReorder, lastCompletedSession, viewMode])
+  }, [template, isPhaseUnlocked, isCompleted, canReorder, lastCompletedSession, viewMode, reassessmentStatus])
 
   // Footer component with bottom padding
   const ListFooter = useMemo(() => {
