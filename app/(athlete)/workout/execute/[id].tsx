@@ -28,6 +28,8 @@ import { ExerciseTypeIcon } from '../../../../components/workout/ExerciseTypeIco
 import { SetTracker } from '../../../../components/workout/SetTracker'
 import { InstructionsAccordion } from '../../../../components/workout/InstructionsAccordion'
 import { ExerciseQueue } from '../../../../components/workout/ExerciseQueue'
+import { ConfettiEffect } from '../../../../components/workout/ConfettiEffect'
+import { WarmupSection, type WarmupExercise } from '../../../../components/workout/WarmupSection'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { PanResponder, Platform, Vibration, Animated, useColorScheme } from 'react-native'
 import { mapIntensityToLevel, IntensityLevel } from '../../../../lib'
@@ -174,10 +176,17 @@ export default function WorkoutExecutionScreen() {
   const [showCompletionDialog, setShowCompletionDialog] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)
 
+  // Warmup flow state
+  const [showWarmup, setShowWarmup] = useState(true)
+
   // Auto-advance state (1.5s delay when all sets complete)
   const [autoAdvanceCountdown, setAutoAdvanceCountdown] = useState<number | null>(null)
   const autoAdvanceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Reassessment prompt state
+  const [showReassessmentPrompt, setShowReassessmentPrompt] = useState(false)
+  const [reassessmentPhase, setReassessmentPhase] = useState<string | null>(null)
 
   // Auto-save ref
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -310,17 +319,21 @@ export default function WorkoutExecutionScreen() {
     if (session?.exercises && !isInitialized) {
       setExerciseCompletions(session.exercises as ExerciseCompletion[])
       setIsInitialized(true)
-      
+
       if (session.template?.exercises) {
-        exerciseCountRef.current = session.template.exercises.length
-        
+        // Count only non-warmup exercises for the swipe stepper
+        const nonWarmupCount = session.template.exercises.filter((ex: any) =>
+          ex.section !== 'warmup' && !(ex && !ex.section && ex.notes === 'Warmup')
+        ).length
+        exerciseCountRef.current = nonWarmupCount
+
         if (session.exerciseOrder && session.exerciseOrder.length > 0) {
           setExerciseOrder(session.exerciseOrder)
         } else {
-          setExerciseOrder(session.template.exercises.map((_, idx) => idx))
+          setExerciseOrder(session.template.exercises.map((_: any, idx: number) => idx))
         }
       }
-      
+
       const firstIncomplete = session.exercises.findIndex(
         (e) => !e.completed && !e.skipped
       )
@@ -556,9 +569,37 @@ export default function WorkoutExecutionScreen() {
   const template = session?.template
   const templateExercises = template?.exercises || []
 
+  // Separate warmup exercises from main workout exercises
+  const { warmupExs, mainTemplateExercises } = useMemo(() => {
+    const warmup: WarmupExercise[] = []
+    const main = templateExercises.filter((ex: any) => {
+      // Detect warmup by section field or legacy notes field
+      if (ex.section === 'warmup' || (!ex.section && ex.notes === 'Warmup')) {
+        warmup.push({
+          exerciseId: ex.exerciseId,
+          name: ex.exercise?.name ?? 'Exercise',
+          sets: ex.sets,
+          reps: ex.reps,
+          restSeconds: ex.restSeconds,
+          warmupPhase: ex.warmupPhase,
+          section: 'warmup',
+          orderIndex: ex.orderIndex,
+        })
+        return false
+      }
+      return true
+    })
+    return { warmupExs: warmup, mainTemplateExercises: main }
+  }, [templateExercises])
+
+  const hasWarmup = warmupExs.length > 0
+  const warmupDuration = Math.round(warmupExs.length * 0.5)
+
   const orderedExercises = exerciseOrder.length > 0
-    ? exerciseOrder.map(idx => templateExercises[idx])
-    : templateExercises
+    ? exerciseOrder.map(idx => templateExercises[idx]).filter((ex: any) =>
+        ex?.section !== 'warmup' && !(ex && !ex.section && ex.notes === 'Warmup')
+      )
+    : mainTemplateExercises
 
   const currentExercise = orderedExercises[currentExerciseIndex]
   const currentCompletion = exerciseCompletions[currentExerciseIndex]
@@ -600,6 +641,19 @@ export default function WorkoutExecutionScreen() {
   const exerciseDetails = currentExercise.exercise
   const completedCount = exerciseCompletions.filter(e => e.completed).length
   const isLastExercise = currentExerciseIndex === orderedExercises.length - 1
+
+  // Show warmup flow screen before main execution
+  if (showWarmup && hasWarmup) {
+    return (
+      <WarmupSection
+        exercises={warmupExs}
+        totalDuration={warmupDuration}
+        onComplete={() => setShowWarmup(false)}
+        onSkip={() => setShowWarmup(false)}
+        mode="flow"
+      />
+    )
+  }
 
   return (
     <YStack flex={1} bg="$background" items="center">

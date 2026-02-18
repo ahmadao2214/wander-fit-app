@@ -37,6 +37,8 @@ import DraggableFlatList, {
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { ExerciseAccordionItem } from '../../../components/ExerciseAccordionItem'
 import { PerformanceReviewItem } from '../../../components/workout/PerformanceReviewItem'
+import { WarmupSection, type WarmupExercise } from '../../../components/workout/WarmupSection'
+import { getWarmupDuration } from '../../../convex/warmupSequences'
 
 /**
  * Exercise type for the draggable list (with intensity scaling)
@@ -151,10 +153,44 @@ export default function WorkoutDetailScreen() {
     template?.phase as "GPP" | "SPP" | "SSP"
   ) ?? false
 
-  // Check if reordering is allowed (need at least 2 exercises)
-  const canReorder = isPhaseUnlocked && !isCompleted && (template?.exercises?.length ?? 0) > 1
+  // Split exercises into warmup and main sections
+  const { warmupExercises, mainExercises } = useMemo(() => {
+    const allExercises = (template?.exercises ?? []) as (ExerciseItem & { section?: string; warmupPhase?: string })[]
+    const warmup: WarmupExercise[] = []
+    const main: ExerciseItem[] = []
 
-  // Use shared drag reorder hook
+    for (const ex of allExercises) {
+      // Detect warmup by section field or legacy notes field
+      if (ex.section === 'warmup' || (!ex.section && ex.notes === 'Warmup')) {
+        warmup.push({
+          exerciseId: ex.exerciseId as any,
+          name: ex.exercise?.name ?? 'Exercise',
+          sets: ex.sets,
+          reps: ex.reps,
+          restSeconds: ex.restSeconds,
+          warmupPhase: ex.warmupPhase as any,
+          section: 'warmup',
+          orderIndex: ex.orderIndex,
+        })
+      } else {
+        main.push(ex)
+      }
+    }
+
+    return { warmupExercises: warmup, mainExercises: main }
+  }, [template?.exercises])
+
+  // Warmup duration based on day type
+  const warmupDuration = useMemo(() => {
+    if (warmupExercises.length === 0) return 0
+    // Estimate based on exercise count (~30s per exercise)
+    return Math.round(warmupExercises.length * 0.5)
+  }, [warmupExercises])
+
+  // Check if reordering is allowed (need at least 2 main exercises)
+  const canReorder = isPhaseUnlocked && !isCompleted && mainExercises.length > 1
+
+  // Use shared drag reorder hook (only main exercises)
   const {
     orderedExercises,
     orderIndices,
@@ -162,7 +198,7 @@ export default function WorkoutDetailScreen() {
     handleDragEnd,
     triggerHaptic,
   } = useDragReorder({
-    exercises: (template?.exercises ?? []) as ExerciseItem[],
+    exercises: mainExercises as ExerciseItem[],
     savedOrder: session?.exerciseOrder,
     enabled: canReorder,
   })
@@ -488,6 +524,17 @@ export default function WorkoutDetailScreen() {
           </Card>
         )}
 
+        {/* Warmup Section Preview (collapsible) */}
+        {warmupExercises.length > 0 && !isCompleted && (
+          <WarmupSection
+            exercises={warmupExercises}
+            totalDuration={warmupDuration}
+            onComplete={() => {}}
+            onSkip={() => {}}
+            mode="preview"
+          />
+        )}
+
         {/* Exercise List Header */}
         <XStack items="center" justify="space-between" pt="$2">
           <H3>{isCompleted && viewMode === "review" ? "Performance" : "Exercises"}</H3>
@@ -574,7 +621,7 @@ export default function WorkoutDetailScreen() {
               {template.name}
             </Text>
             <Text color="$color10" fontSize="$2">
-              {template.exercises.length} exercises • ~{template.estimatedDurationMinutes} min
+              {mainExercises.length} exercises{warmupExercises.length > 0 ? ' + warmup' : ''} • ~{template.estimatedDurationMinutes} min
             </Text>
           </YStack>
           {isPhaseUnlocked && !isCompleted && (

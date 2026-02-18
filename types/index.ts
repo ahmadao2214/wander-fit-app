@@ -146,6 +146,17 @@ export interface OnboardingScreenData {
 
 export type ExerciseDifficulty = "beginner" | "intermediate" | "advanced";
 
+export type WarmupPhase =
+  | "foam_rolling"
+  | "mobility"
+  | "core_isometric"
+  | "core_dynamic"
+  | "walking_drills"
+  | "movement_prep"
+  | "power_primer";
+
+export type ExerciseSection = "warmup" | "main" | "circuit" | "finisher";
+
 /**
  * Exercise prescription within a template
  */
@@ -158,6 +169,9 @@ export interface ExercisePrescription {
   notes?: string;
   orderIndex: number;
   superset?: string; // "A", "B" for grouping
+  intensityPercent?: number; // e.g., 65 for "65% of 1RM"
+  section?: ExerciseSection;
+  warmupPhase?: WarmupPhase;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

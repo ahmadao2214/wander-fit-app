@@ -26,6 +26,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
+import { generateWarmupPrescriptions } from "./warmupSequences";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -34,6 +35,9 @@ import { Id } from "./_generated/dataModel";
 type Phase = "GPP" | "SPP" | "SSP";
 type SkillLevel = "Novice" | "Moderate" | "Advanced";
 type GppCategoryId = 1 | 2 | 3 | 4;
+
+type ExerciseSection = "warmup" | "main" | "circuit" | "finisher";
+type WarmupPhaseType = "foam_rolling" | "mobility" | "core_isometric" | "core_dynamic" | "walking_drills" | "movement_prep" | "power_primer";
 
 interface ExercisePrescription {
   exerciseSlug: string;
@@ -44,6 +48,8 @@ interface ExercisePrescription {
   notes?: string;
   orderIndex: number;
   superset?: string;
+  section?: ExerciseSection;
+  warmupPhase?: WarmupPhaseType;
 }
 
 interface TemplateDefinition {
@@ -535,9 +541,9 @@ function generateExercisePrescriptions(
   // Get day type
   const dayType = day === 1 ? "lower" : day === 2 ? "upper" : "power";
 
-  // 1. Warmup (2 exercises)
-  const warmupExercises = WARMUP_EXERCISES[dayType].slice(0, 2);
-  for (const slug of warmupExercises) {
+  // 1. Warmup (structured multi-phase protocol)
+  const warmupPrescriptions = generateWarmupPrescriptions(dayType, false, 0);
+  for (const wp of warmupPrescriptions) {
     exercises.push({
       exerciseSlug: slug,
       sets: 1,
@@ -545,6 +551,8 @@ function generateExercisePrescriptions(
       restSeconds: 0,
       notes: "Warmup",
       orderIndex: orderIndex++,
+      section: wp.section,
+      warmupPhase: wp.warmupPhase,
     });
   }
 
@@ -566,6 +574,7 @@ function generateExercisePrescriptions(
       tempo: phaseConfig.tempo,
       restSeconds: isCompound ? adjustedRest + 15 : adjustedRest,
       orderIndex: orderIndex++,
+      section: "main",
     });
   }
 
@@ -581,6 +590,7 @@ function generateExercisePrescriptions(
       reps: isPlank ? "30s" : `${adjustedReps}`,
       restSeconds: 30,
       orderIndex: orderIndex++,
+      section: "main",
     });
   }
 
@@ -756,6 +766,8 @@ export const generateAllTemplates = mutation({
                     notes: ex.notes,
                     orderIndex: ex.orderIndex,
                     superset: ex.superset,
+                    section: ex.section,
+                    warmupPhase: ex.warmupPhase,
                   };
                 });
 
@@ -869,6 +881,8 @@ export const generateCategoryTemplates = mutation({
                   notes: ex.notes,
                   orderIndex: ex.orderIndex,
                   superset: ex.superset,
+                  section: ex.section,
+                  warmupPhase: ex.warmupPhase,
                 };
               });
 
