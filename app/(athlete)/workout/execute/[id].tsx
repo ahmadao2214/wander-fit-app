@@ -176,8 +176,9 @@ export default function WorkoutExecutionScreen() {
   const [showCompletionDialog, setShowCompletionDialog] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)
 
-  // Warmup flow state
+  // Warmup flow state — skip warmup if session already has progress (e.g. resuming)
   const [showWarmup, setShowWarmup] = useState(true)
+  const warmupInitRef = useRef(false)
 
   // Auto-advance state (1.5s delay when all sets complete)
   const [autoAdvanceCountdown, setAutoAdvanceCountdown] = useState<number | null>(null)
@@ -322,14 +323,16 @@ export default function WorkoutExecutionScreen() {
       if (session.template?.exercises) {
         const templateExs = session.template.exercises
 
-        // Build warmup mask: true for warmup exercises
-        const warmupMask = templateExs.map((ex: any) =>
-          ex.section === 'warmup' || (!ex.section && ex.notes === 'Warmup')
+        // Build set of warmup exercise IDs for robust matching by ID (not position)
+        const warmupExerciseIds = new Set(
+          templateExs
+            .filter((ex: any) => ex.section === 'warmup' || (!ex.section && ex.notes === 'Warmup'))
+            .map((ex: any) => String(ex.exerciseId))
         )
 
-        // Filter completions to non-warmup only (aligned with orderedExercises)
+        // Filter completions to non-warmup only using exerciseId matching
         const filteredCompletions = (session.exercises as ExerciseCompletion[]).filter(
-          (_: any, idx: number) => idx < warmupMask.length && !warmupMask[idx]
+          (ex: any) => !warmupExerciseIds.has(String(ex.exerciseId))
         )
         setExerciseCompletions(filteredCompletions)
         exerciseCountRef.current = filteredCompletions.length
@@ -337,12 +340,12 @@ export default function WorkoutExecutionScreen() {
         // Build non-warmup template indices for default order
         const nonWarmupIndices = templateExs
           .map((_: any, idx: number) => idx)
-          .filter((idx: number) => !warmupMask[idx])
+          .filter((idx: number) => !warmupExerciseIds.has(String(templateExs[idx].exerciseId)))
 
         if (session.exerciseOrder && session.exerciseOrder.length > 0) {
-          // Filter saved order to exclude warmup indices
+          // Filter saved order to exclude warmup indices using exerciseId matching
           const filteredOrder = (session.exerciseOrder as number[]).filter(
-            (idx: number) => idx < warmupMask.length && !warmupMask[idx]
+            (idx: number) => idx < templateExs.length && !warmupExerciseIds.has(String(templateExs[idx].exerciseId))
           )
           setExerciseOrder(filteredOrder.length > 0 ? filteredOrder : nonWarmupIndices)
         } else {
@@ -370,6 +373,15 @@ export default function WorkoutExecutionScreen() {
       }
 
       setIsInitialized(true)
+
+      // Skip warmup if session already has progress (e.g. resuming after backgrounding)
+      if (!warmupInitRef.current) {
+        warmupInitRef.current = true
+        const hasProgress = session.exercises.some((e: any) => e.completed || e.skipped)
+        if (hasProgress) {
+          setShowWarmup(false)
+        }
+      }
     }
   }, [session, isInitialized])
 
