@@ -521,7 +521,7 @@ export default function WorkoutExecutionScreen() {
       })
     }
 
-    if (currentExerciseIndex < exerciseCompletions.length - 1) {
+    if (currentExerciseIndex < exerciseCountRef.current - 1) {
       setCurrentExerciseIndex(currentExerciseIndex + 1)
     } else {
       setShowCompletionDialog(true)
