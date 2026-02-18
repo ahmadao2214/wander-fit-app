@@ -323,16 +323,19 @@ export default function WorkoutExecutionScreen() {
       if (session.template?.exercises) {
         const templateExs = session.template.exercises
 
-        // Build set of warmup exercise IDs for robust matching by ID (not position)
-        const warmupExerciseIds = new Set(
+        // Build set of warmup template indices using section field
+        // (not exerciseId, since exercises like dead_bug can appear in both warmup and main)
+        const warmupIndices = new Set(
           templateExs
-            .filter((ex: any) => ex.section === 'warmup' || (!ex.section && ex.notes === 'Warmup'))
-            .map((ex: any) => String(ex.exerciseId))
+            .map((ex: any, idx: number) => ({ ex, idx }))
+            .filter(({ ex }: any) => ex.section === 'warmup' || (!ex.section && ex.notes === 'Warmup'))
+            .map(({ idx }: any) => idx)
         )
 
-        // Filter completions to non-warmup only using exerciseId matching
+        // Filter completions to non-warmup only using index-based matching
+        // (session.exercises is positionally aligned with templateExs at creation)
         const filteredCompletions = (session.exercises as ExerciseCompletion[]).filter(
-          (ex: any) => !warmupExerciseIds.has(String(ex.exerciseId))
+          (_: any, idx: number) => !warmupIndices.has(idx)
         )
         setExerciseCompletions(filteredCompletions)
         exerciseCountRef.current = filteredCompletions.length
@@ -340,12 +343,12 @@ export default function WorkoutExecutionScreen() {
         // Build non-warmup template indices for default order
         const nonWarmupIndices = templateExs
           .map((_: any, idx: number) => idx)
-          .filter((idx: number) => !warmupExerciseIds.has(String(templateExs[idx].exerciseId)))
+          .filter((idx: number) => !warmupIndices.has(idx))
 
         if (session.exerciseOrder && session.exerciseOrder.length > 0) {
-          // Filter saved order to exclude warmup indices using exerciseId matching
+          // Filter saved order to exclude warmup indices
           const filteredOrder = (session.exerciseOrder as number[]).filter(
-            (idx: number) => idx < templateExs.length && !warmupExerciseIds.has(String(templateExs[idx].exerciseId))
+            (idx: number) => !warmupIndices.has(idx)
           )
           setExerciseOrder(filteredOrder.length > 0 ? filteredOrder : nonWarmupIndices)
         } else {
