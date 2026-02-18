@@ -201,6 +201,24 @@ export default function WorkoutDetailScreen() {
   // Check if reordering is allowed (need at least 2 main exercises)
   const canReorder = isPhaseUnlocked && !isCompleted && mainExercises.length > 1
 
+  // Remap template-level exerciseOrder indices to mainExercises-relative indices.
+  // The execution screen saves exerciseOrder with template indices (e.g., [15, 16, 17, 18, 19])
+  // but useDragReorder expects indices relative to mainExercises (e.g., [0, 1, 2, 3, 4]).
+  const remappedSavedOrder = useMemo(() => {
+    if (!session?.exerciseOrder) return undefined
+    const allExercises = (template?.exercises ?? []) as (ExerciseItem & { section?: string })[]
+    const mainIndexMap = new Map<number, number>()
+    let mainIdx = 0
+    for (let i = 0; i < allExercises.length; i++) {
+      if (allExercises[i].section !== 'warmup' && allExercises[i].notes !== 'Warmup') {
+        mainIndexMap.set(i, mainIdx++)
+      }
+    }
+    return (session.exerciseOrder as number[])
+      .map(idx => mainIndexMap.get(idx))
+      .filter((idx): idx is number => idx !== undefined)
+  }, [session?.exerciseOrder, template?.exercises])
+
   // Use shared drag reorder hook (only main exercises)
   const {
     orderedExercises,
@@ -210,7 +228,7 @@ export default function WorkoutDetailScreen() {
     triggerHaptic,
   } = useDragReorder({
     exercises: mainExercises as ExerciseItem[],
-    savedOrder: session?.exerciseOrder,
+    savedOrder: remappedSavedOrder,
     enabled: canReorder,
   })
 
