@@ -206,7 +206,7 @@ function WarmupFlow({ exercises, totalDuration, onComplete, onSkip }: Omit<Warmu
 // PREVIEW MODE (Detail screen collapsible)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function WarmupPreview({ exercises, totalDuration, onComplete, onSkip }: Omit<WarmupSectionProps, 'mode'>) {
+function WarmupPreview({ exercises, totalDuration }: Pick<WarmupSectionProps, 'exercises' | 'totalDuration'>) {
   const [expanded, setExpanded] = useState(false)
   const phaseGroups = groupByPhase(exercises)
   const activePhases = PHASE_ORDER.filter((p) => phaseGroups.has(p))

@@ -186,16 +186,6 @@ const CATEGORY_NAMES: Record<GppCategoryId, string> = {
  */
 
 // Warmup exercises by day type
-const WARMUP_EXERCISES: Record<DayType, string[]> = {
-  lower_a: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch"],
-  upper_a: ["cat_cow", "thoracic_rotation", "dead_bug"],
-  power: ["cat_cow", "bird_dog", "worlds_greatest_stretch"],
-  lower_b: ["cat_cow", "90_90_hip_stretch", "hip_flexor_stretch"],
-  upper_b: ["cat_cow", "thoracic_rotation", "dead_bug"],
-  full_body: ["cat_cow", "worlds_greatest_stretch", "bird_dog"],
-  recovery: ["cat_cow", "90_90_hip_stretch", "thoracic_rotation"],
-};
-
 // Cooldown exercises
 const COOLDOWN_EXERCISES = ["90_90_hip_stretch", "hip_flexor_stretch"];
 
