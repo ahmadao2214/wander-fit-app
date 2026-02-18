@@ -316,31 +316,60 @@ export default function WorkoutExecutionScreen() {
   )
 
   // Initialize exercise completions from session data
+  // Filter warmup exercises so exerciseCompletions aligns with orderedExercises
   useEffect(() => {
     if (session?.exercises && !isInitialized) {
-      setExerciseCompletions(session.exercises as ExerciseCompletion[])
-      setIsInitialized(true)
-
       if (session.template?.exercises) {
-        // Count only non-warmup exercises for the swipe stepper
-        const nonWarmupCount = session.template.exercises.filter((ex: any) =>
-          ex.section !== 'warmup' && !(ex && !ex.section && ex.notes === 'Warmup')
-        ).length
-        exerciseCountRef.current = nonWarmupCount
+        const templateExs = session.template.exercises
+
+        // Build warmup mask: true for warmup exercises
+        const warmupMask = templateExs.map((ex: any) =>
+          ex.section === 'warmup' || (!ex.section && ex.notes === 'Warmup')
+        )
+
+        // Filter completions to non-warmup only (aligned with orderedExercises)
+        const filteredCompletions = (session.exercises as ExerciseCompletion[]).filter(
+          (_: any, idx: number) => idx < warmupMask.length && !warmupMask[idx]
+        )
+        setExerciseCompletions(filteredCompletions)
+        exerciseCountRef.current = filteredCompletions.length
+
+        // Build non-warmup template indices for default order
+        const nonWarmupIndices = templateExs
+          .map((_: any, idx: number) => idx)
+          .filter((idx: number) => !warmupMask[idx])
 
         if (session.exerciseOrder && session.exerciseOrder.length > 0) {
-          setExerciseOrder(session.exerciseOrder)
+          // Filter saved order to exclude warmup indices
+          const filteredOrder = (session.exerciseOrder as number[]).filter(
+            (idx: number) => idx < warmupMask.length && !warmupMask[idx]
+          )
+          setExerciseOrder(filteredOrder.length > 0 ? filteredOrder : nonWarmupIndices)
         } else {
-          setExerciseOrder(session.template.exercises.map((_: any, idx: number) => idx))
+          setExerciseOrder(nonWarmupIndices)
+        }
+
+        // Find first incomplete non-warmup exercise
+        const firstIncomplete = filteredCompletions.findIndex(
+          (e) => !e.completed && !e.skipped
+        )
+        if (firstIncomplete !== -1) {
+          setCurrentExerciseIndex(firstIncomplete)
+        }
+      } else {
+        // Legacy templates without section field
+        setExerciseCompletions(session.exercises as ExerciseCompletion[])
+        exerciseCountRef.current = session.exercises.length
+
+        const firstIncomplete = session.exercises.findIndex(
+          (e) => !e.completed && !e.skipped
+        )
+        if (firstIncomplete !== -1) {
+          setCurrentExerciseIndex(firstIncomplete)
         }
       }
 
-      const firstIncomplete = session.exercises.findIndex(
-        (e) => !e.completed && !e.skipped
-      )
-      if (firstIncomplete !== -1) {
-        setCurrentExerciseIndex(firstIncomplete)
-      }
+      setIsInitialized(true)
     }
   }, [session, isInitialized])
 

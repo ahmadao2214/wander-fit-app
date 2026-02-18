@@ -31,6 +31,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { generateWarmupPrescriptions } from "./warmupSequences";
+import type { WarmupPhase, ExerciseSection } from "../types";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -39,9 +40,6 @@ import { generateWarmupPrescriptions } from "./warmupSequences";
 type Phase = "GPP" | "SPP" | "SSP";
 type SkillLevel = "Novice" | "Moderate" | "Advanced";
 type GppCategoryId = 1 | 2 | 3 | 4;
-
-type ExerciseSection = "warmup" | "main" | "circuit" | "finisher";
-type WarmupPhaseType = "foam_rolling" | "mobility" | "core_isometric" | "core_dynamic" | "walking_drills" | "movement_prep" | "power_primer";
 
 interface ExercisePrescription {
   exerciseSlug: string;
@@ -53,7 +51,7 @@ interface ExercisePrescription {
   orderIndex: number;
   superset?: string;
   section?: ExerciseSection;
-  warmupPhase?: WarmupPhaseType;
+  warmupPhase?: WarmupPhase;
 }
 
 interface TemplateDefinition {

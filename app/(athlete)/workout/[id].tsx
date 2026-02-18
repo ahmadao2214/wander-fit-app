@@ -39,7 +39,6 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { ExerciseAccordionItem } from '../../../components/ExerciseAccordionItem'
 import { PerformanceReviewItem } from '../../../components/workout/PerformanceReviewItem'
 import { WarmupSection, type WarmupExercise } from '../../../components/workout/WarmupSection'
-import { getWarmupDuration } from '../../../convex/warmupSequences'
 
 /**
  * Exercise type for the draggable list (with intensity scaling)
