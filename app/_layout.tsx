@@ -103,6 +103,14 @@ function RootLayoutNav() {
           }}
         />
         
+        {/* Reassessment flow (phase completion check-in) */}
+        <Stack.Screen
+          name="(reassessment)"
+          options={{
+            headerShown: false,
+          }}
+        />
+
         {/* Main athlete dashboard */}
         <Stack.Screen
           name="(athlete)"

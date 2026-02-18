@@ -20,7 +20,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export type Intensity = "Low" | "Moderate" | "High";
-export type AgeGroup = "10-13" | "14-17" | "18+";
+export type AgeGroup = "14-17" | "18-35" | "36+";
 export type Phase = "GPP" | "SPP" | "SSP";
 
 // Category-specific intensity types
@@ -28,6 +28,34 @@ export type CategoryId = 1 | 2 | 3 | 4;
 export type ExperienceBucket = "0-1" | "2-5" | "6+";
 export type ExerciseFocus = "strength" | "power" | "bodyweight";
 export type PositionType = "lowest" | "lowest_plus_1" | "lowest_plus_2" | "second_lowest" | "middle" | "max_minus_2" | "max_minus_1" | "max";
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AGE GROUP NORMALIZATION (Legacy Migration Safety)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Maps legacy age group values to current values.
+ * Exists because database records written before the age group migration
+ * may still contain old values. Convex validators enforce at write time only,
+ * so old values pass through reads and crash when used as config map keys.
+ */
+const LEGACY_AGE_GROUP_MAP: Record<string, AgeGroup> = {
+  "10-13": "14-17",
+  "18+": "18-35",
+};
+
+/**
+ * Normalize an age group value, converting legacy values to current ones.
+ * - Current valid values pass through unchanged
+ * - Legacy values ("10-13", "18+") are mapped to new equivalents
+ * - Null/undefined/unknown defaults to "18-35"
+ */
+export function normalizeAgeGroup(ageGroup: string | null | undefined): AgeGroup {
+  if (!ageGroup) return "18-35";
+  if (ageGroup in LEGACY_AGE_GROUP_MAP) return LEGACY_AGE_GROUP_MAP[ageGroup];
+  const valid: AgeGroup[] = ["14-17", "18-35", "36+"];
+  return valid.includes(ageGroup as AgeGroup) ? (ageGroup as AgeGroup) : "18-35";
+}
 
 export interface IntensityConfig {
   oneRepMaxPercent: { min: number; max: number };
@@ -209,18 +237,11 @@ export const BODYWEIGHT_INTENSITY_CONFIG: Record<Intensity, { repsMultiplier: nu
  *
  * | Age Group | Max Intensity | 1RM Ceiling | Plyometrics | Max Sets |
  * |-----------|---------------|-------------|-------------|----------|
- * | 10-13     | Moderate      | 65%         | Yes         | 3        |
  * | 14-17     | High          | 85%         | Yes         | 5        |
- * | 18+       | High          | 90%         | Yes         | 6        |
+ * | 18-35     | High          | 90%         | Yes         | 6        |
+ * | 36+       | High          | 90%         | Yes         | 6        |
  */
 export const AGE_INTENSITY_RULES: Record<AgeGroup, AgeIntensityRules> = {
-  "10-13": {
-    maxIntensity: "Moderate",
-    oneRepMaxCeiling: 0.65,
-    plyometricAllowed: true,
-    maxSetsPerExercise: 3,
-    maxRepsMultiplier: 1.2, // Higher reps, lower weight for younger athletes
-  },
   "14-17": {
     maxIntensity: "High",
     oneRepMaxCeiling: 0.85,
@@ -228,9 +249,16 @@ export const AGE_INTENSITY_RULES: Record<AgeGroup, AgeIntensityRules> = {
     maxSetsPerExercise: 5,
     maxRepsMultiplier: 1.0,
   },
-  "18+": {
+  "18-35": {
     maxIntensity: "High",
-    oneRepMaxCeiling: 0.90, // Cap at 90%, can push to 95% for peaking
+    oneRepMaxCeiling: 0.90,
+    plyometricAllowed: true,
+    maxSetsPerExercise: 6,
+    maxRepsMultiplier: 1.0,
+  },
+  "36+": {
+    maxIntensity: "High",
+    oneRepMaxCeiling: 0.90, // Same as 18-35 for now
     plyometricAllowed: true,
     maxSetsPerExercise: 6,
     maxRepsMultiplier: 1.0,
@@ -395,17 +423,17 @@ export const CATEGORY_PHASE_CONFIG: Record<CategoryId, Record<Phase, CategoryPha
  * - "max" = 6
  */
 export const AGE_EXPERIENCE_MATRIX: Record<AgeGroup, Record<ExperienceBucket, AgeExperienceModifier>> = {
-  "10-13": {
-    "0-1": { setsPosition: "lowest", repsPosition: "lowest" },
-    "2-5": { setsPosition: "lowest_plus_1", repsPosition: "lowest_plus_2" },
-    "6+": { setsPosition: "second_lowest", repsPosition: "max_minus_1" },
-  },
   "14-17": {
     "0-1": { setsPosition: "middle", repsPosition: "middle" },
     "2-5": { setsPosition: "max", repsPosition: "max_minus_1" },
     "6+": { setsPosition: "max", repsPosition: "max" },
   },
-  "18+": {
+  "18-35": {
+    "0-1": { setsPosition: "max", repsPosition: "max_minus_2" },
+    "2-5": { setsPosition: "max", repsPosition: "max_minus_1" },
+    "6+": { setsPosition: "max", repsPosition: "max" },
+  },
+  "36+": {
     "0-1": { setsPosition: "max", repsPosition: "max_minus_2" },
     "2-5": { setsPosition: "max", repsPosition: "max_minus_1" },
     "6+": { setsPosition: "max", repsPosition: "max" },
@@ -416,13 +444,13 @@ export const AGE_EXPERIENCE_MATRIX: Record<AgeGroup, Record<ExperienceBucket, Ag
  * Age Group Safety Constraints
  *
  * Additional safety caps that override category-specific values for younger athletes.
- * - 10-13: Hard cap at 3 sets, 65% 1RM ceiling
- * - 14-17 and 18+: Use category ranges (no additional caps)
+ * - 14-17: Uses category ranges with 85% 1RM ceiling
+ * - 18-35 and 36+: Use full category ranges (no additional caps)
  */
 export const AGE_SAFETY_CONSTRAINTS: Record<AgeGroup, { maxSets: number | null; oneRepMaxCeiling: number }> = {
-  "10-13": { maxSets: 3, oneRepMaxCeiling: 0.65 },
   "14-17": { maxSets: null, oneRepMaxCeiling: 0.85 },
-  "18+": { maxSets: null, oneRepMaxCeiling: 0.90 },
+  "18-35": { maxSets: null, oneRepMaxCeiling: 0.90 },
+  "36+": { maxSets: null, oneRepMaxCeiling: 0.90 },
 };
 
 /**
@@ -911,7 +939,7 @@ export function getCategoryExerciseParameters(
   // Calculate sets from range using age+experience position
   let sets = getValueFromPosition(config.sets, ageExpModifier.setsPosition);
 
-  // Apply age safety cap for 10-13
+  // Apply age safety cap if applicable
   if (safetyConstraints.maxSets !== null) {
     sets = Math.min(sets, safetyConstraints.maxSets);
   }

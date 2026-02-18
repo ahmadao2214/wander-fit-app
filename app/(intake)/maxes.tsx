@@ -34,10 +34,11 @@ function validateWeight(value: string): string | null {
 export default function MaxesScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
-  const { sportId, yearsOfExperience, trainingDays, weeksUntilSeason, ageGroup } = useLocalSearchParams<{
+  const { sportId, yearsOfExperience, trainingDays, selectedTrainingDays, weeksUntilSeason, ageGroup } = useLocalSearchParams<{
     sportId: string
     yearsOfExperience: string
     trainingDays: string
+    selectedTrainingDays: string
     weeksUntilSeason: string
     ageGroup: string
   }>()
@@ -53,7 +54,7 @@ export default function MaxesScreen() {
   const setMultipleMaxes = useMutation(api.userMaxes.setMultipleMaxes)
 
   // Redirect back if missing params
-  if (!sportId || !yearsOfExperience || !trainingDays || !weeksUntilSeason || !ageGroup) {
+  if (!sportId || !yearsOfExperience || !trainingDays || !selectedTrainingDays || !weeksUntilSeason || !ageGroup) {
     router.replace('/(intake)/sport')
     return null
   }
@@ -83,7 +84,7 @@ export default function MaxesScreen() {
     if (route) {
       router.push({
         pathname: route,
-        params: { sportId, yearsOfExperience, trainingDays, weeksUntilSeason, ageGroup },
+        params: { sportId, yearsOfExperience, trainingDays, selectedTrainingDays, weeksUntilSeason, ageGroup },
       } as any)
     }
   }
@@ -124,6 +125,7 @@ export default function MaxesScreen() {
           sportId,
           yearsOfExperience,
           trainingDays,
+          selectedTrainingDays,
           weeksUntilSeason,
           ageGroup,
         },
@@ -144,6 +146,7 @@ export default function MaxesScreen() {
         sportId,
         yearsOfExperience,
         trainingDays,
+        selectedTrainingDays,
         weeksUntilSeason,
         ageGroup,
       },

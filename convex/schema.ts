@@ -12,9 +12,9 @@ const skillLevelValidator = v.union(
 );
 
 const ageGroupValidator = v.union(
-  v.literal("10-13"),
   v.literal("14-17"),
-  v.literal("18+")
+  v.literal("18-35"),
+  v.literal("36+")
 );
 
 /**
@@ -271,12 +271,12 @@ export default defineSchema({
 
   /**
    * intake_responses - Stores all intake questionnaire answers
-   * 
+   *
    * Separated from user_programs to:
    * 1. Preserve intake history even if program is deleted/reset
    * 2. Enable re-assessment intakes (multiple intakes over time)
    * 3. Track how athletes progress through assessments
-   * 
+   *
    * Each intake creates a new record; latest is used for current program.
    */
   intake_responses: defineTable({
@@ -286,9 +286,10 @@ export default defineSchema({
     sportId: v.id("sports"),
     yearsOfExperience: v.number(), // How many years of training
     preferredTrainingDaysPerWeek: v.number(), // 1-7
+    selectedTrainingDays: v.optional(v.array(v.number())), // [1, 3, 5] = Mon, Wed, Fri (0=Sun, 6=Sat)
 
     // Age group - determines intensity ceiling
-    ageGroup: v.optional(ageGroupValidator), // "10-13", "14-17", "18+" (optional for migration)
+    ageGroup: v.optional(ageGroupValidator), // "14-17", "18-35", "36+" (optional for migration)
     dateOfBirth: v.optional(v.number()), // Timestamp for auto-calculation
 
     // Time-based intake (for planning)
@@ -303,6 +304,27 @@ export default defineSchema({
       v.literal("initial"),      // First time intake
       v.literal("reassessment")  // After training block completion
     ),
+
+    // Reassessment-specific fields (only present for intakeType: "reassessment")
+    selfAssessment: v.optional(v.object({
+      phaseDifficulty: v.union(
+        v.literal("too_easy"),
+        v.literal("just_right"),
+        v.literal("challenging"),
+        v.literal("too_hard")
+      ),
+      energyLevel: v.optional(v.union(
+        v.literal("low"),
+        v.literal("moderate"),
+        v.literal("high")
+      )),
+      completionRate: v.optional(v.number()),
+      notes: v.optional(v.string()),
+    })),
+    previousSkillLevel: v.optional(skillLevelValidator),
+    skillLevelChanged: v.optional(v.boolean()),
+    completedPhase: v.optional(phaseValidator),
+    maxesUpdated: v.optional(v.boolean()),
 
     // Meta
     completedAt: v.number(),
@@ -321,18 +343,28 @@ export default defineSchema({
     // Assignment Results (from linked intake)
     gppCategoryId: v.number(), // 1-4
     skillLevel: skillLevelValidator, // "Novice", "Moderate", "Advanced"
-    ageGroup: v.optional(ageGroupValidator), // "10-13", "14-17", "18+" - affects intensity ceiling (optional for migration)
+    ageGroup: v.optional(ageGroupValidator), // "14-17", "18-35", "36+" - affects intensity ceiling (optional for migration)
+
+    // Dynamic Program Duration (from intake weeksUntilSeason)
+    totalProgramWeeks: v.optional(v.number()), // Total weeks from intake (weeksUntilSeason)
+    weeksPerPhase: v.optional(v.number()), // Calculated: totalProgramWeeks / 3, min 2, max 8
 
     // "Scheduled Workout" pointer
     currentPhase: phaseValidator, // The active phase
-    currentWeek: v.number(), // 1-4 (within current phase)
-    currentDay: v.number(), // Which day in the week (1-7)
+    currentWeek: v.number(), // 1 to weeksPerPhase (within current phase)
+    currentDay: v.number(), // Which day in the week (1 to trainingDaysPerWeek)
     lastWorkoutDate: v.optional(v.number()),
 
     // Phase Unlocking (Sequential Access)
     // GPP is always unlocked from start
     sppUnlockedAt: v.optional(v.number()), // Set when GPP completes
     sspUnlockedAt: v.optional(v.number()), // Set when SPP completes
+
+    // Reassessment tracking
+    reassessmentPendingForPhase: v.optional(phaseValidator), // Set when phase completes, cleared on reassessment
+    gppReassessmentCompletedAt: v.optional(v.number()),
+    sppReassessmentCompletedAt: v.optional(v.number()),
+    sspReassessmentCompletedAt: v.optional(v.number()),
 
     // Phase tracking
     phaseStartDate: v.number(),
@@ -418,7 +450,7 @@ export default defineSchema({
     scalingSnapshot: v.optional(v.object({
       categoryId: v.number(), // 1-4 (Endurance, Power, Rotational, Strength)
       phase: phaseValidator,  // GPP, SPP, SSP
-      ageGroup: ageGroupValidator, // 10-13, 14-17, 18+
+      ageGroup: ageGroupValidator, // 14-17, 18-35, 36+
       yearsOfExperience: v.number(), // Used to determine experience bucket
     })),
   })
@@ -498,7 +530,17 @@ export default defineSchema({
       day: v.number(),
       templateId: v.id("program_templates"), // The workout assigned to this slot
     })),
-    
+
+    // Date overrides - move workouts to specific calendar dates
+    // When a workout is moved to a different day (e.g., rest day), store the override here
+    // The key is the slot (phase/week/day), the value is the target date
+    dateOverrides: v.optional(v.array(v.object({
+      phase: phaseValidator,
+      week: v.number(),
+      day: v.number(),
+      dateISO: v.string(), // Target date in YYYY-MM-DD format
+    }))),
+
     createdAt: v.number(),
     updatedAt: v.number(),
   })

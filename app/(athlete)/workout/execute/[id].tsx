@@ -210,6 +210,7 @@ export default function WorkoutExecutionScreen() {
   const updateProgress = useMutation(api.gppWorkoutSessions.updateProgress)
   const completeSession = useMutation(api.gppWorkoutSessions.completeSession)
   const abandonSession = useMutation(api.gppWorkoutSessions.abandonSession)
+  const advanceToNextDay = useMutation(api.userPrograms.advanceToNextDay)
 
   // Refs for swipe tracking
   const currentIndexRef = useRef(currentExerciseIndex)
@@ -501,6 +502,25 @@ export default function WorkoutExecutionScreen() {
         exercises: exerciseCompletions,
         exerciseOrder: exerciseOrder.length > 0 ? exerciseOrder : undefined,
       })
+
+      // Advance program position
+      if (session?.userProgramId) {
+        try {
+          const result = await advanceToNextDay({ programId: session.userProgramId })
+
+          if (result?.triggerReassessment) {
+            // Show reassessment prompt instead of navigating away
+            setReassessmentPhase(result.completedPhase ?? null)
+            setShowCompletionDialog(false)
+            setShowReassessmentPrompt(true)
+            return
+          }
+        } catch (advanceError) {
+          // Log but don't block — workout is already completed
+          console.error('Failed to advance program:', advanceError)
+        }
+      }
+
       setShowCompletionDialog(false)
       router.replace('/(athlete)')
     } catch (error) {
@@ -979,6 +999,9 @@ export default function WorkoutExecutionScreen() {
       {/* Completion Dialog */}
       <AlertDialog open={showCompletionDialog} onOpenChange={setShowCompletionDialog}>
         <AlertDialog.Portal>
+          {/* Confetti celebration effect */}
+          <ConfettiEffect trigger={showCompletionDialog} />
+
           <AlertDialog.Overlay
             key="overlay"
             animation="quick"
@@ -1116,6 +1139,99 @@ export default function WorkoutExecutionScreen() {
                 onPress={handleCompleteWorkout}
               >
                 Done
+              </Button>
+            </YStack>
+          </AlertDialog.Content>
+        </AlertDialog.Portal>
+      </AlertDialog>
+
+      {/* Reassessment Prompt Dialog */}
+      <AlertDialog open={showReassessmentPrompt} onOpenChange={setShowReassessmentPrompt}>
+        <AlertDialog.Portal>
+          <ConfettiEffect trigger={showReassessmentPrompt} />
+          <AlertDialog.Overlay
+            key="overlay"
+            animation="quick"
+            opacity={0.5}
+            enterStyle={{ opacity: 0 }}
+            exitStyle={{ opacity: 0 }}
+          />
+          <AlertDialog.Content
+            bg="$surface"
+            elevate
+            key="content"
+            animation={[
+              'quick',
+              {
+                opacity: {
+                  overshootClamping: true,
+                },
+              },
+            ]}
+            enterStyle={{ x: 0, y: -20, opacity: 0, scale: 0.9 }}
+            exitStyle={{ x: 0, y: 10, opacity: 0, scale: 0.95 }}
+            x={0}
+            scale={1}
+            opacity={1}
+            y={0}
+            p="$6"
+            mx="$4"
+            rounded="$5"
+          >
+            <YStack gap="$5" items="center">
+              <YStack
+                width={80}
+                height={80}
+                bg="$success"
+                rounded="$10"
+                items="center"
+                justify="center"
+              >
+                <Trophy size={40} color="white" />
+              </YStack>
+
+              <YStack items="center" gap="$1">
+                <Text
+                  fontFamily="$heading"
+                  fontSize={28}
+                  letterSpacing={1}
+                  color="$color12"
+                  text="center"
+                >
+                  {reassessmentPhase} PHASE COMPLETE!
+                </Text>
+                <Text fontFamily="$body" color="$color10" text="center">
+                  Complete a quick check-in to unlock the next phase.
+                </Text>
+              </YStack>
+
+              <Button
+                width="100%"
+                size="$5"
+                bg="$primary"
+                color="white"
+                fontFamily="$body" fontWeight="700"
+                rounded="$4"
+                pressStyle={{ opacity: 0.9, scale: 0.98 }}
+                onPress={() => {
+                  setShowReassessmentPrompt(false)
+                  router.replace('/(reassessment)/celebration' as any)
+                }}
+              >
+                Start Check-In
+              </Button>
+              <Button
+                width="100%"
+                size="$4"
+                bg="transparent"
+                color="$color10"
+                fontFamily="$body"
+                onPress={() => {
+                  setShowReassessmentPrompt(false)
+                  router.replace('/(athlete)')
+                }}
+              >
+                I'll do it later
               </Button>
             </YStack>
           </AlertDialog.Content>

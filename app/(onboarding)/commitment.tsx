@@ -21,11 +21,12 @@ import type { AgeGroup } from '../../types'
 export default function CommitmentScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
-  const { sportId, ageGroup, yearsOfExperience, trainingDays: trainingDaysParam, weeksUntilSeason } = useLocalSearchParams<{
+  const { sportId, ageGroup, yearsOfExperience, trainingDays: trainingDaysParam, selectedTrainingDays: selectedTrainingDaysParam, weeksUntilSeason } = useLocalSearchParams<{
     sportId: string
     ageGroup: AgeGroup
     yearsOfExperience: string
     trainingDays: string
+    selectedTrainingDays: string
     weeksUntilSeason: string
   }>()
   const [hasCommitted, setHasCommitted] = useState(false)
@@ -55,6 +56,10 @@ export default function CommitmentScreen() {
   const years = parseInt(yearsOfExperience || '0', 10)
   const days = parseInt(trainingDaysParam || '4', 10)
   const weeks = parseInt(weeksUntilSeason || '12', 10)
+  // Parse selectedTrainingDays from comma-separated string: "1,3,5" → [1, 3, 5]
+  const selectedTrainingDays = selectedTrainingDaysParam
+    ? selectedTrainingDaysParam.split(',').map(d => parseInt(d, 10))
+    : undefined
 
   // Navigate to athlete dashboard after success
   useEffect(() => {
@@ -88,8 +93,9 @@ export default function CommitmentScreen() {
           sportId: sportId as Id<"sports">,
           yearsOfExperience: years,
           preferredTrainingDaysPerWeek: days,
+          selectedTrainingDays,
           weeksUntilSeason: weeks,
-          ageGroup: ageGroup as "10-13" | "14-17" | "18+",
+          ageGroup: ageGroup as "14-17" | "18-35" | "36+",
         })
       }
 
@@ -127,7 +133,7 @@ export default function CommitmentScreen() {
     if (route) {
       router.push({
         pathname: route,
-        params: { sportId, yearsOfExperience, trainingDays: trainingDaysParam, weeksUntilSeason, ageGroup },
+        params: { sportId, yearsOfExperience, trainingDays: trainingDaysParam, selectedTrainingDays: selectedTrainingDaysParam, weeksUntilSeason, ageGroup },
       } as any)
     }
   }

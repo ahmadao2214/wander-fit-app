@@ -48,7 +48,7 @@ export const PHASE_NAMES: Record<Phase, string> = {
 export type SkillLevel = "Novice" | "Moderate" | "Advanced";
 
 // Age groups - determines intensity ceiling
-export type AgeGroup = "10-13" | "14-17" | "18+";
+export type AgeGroup = "14-17" | "18-35" | "36+";
 
 // Session status
 export type SessionStatus = "in_progress" | "completed" | "abandoned";
@@ -213,7 +213,7 @@ export interface CurrentProgramState {
   phase: Phase;
   skillLevel: SkillLevel;
   ageGroup: AgeGroup;
-  week: number; // 1-4
+  week: number; // 1 to weeksPerPhase (dynamic based on intake)
   day: number; // 1-7
 }
 

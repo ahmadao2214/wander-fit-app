@@ -29,6 +29,7 @@ import {
   Info,
   Zap,
   Flame,
+  Bell,
 } from '@tamagui/lucide-icons'
 import DraggableFlatList, {
   ScaleDecorator,
@@ -131,6 +132,12 @@ export default function WorkoutDetailScreen() {
   // Get unlocked phases to check access
   const unlockedPhases = useQuery(
     api.userPrograms.getUnlockedPhases,
+    user ? {} : "skip"
+  )
+
+  // Check for pending reassessment (to gate next-phase workouts)
+  const reassessmentStatus = useQuery(
+    api.userPrograms.getReassessmentStatus,
     user ? {} : "skip"
   )
 
@@ -248,8 +255,7 @@ export default function WorkoutDetailScreen() {
     }
   }, [isStarting, isCompleted, template, startSession, router, hasCustomOrder, orderIndices, todayWorkout, setTodayFocus])
 
-  // Intensity color for personalized workouts (based on session target intensity)
-  // Intensity is determined when session starts, defaults to 'Moderate' for preview
+  // Intensity for the badge (based on session target intensity)
   const targetIntensity = session?.targetIntensity || 'Moderate'
   const intensityColor = targetIntensity === 'Low'
     ? '$intensityLow6'
@@ -261,6 +267,14 @@ export default function WorkoutDetailScreen() {
     : targetIntensity === 'High'
       ? 'HIGH'
       : 'MODERATE'
+
+  // Phase color for UI elements (exercise numbers, Start button)
+  // GPP = blue, SPP = orange, SSP = green
+  const phaseColor = template?.phase === 'GPP'
+    ? '$blue9'
+    : template?.phase === 'SPP'
+      ? '$orange9'
+      : '$green9'
 
   // Render item for DraggableFlatList
   const renderExerciseItem = useCallback(
@@ -275,12 +289,12 @@ export default function WorkoutDetailScreen() {
             onToggle={() => toggleExpanded(item.exerciseId)}
             drag={canReorder ? drag : undefined}
             isActive={isActive}
-            intensityColor={intensityColor}
+            intensityColor={phaseColor}
           />
         </ScaleDecorator>
       )
     },
-    [expandedExerciseIds, toggleExpanded, canReorder, intensityColor]
+    [expandedExerciseIds, toggleExpanded, canReorder, phaseColor]
   )
 
   // Key extractor for FlatList
@@ -331,9 +345,18 @@ export default function WorkoutDetailScreen() {
       <YStack gap="$3" pb="$3">
         {/* Phase and Intensity Badges */}
         <XStack gap="$2" flexWrap="wrap" items="center">
-          {/* Phase Badge - neutral brand colors */}
-          <Card bg="$brand2" px="$3" py="$1" rounded="$10">
-            <Text fontSize="$2" color="$primary" fontWeight="600">
+          {/* Phase Badge - phase-specific colors (GPP=blue, SPP=orange, SSP=green) */}
+          <Card
+            bg={template.phase === 'GPP' ? '$blue2' : template.phase === 'SPP' ? '$orange2' : '$green2'}
+            px="$3"
+            py="$1"
+            rounded="$10"
+          >
+            <Text
+              fontSize="$2"
+              color={template.phase === 'GPP' ? '$blue9' : template.phase === 'SPP' ? '$orange9' : '$green9'}
+              fontWeight="600"
+            >
               {template.phase}
             </Text>
           </Card>
@@ -359,8 +382,30 @@ export default function WorkoutDetailScreen() {
           )}
         </XStack>
 
-        {/* Phase Locked Banner */}
-        {!isPhaseUnlocked && (
+        {/* Reassessment Required Banner */}
+        {!isPhaseUnlocked && reassessmentStatus?.reassessmentPending && (
+          <Card p="$3" bg="$brand1" borderColor="$brand3">
+            <XStack items="center" gap="$2">
+              <Bell size={18} color="$primary" />
+              <Text fontSize="$3" color="$brand9" flex={1}>
+                Complete your reassessment to unlock {template.phase} workouts
+              </Text>
+              <Button
+                size="$2"
+                bg="$primary"
+                color="white"
+                fontFamily="$body" fontWeight="600"
+                rounded="$3"
+                onPress={() => router.push('/(reassessment)/celebration' as any)}
+              >
+                Take Assessment
+              </Button>
+            </XStack>
+          </Card>
+        )}
+
+        {/* Phase Locked Banner (only if not blocked by reassessment) */}
+        {!isPhaseUnlocked && !reassessmentStatus?.reassessmentPending && (
           <Card p="$3" bg="$orange2" borderColor="$orange6">
             <XStack items="center" gap="$2">
               <Lock size={18} color="$orange11" />
@@ -546,7 +591,7 @@ export default function WorkoutDetailScreen() {
         </XStack>
       </YStack>
     )
-  }, [template, isPhaseUnlocked, isCompleted, canReorder, lastCompletedSession, viewMode])
+  }, [template, isPhaseUnlocked, isCompleted, canReorder, lastCompletedSession, viewMode, reassessmentStatus])
 
   // Footer component with bottom padding
   const ListFooter = useMemo(() => {
@@ -627,7 +672,7 @@ export default function WorkoutDetailScreen() {
           {isPhaseUnlocked && !isCompleted && (
             <Button
               size="$4"
-              bg={intensityColor}
+              bg={phaseColor}
               color="white"
               onPress={startWorkout}
               icon={isStarting ? undefined : Play}
