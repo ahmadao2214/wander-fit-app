@@ -253,6 +253,7 @@ export default function WorkoutExecutionScreen() {
     currentIndexRef.current = currentExerciseIndex
   }, [currentExerciseIndex])
 
+
   // Haptic feedback helper
   const triggerHaptic = useCallback(() => {
     if (Platform.OS !== 'web') {
@@ -677,6 +678,15 @@ export default function WorkoutExecutionScreen() {
         ex != null && ex?.section !== 'warmup' && !(ex && !ex.section && ex.notes === 'Warmup')
       )
     : mainTemplateExercises
+
+  // Keep exercise count ref in sync with orderedExercises length so swipe
+  // bounds stay correct even if filtering produces fewer exercises than
+  // exerciseCompletions (e.g. stale exerciseOrder with out-of-bounds indices).
+  useEffect(() => {
+    if (orderedExercises.length > 0) {
+      exerciseCountRef.current = orderedExercises.length
+    }
+  }, [orderedExercises.length])
 
   const currentExercise = orderedExercises[currentExerciseIndex]
   const currentCompletion = exerciseCompletions[currentExerciseIndex]
