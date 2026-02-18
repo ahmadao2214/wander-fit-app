@@ -30,6 +30,7 @@ import { InstructionsAccordion } from '../../../../components/workout/Instructio
 import { ExerciseQueue } from '../../../../components/workout/ExerciseQueue'
 import { ConfettiEffect } from '../../../../components/workout/ConfettiEffect'
 import { WarmupSection, type WarmupExercise } from '../../../../components/workout/WarmupSection'
+import { WARMUP_PHASES } from '../../../../convex/warmupSequences'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { PanResponder, Platform, Vibration, Animated, useColorScheme } from 'react-native'
 import { mapIntensityToLevel, IntensityLevel } from '../../../../lib'
@@ -332,11 +333,14 @@ export default function WorkoutExecutionScreen() {
             .map(({ idx }: any) => idx)
         )
 
-        // Filter completions to non-warmup only using index-based matching
-        // (session.exercises is positionally aligned with templateExs at creation)
-        const filteredCompletions = (session.exercises as ExerciseCompletion[]).filter(
-          (_: any, idx: number) => !warmupIndices.has(idx)
-        )
+        // Filter completions to non-warmup only using index-based matching.
+        // If session.exercises is shorter than templateExs, it was already filtered
+        // in a previous save — don't re-filter or we'll lose all data.
+        const filteredCompletions = session.exercises.length < templateExs.length
+          ? (session.exercises as ExerciseCompletion[])
+          : (session.exercises as ExerciseCompletion[]).filter(
+              (_: any, idx: number) => !warmupIndices.has(idx)
+            )
         setExerciseCompletions(filteredCompletions)
         exerciseCountRef.current = filteredCompletions.length
 
@@ -657,11 +661,20 @@ export default function WorkoutExecutionScreen() {
   }, [templateExercises])
 
   const hasWarmup = warmupExs.length > 0
-  const warmupDuration = Math.round(warmupExs.length * 0.5)
+  // Compute duration from warmup phase config (consistent with warmupSequences.ts)
+  const warmupDuration = useMemo(() => {
+    if (warmupExs.length === 0) return 0
+    const phases = new Set(warmupExs.map(ex => ex.warmupPhase).filter(Boolean))
+    return Math.round(
+      WARMUP_PHASES
+        .filter(p => phases.has(p.phase))
+        .reduce((sum, p) => sum + p.durationMin, 0)
+    )
+  }, [warmupExs])
 
   const orderedExercises = exerciseOrder.length > 0
     ? exerciseOrder.map(idx => templateExercises[idx]).filter((ex: any) =>
-        ex?.section !== 'warmup' && !(ex && !ex.section && ex.notes === 'Warmup')
+        ex != null && ex?.section !== 'warmup' && !(ex && !ex.section && ex.notes === 'Warmup')
       )
     : mainTemplateExercises
 

@@ -39,6 +39,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { ExerciseAccordionItem } from '../../../components/ExerciseAccordionItem'
 import { PerformanceReviewItem } from '../../../components/workout/PerformanceReviewItem'
 import { WarmupSection, type WarmupExercise } from '../../../components/workout/WarmupSection'
+import { WARMUP_PHASES } from '../../../convex/warmupSequences'
 
 /**
  * Exercise type for the draggable list (with intensity scaling)
@@ -186,11 +187,15 @@ export default function WorkoutDetailScreen() {
     return { warmupExercises: warmup, mainExercises: main }
   }, [template?.exercises])
 
-  // Warmup duration based on day type
+  // Warmup duration from phase config (consistent with warmupSequences.ts)
   const warmupDuration = useMemo(() => {
     if (warmupExercises.length === 0) return 0
-    // Estimate based on exercise count (~30s per exercise)
-    return Math.round(warmupExercises.length * 0.5)
+    const phases = new Set(warmupExercises.map(ex => ex.warmupPhase).filter(Boolean))
+    return Math.round(
+      WARMUP_PHASES
+        .filter(p => phases.has(p.phase))
+        .reduce((sum, p) => sum + p.durationMin, 0)
+    )
   }, [warmupExercises])
 
   // Check if reordering is allowed (need at least 2 main exercises)
