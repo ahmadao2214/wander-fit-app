@@ -716,6 +716,21 @@ export default function WorkoutExecutionScreen() {
     )
   }
 
+  // Show warmup flow screen before main execution (must be before
+  // the !currentExercise guard so warmup renders even when main
+  // exercises haven't loaded yet, e.g. during initial state setup)
+  if (showWarmup && hasWarmup) {
+    return (
+      <WarmupSection
+        exercises={warmupExs}
+        totalDuration={warmupDuration}
+        onComplete={() => setShowWarmup(false)}
+        onSkip={() => setShowWarmup(false)}
+        mode="flow"
+      />
+    )
+  }
+
   if (!currentExercise) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
@@ -728,19 +743,6 @@ export default function WorkoutExecutionScreen() {
   const exerciseDetails = currentExercise.exercise
   const completedCount = exerciseCompletions.filter(e => e.completed).length
   const isLastExercise = currentExerciseIndex === orderedExercises.length - 1
-
-  // Show warmup flow screen before main execution
-  if (showWarmup && hasWarmup) {
-    return (
-      <WarmupSection
-        exercises={warmupExs}
-        totalDuration={warmupDuration}
-        onComplete={() => setShowWarmup(false)}
-        onSkip={() => setShowWarmup(false)}
-        mode="flow"
-      />
-    )
-  }
 
   return (
     <YStack flex={1} bg="$background" items="center">

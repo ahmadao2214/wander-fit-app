@@ -841,6 +841,7 @@ function generateExercisePrescriptions(
         restSeconds: 30,
         notes: "Mobility",
         orderIndex: orderIndex++,
+        section: "main",
       });
     }
     return exercises;
@@ -898,6 +899,7 @@ function generateExercisePrescriptions(
     restSeconds: 0,
     notes: "Cooldown",
     orderIndex: orderIndex++,
+    section: "main",
   });
 
   return exercises;
