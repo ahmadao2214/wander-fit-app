@@ -193,6 +193,12 @@ export default function WorkoutExecutionScreen() {
   // Auto-save ref
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Store warmup completion placeholders and their original indices so we can
+  // reconstruct the full exercises array (warmup + main) when saving.
+  // This preserves positional alignment with the template and keeps warmup
+  // data in completed sessions for analytics/review.
+  const warmupDataRef = useRef<{ indices: Set<number>; completions: Map<number, ExerciseCompletion> } | null>(null)
+
   // Track if session has been completed/abandoned to prevent save attempts
   const sessionEndedRef = useRef(false)
 
@@ -334,14 +340,25 @@ export default function WorkoutExecutionScreen() {
             .map(({ idx }: any) => idx)
         )
 
+        // Store warmup completions so we can reconstruct the full array when saving
+        const warmupCompletions = new Map<number, ExerciseCompletion>()
+        const allCompletions = session.exercises as ExerciseCompletion[]
+        if (allCompletions.length >= templateExs.length) {
+          // Full array — extract warmup entries before filtering
+          for (const idx of warmupIndices) {
+            if (idx < allCompletions.length) {
+              warmupCompletions.set(idx, allCompletions[idx])
+            }
+          }
+        }
+        warmupDataRef.current = { indices: warmupIndices, completions: warmupCompletions }
+
         // Filter completions to non-warmup only using index-based matching.
-        // If session.exercises is shorter than templateExs, it was already filtered
-        // in a previous save — don't re-filter or we'll lose all data.
-        const filteredCompletions = session.exercises.length < templateExs.length
-          ? (session.exercises as ExerciseCompletion[])
-          : (session.exercises as ExerciseCompletion[]).filter(
-              (_: any, idx: number) => !warmupIndices.has(idx)
-            )
+        // If session.exercises is shorter than templateExs, it was already saved
+        // as a full array from a previous save — just extract non-warmup entries.
+        const filteredCompletions = allCompletions.length >= templateExs.length
+          ? allCompletions.filter((_: any, idx: number) => !warmupIndices.has(idx))
+          : allCompletions
         setExerciseCompletions(filteredCompletions)
         exerciseCountRef.current = filteredCompletions.length
 
@@ -403,6 +420,43 @@ export default function WorkoutExecutionScreen() {
     }
   }, [session?.startedAt])
 
+  // Reconstruct the full exercises array (warmup + main) for saving.
+  // This preserves positional alignment with the template and keeps
+  // warmup data in completed session records.
+  const buildFullExercises = useCallback((mainCompletions: ExerciseCompletion[]): ExerciseCompletion[] => {
+    const warmupData = warmupDataRef.current
+    if (!warmupData || warmupData.indices.size === 0) {
+      return mainCompletions // No warmup exercises in template
+    }
+
+    const templateExs = session?.template?.exercises
+    if (!templateExs) return mainCompletions
+
+    const full: ExerciseCompletion[] = []
+    let mainIdx = 0
+    for (let i = 0; i < templateExs.length; i++) {
+      if (warmupData.indices.has(i)) {
+        // Insert warmup completion (stored or placeholder)
+        const stored = warmupData.completions.get(i)
+        if (stored) {
+          full.push({ ...stored, completed: true, skipped: true })
+        } else {
+          // Create placeholder for warmup exercises
+          const tmpl = templateExs[i] as any
+          full.push({
+            exerciseId: tmpl.exerciseId,
+            completed: true,
+            skipped: true,
+            sets: [{ completed: true, skipped: true }],
+          })
+        }
+      } else if (mainIdx < mainCompletions.length) {
+        full.push(mainCompletions[mainIdx++])
+      }
+    }
+    return full
+  }, [session?.template?.exercises])
+
   // Format elapsed time
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -426,7 +480,7 @@ export default function WorkoutExecutionScreen() {
         try {
           await updateProgress({
             sessionId: sessionId as Id<"gpp_workout_sessions">,
-            exercises: exerciseCompletions,
+            exercises: buildFullExercises(exerciseCompletions),
             exerciseOrder: exerciseOrder.length > 0 ? exerciseOrder : undefined,
           })
         } catch (error) {
@@ -439,7 +493,7 @@ export default function WorkoutExecutionScreen() {
         }
       }
     }, 2000)
-  }, [sessionId, exerciseCompletions, exerciseOrder, updateProgress])
+  }, [sessionId, exerciseCompletions, exerciseOrder, updateProgress, buildFullExercises])
 
   useEffect(() => {
     // Don't trigger saves if session has ended
@@ -517,7 +571,7 @@ export default function WorkoutExecutionScreen() {
     if (sessionId) {
       await updateProgress({
         sessionId: sessionId as Id<"gpp_workout_sessions">,
-        exercises: exerciseCompletions,
+        exercises: buildFullExercises(exerciseCompletions),
       })
     }
 
@@ -548,7 +602,7 @@ export default function WorkoutExecutionScreen() {
     try {
       await completeSession({
         sessionId: sessionId as Id<"gpp_workout_sessions">,
-        exercises: exerciseCompletions,
+        exercises: buildFullExercises(exerciseCompletions),
         exerciseOrder: exerciseOrder.length > 0 ? exerciseOrder : undefined,
       })
 
@@ -591,7 +645,7 @@ export default function WorkoutExecutionScreen() {
     try {
       await abandonSession({
         sessionId: sessionId as Id<"gpp_workout_sessions">,
-        exercises: exerciseCompletions,
+        exercises: buildFullExercises(exerciseCompletions),
         exerciseOrder: exerciseOrder.length > 0 ? exerciseOrder : undefined,
       })
       setShowExitDialog(false)

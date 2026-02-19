@@ -880,6 +880,9 @@ function generateExercisePrescriptions(
   }
 
   // 4. Cooldown (1 exercise)
+  // Intentionally section: "main" so cooldown appears in the trackable exercise
+  // list. If finer-grained categorization is needed later, add "cooldown" to
+  // the ExerciseSection type.
   const cooldownIndex = dayType.includes("lower") ? 0 : 1;
   const cooldownSlug = COOLDOWN_EXERCISES[cooldownIndex];
   exercises.push({
