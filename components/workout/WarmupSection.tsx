@@ -155,16 +155,17 @@ function WarmupFlow({ exercises, totalDuration, onComplete, onSkip }: Omit<Warmu
       {/* Phase cards */}
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 120 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
         keyboardShouldPersistTaps="handled"
       >
         {activePhases.map((phase, index) => (
-          <PhaseCard
-            key={phase}
-            phase={phase}
-            exercises={phaseGroups.get(phase) || []}
-            phaseIndex={index}
-          />
+          <YStack key={phase} mb="$3">
+            <PhaseCard
+              phase={phase}
+              exercises={phaseGroups.get(phase) || []}
+              phaseIndex={index}
+            />
+          </YStack>
         ))}
       </ScrollView>
 

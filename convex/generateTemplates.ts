@@ -941,10 +941,13 @@ function calculateDuration(exercises: ExercisePrescription[]): number {
     // Time per set (including execution + rest)
     const repsMatch = ex.reps.match(/(\d+)/);
     const reps = repsMatch ? parseInt(repsMatch[1]) : 10;
-    const isTimeBased = ex.reps.includes("s") || ex.reps.includes("min");
+    // Detect time-based reps: "30s", "20s each side", "2min" — but NOT "8 each side" or "20 yards"
+    const isTimeBased = /\d+s\b/.test(ex.reps) || ex.reps.includes("min");
 
     if (isTimeBased) {
-      const seconds = ex.reps.includes("min") ? parseInt(ex.reps) * 60 : parseInt(ex.reps);
+      const seconds = ex.reps.includes("min")
+        ? parseInt(ex.reps) * 60
+        : parseInt(ex.reps); // e.g. parseInt("30s") = 30
       totalSeconds += (seconds + ex.restSeconds) * ex.sets;
     } else {
       // Assume ~3 seconds per rep

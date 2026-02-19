@@ -350,6 +350,22 @@ export default function WorkoutExecutionScreen() {
               warmupCompletions.set(idx, allCompletions[idx])
             }
           }
+        } else {
+          // Already filtered (legacy save) — create placeholder warmup completions
+          for (const idx of warmupIndices) {
+            const tmpl = templateExs[idx] as any
+            if (tmpl) {
+              warmupCompletions.set(idx, {
+                exerciseId: tmpl.exerciseId,
+                completed: true,
+                skipped: true,
+                sets: Array.from({ length: tmpl.sets || 1 }, () => ({
+                  completed: true,
+                  skipped: true,
+                })),
+              })
+            }
+          }
         }
         warmupDataRef.current = { indices: warmupIndices, completions: warmupCompletions }
 

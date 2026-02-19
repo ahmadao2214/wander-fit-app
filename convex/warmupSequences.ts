@@ -499,7 +499,8 @@ export function generateWarmupPrescriptions(
     // Skip optional phases if not requested
     if (phaseConfig.optional && !includeOptional) continue;
 
-    // Select exercises from pool, avoiding duplicates
+    // Select exercises from pool, avoiding duplicates.
+    // If the pool is smaller than exerciseCount, we use all available.
     let count = 0;
     for (const slug of pool) {
       if (count >= phaseConfig.exerciseCount) break;
@@ -516,6 +517,13 @@ export function generateWarmupPrescriptions(
         warmupPhase: phaseConfig.phase,
       });
       count++;
+    }
+
+    if (count < phaseConfig.exerciseCount) {
+      console.warn(
+        `Warmup pool for ${phaseConfig.phase} (${dayType}) has ${pool.length} exercises, ` +
+        `expected ${phaseConfig.exerciseCount}. Generated ${count}.`
+      );
     }
   }
 
