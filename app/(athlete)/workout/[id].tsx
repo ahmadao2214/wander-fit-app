@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react'
-import { View, StyleSheet, FlatList } from 'react-native'
+import { View, StyleSheet, FlatList, Pressable } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   YStack,
@@ -17,7 +17,7 @@ import { useAuth } from '../../../hooks/useAuth'
 import { useDragReorder } from '../../../hooks/useDragReorder'
 import { Id } from '../../../convex/_generated/dataModel'
 import {
-  ArrowLeft,
+  ChevronLeft,
   Play,
   Lock,
   CheckCircle,
@@ -95,14 +95,14 @@ export default function WorkoutDetailScreen() {
   // All hooks must be called before any early returns
   const [isStarting, setIsStarting] = useState(false)
 
-  // Safe back navigation - avoids getting stuck in execution screens
+  // Safe back navigation - respects where the user came from
   const handleBack = useCallback(() => {
-    // Use dismiss if available (pops screen from stack cleanly)
-    // Falls back to navigating to Program tab as a safe default
-    if (router.canDismiss()) {
+    if (router.canGoBack()) {
+      router.back()
+    } else if (router.canDismiss()) {
       router.dismiss()
     } else {
-      router.replace('/(athlete)/program')
+      router.replace('/(athlete)')
     }
   }, [router])
   // Track which accordions are expanded (by exercise ID, not index, so state persists through reordering)
@@ -568,27 +568,23 @@ export default function WorkoutDetailScreen() {
           </Card>
         )}
 
-        {/* Personalized Workout Info */}
+        {/* Training Science Info Icon */}
         {isPhaseUnlocked && !isCompleted && template?.scalingInfo && (
-          <Card p="$3" bg="$brand1" borderColor="$brand3">
-            <XStack items="center" justify="space-between">
-              <XStack items="center" gap="$2" flex={1}>
-                <CheckCircle size={18} color="$primary" />
-                <Text fontSize="$3" color="$brand9" flex={1}>
-                  Personalized for your {template.scalingInfo.ageGroup} age group and {template.scalingInfo.categoryName} training
-                </Text>
-              </XStack>
-              <Button
-                size="$2"
-                bg="transparent"
-                p="$1"
-                onPress={() => router.push('/(athlete)/training-science' as any)}
-                pressStyle={{ opacity: 0.7 }}
-              >
-                <Info size={18} color="$primary" />
-              </Button>
-            </XStack>
-          </Card>
+          <XStack items="center" gap="$2">
+            <Button
+              size="$2"
+              bg="$brand1"
+              rounded="$10"
+              p="$1.5"
+              icon={Info}
+              onPress={() => router.push('/(athlete)/training-science' as any)}
+              pressStyle={{ opacity: 0.7 }}
+              color="$primary"
+            />
+            <Text fontSize="$2" color="$color10">
+              Personalized for your profile
+            </Text>
+          </XStack>
         )}
 
         {/* Warmup Section Preview (collapsible) */}
@@ -597,8 +593,8 @@ export default function WorkoutDetailScreen() {
             exercises={warmupExercises}
             totalDuration={warmupDuration}
             onComplete={() => {}}
-            onSkip={() => {}}
             mode="preview"
+            phaseColor={phaseColor}
           />
         )}
 
@@ -671,24 +667,19 @@ export default function WorkoutDetailScreen() {
           pb="$3"
           bg="$background"
         >
-          <Button
-            size="$3"
-            variant="outlined"
-            icon={ArrowLeft}
-            onPress={handleBack}
-            circular
-          />
+          <Pressable onPress={handleBack} hitSlop={8}>
+            <ChevronLeft size={28} color="$color" />
+          </Pressable>
           <YStack flex={1} overflow="hidden">
-            <Text 
-              fontSize="$7" 
-              fontWeight="700" 
-              numberOfLines={1}
-              ellipsizeMode="tail"
+            <Text
+              fontSize="$7"
+              fontWeight="700"
+              numberOfLines={2}
             >
               {template.name}
             </Text>
             <Text color="$color10" fontSize="$2">
-              {mainExercises.length} exercises{warmupExercises.length > 0 ? ' + warmup' : ''} • ~{template.estimatedDurationMinutes} min
+              ~{template.estimatedDurationMinutes} min
             </Text>
           </YStack>
           {isPhaseUnlocked && !isCompleted && (

@@ -220,7 +220,7 @@ export function ExerciseQueue({
               <Card
                 width={28}
                 height={28}
-                rounded="$3"
+                rounded="$10"
                 bg={isCompleted ? '$success' : isCurrent ? intensityColor : '$color5'}
                 items="center"
                 justify="center"
@@ -368,13 +368,9 @@ export function ExerciseQueue({
                         {completedCount}/{exercises.length} done
                       </Text>
                     </YStack>
-                    <Button
-                      size="$3"
-                      circular
-                      bg="$color3"
-                      icon={ChevronRight}
-                      onPress={() => setOpen(false)}
-                    />
+                    <Pressable onPress={() => setOpen(false)} hitSlop={8}>
+                      <ChevronRight size={28} color="$color" />
+                    </Pressable>
                   </XStack>
 
                   {/* Drag hint */}
@@ -440,7 +436,6 @@ const styles = StyleSheet.create({
   },
   dragHandle: {
     padding: 4,
-    marginLeft: -4,
   },
   listContainer: {
     flex: 1,

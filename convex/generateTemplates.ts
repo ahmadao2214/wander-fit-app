@@ -1278,6 +1278,103 @@ export const getGenerationStatus = query({
 });
 
 /**
+ * Regenerate all templates for a given category.
+ * Deletes existing templates and recreates them with the latest generation
+ * logic (including the new warmup system).
+ *
+ * Run once per category to stay within Convex mutation time limits:
+ *   npx convex run generateTemplates:regenerateCategoryTemplates '{"categoryId": 1}'
+ *   npx convex run generateTemplates:regenerateCategoryTemplates '{"categoryId": 2}'
+ *   npx convex run generateTemplates:regenerateCategoryTemplates '{"categoryId": 3}'
+ *   npx convex run generateTemplates:regenerateCategoryTemplates '{"categoryId": 4}'
+ */
+export const regenerateCategoryTemplates = mutation({
+  args: {
+    categoryId: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const categoryId = args.categoryId as GppCategoryId;
+    if (![1, 2, 3, 4].includes(categoryId)) {
+      throw new Error("Invalid category ID. Must be 1, 2, 3, or 4.");
+    }
+
+    // Build exercise slug -> ID map
+    const allExercises = await ctx.db.query("exercises").collect();
+    const exerciseMap = new Map(allExercises.map((e) => [e.slug, e._id]));
+
+    // Delete all existing templates for this category
+    const existing = await ctx.db
+      .query("program_templates")
+      .withIndex("by_category_phase", (q) => q.eq("gppCategoryId", categoryId))
+      .collect();
+
+    let deleted = 0;
+    for (const t of existing) {
+      await ctx.db.delete(t._id);
+      deleted++;
+    }
+
+    // Regenerate
+    let created = 0;
+    const errors: string[] = [];
+
+    for (const phase of PHASES) {
+      for (const skillLevel of SKILL_LEVELS) {
+        for (const week of WEEKS) {
+          for (const day of DAYS) {
+            try {
+              const template = generateTemplate(categoryId, phase, skillLevel, week, day);
+
+              const exercisesWithIds = template.exercises.map((ex) => {
+                const exerciseId = exerciseMap.get(ex.exerciseSlug);
+                if (!exerciseId) {
+                  throw new Error(`Exercise not found: ${ex.exerciseSlug}`);
+                }
+                return {
+                  exerciseId,
+                  sets: ex.sets,
+                  reps: ex.reps,
+                  tempo: ex.tempo,
+                  restSeconds: ex.restSeconds,
+                  notes: ex.notes,
+                  orderIndex: ex.orderIndex,
+                  superset: ex.superset,
+                  section: ex.section,
+                  warmupPhase: ex.warmupPhase,
+                };
+              });
+
+              await ctx.db.insert("program_templates", {
+                gppCategoryId: template.gppCategoryId,
+                phase: template.phase,
+                skillLevel: template.skillLevel,
+                week: template.week,
+                day: template.day,
+                name: template.name,
+                description: template.description,
+                estimatedDurationMinutes: template.estimatedDurationMinutes,
+                exercises: exercisesWithIds,
+              });
+
+              created++;
+            } catch (error) {
+              errors.push(`${phase}, ${skillLevel}, W${week}D${day}: ${error}`);
+            }
+          }
+        }
+      }
+    }
+
+    return {
+      message: `Category ${categoryId} (${CATEGORY_NAMES[categoryId]}) regenerated`,
+      deleted,
+      created,
+      errors: errors.length > 0 ? errors : undefined,
+    };
+  },
+});
+
+/**
  * Clear all generated templates (for development - use with caution!)
  */
 export const clearAllTemplates = mutation({

@@ -32,7 +32,7 @@ import { ConfettiEffect } from '../../../../components/workout/ConfettiEffect'
 import { WarmupSection, type WarmupExercise } from '../../../../components/workout/WarmupSection'
 import { WARMUP_PHASES } from '../../../../convex/warmupSequences'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { PanResponder, Platform, Vibration, Animated, useColorScheme } from 'react-native'
+import { PanResponder, Platform, Vibration, Animated, useColorScheme, Pressable } from 'react-native'
 import { mapIntensityToLevel, IntensityLevel } from '../../../../lib'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -232,27 +232,31 @@ export default function WorkoutExecutionScreen() {
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
 
-  // Intensity-based colors
-  // In dark mode, the scale is inverted (1-6 dark, 7-12 light)
-  // For backgrounds, we use level 3 in dark mode for visibility, level 2 in light mode
-  const intensityColorMap = {
-    low: {
-      primary: '$intensityLow6',
-      light: isDark ? '$intensityLow3' : '$intensityLow2',
-      text: '$intensityLow11',
-    },
-    medium: {
-      primary: '$intensityMed6',
-      light: isDark ? '$intensityMed3' : '$intensityMed2',
-      text: '$intensityMed11',
-    },
-    high: {
-      primary: '$intensityHigh6',
-      light: isDark ? '$intensityHigh3' : '$intensityHigh2',
-      text: '$intensityHigh11',
-    },
-  } as const
-  const intensityColors = intensityColorMap[intensity]
+  // Phase-based accent colors (GPP=blue, SPP=orange, SSP=green)
+  // Matches workout detail screen's phaseColor system
+  const intensityColors = useMemo(() => {
+    const phase = template?.phase
+    if (phase === 'SPP') {
+      return {
+        primary: '$orange9' as const,
+        light: (isDark ? '$orange3' : '$orange2') as const,
+        text: '$orange11' as const,
+      }
+    }
+    if (phase === 'SSP') {
+      return {
+        primary: '$green9' as const,
+        light: (isDark ? '$green3' : '$green2') as const,
+        text: '$green11' as const,
+      }
+    }
+    // Default: GPP = blue
+    return {
+      primary: '$blue9' as const,
+      light: (isDark ? '$blue3' : '$blue2') as const,
+      text: '$blue11' as const,
+    }
+  }, [template?.phase, isDark])
 
   // Keep refs in sync
   useEffect(() => {
@@ -795,8 +799,12 @@ export default function WorkoutExecutionScreen() {
         exercises={warmupExs}
         totalDuration={warmupDuration}
         onComplete={() => setShowWarmup(false)}
-        onSkip={() => setShowWarmup(false)}
+        onBack={() => router.back()}
         mode="flow"
+        phaseColor={
+          template?.phase === 'GPP' ? '$blue9'
+            : template?.phase === 'SPP' ? '$orange9' : '$green9'
+        }
       />
     )
   }
@@ -818,57 +826,45 @@ export default function WorkoutExecutionScreen() {
     <YStack flex={1} bg="$background" items="center">
       {/* Constrain width for web */}
       <YStack flex={1} width="100%" maxW={600}>
-        {/* Header with intensity-colored accent */}
-        <YStack>
-          {/* Intensity color bar */}
-          <YStack height={4} bg={intensityColors.primary} />
+        {/* Header */}
+        <XStack
+          px="$4"
+          pt={insets.top + 8}
+          pb="$3"
+          items="center"
+          justify="space-between"
+          bg="$surface"
+        >
+          <Pressable onPress={() => setShowExitDialog(true)} hitSlop={8}>
+            <X size={28} color="$color" />
+          </Pressable>
 
-          <XStack
-            px="$4"
-            pt={insets.top + 8}
-            pb="$3"
-            items="center"
-            justify="space-between"
-            bg="$surface"
-          >
-            <Button
-              size="$3"
-              circular
-              bg="$background"
-              borderWidth={1}
-              borderColor="$borderColor"
-              icon={X}
-              pressStyle={{ opacity: 0.8 }}
-              onPress={() => setShowExitDialog(true)}
-            />
-
-            {/* Dot Stepper Progress */}
-            <XStack items="center" gap="$1.5">
-              {orderedExercises.map((_, idx) => {
-                const isCompleted = exerciseCompletions[idx]?.completed
-                const isCurrent = idx === currentExerciseIndex
-                return (
-                  <YStack
-                    key={idx}
-                    width={isCurrent ? 10 : 8}
-                    height={isCurrent ? 10 : 8}
-                    rounded={100}
-                    bg={isCompleted ? intensityColors.primary : isCurrent ? 'transparent' : '$color5'}
-                    borderWidth={isCurrent ? 2 : 0}
-                    borderColor={isCurrent ? intensityColors.primary : undefined}
-                  />
-                )
-              })}
-            </XStack>
-
-            <XStack items="center" gap="$1.5">
-              <Timer size={16} color={intensityColors.primary} />
-              <TimerDisplay color={intensityColors.primary}>
-                {formatTime(elapsedTime)}
-              </TimerDisplay>
-            </XStack>
+          {/* Dot Stepper Progress */}
+          <XStack items="center" gap="$1.5">
+            {orderedExercises.map((_, idx) => {
+              const isCompleted = exerciseCompletions[idx]?.completed
+              const isCurrent = idx === currentExerciseIndex
+              return (
+                <YStack
+                  key={idx}
+                  width={isCurrent ? 10 : 8}
+                  height={isCurrent ? 10 : 8}
+                  rounded={100}
+                  bg={isCompleted ? intensityColors.primary : isCurrent ? 'transparent' : '$color5'}
+                  borderWidth={isCurrent ? 2 : 0}
+                  borderColor={isCurrent ? '$color8' : undefined}
+                />
+              )
+            })}
           </XStack>
-        </YStack>
+
+          <XStack items="center" gap="$1.5">
+            <Timer size={16} color="$color10" />
+            <TimerDisplay color="$color10">
+              {formatTime(elapsedTime)}
+            </TimerDisplay>
+          </XStack>
+        </XStack>
 
         {/* Main Content */}
         <ScrollView 
@@ -880,15 +876,15 @@ export default function WorkoutExecutionScreen() {
             <YStack px="$4" py="$5" gap="$5">
               {/* Exercise Icon */}
               <YStack items="center" py="$3">
-                <YStack 
-                  bg={intensityColors.light} 
-                  p="$4" 
+                <YStack
+                  bg="$color3"
+                  p="$4"
                   rounded="$10"
                 >
-                  <ExerciseTypeIcon 
-                    tags={exerciseDetails?.tags || []} 
+                  <ExerciseTypeIcon
+                    tags={exerciseDetails?.tags || []}
                     size={48}
-                    color={intensityColors.primary}
+                    color="$color10"
                   />
                 </YStack>
               </YStack>
@@ -1009,16 +1005,11 @@ export default function WorkoutExecutionScreen() {
           px="$4"
           py="$2"
           gap="$3"
-          bg="$surface"
-          borderTopWidth={1}
-          borderTopColor="$borderColor"
         >
           <Button
             flex={1}
             size="$5"
-            bg="$background"
-            borderWidth={2}
-            borderColor="$borderColor"
+            bg="$color3"
             icon={ChevronLeft}
             disabled={currentExerciseIndex === 0}
             opacity={currentExerciseIndex === 0 ? 0.5 : 1}

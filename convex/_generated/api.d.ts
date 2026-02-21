@@ -31,6 +31,7 @@ import type * as sports from "../sports.js";
 import type * as userMaxes from "../userMaxes.js";
 import type * as userPrograms from "../userPrograms.js";
 import type * as users from "../users.js";
+import type * as warmupSequences from "../warmupSequences.js";
 import type * as weekMapping from "../weekMapping.js";
 import type * as workoutCalendar from "../workoutCalendar.js";
 import type * as workoutSessions from "../workoutSessions.js";
@@ -63,6 +64,7 @@ declare const fullApi: ApiFromModules<{
   userMaxes: typeof userMaxes;
   userPrograms: typeof userPrograms;
   users: typeof users;
+  warmupSequences: typeof warmupSequences;
   weekMapping: typeof weekMapping;
   workoutCalendar: typeof workoutCalendar;
   workoutSessions: typeof workoutSessions;

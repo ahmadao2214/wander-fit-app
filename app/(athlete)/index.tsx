@@ -7,7 +7,6 @@ import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   Play,
-  Clock,
   Dumbbell,
   Timer,
   Target,
@@ -139,6 +138,13 @@ export default function AthleteDashboard() {
   // Start session mutation
   const startSession = useMutation(api.gppWorkoutSessions.startSession)
 
+  // Phase color (GPP=blue, SPP=orange, SSP=green)
+  const phaseColor = programState?.phase === 'GPP'
+    ? '$blue9'
+    : programState?.phase === 'SPP'
+      ? '$orange9'
+      : '$green9'
+
   // Loading state
   if (authLoading || programState === undefined) {
     return (
@@ -244,52 +250,6 @@ export default function AthleteDashboard() {
               </XStack>
             )}
           </YStack>
-
-          {/* Active Session Alert */}
-          {activeSession && activeSession.status === 'in_progress' && (
-            <Card 
-              bg="$accent2" 
-              p="$4" 
-              rounded="$4"
-              borderLeftWidth={4}
-              borderLeftColor="$accent"
-            >
-              <XStack items="center" gap="$3">
-                <YStack 
-                  bg="$accent" 
-                  p="$2" 
-                  rounded="$10"
-                >
-                  <Clock color="white" size={20} />
-                </YStack>
-                <YStack flex={1}>
-                  <Text fontFamily="$body" fontWeight="600" color="$accent7">
-                    Workout in Progress
-                  </Text>
-                  <Text fontSize={13} color="$accent6" fontFamily="$body">
-                    {activeSession.template?.name || 'Pick up where you left off'}
-                  </Text>
-                </YStack>
-                <Button
-                  size="$3"
-                  bg="$accent"
-                  color="white"
-                  icon={RotateCcw}
-                  fontFamily="$body" fontWeight="700"
-                  rounded="$3"
-                  pressStyle={{ opacity: 0.9 }}
-                  onPress={() => {
-                    router.push({
-                      pathname: '/(athlete)/workout/execute/[id]',
-                      params: { id: activeSession._id },
-                    })
-                  }}
-                >
-                  Resume
-                </Button>
-              </XStack>
-            </Card>
-          )}
 
           {/* Reassessment Banner */}
           {reassessmentStatus?.reassessmentPending && (
@@ -443,7 +403,7 @@ export default function AthleteDashboard() {
               ) : isInProgress ? (
                 <Button
                   size="$5"
-                  bg="$accent"
+                  bg={phaseColor}
                   color="white"
                   icon={RotateCcw}
                   fontFamily="$body" fontWeight="700"
