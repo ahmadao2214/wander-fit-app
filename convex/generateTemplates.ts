@@ -30,6 +30,8 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
+import { generateWarmupPrescriptions } from "./warmupSequences";
+import type { WarmupPhase, ExerciseSection } from "../types";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -48,6 +50,8 @@ interface ExercisePrescription {
   notes?: string;
   orderIndex: number;
   superset?: string;
+  section?: ExerciseSection;
+  warmupPhase?: WarmupPhase;
 }
 
 interface TemplateDefinition {
@@ -182,16 +186,6 @@ const CATEGORY_NAMES: Record<GppCategoryId, string> = {
  */
 
 // Warmup exercises by day type
-const WARMUP_EXERCISES: Record<DayType, string[]> = {
-  lower_a: ["cat_cow", "worlds_greatest_stretch", "90_90_hip_stretch"],
-  upper_a: ["cat_cow", "thoracic_rotation", "dead_bug"],
-  power: ["cat_cow", "bird_dog", "worlds_greatest_stretch"],
-  lower_b: ["cat_cow", "90_90_hip_stretch", "hip_flexor_stretch"],
-  upper_b: ["cat_cow", "thoracic_rotation", "dead_bug"],
-  full_body: ["cat_cow", "worlds_greatest_stretch", "bird_dog"],
-  recovery: ["cat_cow", "90_90_hip_stretch", "thoracic_rotation"],
-};
-
 // Cooldown exercises
 const COOLDOWN_EXERCISES = ["90_90_hip_stretch", "hip_flexor_stretch"];
 
@@ -812,16 +806,17 @@ function generateExercisePrescriptions(
   // Get day type from DAY_TYPES mapping
   const dayType = DAY_TYPES[day] || "lower_a";
 
-  // 1. Warmup (2 exercises)
-  const warmupExercises = WARMUP_EXERCISES[dayType].slice(0, 2);
-  for (const slug of warmupExercises) {
+  // 1. Warmup (structured multi-phase protocol)
+  const warmupPrescriptions = generateWarmupPrescriptions(dayType, false, 0);
+  for (const wp of warmupPrescriptions) {
     exercises.push({
-      exerciseSlug: slug,
-      sets: 1,
-      reps: dayType === "power" || dayType === "full_body" ? "8 each side" : "10",
-      restSeconds: 0,
-      notes: "Warmup",
+      exerciseSlug: wp.exerciseSlug,
+      sets: wp.sets,
+      reps: wp.reps,
+      restSeconds: wp.restSeconds,
       orderIndex: orderIndex++,
+      section: wp.section,
+      warmupPhase: wp.warmupPhase,
     });
   }
 
@@ -836,6 +831,7 @@ function generateExercisePrescriptions(
         restSeconds: 30,
         notes: "Mobility",
         orderIndex: orderIndex++,
+        section: "main",
       });
     }
     return exercises;
@@ -861,6 +857,7 @@ function generateExercisePrescriptions(
       tempo: phaseConfig.tempo,
       restSeconds: isCompound ? adjustedRest + 15 : adjustedRest,
       orderIndex: orderIndex++,
+      section: "main",
     });
   }
 
@@ -877,11 +874,15 @@ function generateExercisePrescriptions(
         reps: isPlank ? "30s" : `${adjustedReps}`,
         restSeconds: 30,
         orderIndex: orderIndex++,
+        section: "main",
       });
     }
   }
 
   // 4. Cooldown (1 exercise)
+  // Intentionally section: "main" so cooldown appears in the trackable exercise
+  // list. If finer-grained categorization is needed later, add "cooldown" to
+  // the ExerciseSection type.
   const cooldownIndex = dayType.includes("lower") ? 0 : 1;
   const cooldownSlug = COOLDOWN_EXERCISES[cooldownIndex];
   exercises.push({
@@ -891,6 +892,7 @@ function generateExercisePrescriptions(
     restSeconds: 0,
     notes: "Cooldown",
     orderIndex: orderIndex++,
+    section: "main",
   });
 
   return exercises;
@@ -939,10 +941,13 @@ function calculateDuration(exercises: ExercisePrescription[]): number {
     // Time per set (including execution + rest)
     const repsMatch = ex.reps.match(/(\d+)/);
     const reps = repsMatch ? parseInt(repsMatch[1]) : 10;
-    const isTimeBased = ex.reps.includes("s") || ex.reps.includes("min");
+    // Detect time-based reps: "30s", "20s each side", "2min" — but NOT "8 each side" or "20 yards"
+    const isTimeBased = /\d+s\b/.test(ex.reps) || ex.reps.includes("min");
 
     if (isTimeBased) {
-      const seconds = ex.reps.includes("min") ? parseInt(ex.reps) * 60 : parseInt(ex.reps);
+      const seconds = ex.reps.includes("min")
+        ? parseInt(ex.reps) * 60
+        : parseInt(ex.reps); // e.g. parseInt("30s") = 30
       totalSeconds += (seconds + ex.restSeconds) * ex.sets;
     } else {
       // Assume ~3 seconds per rep
@@ -1050,6 +1055,8 @@ export const generateAllTemplates = mutation({
                     notes: ex.notes,
                     orderIndex: ex.orderIndex,
                     superset: ex.superset,
+                    section: ex.section,
+                    warmupPhase: ex.warmupPhase,
                   };
                 });
 
@@ -1163,6 +1170,8 @@ export const generateCategoryTemplates = mutation({
                   notes: ex.notes,
                   orderIndex: ex.orderIndex,
                   superset: ex.superset,
+                  section: ex.section,
+                  warmupPhase: ex.warmupPhase,
                 };
               });
 
@@ -1264,6 +1273,103 @@ export const getGenerationStatus = query({
         weeks: WEEKS.length,
         days: DAYS.length,
       },
+    };
+  },
+});
+
+/**
+ * Regenerate all templates for a given category.
+ * Deletes existing templates and recreates them with the latest generation
+ * logic (including the new warmup system).
+ *
+ * Run once per category to stay within Convex mutation time limits:
+ *   npx convex run generateTemplates:regenerateCategoryTemplates '{"categoryId": 1}'
+ *   npx convex run generateTemplates:regenerateCategoryTemplates '{"categoryId": 2}'
+ *   npx convex run generateTemplates:regenerateCategoryTemplates '{"categoryId": 3}'
+ *   npx convex run generateTemplates:regenerateCategoryTemplates '{"categoryId": 4}'
+ */
+export const regenerateCategoryTemplates = mutation({
+  args: {
+    categoryId: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const categoryId = args.categoryId as GppCategoryId;
+    if (![1, 2, 3, 4].includes(categoryId)) {
+      throw new Error("Invalid category ID. Must be 1, 2, 3, or 4.");
+    }
+
+    // Build exercise slug -> ID map
+    const allExercises = await ctx.db.query("exercises").collect();
+    const exerciseMap = new Map(allExercises.map((e) => [e.slug, e._id]));
+
+    // Delete all existing templates for this category
+    const existing = await ctx.db
+      .query("program_templates")
+      .withIndex("by_category_phase", (q) => q.eq("gppCategoryId", categoryId))
+      .collect();
+
+    let deleted = 0;
+    for (const t of existing) {
+      await ctx.db.delete(t._id);
+      deleted++;
+    }
+
+    // Regenerate
+    let created = 0;
+    const errors: string[] = [];
+
+    for (const phase of PHASES) {
+      for (const skillLevel of SKILL_LEVELS) {
+        for (const week of WEEKS) {
+          for (const day of DAYS) {
+            try {
+              const template = generateTemplate(categoryId, phase, skillLevel, week, day);
+
+              const exercisesWithIds = template.exercises.map((ex) => {
+                const exerciseId = exerciseMap.get(ex.exerciseSlug);
+                if (!exerciseId) {
+                  throw new Error(`Exercise not found: ${ex.exerciseSlug}`);
+                }
+                return {
+                  exerciseId,
+                  sets: ex.sets,
+                  reps: ex.reps,
+                  tempo: ex.tempo,
+                  restSeconds: ex.restSeconds,
+                  notes: ex.notes,
+                  orderIndex: ex.orderIndex,
+                  superset: ex.superset,
+                  section: ex.section,
+                  warmupPhase: ex.warmupPhase,
+                };
+              });
+
+              await ctx.db.insert("program_templates", {
+                gppCategoryId: template.gppCategoryId,
+                phase: template.phase,
+                skillLevel: template.skillLevel,
+                week: template.week,
+                day: template.day,
+                name: template.name,
+                description: template.description,
+                estimatedDurationMinutes: template.estimatedDurationMinutes,
+                exercises: exercisesWithIds,
+              });
+
+              created++;
+            } catch (error) {
+              errors.push(`${phase}, ${skillLevel}, W${week}D${day}: ${error}`);
+            }
+          }
+        }
+      }
+    }
+
+    return {
+      message: `Category ${categoryId} (${CATEGORY_NAMES[categoryId]}) regenerated`,
+      deleted,
+      created,
+      errors: errors.length > 0 ? errors : undefined,
     };
   },
 });

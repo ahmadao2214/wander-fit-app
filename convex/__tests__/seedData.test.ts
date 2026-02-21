@@ -570,3 +570,147 @@ describe("EXAMPLE_USER_PROGRAM", () => {
     expect(EXAMPLE_USER_PROGRAM.sspUnlockedAt).toBeUndefined();
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// WARMUP EXERCISES TESTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("Warmup Exercises", () => {
+  const warmupExercises = EXERCISES.filter((e) => e.tags.includes("warmup"));
+
+  it("should have at least 50 warmup-tagged exercises", () => {
+    expect(warmupExercises.length).toBeGreaterThanOrEqual(50);
+  });
+
+  it("all warmup exercise slugs should be unique", () => {
+    const slugs = warmupExercises.map((e) => e.slug);
+    const uniqueSlugs = new Set(slugs);
+    expect(uniqueSlugs.size).toBe(slugs.length);
+  });
+
+  describe("Foam Rolling exercises", () => {
+    const foamRolling = EXERCISES.filter((e) => e.tags.includes("foam_rolling"));
+
+    it("should have at least 8 foam rolling exercises", () => {
+      expect(foamRolling.length).toBeGreaterThanOrEqual(8);
+    });
+
+    it("all foam rolling exercises should require foam_roller equipment", () => {
+      for (const ex of foamRolling) {
+        expect(ex.equipment).toContain("foam_roller");
+      }
+    });
+
+    it("all foam rolling exercises should be beginner difficulty", () => {
+      for (const ex of foamRolling) {
+        expect(ex.difficulty).toBe("beginner");
+      }
+    });
+  });
+
+  describe("Mobility exercises", () => {
+    const mobilityExercises = EXERCISES.filter(
+      (e) => e.tags.includes("mobility") && e.tags.includes("warmup")
+    );
+
+    it("should have at least 8 mobility warmup exercises", () => {
+      expect(mobilityExercises.length).toBeGreaterThanOrEqual(8);
+    });
+  });
+
+  describe("Core Isometric exercises", () => {
+    const coreIsometric = EXERCISES.filter(
+      (e) => e.tags.includes("isometric") && e.tags.includes("warmup")
+    );
+
+    it("should have at least 4 isometric warmup exercises", () => {
+      expect(coreIsometric.length).toBeGreaterThanOrEqual(4);
+    });
+  });
+
+  describe("Walking Drills", () => {
+    const walkingDrills = EXERCISES.filter(
+      (e) => e.slug.startsWith("walking_") || e.slug === "heel_toe_walk" || e.slug === "lateral_shuffle"
+    );
+
+    it("should have at least 8 walking drill exercises", () => {
+      expect(walkingDrills.length).toBeGreaterThanOrEqual(8);
+    });
+
+    it("all walking drills should be beginner difficulty", () => {
+      for (const ex of walkingDrills) {
+        expect(ex.difficulty).toBe("beginner");
+      }
+    });
+  });
+
+  describe("Movement Prep exercises", () => {
+    const movementPrep = ["jog", "carioca", "skip", "power_skip", "a_skip", "b_skip", "high_knees_drill", "butt_kicks"];
+
+    it("should have all movement prep exercises", () => {
+      for (const slug of movementPrep) {
+        const found = EXERCISES.find((e) => e.slug === slug);
+        expect(found).toBeDefined();
+        expect(found?.tags).toContain("warmup");
+      }
+    });
+  });
+
+  describe("Power Primer exercises", () => {
+    const powerPrimers = EXERCISES.filter(
+      (e) => e.tags.includes("warmup") && e.tags.includes("power") && e.tags.includes("explosive")
+    );
+
+    it("should have at least 7 power primer exercises", () => {
+      expect(powerPrimers.length).toBeGreaterThanOrEqual(7);
+    });
+
+    it("all power primer exercises should be beginner difficulty", () => {
+      for (const ex of powerPrimers) {
+        expect(ex.difficulty).toBe("beginner");
+      }
+    });
+  });
+
+  it("new warmup exercises should all be beginner difficulty", () => {
+    const newWarmupSlugs = [
+      "foam_roll_quads", "foam_roll_hamstrings", "foam_roll_it_band", "foam_roll_calves",
+      "foam_roll_glutes", "foam_roll_thoracic", "foam_roll_lats", "foam_roll_adductors",
+      "ankle_circles", "hip_circles", "arm_cross_body_stretch", "shoulder_pass_through",
+      "inchworm", "scorpion_stretch",
+      "hollow_body_hold", "bear_crawl_hold", "tall_kneeling_pallof_hold", "quadruped_belly_lift",
+      "core_bicycle", "bird_dog_crunch", "glute_bridge_march", "dead_bug_with_reach",
+      "heel_toe_walk", "walking_knee_hug", "walking_quad_stretch", "walking_cradle_stretch",
+      "walking_rdl_reach", "walking_spiderman", "lateral_shuffle", "walking_lunge_rotation",
+      "jog", "carioca", "skip", "power_skip", "a_skip", "b_skip", "high_knees_drill", "butt_kicks",
+      "med_ball_chest_pass_warmup", "med_ball_overhead_throw_warmup", "med_ball_rotational_pass",
+      "broad_jump_warmup", "vertical_jump_warmup", "box_jump_warmup", "explosive_pushup_warmup",
+    ];
+
+    for (const slug of newWarmupSlugs) {
+      const exercise = EXERCISES.find((e) => e.slug === slug);
+      expect(exercise).toBeDefined();
+      expect(exercise?.difficulty).toBe("beginner");
+    }
+  });
+});
+
+describe("Warmup Equipment", () => {
+  it("should include foam_roller in equipment glossary", () => {
+    expect(EQUIPMENT_GLOSSARY).toContain("foam_roller");
+  });
+
+  it("should include mini_band in equipment glossary", () => {
+    expect(EQUIPMENT_GLOSSARY).toContain("mini_band");
+  });
+});
+
+describe("Warmup Tags", () => {
+  it("should include foam_rolling in purpose tags", () => {
+    expect(TAGS_GLOSSARY.purpose).toContain("foam_rolling");
+  });
+
+  it("should include activation in purpose tags", () => {
+    expect(TAGS_GLOSSARY.purpose).toContain("activation");
+  });
+});

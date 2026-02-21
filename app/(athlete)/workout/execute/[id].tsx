@@ -29,8 +29,10 @@ import { SetTracker } from '../../../../components/workout/SetTracker'
 import { InstructionsAccordion } from '../../../../components/workout/InstructionsAccordion'
 import { ExerciseQueue } from '../../../../components/workout/ExerciseQueue'
 import { ConfettiEffect } from '../../../../components/workout/ConfettiEffect'
+import { WarmupSection, type WarmupExercise } from '../../../../components/workout/WarmupSection'
+import { WARMUP_PHASES } from '../../../../convex/warmupSequences'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { PanResponder, Platform, Vibration, Animated, useColorScheme } from 'react-native'
+import { PanResponder, Platform, Vibration, Animated, useColorScheme, Pressable } from 'react-native'
 import { mapIntensityToLevel, IntensityLevel } from '../../../../lib'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -175,6 +177,10 @@ export default function WorkoutExecutionScreen() {
   const [showCompletionDialog, setShowCompletionDialog] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)
 
+  // Warmup flow state — skip warmup if session already has progress (e.g. resuming)
+  const [showWarmup, setShowWarmup] = useState(true)
+  const warmupInitRef = useRef(false)
+
   // Auto-advance state (1.5s delay when all sets complete)
   const [autoAdvanceCountdown, setAutoAdvanceCountdown] = useState<number | null>(null)
   const autoAdvanceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -186,6 +192,12 @@ export default function WorkoutExecutionScreen() {
 
   // Auto-save ref
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Store warmup completion placeholders and their original indices so we can
+  // reconstruct the full exercises array (warmup + main) when saving.
+  // This preserves positional alignment with the template and keeps warmup
+  // data in completed sessions for analytics/review.
+  const warmupDataRef = useRef<{ indices: Set<number>; completions: Map<number, ExerciseCompletion> } | null>(null)
 
   // Track if session has been completed/abandoned to prevent save attempts
   const sessionEndedRef = useRef(false)
@@ -220,32 +232,37 @@ export default function WorkoutExecutionScreen() {
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
 
-  // Intensity-based colors
-  // In dark mode, the scale is inverted (1-6 dark, 7-12 light)
-  // For backgrounds, we use level 3 in dark mode for visibility, level 2 in light mode
-  const intensityColorMap = {
-    low: {
-      primary: '$intensityLow6',
-      light: isDark ? '$intensityLow3' : '$intensityLow2',
-      text: '$intensityLow11',
-    },
-    medium: {
-      primary: '$intensityMed6',
-      light: isDark ? '$intensityMed3' : '$intensityMed2',
-      text: '$intensityMed11',
-    },
-    high: {
-      primary: '$intensityHigh6',
-      light: isDark ? '$intensityHigh3' : '$intensityHigh2',
-      text: '$intensityHigh11',
-    },
-  } as const
-  const intensityColors = intensityColorMap[intensity]
+  // Phase-based accent colors (GPP=blue, SPP=orange, SSP=green)
+  // Matches workout detail screen's phaseColor system
+  const intensityColors = useMemo(() => {
+    const phase = template?.phase
+    if (phase === 'SPP') {
+      return {
+        primary: '$orange9' as const,
+        light: (isDark ? '$orange3' : '$orange2') as const,
+        text: '$orange11' as const,
+      }
+    }
+    if (phase === 'SSP') {
+      return {
+        primary: '$green9' as const,
+        light: (isDark ? '$green3' : '$green2') as const,
+        text: '$green11' as const,
+      }
+    }
+    // Default: GPP = blue
+    return {
+      primary: '$blue9' as const,
+      light: (isDark ? '$blue3' : '$blue2') as const,
+      text: '$blue11' as const,
+    }
+  }, [template?.phase, isDark])
 
   // Keep refs in sync
   useEffect(() => {
     currentIndexRef.current = currentExerciseIndex
   }, [currentExerciseIndex])
+
 
   // Haptic feedback helper
   const triggerHaptic = useCallback(() => {
@@ -312,26 +329,103 @@ export default function WorkoutExecutionScreen() {
   )
 
   // Initialize exercise completions from session data
+  // Filter warmup exercises so exerciseCompletions aligns with orderedExercises
   useEffect(() => {
     if (session?.exercises && !isInitialized) {
-      setExerciseCompletions(session.exercises as ExerciseCompletion[])
-      setIsInitialized(true)
-      
       if (session.template?.exercises) {
-        exerciseCountRef.current = session.template.exercises.length
-        
-        if (session.exerciseOrder && session.exerciseOrder.length > 0) {
-          setExerciseOrder(session.exerciseOrder)
+        const templateExs = session.template.exercises
+
+        // Build set of warmup template indices using section field
+        // (not exerciseId, since exercises like dead_bug can appear in both warmup and main)
+        const warmupIndices = new Set(
+          templateExs
+            .map((ex: any, idx: number) => ({ ex, idx }))
+            .filter(({ ex }: any) => ex.section === 'warmup' || (!ex.section && ex.notes === 'Warmup'))
+            .map(({ idx }: any) => idx)
+        )
+
+        // Store warmup completions so we can reconstruct the full array when saving
+        const warmupCompletions = new Map<number, ExerciseCompletion>()
+        const allCompletions = session.exercises as ExerciseCompletion[]
+        if (allCompletions.length >= templateExs.length) {
+          // Full array — extract warmup entries before filtering
+          for (const idx of warmupIndices) {
+            if (idx < allCompletions.length) {
+              warmupCompletions.set(idx, allCompletions[idx])
+            }
+          }
         } else {
-          setExerciseOrder(session.template.exercises.map((_, idx) => idx))
+          // Already filtered (legacy save) — create placeholder warmup completions
+          for (const idx of warmupIndices) {
+            const tmpl = templateExs[idx] as any
+            if (tmpl) {
+              warmupCompletions.set(idx, {
+                exerciseId: tmpl.exerciseId,
+                completed: true,
+                skipped: true,
+                sets: Array.from({ length: tmpl.sets || 1 }, () => ({
+                  completed: true,
+                  skipped: true,
+                })),
+              })
+            }
+          }
+        }
+        warmupDataRef.current = { indices: warmupIndices, completions: warmupCompletions }
+
+        // Filter completions to non-warmup only using index-based matching.
+        // If session.exercises is shorter than templateExs, it was already saved
+        // as a full array from a previous save — just extract non-warmup entries.
+        const filteredCompletions = allCompletions.length >= templateExs.length
+          ? allCompletions.filter((_: any, idx: number) => !warmupIndices.has(idx))
+          : allCompletions
+        setExerciseCompletions(filteredCompletions)
+        exerciseCountRef.current = filteredCompletions.length
+
+        // Build non-warmup template indices for default order
+        const nonWarmupIndices = templateExs
+          .map((_: any, idx: number) => idx)
+          .filter((idx: number) => !warmupIndices.has(idx))
+
+        if (session.exerciseOrder && session.exerciseOrder.length > 0) {
+          // Filter saved order to exclude warmup indices
+          const filteredOrder = (session.exerciseOrder as number[]).filter(
+            (idx: number) => !warmupIndices.has(idx)
+          )
+          setExerciseOrder(filteredOrder.length > 0 ? filteredOrder : nonWarmupIndices)
+        } else {
+          setExerciseOrder(nonWarmupIndices)
+        }
+
+        // Find first incomplete non-warmup exercise
+        const firstIncomplete = filteredCompletions.findIndex(
+          (e) => !e.completed && !e.skipped
+        )
+        if (firstIncomplete !== -1) {
+          setCurrentExerciseIndex(firstIncomplete)
+        }
+      } else {
+        // Legacy templates without section field
+        setExerciseCompletions(session.exercises as ExerciseCompletion[])
+        exerciseCountRef.current = session.exercises.length
+
+        const firstIncomplete = session.exercises.findIndex(
+          (e) => !e.completed && !e.skipped
+        )
+        if (firstIncomplete !== -1) {
+          setCurrentExerciseIndex(firstIncomplete)
         }
       }
-      
-      const firstIncomplete = session.exercises.findIndex(
-        (e) => !e.completed && !e.skipped
-      )
-      if (firstIncomplete !== -1) {
-        setCurrentExerciseIndex(firstIncomplete)
+
+      setIsInitialized(true)
+
+      // Skip warmup if session already has progress (e.g. resuming after backgrounding)
+      if (!warmupInitRef.current) {
+        warmupInitRef.current = true
+        const hasProgress = session.exercises.some((e: any) => e.completed || e.skipped)
+        if (hasProgress) {
+          setShowWarmup(false)
+        }
       }
     }
   }, [session, isInitialized])
@@ -345,6 +439,43 @@ export default function WorkoutExecutionScreen() {
       return () => clearInterval(interval)
     }
   }, [session?.startedAt])
+
+  // Reconstruct the full exercises array (warmup + main) for saving.
+  // This preserves positional alignment with the template and keeps
+  // warmup data in completed session records.
+  const buildFullExercises = useCallback((mainCompletions: ExerciseCompletion[]): ExerciseCompletion[] => {
+    const warmupData = warmupDataRef.current
+    if (!warmupData || warmupData.indices.size === 0) {
+      return mainCompletions // No warmup exercises in template
+    }
+
+    const templateExs = session?.template?.exercises
+    if (!templateExs) return mainCompletions
+
+    const full: ExerciseCompletion[] = []
+    let mainIdx = 0
+    for (let i = 0; i < templateExs.length; i++) {
+      if (warmupData.indices.has(i)) {
+        // Insert warmup completion (stored or placeholder)
+        const stored = warmupData.completions.get(i)
+        if (stored) {
+          full.push({ ...stored, completed: true, skipped: true })
+        } else {
+          // Create placeholder for warmup exercises
+          const tmpl = templateExs[i] as any
+          full.push({
+            exerciseId: tmpl.exerciseId,
+            completed: true,
+            skipped: true,
+            sets: [{ completed: true, skipped: true }],
+          })
+        }
+      } else if (mainIdx < mainCompletions.length) {
+        full.push(mainCompletions[mainIdx++])
+      }
+    }
+    return full
+  }, [session?.template?.exercises])
 
   // Format elapsed time
   const formatTime = (seconds: number) => {
@@ -369,7 +500,7 @@ export default function WorkoutExecutionScreen() {
         try {
           await updateProgress({
             sessionId: sessionId as Id<"gpp_workout_sessions">,
-            exercises: exerciseCompletions,
+            exercises: buildFullExercises(exerciseCompletions),
             exerciseOrder: exerciseOrder.length > 0 ? exerciseOrder : undefined,
           })
         } catch (error) {
@@ -382,7 +513,7 @@ export default function WorkoutExecutionScreen() {
         }
       }
     }, 2000)
-  }, [sessionId, exerciseCompletions, exerciseOrder, updateProgress])
+  }, [sessionId, exerciseCompletions, exerciseOrder, updateProgress, buildFullExercises])
 
   useEffect(() => {
     // Don't trigger saves if session has ended
@@ -460,11 +591,11 @@ export default function WorkoutExecutionScreen() {
     if (sessionId) {
       await updateProgress({
         sessionId: sessionId as Id<"gpp_workout_sessions">,
-        exercises: exerciseCompletions,
+        exercises: buildFullExercises(exerciseCompletions),
       })
     }
 
-    if (currentExerciseIndex < exerciseCompletions.length - 1) {
+    if (currentExerciseIndex < exerciseCountRef.current - 1) {
       setCurrentExerciseIndex(currentExerciseIndex + 1)
     } else {
       setShowCompletionDialog(true)
@@ -491,7 +622,7 @@ export default function WorkoutExecutionScreen() {
     try {
       await completeSession({
         sessionId: sessionId as Id<"gpp_workout_sessions">,
-        exercises: exerciseCompletions,
+        exercises: buildFullExercises(exerciseCompletions),
         exerciseOrder: exerciseOrder.length > 0 ? exerciseOrder : undefined,
       })
 
@@ -534,7 +665,7 @@ export default function WorkoutExecutionScreen() {
     try {
       await abandonSession({
         sessionId: sessionId as Id<"gpp_workout_sessions">,
-        exercises: exerciseCompletions,
+        exercises: buildFullExercises(exerciseCompletions),
         exerciseOrder: exerciseOrder.length > 0 ? exerciseOrder : undefined,
       })
       setShowExitDialog(false)
@@ -581,9 +712,55 @@ export default function WorkoutExecutionScreen() {
   const template = session?.template
   const templateExercises = template?.exercises || []
 
+  // Separate warmup exercises from main workout exercises
+  const { warmupExs, mainTemplateExercises } = useMemo(() => {
+    const warmup: WarmupExercise[] = []
+    const main = templateExercises.filter((ex: any) => {
+      // Detect warmup by section field or legacy notes field
+      if (ex.section === 'warmup' || (!ex.section && ex.notes === 'Warmup')) {
+        warmup.push({
+          exerciseId: ex.exerciseId,
+          name: ex.exercise?.name ?? 'Exercise',
+          sets: ex.sets,
+          reps: ex.reps,
+          restSeconds: ex.restSeconds,
+          warmupPhase: ex.warmupPhase,
+          section: 'warmup',
+          orderIndex: ex.orderIndex,
+        })
+        return false
+      }
+      return true
+    })
+    return { warmupExs: warmup, mainTemplateExercises: main }
+  }, [templateExercises])
+
+  const hasWarmup = warmupExs.length > 0
+  // Compute duration from warmup phase config (consistent with warmupSequences.ts)
+  const warmupDuration = useMemo(() => {
+    if (warmupExs.length === 0) return 0
+    const phases = new Set(warmupExs.map(ex => ex.warmupPhase).filter(Boolean))
+    return Math.round(
+      WARMUP_PHASES
+        .filter(p => phases.has(p.phase))
+        .reduce((sum, p) => sum + p.durationMin, 0)
+    )
+  }, [warmupExs])
+
   const orderedExercises = exerciseOrder.length > 0
-    ? exerciseOrder.map(idx => templateExercises[idx])
-    : templateExercises
+    ? exerciseOrder.map(idx => templateExercises[idx]).filter((ex: any) =>
+        ex != null && ex?.section !== 'warmup' && !(ex && !ex.section && ex.notes === 'Warmup')
+      )
+    : mainTemplateExercises
+
+  // Keep exercise count ref in sync with orderedExercises length so swipe
+  // bounds stay correct even if filtering produces fewer exercises than
+  // exerciseCompletions (e.g. stale exerciseOrder with out-of-bounds indices).
+  useEffect(() => {
+    if (orderedExercises.length > 0) {
+      exerciseCountRef.current = orderedExercises.length
+    }
+  }, [orderedExercises.length])
 
   const currentExercise = orderedExercises[currentExerciseIndex]
   const currentCompletion = exerciseCompletions[currentExerciseIndex]
@@ -613,6 +790,25 @@ export default function WorkoutExecutionScreen() {
     )
   }
 
+  // Show warmup flow screen before main execution (must be before
+  // the !currentExercise guard so warmup renders even when main
+  // exercises haven't loaded yet, e.g. during initial state setup)
+  if (showWarmup && hasWarmup) {
+    return (
+      <WarmupSection
+        exercises={warmupExs}
+        totalDuration={warmupDuration}
+        onComplete={() => setShowWarmup(false)}
+        onBack={() => router.back()}
+        mode="flow"
+        phaseColor={
+          template?.phase === 'GPP' ? '$blue9'
+            : template?.phase === 'SPP' ? '$orange9' : '$green9'
+        }
+      />
+    )
+  }
+
   if (!currentExercise) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
@@ -630,57 +826,45 @@ export default function WorkoutExecutionScreen() {
     <YStack flex={1} bg="$background" items="center">
       {/* Constrain width for web */}
       <YStack flex={1} width="100%" maxW={600}>
-        {/* Header with intensity-colored accent */}
-        <YStack>
-          {/* Intensity color bar */}
-          <YStack height={4} bg={intensityColors.primary} />
+        {/* Header */}
+        <XStack
+          px="$4"
+          pt={insets.top + 8}
+          pb="$3"
+          items="center"
+          justify="space-between"
+          bg="$surface"
+        >
+          <Pressable onPress={() => setShowExitDialog(true)} hitSlop={8}>
+            <X size={28} color="$color" />
+          </Pressable>
 
-          <XStack
-            px="$4"
-            pt={insets.top + 8}
-            pb="$3"
-            items="center"
-            justify="space-between"
-            bg="$surface"
-          >
-            <Button
-              size="$3"
-              circular
-              bg="$background"
-              borderWidth={1}
-              borderColor="$borderColor"
-              icon={X}
-              pressStyle={{ opacity: 0.8 }}
-              onPress={() => setShowExitDialog(true)}
-            />
-
-            {/* Dot Stepper Progress */}
-            <XStack items="center" gap="$1.5">
-              {orderedExercises.map((_, idx) => {
-                const isCompleted = exerciseCompletions[idx]?.completed
-                const isCurrent = idx === currentExerciseIndex
-                return (
-                  <YStack
-                    key={idx}
-                    width={isCurrent ? 10 : 8}
-                    height={isCurrent ? 10 : 8}
-                    rounded={100}
-                    bg={isCompleted ? intensityColors.primary : isCurrent ? 'transparent' : '$color5'}
-                    borderWidth={isCurrent ? 2 : 0}
-                    borderColor={isCurrent ? intensityColors.primary : undefined}
-                  />
-                )
-              })}
-            </XStack>
-
-            <XStack items="center" gap="$1.5">
-              <Timer size={16} color={intensityColors.primary} />
-              <TimerDisplay color={intensityColors.primary}>
-                {formatTime(elapsedTime)}
-              </TimerDisplay>
-            </XStack>
+          {/* Dot Stepper Progress */}
+          <XStack items="center" gap="$1.5">
+            {orderedExercises.map((_, idx) => {
+              const isCompleted = exerciseCompletions[idx]?.completed
+              const isCurrent = idx === currentExerciseIndex
+              return (
+                <YStack
+                  key={idx}
+                  width={isCurrent ? 10 : 8}
+                  height={isCurrent ? 10 : 8}
+                  rounded={100}
+                  bg={isCompleted ? intensityColors.primary : isCurrent ? 'transparent' : '$color5'}
+                  borderWidth={isCurrent ? 2 : 0}
+                  borderColor={isCurrent ? '$color8' : undefined}
+                />
+              )
+            })}
           </XStack>
-        </YStack>
+
+          <XStack items="center" gap="$1.5">
+            <Timer size={16} color="$color10" />
+            <TimerDisplay color="$color10">
+              {formatTime(elapsedTime)}
+            </TimerDisplay>
+          </XStack>
+        </XStack>
 
         {/* Main Content */}
         <ScrollView 
@@ -692,15 +876,15 @@ export default function WorkoutExecutionScreen() {
             <YStack px="$4" py="$5" gap="$5">
               {/* Exercise Icon */}
               <YStack items="center" py="$3">
-                <YStack 
-                  bg={intensityColors.light} 
-                  p="$4" 
+                <YStack
+                  bg="$color3"
+                  p="$4"
                   rounded="$10"
                 >
-                  <ExerciseTypeIcon 
-                    tags={exerciseDetails?.tags || []} 
+                  <ExerciseTypeIcon
+                    tags={exerciseDetails?.tags || []}
                     size={48}
-                    color={intensityColors.primary}
+                    color="$color10"
                   />
                 </YStack>
               </YStack>
@@ -821,16 +1005,11 @@ export default function WorkoutExecutionScreen() {
           px="$4"
           py="$2"
           gap="$3"
-          bg="$surface"
-          borderTopWidth={1}
-          borderTopColor="$borderColor"
         >
           <Button
             flex={1}
             size="$5"
-            bg="$background"
-            borderWidth={2}
-            borderColor="$borderColor"
+            bg="$color3"
             icon={ChevronLeft}
             disabled={currentExerciseIndex === 0}
             opacity={currentExerciseIndex === 0 ? 0.5 : 1}

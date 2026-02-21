@@ -226,6 +226,15 @@ export default defineSchema({
         v.literal("circuit"),
         v.literal("finisher")
       )), // Workout section grouping
+      warmupPhase: v.optional(v.union(
+        v.literal("foam_rolling"),
+        v.literal("mobility"),
+        v.literal("core_isometric"),
+        v.literal("core_dynamic"),
+        v.literal("walking_drills"),
+        v.literal("movement_prep"),
+        v.literal("power_primer")
+      )), // Warmup phase within section: "warmup"
     })),
   })
     .index("by_assignment", ["gppCategoryId", "phase", "skillLevel", "week", "day"])

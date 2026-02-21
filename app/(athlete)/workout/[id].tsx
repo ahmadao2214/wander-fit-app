@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react'
-import { View, StyleSheet, FlatList } from 'react-native'
+import { View, StyleSheet, FlatList, Pressable } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   YStack,
@@ -17,7 +17,7 @@ import { useAuth } from '../../../hooks/useAuth'
 import { useDragReorder } from '../../../hooks/useDragReorder'
 import { Id } from '../../../convex/_generated/dataModel'
 import {
-  ArrowLeft,
+  ChevronLeft,
   Play,
   Lock,
   CheckCircle,
@@ -38,6 +38,8 @@ import DraggableFlatList, {
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { ExerciseAccordionItem } from '../../../components/ExerciseAccordionItem'
 import { PerformanceReviewItem } from '../../../components/workout/PerformanceReviewItem'
+import { WarmupSection, type WarmupExercise } from '../../../components/workout/WarmupSection'
+import { WARMUP_PHASES } from '../../../convex/warmupSequences'
 
 /**
  * Exercise type for the draggable list (with intensity scaling)
@@ -93,14 +95,14 @@ export default function WorkoutDetailScreen() {
   // All hooks must be called before any early returns
   const [isStarting, setIsStarting] = useState(false)
 
-  // Safe back navigation - avoids getting stuck in execution screens
+  // Safe back navigation - respects where the user came from
   const handleBack = useCallback(() => {
-    // Use dismiss if available (pops screen from stack cleanly)
-    // Falls back to navigating to Program tab as a safe default
-    if (router.canDismiss()) {
+    if (router.canGoBack()) {
+      router.back()
+    } else if (router.canDismiss()) {
       router.dismiss()
     } else {
-      router.replace('/(athlete)/program')
+      router.replace('/(athlete)')
     }
   }, [router])
   // Track which accordions are expanded (by exercise ID, not index, so state persists through reordering)
@@ -158,10 +160,66 @@ export default function WorkoutDetailScreen() {
     template?.phase as "GPP" | "SPP" | "SSP"
   ) ?? false
 
-  // Check if reordering is allowed (need at least 2 exercises)
-  const canReorder = isPhaseUnlocked && !isCompleted && (template?.exercises?.length ?? 0) > 1
+  // Split exercises into warmup and main sections
+  const { warmupExercises, mainExercises } = useMemo(() => {
+    const allExercises = (template?.exercises ?? []) as (ExerciseItem & { section?: string; warmupPhase?: string })[]
+    const warmup: WarmupExercise[] = []
+    const main: ExerciseItem[] = []
 
-  // Use shared drag reorder hook
+    for (const ex of allExercises) {
+      // Detect warmup by section field or legacy notes field
+      if (ex.section === 'warmup' || (!ex.section && ex.notes === 'Warmup')) {
+        warmup.push({
+          exerciseId: ex.exerciseId as any,
+          name: ex.exercise?.name ?? 'Exercise',
+          sets: ex.sets,
+          reps: ex.reps,
+          restSeconds: ex.restSeconds,
+          warmupPhase: ex.warmupPhase as any,
+          section: 'warmup',
+          orderIndex: ex.orderIndex,
+        })
+      } else {
+        main.push(ex)
+      }
+    }
+
+    return { warmupExercises: warmup, mainExercises: main }
+  }, [template?.exercises])
+
+  // Warmup duration from phase config (consistent with warmupSequences.ts)
+  const warmupDuration = useMemo(() => {
+    if (warmupExercises.length === 0) return 0
+    const phases = new Set(warmupExercises.map(ex => ex.warmupPhase).filter(Boolean))
+    return Math.round(
+      WARMUP_PHASES
+        .filter(p => phases.has(p.phase))
+        .reduce((sum, p) => sum + p.durationMin, 0)
+    )
+  }, [warmupExercises])
+
+  // Check if reordering is allowed (need at least 2 main exercises)
+  const canReorder = isPhaseUnlocked && !isCompleted && mainExercises.length > 1
+
+  // Remap template-level exerciseOrder indices to mainExercises-relative indices.
+  // The execution screen saves exerciseOrder with template indices (e.g., [15, 16, 17, 18, 19])
+  // but useDragReorder expects indices relative to mainExercises (e.g., [0, 1, 2, 3, 4]).
+  const remappedSavedOrder = useMemo(() => {
+    if (!session?.exerciseOrder) return undefined
+    const allExercises = (template?.exercises ?? []) as (ExerciseItem & { section?: string })[]
+    const mainIndexMap = new Map<number, number>()
+    let mainIdx = 0
+    for (let i = 0; i < allExercises.length; i++) {
+      if (allExercises[i].section !== 'warmup' && allExercises[i].notes !== 'Warmup') {
+        mainIndexMap.set(i, mainIdx++)
+      }
+    }
+    return (session.exerciseOrder as number[])
+      .map(idx => mainIndexMap.get(idx))
+      .filter((idx): idx is number => idx !== undefined)
+  }, [session?.exerciseOrder, template?.exercises])
+
+  // Use shared drag reorder hook (only main exercises)
   const {
     orderedExercises,
     orderIndices,
@@ -169,8 +227,8 @@ export default function WorkoutDetailScreen() {
     handleDragEnd,
     triggerHaptic,
   } = useDragReorder({
-    exercises: (template?.exercises ?? []) as ExerciseItem[],
-    savedOrder: session?.exerciseOrder,
+    exercises: mainExercises as ExerciseItem[],
+    savedOrder: remappedSavedOrder,
     enabled: canReorder,
   })
 
@@ -510,27 +568,34 @@ export default function WorkoutDetailScreen() {
           </Card>
         )}
 
-        {/* Personalized Workout Info */}
+        {/* Training Science Info Icon */}
         {isPhaseUnlocked && !isCompleted && template?.scalingInfo && (
-          <Card p="$3" bg="$brand1" borderColor="$brand3">
-            <XStack items="center" justify="space-between">
-              <XStack items="center" gap="$2" flex={1}>
-                <CheckCircle size={18} color="$primary" />
-                <Text fontSize="$3" color="$brand9" flex={1}>
-                  Personalized for your {template.scalingInfo.ageGroup} age group and {template.scalingInfo.categoryName} training
-                </Text>
-              </XStack>
-              <Button
-                size="$2"
-                bg="transparent"
-                p="$1"
-                onPress={() => router.push('/(athlete)/training-science' as any)}
-                pressStyle={{ opacity: 0.7 }}
-              >
-                <Info size={18} color="$primary" />
-              </Button>
-            </XStack>
-          </Card>
+          <XStack items="center" gap="$2">
+            <Button
+              size="$2"
+              bg="$brand1"
+              rounded="$10"
+              p="$1.5"
+              icon={Info}
+              onPress={() => router.push('/(athlete)/training-science' as any)}
+              pressStyle={{ opacity: 0.7 }}
+              color="$primary"
+            />
+            <Text fontSize="$2" color="$color10">
+              Personalized for your profile
+            </Text>
+          </XStack>
+        )}
+
+        {/* Warmup Section Preview (collapsible) */}
+        {warmupExercises.length > 0 && !isCompleted && (
+          <WarmupSection
+            exercises={warmupExercises}
+            totalDuration={warmupDuration}
+            onComplete={() => {}}
+            mode="preview"
+            phaseColor={phaseColor}
+          />
         )}
 
         {/* Exercise List Header */}
@@ -602,24 +667,19 @@ export default function WorkoutDetailScreen() {
           pb="$3"
           bg="$background"
         >
-          <Button
-            size="$3"
-            variant="outlined"
-            icon={ArrowLeft}
-            onPress={handleBack}
-            circular
-          />
+          <Pressable onPress={handleBack} hitSlop={8}>
+            <ChevronLeft size={28} color="$color" />
+          </Pressable>
           <YStack flex={1} overflow="hidden">
-            <Text 
-              fontSize="$7" 
-              fontWeight="700" 
-              numberOfLines={1}
-              ellipsizeMode="tail"
+            <Text
+              fontSize="$7"
+              fontWeight="700"
+              numberOfLines={2}
             >
               {template.name}
             </Text>
             <Text color="$color10" fontSize="$2">
-              {template.exercises.length} exercises • ~{template.estimatedDurationMinutes} min
+              ~{template.estimatedDurationMinutes} min
             </Text>
           </YStack>
           {isPhaseUnlocked && !isCompleted && (
