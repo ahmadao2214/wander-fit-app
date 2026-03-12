@@ -66,7 +66,7 @@ export default function CommitmentScreen() {
     if (isSuccess) {
       const timeout = setTimeout(() => {
         router.replace('/(athlete)')
-      }, 1500)
+      }, 3500)
       return () => clearTimeout(timeout)
     }
   }, [isSuccess, router])
