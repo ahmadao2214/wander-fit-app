@@ -10,7 +10,7 @@ Finishers are determined by three inputs: the athlete's GPP Category (1–4), th
 
 | Decision | Resolution |
 |---|---|
-| Equipment | Bodyweight by default. Equipment upgrades (sled, carries) appear as optional notes only. |
+| Equipment | Equipment-based by default. A bodyweight/equipment-free alternative is available as a secondary option when needed. |
 | Skipping | Allowed, but always logged. A friction modal with coaching language discourages the habit. |
 | Intensity scaling | Phase-progressive: GPP builds base, SPP transfers at higher intensity, SSP peaks at reduced volume. Week-level deload (week 4 = 0.7× volume) also applies. |
 | Timer | FinisherSection owns its timer independently from the total workout timer. Five timer modes by format. |
