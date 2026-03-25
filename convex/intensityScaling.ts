@@ -27,6 +27,17 @@ export type Phase = "GPP" | "SPP" | "SSP";
 export type CategoryId = 1 | 2 | 3 | 4;
 export type ExperienceBucket = "0-1" | "2-5" | "6+";
 export type ExerciseFocus = "strength" | "power" | "bodyweight";
+export type ExercisePrescriptionProfile =
+  | "bodyweight"
+  | "power"
+  | "general_strength"
+  | "primary_loaded_lift"
+  | "unilateral_accessory"
+  | "anti_rotation"
+  | "upper_body_accessory"
+  | "core_accessory"
+  | "mobility_recovery"
+  | "power_conditioning";
 export type PositionType = "lowest" | "lowest_plus_1" | "lowest_plus_2" | "second_lowest" | "middle" | "max_minus_2" | "max_minus_1" | "max";
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -152,7 +163,7 @@ export interface AgeExperienceModifier {
 export interface ScaledCategoryParameters {
   oneRepMaxPercent: ParameterRange;
   sets: number;
-  reps: number;
+  reps: number | string;
   restSeconds: number;
   tempo: Tempo;
   rpe: ParameterRange;
@@ -842,6 +853,76 @@ export function applyAgeModifiers(
  * Tags that indicate a power/explosive exercise
  */
 const POWER_TAGS = ["power", "explosive", "plyometric", "reactive"];
+const PRIMARY_LOADED_EQUIPMENT = ["barbell", "trap_bar"];
+const PRIMARY_LOADED_TAGS = ["compound", "squat", "hinge", "push", "bilateral"];
+const UNILATERAL_TAGS = ["unilateral", "single_leg"];
+const ANTI_ROTATION_TAGS = ["anti_rotation", "dynamic"];
+const UPPER_BODY_ACCESSORY_TAGS = ["upper_body", "push", "pull"];
+const CORE_ACCESSORY_TAGS = ["core", "anti_extension", "anti_lateral_flexion", "hip_flexor"];
+const MOBILITY_RECOVERY_TAGS = ["mobility", "cooldown", "warmup"];
+const POWER_CONDITIONING_TAGS = ["carry", "conditioning", "power", "explosive", "plyometric", "reactive"];
+const PRIMARY_LOADED_REPS_BY_PHASE: Record<Phase, number> = {
+  GPP: 10,
+  SPP: 8,
+  SSP: 6,
+};
+const PRIMARY_LOADED_SETS_BY_EXPERIENCE: Record<ExperienceBucket, number> = {
+  "0-1": 3,
+  "2-5": 4,
+  "6+": 4,
+};
+const PRIMARY_LOADED_PERCENT_BY_PHASE: Record<"general" | "max_strength", Record<Phase, number>> = {
+  general: {
+    GPP: 0.65,
+    SPP: 0.70,
+    SSP: 0.75,
+  },
+  max_strength: {
+    GPP: 0.65,
+    SPP: 0.75,
+    SSP: 0.80,
+  },
+};
+const UNILATERAL_REPS_BY_PHASE: Record<Phase, number> = {
+  GPP: 8,
+  SPP: 8,
+  SSP: 6,
+};
+const ANTI_ROTATION_SETS_BY_EXPERIENCE: Record<ExperienceBucket, number> = {
+  "0-1": 3,
+  "2-5": 4,
+  "6+": 4,
+};
+const ANTI_ROTATION_REPS_BY_PHASE: Record<Phase, string> = {
+  GPP: "6 steps",
+  SPP: "6 steps",
+  SSP: "6 steps",
+};
+const UPPER_BODY_ACCESSORY_SETS_BY_EXPERIENCE: Record<ExperienceBucket, number> = {
+  "0-1": 3,
+  "2-5": 4,
+  "6+": 4,
+};
+const UPPER_BODY_ACCESSORY_REPS_BY_PHASE: Record<Phase, number> = {
+  GPP: 8,
+  SPP: 8,
+  SSP: 6,
+};
+const CORE_ACCESSORY_REPS_BY_PHASE: Record<Phase, number> = {
+  GPP: 8,
+  SPP: 8,
+  SSP: 6,
+};
+const POWER_CONDITIONING_SETS_BY_EXPERIENCE: Record<ExperienceBucket, number> = {
+  "0-1": 3,
+  "2-5": 4,
+  "6+": 4,
+};
+const POWER_CONDITIONING_REPS_BY_PHASE: Record<Phase, number> = {
+  GPP: 6,
+  SPP: 6,
+  SSP: 6,
+};
 
 /**
  * Convert years of experience to an experience bucket.
@@ -893,18 +974,240 @@ export function getValueFromPosition(range: ParameterRange, position: PositionTy
  * @returns The exercise focus type (strength, power, or bodyweight)
  */
 export function getExerciseFocus(tags?: string[], equipment?: string[]): ExerciseFocus {
-  // Check if bodyweight
-  if (isBodyweightExercise(equipment)) {
-    return "bodyweight";
-  }
-
   // Check for power/explosive tags
   if (tags?.some(tag => POWER_TAGS.includes(tag.toLowerCase()))) {
     return "power";
   }
 
+  // Check if bodyweight
+  if (isBodyweightExercise(equipment)) {
+    return "bodyweight";
+  }
+
   // Default to strength
   return "strength";
+}
+
+/**
+ * Distinguish primary loaded lifts from generic weighted strength work.
+ *
+ * This keeps the general category matrix for accessories while allowing more
+ * conservative, easier-to-reason-about guardrails for the highest-load lifts.
+ */
+export function getExercisePrescriptionProfile(
+  exerciseFocus: ExerciseFocus,
+  tags?: string[],
+  equipment?: string[]
+): ExercisePrescriptionProfile {
+  const normalizedTags = (tags ?? []).map((tag) => tag.toLowerCase());
+  const normalizedEquipment = (equipment ?? []).map((item) => item.toLowerCase());
+
+  const usesPrimaryImplement = normalizedEquipment.some((item) =>
+    PRIMARY_LOADED_EQUIPMENT.includes(item)
+  );
+  const matchesPrimaryPattern = normalizedTags.some((tag) =>
+    PRIMARY_LOADED_TAGS.includes(tag)
+  );
+  const isUnilateralAccessory = normalizedTags.some((tag) =>
+    UNILATERAL_TAGS.includes(tag)
+  );
+  const isAntiRotationDrill = normalizedTags.includes("anti_rotation");
+  const isDynamicAntiRotation = isAntiRotationDrill && normalizedTags.some((tag) =>
+    ANTI_ROTATION_TAGS.includes(tag)
+  );
+  const isMobilityRecovery = normalizedTags.some((tag) =>
+    MOBILITY_RECOVERY_TAGS.includes(tag)
+  );
+  const isUpperBodyAccessory =
+    normalizedTags.includes("upper_body") &&
+    normalizedTags.some((tag) => UPPER_BODY_ACCESSORY_TAGS.includes(tag));
+  const isCoreAccessory =
+    normalizedTags.includes("core") &&
+    normalizedTags.some((tag) => CORE_ACCESSORY_TAGS.includes(tag));
+  const isPowerConditioning =
+    exerciseFocus === "power" ||
+    normalizedTags.some((tag) => POWER_CONDITIONING_TAGS.includes(tag));
+
+  if (isMobilityRecovery) {
+    return "mobility_recovery";
+  }
+
+  if (usesPrimaryImplement && matchesPrimaryPattern) {
+    return "primary_loaded_lift";
+  }
+
+  if (isPowerConditioning) {
+    return "power_conditioning";
+  }
+
+  if (isUnilateralAccessory) {
+    return "unilateral_accessory";
+  }
+
+  if (isDynamicAntiRotation) {
+    return "anti_rotation";
+  }
+
+  if (isUpperBodyAccessory) {
+    return "upper_body_accessory";
+  }
+
+  if (isCoreAccessory) {
+    return "core_accessory";
+  }
+
+  if (exerciseFocus === "bodyweight") {
+    return "bodyweight";
+  }
+
+  return "general_strength";
+}
+
+function getPrimaryLoadedLiftParameters(
+  categoryId: CategoryId,
+  phase: Phase,
+  ageGroup: AgeGroup,
+  experienceBucket: ExperienceBucket,
+  config: CategoryPhaseConfig
+): ScaledCategoryParameters {
+  const safetyConstraints = AGE_SAFETY_CONSTRAINTS[ageGroup];
+  const intensityTrack = categoryId === 4 ? "max_strength" : "general";
+  const phaseTargetPercent = PRIMARY_LOADED_PERCENT_BY_PHASE[intensityTrack][phase];
+  const targetPercent = Math.min(
+    experienceBucket === "0-1" ? 0.65 : phaseTargetPercent,
+    safetyConstraints.oneRepMaxCeiling
+  );
+
+  return {
+    oneRepMaxPercent: {
+      min: targetPercent,
+      max: targetPercent,
+    },
+    sets: PRIMARY_LOADED_SETS_BY_EXPERIENCE[experienceBucket],
+    reps: PRIMARY_LOADED_REPS_BY_PHASE[phase],
+    restSeconds: config.restSeconds.strength,
+    tempo: config.tempo,
+    rpe: config.rpe,
+  };
+}
+
+function getUnilateralAccessoryParameters(
+  ageGroup: AgeGroup,
+  phase: Phase,
+  config: CategoryPhaseConfig
+): ScaledCategoryParameters {
+  const safetyConstraints = AGE_SAFETY_CONSTRAINTS[ageGroup];
+  const oneRepMaxRange = config.oneRepMaxPercent.strength;
+
+  return {
+    oneRepMaxPercent: {
+      min: Math.min(oneRepMaxRange.min, safetyConstraints.oneRepMaxCeiling),
+      max: Math.min(oneRepMaxRange.max, safetyConstraints.oneRepMaxCeiling),
+    },
+    sets: 3,
+    reps: UNILATERAL_REPS_BY_PHASE[phase],
+    restSeconds: config.restSeconds.strength,
+    tempo: config.tempo,
+    rpe: config.rpe,
+  };
+}
+
+function getAntiRotationParameters(
+  ageGroup: AgeGroup,
+  phase: Phase,
+  experienceBucket: ExperienceBucket,
+  config: CategoryPhaseConfig
+): ScaledCategoryParameters {
+  const safetyConstraints = AGE_SAFETY_CONSTRAINTS[ageGroup];
+  const oneRepMaxRange = config.oneRepMaxPercent.strength;
+
+  return {
+    oneRepMaxPercent: {
+      min: Math.min(oneRepMaxRange.min, safetyConstraints.oneRepMaxCeiling),
+      max: Math.min(oneRepMaxRange.max, safetyConstraints.oneRepMaxCeiling),
+    },
+    sets: ANTI_ROTATION_SETS_BY_EXPERIENCE[experienceBucket],
+    reps: ANTI_ROTATION_REPS_BY_PHASE[phase],
+    restSeconds: config.restSeconds.strength,
+    tempo: config.tempo,
+    rpe: config.rpe,
+  };
+}
+
+function getUpperBodyAccessoryParameters(
+  ageGroup: AgeGroup,
+  phase: Phase,
+  experienceBucket: ExperienceBucket,
+  config: CategoryPhaseConfig
+): ScaledCategoryParameters {
+  const safetyConstraints = AGE_SAFETY_CONSTRAINTS[ageGroup];
+  const oneRepMaxRange = config.oneRepMaxPercent.strength;
+
+  return {
+    oneRepMaxPercent: {
+      min: Math.min(oneRepMaxRange.min, safetyConstraints.oneRepMaxCeiling),
+      max: Math.min(oneRepMaxRange.max, safetyConstraints.oneRepMaxCeiling),
+    },
+    sets: UPPER_BODY_ACCESSORY_SETS_BY_EXPERIENCE[experienceBucket],
+    reps: UPPER_BODY_ACCESSORY_REPS_BY_PHASE[phase],
+    restSeconds: config.restSeconds.strength,
+    tempo: config.tempo,
+    rpe: config.rpe,
+  };
+}
+
+function getCoreAccessoryParameters(
+  ageGroup: AgeGroup,
+  phase: Phase,
+  config: CategoryPhaseConfig
+): ScaledCategoryParameters {
+  const safetyConstraints = AGE_SAFETY_CONSTRAINTS[ageGroup];
+  const oneRepMaxRange = config.oneRepMaxPercent.strength;
+
+  return {
+    oneRepMaxPercent: {
+      min: Math.min(oneRepMaxRange.min, safetyConstraints.oneRepMaxCeiling),
+      max: Math.min(oneRepMaxRange.max, safetyConstraints.oneRepMaxCeiling),
+    },
+    sets: 3,
+    reps: CORE_ACCESSORY_REPS_BY_PHASE[phase],
+    restSeconds: config.restSeconds.strength,
+    tempo: config.tempo,
+    rpe: config.rpe,
+  };
+}
+
+function getMobilityRecoveryParameters(): ScaledCategoryParameters {
+  return {
+    oneRepMaxPercent: { min: 0, max: 0 },
+    sets: 1,
+    reps: "30s each side",
+    restSeconds: 30,
+    tempo: { eccentric: 2, isometric: 0, concentric: 2 },
+    rpe: { min: 2, max: 3 },
+  };
+}
+
+function getPowerConditioningParameters(
+  ageGroup: AgeGroup,
+  phase: Phase,
+  experienceBucket: ExperienceBucket,
+  config: CategoryPhaseConfig
+): ScaledCategoryParameters {
+  const safetyConstraints = AGE_SAFETY_CONSTRAINTS[ageGroup];
+  const oneRepMaxRange = config.oneRepMaxPercent.power;
+
+  return {
+    oneRepMaxPercent: {
+      min: Math.min(oneRepMaxRange.min, safetyConstraints.oneRepMaxCeiling),
+      max: Math.min(oneRepMaxRange.max, safetyConstraints.oneRepMaxCeiling),
+    },
+    sets: POWER_CONDITIONING_SETS_BY_EXPERIENCE[experienceBucket],
+    reps: POWER_CONDITIONING_REPS_BY_PHASE[phase],
+    restSeconds: config.restSeconds.power,
+    tempo: config.tempo,
+    rpe: config.rpe,
+  };
 }
 
 /**
@@ -926,12 +1229,53 @@ export function getCategoryExerciseParameters(
   phase: Phase,
   ageGroup: AgeGroup,
   yearsOfExperience: number,
-  exerciseFocus: ExerciseFocus
+  exerciseFocus: ExerciseFocus,
+  exerciseTags?: string[],
+  exerciseEquipment?: string[]
 ): ScaledCategoryParameters {
   const config = CATEGORY_PHASE_CONFIG[categoryId][phase];
   const expBucket = getExperienceBucket(yearsOfExperience);
   const ageExpModifier = AGE_EXPERIENCE_MATRIX[ageGroup][expBucket];
   const safetyConstraints = AGE_SAFETY_CONSTRAINTS[ageGroup];
+  const prescriptionProfile = getExercisePrescriptionProfile(
+    exerciseFocus,
+    exerciseTags,
+    exerciseEquipment
+  );
+
+  if (prescriptionProfile === "primary_loaded_lift") {
+    return getPrimaryLoadedLiftParameters(
+      categoryId,
+      phase,
+      ageGroup,
+      expBucket,
+      config
+    );
+  }
+
+  if (prescriptionProfile === "unilateral_accessory") {
+    return getUnilateralAccessoryParameters(ageGroup, phase, config);
+  }
+
+  if (prescriptionProfile === "anti_rotation") {
+    return getAntiRotationParameters(ageGroup, phase, expBucket, config);
+  }
+
+  if (prescriptionProfile === "upper_body_accessory") {
+    return getUpperBodyAccessoryParameters(ageGroup, phase, expBucket, config);
+  }
+
+  if (prescriptionProfile === "core_accessory") {
+    return getCoreAccessoryParameters(ageGroup, phase, config);
+  }
+
+  if (prescriptionProfile === "mobility_recovery") {
+    return getMobilityRecoveryParameters();
+  }
+
+  if (prescriptionProfile === "power_conditioning") {
+    return getPowerConditioningParameters(ageGroup, phase, expBucket, config);
+  }
 
   // Determine which config values to use based on exercise focus
   const focusKey = exerciseFocus === "power" ? "power" : "strength";

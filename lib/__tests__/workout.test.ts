@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseReps, isCardioExercise, CARDIO_TAGS, mapIntensityToLevel } from "../workout";
+import { parseReps, normalizeTrackedSets, isCardioExercise, CARDIO_TAGS, mapIntensityToLevel } from "../workout";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PARSE REPS TESTS
@@ -92,6 +92,36 @@ describe("parseReps", () => {
     it("handles 'x' notation", () => {
       expect(parseReps("3x10")).toBe(3);
     });
+  });
+});
+
+describe("normalizeTrackedSets", () => {
+  it("pads tracked sets when prescription increases", () => {
+    const sets = [
+      { completed: false, skipped: false },
+      { completed: true, skipped: false, repsCompleted: 8 },
+      { completed: false, skipped: true },
+    ];
+
+    const normalized = normalizeTrackedSets(sets, 4);
+
+    expect(normalized).toHaveLength(4);
+    expect(normalized[1].repsCompleted).toBe(8);
+    expect(normalized[3]).toEqual({ completed: false, skipped: false });
+  });
+
+  it("trims tracked sets when prescription decreases", () => {
+    const sets = [
+      { completed: true, skipped: false, repsCompleted: 8 },
+      { completed: true, skipped: false, repsCompleted: 8 },
+      { completed: false, skipped: false },
+      { completed: false, skipped: false },
+    ];
+
+    const normalized = normalizeTrackedSets(sets, 3);
+
+    expect(normalized).toHaveLength(3);
+    expect(normalized[2]).toEqual({ completed: false, skipped: false });
   });
 });
 

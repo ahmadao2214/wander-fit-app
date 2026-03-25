@@ -4,6 +4,7 @@ import {
   CategoryId,
   ExperienceBucket,
   ExerciseFocus,
+  ExercisePrescriptionProfile,
   PositionType,
   ParameterRange,
   // Constants
@@ -15,6 +16,7 @@ import {
   getExperienceBucket,
   getValueFromPosition,
   getExerciseFocus,
+  getExercisePrescriptionProfile,
   getCategoryExerciseParameters,
   applyAgeSafetyConstraints,
   getBodyweightVariant,
@@ -275,6 +277,11 @@ describe("getExerciseFocus", () => {
     expect(getExerciseFocus(["reactive"], ["medicine_ball"])).toBe("power");
   });
 
+  it("should return power for bodyweight plyometric exercises", () => {
+    expect(getExerciseFocus(["power", "explosive"], ["bodyweight"])).toBe("power");
+    expect(getExerciseFocus(["plyometric", "single_leg"], ["bodyweight"])).toBe("power");
+  });
+
   it("should return strength for weighted exercises without power tags", () => {
     expect(getExerciseFocus(["strength", "compound"], ["barbell"])).toBe("strength");
     expect(getExerciseFocus(["lower_body", "bilateral"], ["dumbbell"])).toBe("strength");
@@ -290,40 +297,285 @@ describe("getExerciseFocus", () => {
   });
 });
 
-describe("getCategoryExerciseParameters", () => {
-  it("should return correct parameters for Category 2 GPP 18-35 6+ years strength", () => {
-    const params = getCategoryExerciseParameters(2, "GPP", "18-35", 7, "strength");
-
-    // 18-35 with 6+ years gets max sets and max reps
-    // Category 2 GPP sets: 4-6, so max = 6
-    expect(params.sets).toBe(6);
-
-    // Category 2 GPP strength reps: 10-14, so max = 14
-    expect(params.reps).toBe(14);
-
-    // Rest for strength: 30s
-    expect(params.restSeconds).toBe(30);
-
-    // 1RM should be 55-65% (no cap for 18-35)
-    expect(params.oneRepMaxPercent.min).toBe(0.55);
-    expect(params.oneRepMaxPercent.max).toBe(0.65);
-
-    // RPE: 6-7
-    expect(params.rpe.min).toBe(6);
-    expect(params.rpe.max).toBe(7);
+describe("getExercisePrescriptionProfile", () => {
+  it("should classify primary loaded lifts semantically", () => {
+    expect(
+      getExercisePrescriptionProfile("strength", ["lower_body", "squat", "compound"], ["barbell", "rack"])
+    ).toBe("primary_loaded_lift");
+    expect(
+      getExercisePrescriptionProfile("strength", ["hinge", "compound", "power"], ["trap_bar"])
+    ).toBe("primary_loaded_lift");
+    expect(
+      getExercisePrescriptionProfile("strength", ["push", "compound"], ["barbell", "bench", "rack"])
+    ).toBe("primary_loaded_lift");
   });
 
-  it("should apply 14-17 age safety constraints", () => {
-    const params = getCategoryExerciseParameters(2, "SSP", "14-17", 7, "strength");
+  it("should keep accessory weighted lifts in the general strength profile", () => {
+    expect(
+      getExercisePrescriptionProfile("strength", ["posterior_chain"], ["band"])
+    ).toBe("general_strength");
+    expect(
+      getExercisePrescriptionProfile("strength", ["leg", "strength"], ["sled"])
+    ).toBe("general_strength");
+  });
 
-    // 14-17 with 6+ years gets max sets and max reps
-    // Category 2 SSP sets: 4-6, max = 6
+  it("should preserve bodyweight and route power work into power conditioning", () => {
+    expect(
+      getExercisePrescriptionProfile("power", ["explosive"], ["barbell"])
+    ).toBe("power_conditioning");
+    expect(
+      getExercisePrescriptionProfile("bodyweight", ["breathing"], ["bodyweight"])
+    ).toBe("bodyweight");
+  });
+
+  it("should classify unilateral lower body work separately", () => {
+    expect(
+      getExercisePrescriptionProfile("strength", ["lower_body", "squat", "unilateral", "single_leg"], ["dumbbell", "bench"])
+    ).toBe("unilateral_accessory");
+    expect(
+      getExercisePrescriptionProfile("strength", ["lower_body", "hinge", "unilateral", "single_leg"], ["dumbbell", "kettlebell"])
+    ).toBe("unilateral_accessory");
+  });
+
+  it("should classify anti-rotation marching drills separately", () => {
+    expect(
+      getExercisePrescriptionProfile("strength", ["core", "anti_rotation", "stability", "dynamic"], ["cable_machine", "band"])
+    ).toBe("anti_rotation");
+  });
+
+  it("should classify upper-body accessory strength separately", () => {
+    expect(
+      getExercisePrescriptionProfile("strength", ["upper_body", "push", "horizontal", "strength", "chest", "bilateral"], ["dumbbell", "bench"])
+    ).toBe("upper_body_accessory");
+    expect(
+      getExercisePrescriptionProfile("strength", ["upper_body", "pull", "vertical", "strength", "back"], ["pull_up_bar", "dumbbell"])
+    ).toBe("upper_body_accessory");
+  });
+
+  it("should classify core accessory work separately", () => {
+    expect(
+      getExercisePrescriptionProfile("strength", ["core", "anti_extension", "strength", "hip_flexor"], ["pull_up_bar"])
+    ).toBe("core_accessory");
+  });
+
+  it("should classify mobility and cooldown work separately", () => {
+    expect(
+      getExercisePrescriptionProfile("bodyweight", ["mobility", "hip", "cooldown"], ["bodyweight"])
+    ).toBe("mobility_recovery");
+  });
+
+  it("should classify power and carry work separately", () => {
+    expect(
+      getExercisePrescriptionProfile("power", ["lower_body", "plyometric", "power", "explosive"], ["bodyweight"])
+    ).toBe("power_conditioning");
+    expect(
+      getExercisePrescriptionProfile("strength", ["full_body", "carry", "bilateral", "strength", "grip_endurance"], ["dumbbell", "kettlebell"])
+    ).toBe("power_conditioning");
+  });
+});
+
+describe("getCategoryExerciseParameters", () => {
+  it("should cap primary loaded lifts at 4 sets and 10 reps in GPP", () => {
+    const params = getCategoryExerciseParameters(
+      2,
+      "GPP",
+      "18-35",
+      7,
+      "strength",
+      ["lower_body", "squat", "compound"],
+      ["barbell", "rack"]
+    );
+
+    expect(params.sets).toBe(4);
+    expect(params.reps).toBe(10);
+    expect(params.oneRepMaxPercent.min).toBe(0.65);
+    expect(params.oneRepMaxPercent.max).toBe(0.65);
+  });
+
+  it("should start less-experienced primary loaded lifts at 65% for 3 sets", () => {
+    const params = getCategoryExerciseParameters(
+      4,
+      "SPP",
+      "18-35",
+      0.5,
+      "strength",
+      ["lower_body", "squat", "compound"],
+      ["barbell", "rack"]
+    );
+
+    expect(params.sets).toBe(3);
+    expect(params.reps).toBe(8);
+    expect(params.oneRepMaxPercent.min).toBe(0.65);
+    expect(params.oneRepMaxPercent.max).toBe(0.65);
+  });
+
+  it("should top out max-strength primary lifts at 80% for 4 x 6", () => {
+    const params = getCategoryExerciseParameters(
+      4,
+      "SSP",
+      "18-35",
+      7,
+      "strength",
+      ["lower_body", "hinge", "compound"],
+      ["trap_bar"]
+    );
+
+    expect(params.sets).toBe(4);
+    expect(params.reps).toBe(6);
+    expect(params.oneRepMaxPercent.min).toBe(0.8);
+    expect(params.oneRepMaxPercent.max).toBe(0.8);
+  });
+
+  it("should keep general strength lifts on the category matrix", () => {
+    const params = getCategoryExerciseParameters(
+      2,
+      "GPP",
+      "18-35",
+      7,
+      "strength",
+      ["posterior_chain"],
+      ["band"]
+    );
+
     expect(params.sets).toBe(6);
+    expect(params.reps).toBe(14);
+    expect(params.oneRepMaxPercent.min).toBe(0.55);
+    expect(params.oneRepMaxPercent.max).toBe(0.65);
+  });
 
-    // 1RM should be capped at 85% (age ceiling)
-    // Category 2 SSP strength: 80-90%, capped at 85%
-    expect(params.oneRepMaxPercent.min).toBe(0.80);
-    expect(params.oneRepMaxPercent.max).toBe(0.85);
+  it("should prescribe unilateral lower-body work as 3 sets of 8 for experienced athletes", () => {
+    const params = getCategoryExerciseParameters(
+      2,
+      "GPP",
+      "18-35",
+      7,
+      "strength",
+      ["lower_body", "squat", "unilateral", "single_leg", "strength"],
+      ["dumbbell", "bench"]
+    );
+
+    expect(params.sets).toBe(3);
+    expect(params.reps).toBe(8);
+  });
+
+  it("should prescribe unilateral hinge work as 3 sets of 8 for experienced athletes", () => {
+    const params = getCategoryExerciseParameters(
+      2,
+      "GPP",
+      "18-35",
+      7,
+      "strength",
+      ["lower_body", "hinge", "unilateral", "single_leg", "balance"],
+      ["dumbbell", "kettlebell"]
+    );
+
+    expect(params.sets).toBe(3);
+    expect(params.reps).toBe(8);
+  });
+
+  it("should prescribe anti-rotation marching drills as 4 sets of 6 steps", () => {
+    const params = getCategoryExerciseParameters(
+      2,
+      "GPP",
+      "18-35",
+      7,
+      "strength",
+      ["core", "anti_rotation", "stability", "dynamic"],
+      ["cable_machine", "band"]
+    );
+
+    expect(params.sets).toBe(4);
+    expect(params.reps).toBe("6 steps");
+  });
+
+  it("should prescribe upper-body accessory strength with practical volume", () => {
+    const params = getCategoryExerciseParameters(
+      2,
+      "GPP",
+      "18-35",
+      7,
+      "strength",
+      ["upper_body", "push", "horizontal", "strength", "chest", "bilateral"],
+      ["dumbbell", "bench"]
+    );
+
+    expect(params.sets).toBe(4);
+    expect(params.reps).toBe(8);
+  });
+
+  it("should prescribe weighted pull accessories with practical volume", () => {
+    const params = getCategoryExerciseParameters(
+      2,
+      "GPP",
+      "18-35",
+      7,
+      "strength",
+      ["upper_body", "pull", "vertical", "strength", "back"],
+      ["pull_up_bar", "dumbbell"]
+    );
+
+    expect(params.sets).toBe(4);
+    expect(params.reps).toBe(8);
+  });
+
+  it("should prescribe core accessory work with practical volume", () => {
+    const params = getCategoryExerciseParameters(
+      2,
+      "GPP",
+      "18-35",
+      7,
+      "strength",
+      ["core", "anti_extension", "strength", "hip_flexor"],
+      ["pull_up_bar"]
+    );
+
+    expect(params.sets).toBe(3);
+    expect(params.reps).toBe(8);
+  });
+
+  it("should keep mobility cooldown work at recovery-style prescriptions", () => {
+    const params = getCategoryExerciseParameters(
+      2,
+      "GPP",
+      "18-35",
+      7,
+      "bodyweight",
+      ["mobility", "hip", "cooldown"],
+      ["bodyweight"]
+    );
+
+    expect(params.sets).toBe(1);
+    expect(params.reps).toBe("30s each side");
+  });
+
+  it("should prescribe teen power exercises at 4 x 6 for moderate experience", () => {
+    const params = getCategoryExerciseParameters(
+      1,
+      "GPP",
+      "14-17",
+      2,
+      "power",
+      ["lower_body", "plyometric", "power", "explosive"],
+      ["bodyweight"]
+    );
+
+    expect(params.sets).toBe(4);
+    expect(params.reps).toBe(6);
+  });
+
+  it("should prescribe carry conditioning work at 4 x 6 for moderate experience", () => {
+    const params = getCategoryExerciseParameters(
+      1,
+      "GPP",
+      "14-17",
+      2,
+      "strength",
+      ["full_body", "carry", "bilateral", "strength", "grip_endurance"],
+      ["dumbbell", "kettlebell"]
+    );
+
+    expect(params.sets).toBe(4);
+    expect(params.reps).toBe(6);
   });
 
   it("should use power parameters for power exercises", () => {

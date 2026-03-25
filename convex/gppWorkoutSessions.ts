@@ -184,6 +184,50 @@ const exerciseCompletionValidator = v.object({
   sets: v.array(setCompletionValidator),
 });
 
+function buildEmptySetCompletions(count: number) {
+  return Array.from({ length: Math.max(1, count) }, () => ({
+    repsCompleted: undefined,
+    durationSeconds: undefined,
+    weight: undefined,
+    rpe: undefined,
+    completed: false,
+    skipped: false,
+  }));
+}
+
+function normalizeSetCompletions<
+  T extends {
+    completed: boolean;
+    skipped: boolean;
+    repsCompleted?: number;
+    durationSeconds?: number;
+    weight?: number;
+    rpe?: number;
+  },
+>(sets: T[], prescribedSets: number): T[] {
+  const targetCount = Math.max(1, prescribedSets);
+
+  if (sets.length === targetCount) {
+    return sets;
+  }
+
+  if (sets.length > targetCount) {
+    return sets.slice(0, targetCount);
+  }
+
+  return [
+    ...sets,
+    ...Array.from({ length: targetCount - sets.length }, () => ({
+      repsCompleted: undefined,
+      durationSeconds: undefined,
+      weight: undefined,
+      rpe: undefined,
+      completed: false,
+      skipped: false,
+    } as T)),
+  ];
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // QUERIES
 // ─────────────────────────────────────────────────────────────────────────────
@@ -365,7 +409,9 @@ export const getById = query({
           phase as Phase,
           ageGroup as AgeGroup,
           yearsOfExperience,
-          exerciseFocus
+          exerciseFocus,
+          exercise?.tags,
+          exercise?.equipment
         );
 
         // Calculate average 1RM% for weight recommendation
@@ -421,8 +467,19 @@ export const getById = query({
         }
       });
 
+      const normalizedSessionExercises = session.exercises.map((exerciseCompletion, index) => {
+        const scaledExercise = scaledExercises[index];
+        const prescribedSets = scaledExercise?.scaledSets ?? scaledExercise?.sets ?? exerciseCompletion.sets.length;
+
+        return {
+          ...exerciseCompletion,
+          sets: normalizeSetCompletions(exerciseCompletion.sets, prescribedSets),
+        };
+      });
+
       return {
         ...session,
+        exercises: normalizedSessionExercises,
         template: {
           ...template,
           exercises: scaledExercises,
@@ -509,8 +566,19 @@ export const getById = query({
       }
     });
 
+    const normalizedSessionExercises = session.exercises.map((exerciseCompletion, index) => {
+      const scaledExercise = scaledExercises[index];
+      const prescribedSets = scaledExercise?.scaledSets ?? scaledExercise?.sets ?? exerciseCompletion.sets.length;
+
+      return {
+        ...exerciseCompletion,
+        sets: normalizeSetCompletions(exerciseCompletion.sets, prescribedSets),
+      };
+    });
+
     return {
       ...session,
+      exercises: normalizedSessionExercises,
       template: {
         ...template,
         exercises: scaledExercises,
@@ -1000,22 +1068,40 @@ export const startSession = mutation({
       yearsOfExperience: intake?.yearsOfExperience ?? 0,
     };
 
-    // Initialize exercise tracking structure
-    const initialExercises = template.exercises.map((ex) => ({
-      exerciseId: ex.exerciseId,
-      completed: false,
-      skipped: false,
-      sets: Array(ex.sets)
-        .fill(null)
-        .map(() => ({
-          repsCompleted: undefined,
-          durationSeconds: undefined,
-          weight: undefined,
-          rpe: undefined,
-          completed: false,
-          skipped: false,
-        })),
-    }));
+    const exerciseIds = template.exercises.map((ex) => ex.exerciseId);
+    const exercises = await Promise.all(
+      exerciseIds.map((id) => ctx.db.get(id))
+    );
+    const exerciseMap = new Map(
+      exercises.filter(Boolean).map((ex) => [ex!._id.toString(), ex!])
+    );
+
+    // Initialize exercise tracking structure using scaled set counts when available.
+    const initialExercises = template.exercises.map((ex) => {
+      let prescribedSets = ex.sets;
+
+      if (scalingSnapshot) {
+        const exercise = exerciseMap.get(ex.exerciseId.toString());
+        const exerciseFocus = getExerciseFocus(exercise?.tags, exercise?.equipment);
+        const params = getCategoryExerciseParameters(
+          scalingSnapshot.categoryId as CategoryId,
+          scalingSnapshot.phase as Phase,
+          scalingSnapshot.ageGroup as AgeGroup,
+          scalingSnapshot.yearsOfExperience,
+          exerciseFocus,
+          exercise?.tags,
+          exercise?.equipment
+        );
+        prescribedSets = params.sets;
+      }
+
+      return {
+        exerciseId: ex.exerciseId,
+        completed: false,
+        skipped: false,
+        sets: buildEmptySetCompletions(prescribedSets),
+      };
+    });
 
     const now = Date.now();
 

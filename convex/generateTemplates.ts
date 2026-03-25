@@ -39,7 +39,7 @@ import type { WarmupPhase, ExerciseSection } from "../types";
 
 type Phase = "GPP" | "SPP" | "SSP";
 type SkillLevel = "Novice" | "Moderate" | "Advanced";
-type GppCategoryId = 1 | 2 | 3 | 4;
+export type GppCategoryId = 1 | 2 | 3 | 4;
 
 interface ExercisePrescription {
   exerciseSlug: string;
@@ -54,7 +54,7 @@ interface ExercisePrescription {
   warmupPhase?: WarmupPhase;
 }
 
-interface TemplateDefinition {
+export interface TemplateDefinition {
   gppCategoryId: GppCategoryId;
   phase: Phase;
   skillLevel: SkillLevel;
@@ -70,11 +70,11 @@ interface TemplateDefinition {
 // CONFIGURATION
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const PHASES: Phase[] = ["GPP", "SPP", "SSP"];
-const SKILL_LEVELS: SkillLevel[] = ["Novice", "Moderate", "Advanced"];
+export const PHASES: Phase[] = ["GPP", "SPP", "SSP"];
+export const SKILL_LEVELS: SkillLevel[] = ["Novice", "Moderate", "Advanced"];
 const CATEGORIES: GppCategoryId[] = [1, 2, 3, 4];
-const WEEKS = [1, 2, 3, 4];
-const DAYS = [1, 2, 3, 4, 5, 6, 7]; // Support up to 7 workout days per week
+export const WEEKS = [1, 2, 3, 4];
+export const DAYS = [1, 2, 3, 4, 5, 6, 7]; // Support up to 7 workout days per week
 
 // Day type definitions for each workout day
 type DayType = "lower_a" | "upper_a" | "power" | "lower_b" | "upper_b" | "full_body" | "recovery";
@@ -959,7 +959,7 @@ function calculateDuration(exercises: ExercisePrescription[]): number {
   return Math.round(totalSeconds / 60) + 5;
 }
 
-function generateTemplate(
+export function generateTemplate(
   categoryId: GppCategoryId,
   phase: Phase,
   skillLevel: SkillLevel,

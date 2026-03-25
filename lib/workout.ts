@@ -38,6 +38,46 @@ export function parseReps(repsStr: string): number {
   return match ? parseInt(match[1], 10) : 10;
 }
 
+export interface TrackableSetData {
+  repsCompleted?: number;
+  durationSeconds?: number;
+  weight?: number;
+  rpe?: number;
+  completed: boolean;
+  skipped: boolean;
+}
+
+/**
+ * Align a set-tracking array with the current prescribed set count.
+ *
+ * This is used when session data was initialized from the unscaled template,
+ * but the UI is rendering a scaled prescription. It preserves existing set data
+ * and pads or trims the array so the number of set pills matches the current
+ * prescription.
+ */
+export function normalizeTrackedSets<T extends TrackableSetData>(
+  sets: T[],
+  prescribedSets: number
+): T[] {
+  const targetCount = Math.max(1, prescribedSets);
+
+  if (sets.length === targetCount) {
+    return sets;
+  }
+
+  if (sets.length > targetCount) {
+    return sets.slice(0, targetCount);
+  }
+
+  return [
+    ...sets,
+    ...Array.from({ length: targetCount - sets.length }, () => ({
+      completed: false,
+      skipped: false,
+    } as T)),
+  ];
+}
+
 /**
  * Check if an exercise is a cardio/movement exercise based on its tags
  *

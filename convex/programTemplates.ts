@@ -600,7 +600,9 @@ export const getWorkoutWithScaling = query({
         phase,
         ageGroup,
         yearsOfExperience,
-        exerciseFocus
+        exerciseFocus,
+        exercise?.tags,
+        exercise?.equipment
       );
 
       // Calculate average 1RM% for weight recommendation

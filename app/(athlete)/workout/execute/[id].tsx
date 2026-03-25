@@ -33,7 +33,7 @@ import { WarmupSection, type WarmupExercise } from '../../../../components/worko
 import { WARMUP_PHASES } from '../../../../convex/warmupSequences'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { PanResponder, Platform, Vibration, Animated, useColorScheme, Pressable } from 'react-native'
-import { mapIntensityToLevel, IntensityLevel } from '../../../../lib'
+import { mapIntensityToLevel, normalizeTrackedSets, IntensityLevel } from '../../../../lib'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
@@ -235,28 +235,28 @@ export default function WorkoutExecutionScreen() {
   // Phase-based accent colors (GPP=blue, SPP=orange, SSP=green)
   // Matches workout detail screen's phaseColor system
   const intensityColors = useMemo(() => {
-    const phase = template?.phase
+    const phase = session?.template?.phase
     if (phase === 'SPP') {
       return {
         primary: '$orange9' as const,
-        light: (isDark ? '$orange3' : '$orange2') as const,
+        light: isDark ? '$orange3' : '$orange2',
         text: '$orange11' as const,
       }
     }
     if (phase === 'SSP') {
       return {
         primary: '$green9' as const,
-        light: (isDark ? '$green3' : '$green2') as const,
+        light: isDark ? '$green3' : '$green2',
         text: '$green11' as const,
       }
     }
     // Default: GPP = blue
     return {
       primary: '$blue9' as const,
-      light: (isDark ? '$blue3' : '$blue2') as const,
+      light: isDark ? '$blue3' : '$blue2',
       text: '$blue11' as const,
     }
-  }, [template?.phase, isDark])
+  }, [session?.template?.phase, isDark])
 
   // Keep refs in sync
   useEffect(() => {
@@ -379,8 +379,19 @@ export default function WorkoutExecutionScreen() {
         const filteredCompletions = allCompletions.length >= templateExs.length
           ? allCompletions.filter((_: any, idx: number) => !warmupIndices.has(idx))
           : allCompletions
-        setExerciseCompletions(filteredCompletions)
-        exerciseCountRef.current = filteredCompletions.length
+        const filteredTemplateExercises = templateExs.filter((_: any, idx: number) => !warmupIndices.has(idx))
+        const normalizedCompletions = filteredCompletions.map((completion, idx) => {
+          const templateExercise = filteredTemplateExercises[idx] as any
+          const prescribedSets = templateExercise?.scaledSets ?? templateExercise?.sets ?? completion.sets.length
+
+          return {
+            ...completion,
+            sets: normalizeTrackedSets(completion.sets, prescribedSets),
+          }
+        })
+
+        setExerciseCompletions(normalizedCompletions)
+        exerciseCountRef.current = normalizedCompletions.length
 
         // Build non-warmup template indices for default order
         const nonWarmupIndices = templateExs
@@ -398,7 +409,7 @@ export default function WorkoutExecutionScreen() {
         }
 
         // Find first incomplete non-warmup exercise
-        const firstIncomplete = filteredCompletions.findIndex(
+        const firstIncomplete = normalizedCompletions.findIndex(
           (e) => !e.completed && !e.skipped
         )
         if (firstIncomplete !== -1) {
@@ -952,12 +963,12 @@ export default function WorkoutExecutionScreen() {
                   items="center"
                   justify="center"
                   gap="$2"
-                  bg={intensityColors.light}
+                  bg={intensityColors.light as any}
                   px="$4"
                   py="$3"
                   rounded="$3"
                   borderWidth={1}
-                  borderColor={intensityColors.primary}
+                  borderColor={intensityColors.primary as any}
                 >
                   <YStack
                     width={20}
