@@ -132,8 +132,8 @@ We will ship this in 4 stacked PRs so each stage is reviewable:
 
 1. Foundation: schema changes, missing exercises, audit report.
 2. Backend: matching engine and persisted equipment preference.
-3. Intake + Settings: user preference capture and update flows.
-4. Workout UI: workout detail toggle, swap display, execution badge.
+3. Workout UI: workout detail toggle, swap display, execution badge.
+4. Intake + Settings: user preference capture and update flows.
 
 ### Main risks
 
@@ -176,8 +176,8 @@ We should use these as the primary review lenses across the stacked PRs:
 
 1. PR 1 leans hardest on `Convex` and `Convex schema validation`.
 2. PR 2 leans hardest on `Convex` plus backend-focused testing.
-3. PR 3 leans hardest on `Expo / app UI design`, `React Native architecture`, and screen/component tests.
-4. PR 4 leans hardest on `React Native architecture` and integration-style UI testing.
+3. PR 3 leans hardest on `React Native architecture` and integration-style UI testing.
+4. PR 4 leans hardest on `Expo / app UI design`, `React Native architecture`, and screen/component tests.
 
 ## Current state
 
@@ -771,21 +771,6 @@ Red phase:
 
 Files:
 
-1. `app/__tests__/equipment-intake.test.tsx`
-2. `app/__tests__/settings.test.tsx`
-3. `components/__tests__/EquipmentModeToggle.test.tsx`
-
-Red phase:
-
-1. Intake screen requires a selection.
-2. Route params carry `equipmentMode` forward.
-3. Settings screen reflects persisted mode.
-4. Toggle invokes callback and mutation.
-
-### PR 4 tests
-
-Files:
-
 1. `app/__tests__/workout-equipment-toggle.test.tsx`
 2. `components/__tests__/ExerciseAccordionItem.test.tsx`
 
@@ -796,6 +781,21 @@ Red phase:
 3. Exercises without alternatives remain unchanged.
 4. `startSession` receives the selected mode.
 5. Swap indicator renders only for swapped exercises.
+
+### PR 4 tests
+
+Files:
+
+1. `app/__tests__/equipment-intake.test.tsx`
+2. `app/__tests__/settings.test.tsx`
+3. `components/__tests__/EquipmentModeToggle.test.tsx`
+
+Red phase:
+
+1. Intake screen requires a selection.
+2. Route params carry `equipmentMode` forward.
+3. Settings screen reflects persisted mode.
+4. Toggle invokes callback and mutation.
 
 ## Implementation plan by PR
 
@@ -829,22 +829,7 @@ Exit criteria:
 1. Backend returns enough data for instant frontend toggling.
 2. Existing workout behavior remains unchanged when mode is unset.
 
-### PR 3: Intake + Settings
-
-Deliverables:
-
-1. Intake equipment screen.
-2. Settings screen.
-3. Shared toggle component.
-4. Profile navigation wiring.
-5. UI tests.
-
-Exit criteria:
-
-1. New users can set a preference during intake.
-2. Existing users can update it later from Settings.
-
-### PR 4: Workout UI
+### PR 3: Workout UI
 
 Deliverables:
 
@@ -859,6 +844,21 @@ Exit criteria:
 1. Toggle feels instant.
 2. Workout start preserves selected mode.
 3. Unmatched exercises degrade gracefully.
+
+### PR 4: Intake + Settings
+
+Deliverables:
+
+1. Intake equipment screen.
+2. Settings screen.
+3. Shared toggle component.
+4. Profile navigation wiring.
+5. UI tests.
+
+Exit criteria:
+
+1. New users can set a preference during intake.
+2. Existing users can update it later from Settings.
 
 ## Edge cases
 
