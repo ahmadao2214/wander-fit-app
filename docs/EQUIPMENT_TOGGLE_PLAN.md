@@ -675,17 +675,18 @@ Flow:
 Pseudocode:
 
 ```tsx
-const visibleExercises = useMemo(() => {
-  return template.exercises.map((item) => {
-    const variant = item.variants[equipmentMode] ?? item.variants.gym ?? item.variants.home
-    return {
-      ...item,
-      exercise: variant?.exercise ?? item.exercise,
-      scaledSets: variant?.scaledSets ?? item.scaledSets,
-      scaledReps: variant?.scaledReps ?? item.scaledReps,
-      wasSwapped: Boolean(variant && variant.exercise._id !== item.exerciseId),
-    }
-  })
+  const visibleExercises = useMemo(() => {
+    return template.exercises.map((item) => {
+      const variant = item.variants[equipmentMode] ?? null
+      return {
+        ...item,
+        exercise: variant?.exercise ?? item.exercise,
+        scaledSets: variant?.scaledSets ?? item.scaledSets,
+        scaledReps: variant?.scaledReps ?? item.scaledReps,
+        wasSwapped: Boolean(variant && variant.exercise._id !== item.exerciseId),
+      }
+    })
+  }, [template, equipmentMode])
 }, [template, equipmentMode])
 ```
 
