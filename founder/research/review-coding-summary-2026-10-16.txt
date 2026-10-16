@@ -1,0 +1,53 @@
+TOTAL 3241 {'boostcamp': 366, 'fitbod': 400, 'fitfor90': 1, 'hevy': 500, 'liftosaur': 52, 'peakstrength': 110, 'plt4m': 100, 'strong': 150, 'teambuildr': 63, 'techne': 500, 'trainheroic': 500, 'volt': 499}
+
+== TEAM/ATHLETE apps: n=1773, 1-2 star=472 (27%)
+J_plan        380  21.4%  share_low= 24.5%
+J_sport       340  19.2%  share_low=  6.8%
+J_load         78   4.4%  share_low=  7.7%
+J_log         243  13.7%  share_low= 24.3%
+J_coach       250  14.1%  share_low= 22.0%
+J_learn       138   7.8%  share_low= 13.8%
+J_fit         101   5.7%  share_low=  6.9%
+J_motivate     91   5.1%  share_low=  4.4%
+P_bug         138   7.8%  share_low= 48.6%
+P_price       156   8.8%  share_low= 52.6%
+P_load         12   0.7%  share_low= 58.3%
+P_datalock      4   0.2%  share_low= 75.0%
+P_rigid        29   1.6%  share_low= 24.1%
+P_offline       4   0.2%  share_low= 25.0%
+P_coachside     2   0.1%  share_low=  0.0%
+P_calendar     26   1.5%  share_low= 42.3%
+P_injury       23   1.3%  share_low= 13.0%
+
+== GYM trackers: n=1468, 1-2 star=241 (16%)
+J_plan        352  24.0%  share_low= 12.2%
+J_sport         8   0.5%  share_low= 25.0%
+J_load        104   7.1%  share_low=  8.7%
+J_log         498  33.9%  share_low=  7.4%
+J_coach        94   6.4%  share_low= 11.7%
+J_learn        97   6.6%  share_low=  8.2%
+J_fit          78   5.3%  share_low= 12.8%
+J_motivate    144   9.8%  share_low=  6.2%
+P_bug          92   6.3%  share_low= 46.7%
+P_price       208  14.2%  share_low= 45.7%
+P_load          6   0.4%  share_low= 50.0%
+P_datalock      3   0.2%  share_low= 33.3%
+P_rigid        20   1.4%  share_low= 25.0%
+P_offline       6   0.4%  share_low= 33.3%
+P_coachside     2   0.1%  share_low=100.0%
+P_calendar      7   0.5%  share_low= 42.9%
+P_injury       12   0.8%  share_low= 25.0%
+
+PER APP key codes (% of app reviews): J_sport J_load J_coach P_bug P_price P_rigid P_offline P_coachside P_calendar
+boostcamp    366   1.4   6.0   9.0  13.7  17.8   2.5   1.4   0.3   0.8 avg=3.75
+fitbod       400   0.5   7.2   9.5   4.0  19.2   1.2   0.0   0.2   0.2 avg=3.71
+fitfor90     1   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0 avg=1.00
+hevy         500   0.2   6.6   3.6   0.4   7.2   0.4   0.0   0.0   0.0 avg=4.90
+liftosaur    52   0.0  25.0   1.9   3.8  17.3   0.0   1.9   0.0   0.0 avg=4.65
+peakstrength 110  30.9   8.2  16.4  14.5  11.8   1.8   0.0   0.0   1.8 avg=4.13
+plt4m        100   4.0   0.0   6.0  18.0   0.0   0.0   0.0   0.0   0.0 avg=1.59
+strong       150   0.0   4.7   2.7  14.7  14.0   2.7   0.0   0.0   2.0 avg=3.73
+teambuildr   63   3.2   0.0  11.1  25.4   0.0   3.2   1.6   0.0   6.3 avg=2.40
+techne       500  35.0   0.6  10.8   1.0   4.4   1.0   0.0   0.0   0.0 avg=4.53
+trainheroic  500   5.6   3.4  19.2  13.0   8.8   1.6   0.0   0.4   3.4 avg=3.00
+volt         499  19.4   9.8  13.8   3.6  15.4   2.4   0.6   0.0   0.6 avg=4.07
