@@ -1,6 +1,6 @@
 import { View, StyleSheet } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
-import { YStack, XStack, Text, Card } from 'tamagui'
+import { YStack, XStack, Text, Card, type ColorTokens } from 'tamagui'
 import { CheckCircle, Play, Clock, Lock, Dumbbell } from '@tamagui/lucide-icons'
 import type { Phase } from '../../types'
 
@@ -10,7 +10,7 @@ import type { Phase } from '../../types'
  * SPP = Orange (sport-specific phase)
  * SSP = Green (competition prep phase)
  */
-const PHASE_COLORS: Record<Phase, { bg: string; border: string; dot: string }> = {
+const PHASE_COLORS: Record<Phase, { bg: ColorTokens; border: ColorTokens; dot: ColorTokens }> = {
   GPP: { bg: '$blue2', border: '$blue6', dot: '$blue9' },
   SPP: { bg: '$orange2', border: '$orange6', dot: '$orange9' },
   SSP: { bg: '$green2', border: '$green6', dot: '$green9' },
@@ -76,7 +76,7 @@ export function CalendarWorkoutCard({
   const colors = PHASE_COLORS[phase]
 
   // Determine card styling based on state
-  const getBgColor = () => {
+  const getBgColor = (): ColorTokens => {
     if (isLocked) return '$gray2'
     if (isCompleted) return '$gray2'
     if (isInProgress) return '$green2'
@@ -84,7 +84,7 @@ export function CalendarWorkoutCard({
     return '$background'
   }
 
-  const getBorderColor = () => {
+  const getBorderColor = (): ColorTokens => {
     if (isLocked) return '$gray4'
     if (isCompleted) return '$gray5'
     if (isInProgress) return '$green7'
@@ -157,7 +157,7 @@ export function CalendarWorkoutCard({
   const cardContent = (
     <YStack gap="$1.5" px="$2" py="$1.5">
       {/* Phase badge and status icon */}
-      <XStack alignItems="center" justifyContent="space-between">
+      <XStack items="center" justify="space-between">
         <Text
           fontSize={10}
           fontWeight="700"

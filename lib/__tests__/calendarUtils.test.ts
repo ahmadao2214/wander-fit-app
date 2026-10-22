@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest'
 import {
   startOfDay,
   addDays,
@@ -259,13 +260,15 @@ describe('calendarUtils', () => {
       // Program starts Thursday Feb 5
       const thursdayStart = new Date(2026, 1, 5)
       // Training days: Mon, Wed, Fri
-      // First Mon on or after Feb 5 = Feb 9
+      // W1D1 lands on the soonest training day on or after Feb 5 (Fri Feb 6),
+      // matching the server's findFirstTrainingDate in convex/workoutCalendar.ts
       const result = getDateForWorkout(thursdayStart, trainingDays, {
         phase: 'GPP',
         week: 1,
         day: 1,
       })
-      expect(result.getDate()).toBe(9) // Monday Feb 9
+      expect(result.getDate()).toBe(6) // Friday Feb 6
+      expect(result.getDay()).toBe(5)
     })
 
     it('should throw error for empty training days', () => {

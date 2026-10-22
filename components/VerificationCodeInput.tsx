@@ -151,7 +151,7 @@ export function VerificationCodeInput({
   }
 
   return (
-    <XStack gap="$3" justifyContent="center">
+    <XStack gap="$3" justify="center">
       {digits.map((digit, index) => (
         <TextInput
           key={index}

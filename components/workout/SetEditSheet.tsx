@@ -115,8 +115,8 @@ export function SetEditSheet({
       <Sheet.Frame
         p="$4"
         bg="$background"
-        maxWidth={400}
-        alignSelf="center"
+        maxW={400}
+        self="center"
         width="100%"
       >
         <Sheet.Handle />

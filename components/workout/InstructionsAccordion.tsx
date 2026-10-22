@@ -85,7 +85,7 @@ export function InstructionsAccordion({
               fontFamily="$body"
               color="$color11"
               lineHeight={22}
-              alignSelf="flex-start"
+              self="flex-start"
             >
               {instructions}
             </Text>
