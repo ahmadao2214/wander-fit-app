@@ -12,8 +12,9 @@
  * See docs/CLERK_USER_CLEANUP.md.
  */
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { closeSync, existsSync, mkdtempSync, openSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
 import {
   CLERK_DEV_USER_CAP,
@@ -24,7 +25,9 @@ import {
   isDevelopmentSecretKey,
   parseCleanupArgs,
   parseEnvLine,
+  parseJsonLines,
   parseSelection,
+  sameDocumentIds,
   type ClassifiedUser,
   type ClerkUser,
 } from "../lib/clerkCleanup";
@@ -33,6 +36,7 @@ const CLERK_API = "https://api.clerk.com/v1";
 const PAGE_SIZE = 500;
 // `convex data` rejects limits much above this ("Requested too many items")
 const CONVEX_ROW_LIMIT = 8000;
+const CONVEX_READ_ATTEMPTS = 4;
 
 interface ConvexUserRow {
   _id: string;
@@ -93,23 +97,50 @@ async function listAllUsers(): Promise<ClerkUser[]> {
  * --env-file: in convex 1.27 that skips the saved login and fails with MissingAccessToken.
  */
 function loadConvexUsers(): ConvexUserRow[] | null {
-  const result = spawnSync(
-    "npx",
-    ["convex", "data", "users", "--limit", String(CONVEX_ROW_LIMIT), "--format", "jsonLines"],
-    { encoding: "utf8", env: process.env, maxBuffer: 64 * 1024 * 1024 }
-  );
-  if (result.status !== 0) {
-    console.warn(`⚠️  Couldn't read Convex users table (skipping Convex check): ${result.stderr.trim().split("\n").pop()}`);
-    return null;
+  // A short read would make users with rows look row-less, so require two
+  // complete reads that agree before trusting the result.
+  let previous: ConvexUserRow[] | null = null;
+  let lastError = "";
+  for (let attempt = 0; attempt < CONVEX_READ_ATTEMPTS; attempt++) {
+    const { rows, error } = readConvexUsersOnce();
+    if (!rows) {
+      lastError = error;
+      continue;
+    }
+    if (previous && sameDocumentIds(previous, rows)) {
+      if (rows.length >= CONVEX_ROW_LIMIT) {
+        console.warn(`⚠️  Convex users table has ${CONVEX_ROW_LIMIT}+ rows; Convex results may be incomplete.`);
+      }
+      return rows;
+    }
+    previous = rows;
+    lastError = "reads didn't match";
   }
-  const rows = result.stdout
-    .split("\n")
-    .filter((line) => line.trim().startsWith("{"))
-    .map((line) => JSON.parse(line) as ConvexUserRow);
-  if (rows.length >= CONVEX_ROW_LIMIT) {
-    console.warn(`⚠️  Convex users table has ${CONVEX_ROW_LIMIT}+ rows; Convex results may be incomplete.`);
+  console.warn(`⚠️  Couldn't read Convex users table reliably (skipping Convex check): ${lastError}`);
+  return null;
+}
+
+function readConvexUsersOnce(): { rows: ConvexUserRow[] | null; error: string } {
+  // Write to a file, not a pipe: the Convex CLI can exit before flushing piped
+  // stdout, which cuts the list short while still exiting 0.
+  const dir = mkdtempSync(join(tmpdir(), "clerk-cleanup-"));
+  const outPath = join(dir, "users.jsonl");
+  const out = openSync(outPath, "w");
+  try {
+    const result = spawnSync(
+      "npx",
+      ["convex", "data", "users", "--limit", String(CONVEX_ROW_LIMIT), "--format", "jsonLines"],
+      { encoding: "utf8", env: process.env, stdio: ["ignore", out, "pipe"] }
+    );
+    if (result.status !== 0) {
+      return { rows: null, error: result.stderr.trim().split("\n").pop() ?? `exit ${result.status}` };
+    }
+    const rows = parseJsonLines<ConvexUserRow>(readFileSync(outPath, "utf8"));
+    return rows ? { rows, error: "" } : { rows: null, error: "output was cut off" };
+  } finally {
+    closeSync(out);
+    rmSync(dir, { recursive: true, force: true });
   }
-  return rows;
 }
 
 // ─── output ───────────────────────────────────────────────────────────────────
@@ -261,6 +292,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(`\n${(error as Error).message}`);
+  console.error(`\n${process.env.DEBUG ? (error as Error).stack : (error as Error).message}`);
   process.exit(1);
 });

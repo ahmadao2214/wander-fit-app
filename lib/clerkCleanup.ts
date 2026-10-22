@@ -278,6 +278,30 @@ export function parseEnvLine(line: string): { key: string; value: string } | nul
   return { key: match[1], value: quoted ? quoted[2] : raw.replace(/\s+#.*$/, "") };
 }
 
+/**
+ * Parse `convex data --format jsonLines` output. Returns null if any document
+ * line is malformed (e.g. cut off mid-line) so callers never act on partial data.
+ */
+export function parseJsonLines<T>(text: string): T[] | null {
+  const rows: T[] = [];
+  for (const line of text.split("\n")) {
+    if (!line.trim().startsWith("{")) continue;
+    try {
+      rows.push(JSON.parse(line) as T);
+    } catch {
+      return null;
+    }
+  }
+  return rows;
+}
+
+/** True if both reads contain exactly the same Convex documents */
+export function sameDocumentIds(a: { _id: string }[], b: { _id: string }[]): boolean {
+  if (a.length !== b.length) return false;
+  const ids = new Set(a.map((row) => row._id));
+  return b.every((row) => ids.has(row._id));
+}
+
 /** Only Development keys are allowed; this tool must never touch production */
 export function isDevelopmentSecretKey(key: string | undefined): boolean {
   return typeof key === "string" && key.startsWith("sk_test_");

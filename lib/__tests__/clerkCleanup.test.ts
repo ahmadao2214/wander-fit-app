@@ -14,7 +14,9 @@ import {
   isTestPatternEmail,
   parseCleanupArgs,
   parseEnvLine,
+  parseJsonLines,
   parseSelection,
+  sameDocumentIds,
   type ClerkUser,
 } from "../clerkCleanup";
 
@@ -243,6 +245,31 @@ describe("parseEnvLine", () => {
   it("ignores blank lines and comments", () => {
     expect(parseEnvLine("")).toBeNull();
     expect(parseEnvLine("# Clerk")).toBeNull();
+  });
+});
+
+describe("parseJsonLines", () => {
+  it("parses one document per line and skips non-JSON lines", () => {
+    const text = '{"_id":"a","clerkId":"user_1"}\n{"_id":"b","clerkId":"user_2"}\n\nsome notice\n';
+    expect(parseJsonLines(text)).toEqual([
+      { _id: "a", clerkId: "user_1" },
+      { _id: "b", clerkId: "user_2" },
+    ]);
+  });
+
+  it("returns null when a line was cut off mid-document", () => {
+    expect(parseJsonLines('{"_id":"a","clerkId":"user_1"}\n{"_id":"b","clerkId":"us')).toBeNull();
+  });
+});
+
+describe("sameDocumentIds", () => {
+  it("matches reads with the same ids in any order", () => {
+    expect(sameDocumentIds([{ _id: "a" }, { _id: "b" }], [{ _id: "b" }, { _id: "a" }])).toBe(true);
+  });
+
+  it("rejects a shorter or different read", () => {
+    expect(sameDocumentIds([{ _id: "a" }, { _id: "b" }], [{ _id: "a" }])).toBe(false);
+    expect(sameDocumentIds([{ _id: "a" }, { _id: "b" }], [{ _id: "a" }, { _id: "c" }])).toBe(false);
   });
 });
 
