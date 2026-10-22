@@ -5,6 +5,7 @@
  *   npx tsx scripts/clerk-cleanup.ts --delete         # delete all flagged users (typed confirmation)
  *   npx tsx scripts/clerk-cleanup.ts --pick           # choose users to delete by number (typed confirmation)
  *   npx tsx scripts/clerk-cleanup.ts --keep a@b.com   # never flag/delete this email (repeatable)
+ *   npx tsx scripts/clerk-cleanup.ts --delete --skip-convex-users  # don't delete users that have Convex rows
  *   npx tsx scripts/clerk-cleanup.ts --env-file path  # where CLERK_SECRET_KEY / CONVEX_DEPLOYMENT live (default .env.local)
  *
  * Only Development keys (sk_test_...) are accepted. Convex rows are reported, never touched.
@@ -160,6 +161,9 @@ async function main() {
   const convexUsers = loadConvexUsers();
   const convexByClerkId = new Map((convexUsers ?? []).map((row) => [row.clerkId, row]));
   const convexClerkIds = convexUsers ? new Set(convexByClerkId.keys()) : null;
+  if (args.skipConvexUsers && !convexUsers) {
+    throw new Error("--skip-convex-users needs the Convex users table, which couldn't be read. Nothing deleted.");
+  }
 
   console.log(`\nClerk users: ${users.length} / ${CLERK_DEV_USER_CAP} cap (${CLERK_DEV_USER_CAP - users.length} free)`);
   console.log(`Flagged: ${flagged.length}   Look real: ${clean.length}   Kept: ${kept.length}\n`);
@@ -214,6 +218,13 @@ async function main() {
         answer.trim().toLowerCase() === "flagged"
           ? flagged
           : parseSelection(answer, pickable.length).map((n) => pickable[n - 1]);
+    }
+    if (args.skipConvexUsers) {
+      const withRows = targets.filter((t) => convexByClerkId.has(t.user.id));
+      if (withRows.length > 0) {
+        console.log(`\nSkipping ${withRows.length} user(s) that still have Convex rows (--skip-convex-users).`);
+      }
+      targets = targets.filter((t) => !convexByClerkId.has(t.user.id));
     }
     if (targets.length === 0) return console.log("\nNothing to delete.");
 

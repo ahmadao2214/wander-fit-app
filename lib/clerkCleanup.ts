@@ -204,11 +204,19 @@ export interface CleanupArgs {
   mode: CleanupMode;
   keep: string[];
   envFile: string;
+  /** Never delete users that still have a Convex users row */
+  skipConvexUsers: boolean;
   help: boolean;
 }
 
 export function parseCleanupArgs(argv: string[]): CleanupArgs {
-  const args: CleanupArgs = { mode: "dry-run", keep: [], envFile: ".env.local", help: false };
+  const args: CleanupArgs = {
+    mode: "dry-run",
+    keep: [],
+    envFile: ".env.local",
+    skipConvexUsers: false,
+    help: false,
+  };
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -222,6 +230,7 @@ export function parseCleanupArgs(argv: string[]): CleanupArgs {
     else if (arg === "--pick") args.mode = "pick";
     else if (arg === "--keep") args.keep.push(normalizeEmail(takeValue()));
     else if (arg === "--env-file") args.envFile = takeValue();
+    else if (arg === "--skip-convex-users") args.skipConvexUsers = true;
     else if (arg === "--help" || arg === "-h") args.help = true;
     else throw new Error(`Unknown argument: ${arg}`);
   }

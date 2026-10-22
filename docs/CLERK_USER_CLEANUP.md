@@ -16,6 +16,7 @@ npx tsx scripts/clerk-cleanup.ts                     # dry run: table + count vs
 npx tsx scripts/clerk-cleanup.ts --delete            # delete every flagged user
 npx tsx scripts/clerk-cleanup.ts --pick              # choose users by number ("1-5, 9" or "flagged")
 npx tsx scripts/clerk-cleanup.ts --delete --keep cofounder@gmail.com
+npx tsx scripts/clerk-cleanup.ts --delete --skip-convex-users   # leave users with Convex rows alone
 npx tsx scripts/clerk-cleanup.ts --env-file ../wander-fit-app/.env.local
 ```
 

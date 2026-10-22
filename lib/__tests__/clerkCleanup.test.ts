@@ -177,7 +177,17 @@ describe("classifyUsers", () => {
 
 describe("parseCleanupArgs", () => {
   it("defaults to a dry run against .env.local", () => {
-    expect(parseCleanupArgs([])).toEqual({ mode: "dry-run", keep: [], envFile: ".env.local", help: false });
+    expect(parseCleanupArgs([])).toEqual({
+      mode: "dry-run",
+      keep: [],
+      envFile: ".env.local",
+      skipConvexUsers: false,
+      help: false,
+    });
+  });
+
+  it("parses --skip-convex-users", () => {
+    expect(parseCleanupArgs(["--delete", "--skip-convex-users"]).skipConvexUsers).toBe(true);
   });
 
   it("parses --delete, --pick and repeated --keep", () => {
