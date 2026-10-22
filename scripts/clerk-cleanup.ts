@@ -22,6 +22,7 @@ import {
   confirmationPhrase,
   isDevelopmentSecretKey,
   parseCleanupArgs,
+  parseEnvLine,
   parseSelection,
   type ClassifiedUser,
   type ClerkUser,
@@ -29,6 +30,8 @@ import {
 
 const CLERK_API = "https://api.clerk.com/v1";
 const PAGE_SIZE = 500;
+// `convex data` rejects limits much above this ("Requested too many items")
+const CONVEX_ROW_LIMIT = 8000;
 
 interface ConvexUserRow {
   _id: string;
@@ -42,9 +45,9 @@ interface ConvexUserRow {
 function loadEnvFile(path: string) {
   if (!existsSync(path)) return;
   for (const line of readFileSync(path, "utf8").split("\n")) {
-    const match = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
-    if (!match || process.env[match[1]] !== undefined) continue;
-    process.env[match[1]] = match[2].replace(/^(['"])(.*)\1$/, "$2");
+    const entry = parseEnvLine(line);
+    if (!entry || process.env[entry.key] !== undefined) continue;
+    process.env[entry.key] = entry.value;
   }
 }
 
@@ -83,21 +86,29 @@ async function listAllUsers(): Promise<ClerkUser[]> {
 
 // ─── Convex (read-only) ───────────────────────────────────────────────────────
 
-/** Reads the dev deployment's users table via the Convex CLI; null if unavailable */
-function loadConvexUsers(envFile: string): ConvexUserRow[] | null {
+/**
+ * Reads the dev deployment's users table via the Convex CLI; null if unavailable.
+ * CONVEX_DEPLOYMENT comes from the env file we already loaded. Don't pass the CLI
+ * --env-file: in convex 1.27 that skips the saved login and fails with MissingAccessToken.
+ */
+function loadConvexUsers(): ConvexUserRow[] | null {
   const result = spawnSync(
     "npx",
-    ["convex", "data", "users", "--limit", "100000", "--format", "jsonLines", "--env-file", envFile],
-    { encoding: "utf8" }
+    ["convex", "data", "users", "--limit", String(CONVEX_ROW_LIMIT), "--format", "jsonLines"],
+    { encoding: "utf8", env: process.env, maxBuffer: 64 * 1024 * 1024 }
   );
   if (result.status !== 0) {
     console.warn(`⚠️  Couldn't read Convex users table (skipping Convex check): ${result.stderr.trim().split("\n").pop()}`);
     return null;
   }
-  return result.stdout
+  const rows = result.stdout
     .split("\n")
     .filter((line) => line.trim().startsWith("{"))
     .map((line) => JSON.parse(line) as ConvexUserRow);
+  if (rows.length >= CONVEX_ROW_LIMIT) {
+    console.warn(`⚠️  Convex users table has ${CONVEX_ROW_LIMIT}+ rows; Convex results may be incomplete.`);
+  }
+  return rows;
 }
 
 // ─── output ───────────────────────────────────────────────────────────────────
@@ -146,7 +157,7 @@ async function main() {
   const users = await listAllUsers();
   const { flagged, clean, kept } = classifyUsers(users, { keep: args.keep });
 
-  const convexUsers = loadConvexUsers(envFile);
+  const convexUsers = loadConvexUsers();
   const convexByClerkId = new Map((convexUsers ?? []).map((row) => [row.clerkId, row]));
   const convexClerkIds = convexUsers ? new Set(convexByClerkId.keys()) : null;
 

@@ -257,6 +257,18 @@ export function confirmationPhrase(count: number): string {
   return `delete ${count} ${count === 1 ? "user" : "users"}`;
 }
 
+/**
+ * Parse one .env line: `KEY=value`, `export KEY="value"`, `KEY=value # comment`.
+ * Returns null for blanks and comments.
+ */
+export function parseEnvLine(line: string): { key: string; value: string } | null {
+  const match = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/);
+  if (!match) return null;
+  const raw = match[2];
+  const quoted = raw.match(/^(['"])(.*)\1$/);
+  return { key: match[1], value: quoted ? quoted[2] : raw.replace(/\s+#.*$/, "") };
+}
+
 /** Only Development keys are allowed; this tool must never touch production */
 export function isDevelopmentSecretKey(key: string | undefined): boolean {
   return typeof key === "string" && key.startsWith("sk_test_");

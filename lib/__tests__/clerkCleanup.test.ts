@@ -13,6 +13,7 @@ import {
   isTestDomain,
   isTestPatternEmail,
   parseCleanupArgs,
+  parseEnvLine,
   parseSelection,
   type ClerkUser,
 } from "../clerkCleanup";
@@ -212,6 +213,26 @@ describe("confirmationPhrase", () => {
   it("includes the exact count", () => {
     expect(confirmationPhrase(1)).toBe("delete 1 user");
     expect(confirmationPhrase(37)).toBe("delete 37 users");
+  });
+});
+
+describe("parseEnvLine", () => {
+  it("parses plain, exported and quoted values", () => {
+    expect(parseEnvLine("FOO=bar")).toEqual({ key: "FOO", value: "bar" });
+    expect(parseEnvLine("export FOO = bar ")).toEqual({ key: "FOO", value: "bar" });
+    expect(parseEnvLine('FOO="a # not a comment"')).toEqual({ key: "FOO", value: "a # not a comment" });
+  });
+
+  it("strips inline comments like the one Convex writes after CONVEX_DEPLOYMENT", () => {
+    expect(parseEnvLine("CONVEX_DEPLOYMENT=dev:some-name-123 # team: x, project: y")).toEqual({
+      key: "CONVEX_DEPLOYMENT",
+      value: "dev:some-name-123",
+    });
+  });
+
+  it("ignores blank lines and comments", () => {
+    expect(parseEnvLine("")).toBeNull();
+    expect(parseEnvLine("# Clerk")).toBeNull();
   });
 });
 
