@@ -11,6 +11,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Zap, UserPlus, User, Users, Eye, EyeOff } from '@tamagui/lucide-icons'
 import { RadioButton } from '../../components/RadioButton'
+import { getVerificationErrorMessage } from '../../lib/signUpErrors'
 import { GoogleIcon } from '../../components/GoogleIcon'
 import { VerificationCodeInput } from '../../components/VerificationCodeInput'
 
@@ -289,6 +290,7 @@ export default function SignUpScreen() {
 
     try {
       setIsCreatingUser(true)
+      setError('')
 
       const signUpAttempt = await signUp.attemptEmailAddressVerification({
         code,
@@ -327,9 +329,14 @@ export default function SignUpScreen() {
         }
       } else {
         console.error(JSON.stringify(signUpAttempt, null, 2))
+        setError('Verification could not be completed. Please try again.')
+        setCode('')
       }
     } catch (err) {
       console.error(JSON.stringify(err, null, 2))
+      setError(getVerificationErrorMessage(err))
+      // Clearing the code stops the auto-submit effect from retrying the same failed code
+      setCode('')
     } finally {
       setIsCreatingUser(false)
     }
@@ -368,6 +375,14 @@ export default function SignUpScreen() {
                   We sent a verification code to{'\n'}{emailAddress}
                 </Subtitle>
               </YStack>
+
+              {error ? (
+                <Card bg="$errorLight" p="$3" rounded="$3">
+                  <Text color="$error" text="center" fontSize={14} fontFamily="$body">
+                    {error}
+                  </Text>
+                </Card>
+              ) : null}
 
               <YStack gap="$4">
                 <VerificationCodeInput
