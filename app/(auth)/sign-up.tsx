@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Platform, ScrollView, KeyboardAvoidingView, Keyboard } from 'react-native'
+import { Platform, ScrollView, KeyboardAvoidingView, Keyboard, View } from 'react-native'
 import { Text, Input, YStack, XStack, Button, RadioGroup, Label, Card, Spinner, styled } from 'tamagui'
 import { useSignUp, useSSO, useUser, useClerk } from '@clerk/clerk-expo'
 import { Link, useRouter } from 'expo-router'
@@ -757,6 +757,9 @@ export default function SignUpScreen() {
                     </Text>
                   ) : null}
                 </YStack>
+
+                {/* Clerk bot protection renders its CAPTCHA here on web */}
+                {Platform.OS === 'web' && <View nativeID="clerk-captcha" />}
 
                 {/* Sign Up Button */}
                 <Button
