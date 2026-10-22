@@ -1,0 +1,24 @@
+# Build and ship every merge to main to TestFlight internal testers.
+# Each run uses one iOS build from the EAS plan (Free: 15/month).
+name: Main → TestFlight
+
+on:
+  push:
+    branches: ['main']
+
+jobs:
+  build_ios:
+    name: Build iOS (production)
+    type: build
+    params:
+      platform: ios
+      profile: production
+
+  testflight:
+    name: Upload to TestFlight
+    needs: [build_ios]
+    type: testflight
+    params:
+      build_id: ${{ needs.build_ios.outputs.build_id }}
+      profile: production
+      internal_groups: ['Offseason Asrafit Testers']

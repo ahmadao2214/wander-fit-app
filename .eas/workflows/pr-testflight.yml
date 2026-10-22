@@ -1,0 +1,26 @@
+# Opt-in TestFlight build for a pull request.
+# Add the `testflight` label to a PR to build its head commit and send it to
+# internal testers. To rebuild after new pushes, remove and re-add the label.
+# Each run uses one iOS build from the EAS plan (Free: 15/month).
+name: PR → TestFlight
+
+on:
+  pull_request_labeled:
+    labels: ['testflight']
+
+jobs:
+  build_ios:
+    name: Build iOS (production)
+    type: build
+    params:
+      platform: ios
+      profile: production
+
+  testflight:
+    name: Upload to TestFlight
+    needs: [build_ios]
+    type: testflight
+    params:
+      build_id: ${{ needs.build_ios.outputs.build_id }}
+      profile: production
+      internal_groups: ['Offseason Asrafit Testers']
