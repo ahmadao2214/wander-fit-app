@@ -6,6 +6,7 @@
  *   npx tsx scripts/clerk-cleanup.ts --pick           # choose users to delete by number (typed confirmation)
  *   npx tsx scripts/clerk-cleanup.ts --keep a@b.com   # never flag/delete this email (repeatable)
  *   npx tsx scripts/clerk-cleanup.ts --delete --skip-convex-users  # don't delete users that have Convex rows
+ *   npx tsx scripts/clerk-cleanup.ts --delete --confirm 36-1a2b3c4d  # no prompt; code comes from a dry run with the same options
  *   npx tsx scripts/clerk-cleanup.ts --env-file path  # where CLERK_SECRET_KEY / CONVEX_DEPLOYMENT live (default .env.local)
  *
  * Only Development keys (sk_test_...) are accepted. Convex rows are reported, never touched.
@@ -28,6 +29,7 @@ import {
   parseJsonLines,
   parseSelection,
   sameDocumentIds,
+  selectionCode,
   type ClassifiedUser,
   type ClerkUser,
 } from "../lib/clerkCleanup";
@@ -229,12 +231,44 @@ async function main() {
     for (const row of orphans) console.log(`  ${row.email}  clerkId=${row.clerkId}  _id=${row._id}`);
   }
 
+  const applySkip = (candidates: ClassifiedUser[]) => {
+    if (!args.skipConvexUsers) return candidates;
+    const withRows = candidates.filter((t) => convexByClerkId.has(t.user.id));
+    if (withRows.length > 0) {
+      console.log(`\nSkipping ${withRows.length} user(s) that still have Convex rows (--skip-convex-users).`);
+    }
+    return candidates.filter((t) => !convexByClerkId.has(t.user.id));
+  };
+
   if (args.mode === "dry-run") {
+    const wouldDelete = applySkip(flagged);
+    if (wouldDelete.length > 0) {
+      console.log(`\n--delete with these options would delete ${wouldDelete.length} user(s).`);
+      console.log(`Confirmation code: ${selectionCode(wouldDelete.map((t) => t.user.id))}`);
+      console.log("To delete without a prompt, re-run with the same options plus: --delete --confirm <code>");
+    }
     console.log("\nDry run: nothing was deleted. Re-run with --delete (all flagged) or --pick (choose).");
     return;
   }
 
-  if (!process.stdin.isTTY) throw new Error("--delete / --pick need an interactive terminal.");
+  if (args.confirm) {
+    // Non-interactive: the code must match the exact set shown by a dry run with the same options
+    const targets = applySkip(flagged);
+    printTargets(targets);
+    const code = selectionCode(targets.map((t) => t.user.id));
+    if (targets.length === 0) return console.log("\nNothing to delete.");
+    if (args.confirm !== code) {
+      throw new Error(
+        `Confirmation code ${args.confirm} doesn't match this selection (${code}). Users changed since the dry run, or options differ. Nothing deleted.`
+      );
+    }
+    await deleteUsers(targets, users.length, convexUsers ? convexByClerkId : null);
+    return;
+  }
+
+  if (!process.stdin.isTTY) {
+    throw new Error("--delete / --pick need an interactive terminal (or use --delete --confirm <code> from a dry run).");
+  }
   const rl = createInterface({ input: process.stdin, output: process.stdout });
 
   try {
@@ -250,44 +284,50 @@ async function main() {
           ? flagged
           : parseSelection(answer, pickable.length).map((n) => pickable[n - 1]);
     }
-    if (args.skipConvexUsers) {
-      const withRows = targets.filter((t) => convexByClerkId.has(t.user.id));
-      if (withRows.length > 0) {
-        console.log(`\nSkipping ${withRows.length} user(s) that still have Convex rows (--skip-convex-users).`);
-      }
-      targets = targets.filter((t) => !convexByClerkId.has(t.user.id));
-    }
+    targets = applySkip(targets);
     if (targets.length === 0) return console.log("\nNothing to delete.");
 
-    console.log(`\nAbout to permanently delete ${targets.length} Clerk user(s):`);
-    for (const t of targets) console.log(`  - ${t.email ?? t.user.id}`);
+    printTargets(targets);
     const phrase = confirmationPhrase(targets.length);
     const typed = await rl.question(`\nType "${phrase}" to confirm: `);
     if (typed.trim() !== phrase) return console.log("Confirmation didn't match. Nothing deleted.");
 
-    const deleted: ClassifiedUser[] = [];
-    for (const t of targets) {
-      try {
-        await clerkRequest(`/users/${t.user.id}`, { method: "DELETE" });
-        deleted.push(t);
-        console.log(`  ✓ deleted ${t.email ?? t.user.id}`);
-      } catch (error) {
-        console.error(`  ✗ ${t.email ?? t.user.id}: ${(error as Error).message}`);
-      }
-    }
-    console.log(`\nDeleted ${deleted.length}/${targets.length}. Clerk users now: ${users.length - deleted.length} / ${CLERK_DEV_USER_CAP}`);
-
-    const leftBehind = deleted.filter((d) => convexByClerkId.has(d.user.id));
-    if (convexUsers && leftBehind.length > 0) {
-      console.log(`\n${leftBehind.length} deleted user(s) still have Convex users rows (not touched):`);
-      for (const d of leftBehind) {
-        const row = convexByClerkId.get(d.user.id)!;
-        console.log(`  ${d.email}  clerkId=${d.user.id}  _id=${row._id}`);
-      }
-      console.log("See docs/CLERK_USER_CLEANUP.md for the proposed Convex cleanup.");
-    }
+    await deleteUsers(targets, users.length, convexUsers ? convexByClerkId : null);
   } finally {
     rl.close();
+  }
+}
+
+function printTargets(targets: ClassifiedUser[]) {
+  console.log(`\nAbout to permanently delete ${targets.length} Clerk user(s):`);
+  for (const t of targets) console.log(`  - ${t.email ?? t.user.id}`);
+}
+
+async function deleteUsers(
+  targets: ClassifiedUser[],
+  totalUsers: number,
+  convexByClerkId: Map<string, ConvexUserRow> | null
+) {
+  const deleted: ClassifiedUser[] = [];
+  for (const t of targets) {
+    try {
+      await clerkRequest(`/users/${t.user.id}`, { method: "DELETE" });
+      deleted.push(t);
+      console.log(`  ✓ deleted ${t.email ?? t.user.id}`);
+    } catch (error) {
+      console.error(`  ✗ ${t.email ?? t.user.id}: ${(error as Error).message}`);
+    }
+  }
+  console.log(`\nDeleted ${deleted.length}/${targets.length}. Clerk users now: ${totalUsers - deleted.length} / ${CLERK_DEV_USER_CAP}`);
+
+  const leftBehind = convexByClerkId ? deleted.filter((d) => convexByClerkId.has(d.user.id)) : [];
+  if (leftBehind.length > 0) {
+    console.log(`\n${leftBehind.length} deleted user(s) still have Convex users rows (not touched):`);
+    for (const d of leftBehind) {
+      const row = convexByClerkId!.get(d.user.id)!;
+      console.log(`  ${d.email}  clerkId=${d.user.id}  _id=${row._id}`);
+    }
+    console.log("See docs/CLERK_USER_CLEANUP.md for the proposed Convex cleanup.");
   }
 }
 

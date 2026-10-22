@@ -206,6 +206,8 @@ export interface CleanupArgs {
   envFile: string;
   /** Never delete users that still have a Convex users row */
   skipConvexUsers: boolean;
+  /** Selection code from a dry run; deletes without a prompt if it still matches */
+  confirm: string | null;
   help: boolean;
 }
 
@@ -215,6 +217,7 @@ export function parseCleanupArgs(argv: string[]): CleanupArgs {
     keep: [],
     envFile: ".env.local",
     skipConvexUsers: false,
+    confirm: null,
     help: false,
   };
 
@@ -231,10 +234,14 @@ export function parseCleanupArgs(argv: string[]): CleanupArgs {
     else if (arg === "--keep") args.keep.push(normalizeEmail(takeValue()));
     else if (arg === "--env-file") args.envFile = takeValue();
     else if (arg === "--skip-convex-users") args.skipConvexUsers = true;
+    else if (arg === "--confirm") args.confirm = takeValue();
     else if (arg === "--help" || arg === "-h") args.help = true;
     else throw new Error(`Unknown argument: ${arg}`);
   }
 
+  if (args.confirm && args.mode !== "delete") {
+    throw new Error("--confirm only works with --delete (not with --pick or a dry run)");
+  }
   return args;
 }
 
@@ -259,6 +266,20 @@ export function parseSelection(input: string, max: number): number[] {
   }
 
   return [...picked].sort((a, b) => a - b);
+}
+
+/**
+ * Short code for an exact set of Clerk user ids, e.g. "36-9f1c04ab". A dry run
+ * prints it and `--delete --confirm <code>` only proceeds if the set is unchanged.
+ * FNV-1a over the sorted ids: not a security measure, just a fingerprint.
+ */
+export function selectionCode(userIds: string[]): string {
+  let hash = 0x811c9dc5;
+  for (const char of [...userIds].sort().join(",")) {
+    hash ^= char.charCodeAt(0);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return `${userIds.length}-${hash.toString(16).padStart(8, "0")}`;
 }
 
 /** The exact text the user has to type before anything is deleted */

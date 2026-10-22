@@ -23,6 +23,11 @@ npx tsx scripts/clerk-cleanup.ts --env-file ../wander-fit-app/.env.local
 `--delete` and `--pick` always print the list first and only delete after you type the exact phrase
 shown (e.g. `delete 37 users`). They need an interactive terminal.
 
+Without a terminal (e.g. asking Claude Code from your phone): a dry run prints a confirmation code
+for exactly the users `--delete` would remove with the same options, like `36-9f1c04ab`. Re-run with
+the same options plus `--delete --confirm <code>`. It deletes only if the selection still produces
+that code; if anyone signed up, signed in or got a Convex row in between, it refuses.
+
 A user is flagged when any of these hold (logic in `lib/clerkCleanup.ts`):
 
 | Reason | Rule |

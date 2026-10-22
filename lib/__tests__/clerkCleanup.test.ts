@@ -17,6 +17,7 @@ import {
   parseJsonLines,
   parseSelection,
   sameDocumentIds,
+  selectionCode,
   type ClerkUser,
 } from "../clerkCleanup";
 
@@ -184,8 +185,15 @@ describe("parseCleanupArgs", () => {
       keep: [],
       envFile: ".env.local",
       skipConvexUsers: false,
+      confirm: null,
       help: false,
     });
+  });
+
+  it("parses --confirm with --delete and rejects it elsewhere", () => {
+    expect(parseCleanupArgs(["--delete", "--confirm", "36-abc"]).confirm).toBe("36-abc");
+    expect(() => parseCleanupArgs(["--confirm", "36-abc"])).toThrow("only works with --delete");
+    expect(() => parseCleanupArgs(["--pick", "--confirm", "36-abc"])).toThrow("only works with --delete");
   });
 
   it("parses --skip-convex-users", () => {
@@ -218,6 +226,19 @@ describe("parseSelection", () => {
     expect(() => parseSelection("4-2", 5)).toThrow("out of range");
     expect(() => parseSelection("  ", 5)).toThrow("Nothing selected");
     expect(() => parseSelection("all", 5)).toThrow("Can't read");
+  });
+});
+
+describe("selectionCode", () => {
+  it("prefixes the count and ignores order", () => {
+    const code = selectionCode(["user_a", "user_b", "user_c"]);
+    expect(code).toMatch(/^3-[0-9a-f]{8}$/);
+    expect(selectionCode(["user_c", "user_a", "user_b"])).toBe(code);
+  });
+
+  it("changes when the set changes, even at the same size", () => {
+    expect(selectionCode(["user_a", "user_b"])).not.toBe(selectionCode(["user_a", "user_x"]));
+    expect(selectionCode(["user_a"])).not.toBe(selectionCode(["user_a", "user_b"]));
   });
 });
 
