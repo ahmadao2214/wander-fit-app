@@ -115,6 +115,8 @@ Use `YStack` for vertical layouts, `XStack` for horizontal:
 </YStack>
 ```
 
+The Tamagui v4 config sets `onlyAllowShorthands: true`, so longhand style props that have a shorthand **don't typecheck** (they still work at runtime, which is how they slip in). Use `items`/`justify`/`self`/`content` (align/justify), `bg`, `rounded`, `text` (textAlign), `p*`/`m*`, `t`/`b`/`l`/`r`, `z`, `minW`/`maxW`/`minH`/`maxH`, `grow`/`shrink`. Colors passed through variables or helpers should be typed `ColorTokens` (from `tamagui`), not `string`.
+
 ### Loading States
 ```tsx
 if (data === undefined) {
@@ -158,13 +160,30 @@ const handleAction = async () => {
 
 **All new features must include unit tests.** This is a mandatory requirement for any PR.
 
-### Test File Locations
-- **Components**: `components/<component-name>/__tests__/<ComponentName>.test.tsx`
-- **Screens**: `app/__tests__/<screen-name>.test.tsx`
-- **Lib/Utils**: `lib/__tests__/<module-name>.test.ts`
-- **Convex functions**: `convex/__tests__/<module-name>.test.ts`
+### Two Test Runners: Jest vs Vitest
 
-### Test Setup Pattern
+The repo uses **two** test runners, split by directory. Each runner only collects its own directories, so never mix them in one folder.
+
+| Runner | Directories | File type | Why |
+|--------|-------------|-----------|-----|
+| **Jest** (`jest-expo` preset) | `app/**/__tests__/`, `components/**/__tests__/` | `*.test.tsx` | Renders React Native components; needs the jest-expo preset (RN renderer, native module mocks, Babel). |
+| **Vitest** (node env) | `convex/__tests__/`, `lib/__tests__/`, `hooks/__tests__/` | `*.test.ts` | Pure TypeScript logic (Convex functions, utilities, hook logic); fast, no RN runtime. |
+
+- Config: `jest.config.js` (`testMatch`) and `vitest.config.ts` (`include`). Keep the two lists disjoint.
+- **Jest files** use Jest globals (`describe`, `it`, `expect`, `jest.fn()`, `jest.mock()`) with no import; their types come from `@types/jest` via `"types"` in `tsconfig.json`.
+- **Vitest files** must import the API explicitly: `import { describe, it, expect, vi } from 'vitest'` (Vitest `globals` is off). Use `vi.fn()`, never `jest.fn()`.
+- Why it matters: a Vitest file collected by Jest fails with *"Vitest cannot be imported in a CommonJS module using require()"*, and a Jest file collected by Vitest can't load React Native.
+- Testing a hook that needs React Native rendering (e.g. `renderHook`)? Put that test next to a component/screen under Jest instead of in `hooks/__tests__/`.
+- Agent worktrees under `.claude/worktrees/` are excluded from Jest, Vitest and `tsc`.
+
+### Test File Locations
+- **Components** (Jest): `components/<component-name>/__tests__/<ComponentName>.test.tsx`
+- **Screens** (Jest): `app/__tests__/<screen-name>.test.tsx`
+- **Lib/Utils** (Vitest): `lib/__tests__/<module-name>.test.ts`
+- **Hook logic** (Vitest): `hooks/__tests__/<hook-name>.test.ts`
+- **Convex functions** (Vitest): `convex/__tests__/<module-name>.test.ts`
+
+### Test Setup Pattern (Jest component/screen test)
 
 ```tsx
 import React from 'react'
@@ -222,14 +241,33 @@ jest.mock('../../hooks/useAuth', () => ({
 - Loading and error states
 - Data transformations and business logic
 
-### Running Tests
-```bash
-npm test                    # Run all tests
-npm test -- --watch        # Watch mode
-npm test -- <pattern>      # Run specific tests
+### Vitest Setup Pattern (lib / hooks / convex test)
+
+```ts
+import { describe, it, expect } from 'vitest'
+import { calculateSomething } from '../calculations'
+
+describe('calculateSomething', () => {
+  it('returns the expected value', () => {
+    expect(calculateSomething(2)).toBe(4)
+  })
+})
 ```
 
+### Running Tests
+```bash
+npm test                     # Jest in watch mode (components + screens)
+npm test -- <pattern>        # Jest, specific files
+npm run test:ci              # Jest once, CI mode (jest --ci)
+npm run test:unit            # Vitest once (convex + lib + hooks)
+npx vitest <pattern>         # Vitest watch mode, specific files
+npm run typecheck            # tsc --noEmit over the whole project, tests included
+```
+
+Before opening a PR, `npm run test:ci`, `npm run test:unit` and `npm run typecheck` should all pass. Dependencies are installed with Bun (`bun install`; the lockfile is `bun.lock`).
+
 **Reference implementations:**
-- Component tests: `components/__tests__/RadioButton.test.tsx`
-- Screen tests: `app/__tests__/training-science.test.tsx`
-- Lib tests: `lib/__tests__/calculations.test.ts`
+- Component tests (Jest): `components/__tests__/RadioButton.test.tsx`
+- Screen tests (Jest): `app/__tests__/training-science.test.tsx`
+- Lib tests (Vitest): `lib/__tests__/calculations.test.ts`
+- Convex tests (Vitest): `convex/__tests__/userMaxes.test.ts`

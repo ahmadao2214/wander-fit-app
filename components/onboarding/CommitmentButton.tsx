@@ -183,7 +183,7 @@ export function CommitmentButton({
           />
 
           {/* Inner content */}
-          <YStack items="center" gap="$1" zIndex={1}>
+          <YStack items="center" gap="$1" z={1}>
             {isComplete ? (
               <Text fontSize={size / 3} color="white">
                 ✓

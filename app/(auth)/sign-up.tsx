@@ -665,7 +665,6 @@ export default function SignUpScreen() {
                   hoverStyle={{ bg: '#f1f3f4', borderColor: '#c0c4c7' }}
                   pressStyle={{ bg: '#e8eaed', scale: 0.98 }}
                   icon={<GoogleIcon size={20} />}
-                  iconAfter={false}
                 >
                   Continue with Google
                 </Button>
@@ -750,9 +749,9 @@ export default function SignUpScreen() {
                     />
                     <XStack
                       position="absolute"
-                      right="$3"
-                      top={0}
-                      bottom={0}
+                      r="$3"
+                      t={0}
+                      b={0}
                       items="center"
                       justify="center"
                       onPress={() => setShowPassword(!showPassword)}
