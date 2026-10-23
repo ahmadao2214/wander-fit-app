@@ -268,18 +268,28 @@ export function parseSelection(input: string, max: number): number[] {
   return [...picked].sort((a, b) => a - b);
 }
 
+export interface SelectionEntry {
+  user: ClerkUser;
+  /** null when the Convex table couldn't be read */
+  hasConvexRow: boolean | null;
+}
+
 /**
- * Short code for an exact set of Clerk user ids, e.g. "36-9f1c04ab". A dry run
- * prints it and `--delete --confirm <code>` only proceeds if the set is unchanged.
- * FNV-1a over the sorted ids: not a security measure, just a fingerprint.
+ * Short code for an exact selection, e.g. "36-9f1c04ab". A dry run prints it and
+ * `--delete --confirm <code>` only proceeds if it still matches: same users, and
+ * none of them has signed in or gained/lost a Convex row since.
+ * FNV-1a over sorted per-user fingerprints: not a security measure, just a check.
  */
-export function selectionCode(userIds: string[]): string {
+export function selectionCode(entries: SelectionEntry[]): string {
+  const fingerprints = entries.map(
+    ({ user, hasConvexRow }) => `${user.id}|${user.last_sign_in_at ?? "never"}|${hasConvexRow ?? "unknown"}`
+  );
   let hash = 0x811c9dc5;
-  for (const char of [...userIds].sort().join(",")) {
+  for (const char of fingerprints.sort().join(",")) {
     hash ^= char.charCodeAt(0);
     hash = Math.imul(hash, 0x01000193) >>> 0;
   }
-  return `${userIds.length}-${hash.toString(16).padStart(8, "0")}`;
+  return `${entries.length}-${hash.toString(16).padStart(8, "0")}`;
 }
 
 /** The exact text the user has to type before anything is deleted */

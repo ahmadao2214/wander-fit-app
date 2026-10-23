@@ -25,8 +25,10 @@ shown (e.g. `delete 37 users`). They need an interactive terminal.
 
 Without a terminal (e.g. asking Claude Code from your phone): a dry run prints a confirmation code
 for exactly the users `--delete` would remove with the same options, like `36-9f1c04ab`. Re-run with
-the same options plus `--delete --confirm <code>`. It deletes only if the selection still produces
-that code; if anyone signed up, signed in or got a Convex row in between, it refuses.
+the same options plus `--delete --confirm <code>`. The code covers each selected user's id, last
+sign-in and whether they have a Convex row, so it refuses if the set of selected users changed, or if
+any of them signed in or gained/lost a Convex row since the dry run. New sign-ups that aren't flagged
+don't affect it.
 
 A user is flagged when any of these hold (logic in `lib/clerkCleanup.ts`):
 

@@ -109,12 +109,12 @@ function loadConvexUsers(): ConvexUserRow[] | null {
       lastError = error;
       continue;
     }
-    if (previous && sameDocumentIds(previous, rows)) {
-      if (rows.length >= CONVEX_ROW_LIMIT) {
-        console.warn(`⚠️  Convex users table has ${CONVEX_ROW_LIMIT}+ rows; Convex results may be incomplete.`);
-      }
-      return rows;
+    if (rows.length >= CONVEX_ROW_LIMIT) {
+      // Two capped reads would agree while both missing rows, so treat as unreadable
+      console.warn(`⚠️  Convex users table has ${CONVEX_ROW_LIMIT}+ rows; can't read it completely (skipping Convex check).`);
+      return null;
     }
+    if (previous && sameDocumentIds(previous, rows)) return rows;
     previous = rows;
     lastError = "reads didn't match";
   }
@@ -240,11 +240,16 @@ async function main() {
     return candidates.filter((t) => !convexByClerkId.has(t.user.id));
   };
 
+  const codeFor = (selection: ClassifiedUser[]) =>
+    selectionCode(
+      selection.map((t) => ({ user: t.user, hasConvexRow: convexUsers ? convexByClerkId.has(t.user.id) : null }))
+    );
+
   if (args.mode === "dry-run") {
     const wouldDelete = applySkip(flagged);
     if (wouldDelete.length > 0) {
       console.log(`\n--delete with these options would delete ${wouldDelete.length} user(s).`);
-      console.log(`Confirmation code: ${selectionCode(wouldDelete.map((t) => t.user.id))}`);
+      console.log(`Confirmation code: ${codeFor(wouldDelete)}`);
       console.log("To delete without a prompt, re-run with the same options plus: --delete --confirm <code>");
     }
     console.log("\nDry run: nothing was deleted. Re-run with --delete (all flagged) or --pick (choose).");
@@ -255,7 +260,7 @@ async function main() {
     // Non-interactive: the code must match the exact set shown by a dry run with the same options
     const targets = applySkip(flagged);
     printTargets(targets);
-    const code = selectionCode(targets.map((t) => t.user.id));
+    const code = codeFor(targets);
     if (targets.length === 0) return console.log("\nNothing to delete.");
     if (args.confirm !== code) {
       throw new Error(

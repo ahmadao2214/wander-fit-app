@@ -230,15 +230,31 @@ describe("parseSelection", () => {
 });
 
 describe("selectionCode", () => {
+  const a = makeUser({ email: "a@gmail.com" });
+  const b = makeUser({ email: "b@gmail.com" });
+  const c = makeUser({ email: "c@gmail.com" });
+  const entry = (user: ClerkUser, hasConvexRow: boolean | null = false) => ({ user, hasConvexRow });
+
   it("prefixes the count and ignores order", () => {
-    const code = selectionCode(["user_a", "user_b", "user_c"]);
+    const code = selectionCode([entry(a), entry(b), entry(c)]);
     expect(code).toMatch(/^3-[0-9a-f]{8}$/);
-    expect(selectionCode(["user_c", "user_a", "user_b"])).toBe(code);
+    expect(selectionCode([entry(c), entry(a), entry(b)])).toBe(code);
   });
 
   it("changes when the set changes, even at the same size", () => {
-    expect(selectionCode(["user_a", "user_b"])).not.toBe(selectionCode(["user_a", "user_x"]));
-    expect(selectionCode(["user_a"])).not.toBe(selectionCode(["user_a", "user_b"]));
+    expect(selectionCode([entry(a), entry(b)])).not.toBe(selectionCode([entry(a), entry(c)]));
+    expect(selectionCode([entry(a)])).not.toBe(selectionCode([entry(a), entry(b)]));
+  });
+
+  it("changes when a selected user signs in", () => {
+    const signedIn = { ...a, last_sign_in_at: NOW };
+    expect(selectionCode([entry(a), entry(b)])).not.toBe(selectionCode([entry(signedIn), entry(b)]));
+  });
+
+  it("changes when a selected user gains a Convex row or Convex becomes unreadable", () => {
+    const base = selectionCode([entry(a, false)]);
+    expect(selectionCode([entry(a, true)])).not.toBe(base);
+    expect(selectionCode([entry(a, null)])).not.toBe(base);
   });
 });
 
