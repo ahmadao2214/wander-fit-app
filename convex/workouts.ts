@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { canViewUserData, requireCurrentUser } from "./authHelpers";
 
 // Exercise validation schema
 const exerciseSchema = v.object({
@@ -91,6 +92,11 @@ export const createWorkout = mutation({
 export const getClientWorkouts = query({
   args: { clientId: v.id("users") },
   handler: async (ctx, args) => {
+    const viewer = await requireCurrentUser(ctx);
+    if (!(await canViewUserData(ctx, viewer, args.clientId))) {
+      throw new Error("Not authorized to view this client's workouts");
+    }
+
     return await ctx.db
       .query("workouts")
       .withIndex("by_client_active", (q) => 
@@ -176,9 +182,15 @@ export const getTrainerWorkouts = query({
 export const getWorkoutById = query({
   args: { workoutId: v.id("workouts") },
   handler: async (ctx, args) => {
+    const viewer = await requireCurrentUser(ctx);
+
     const workout = await ctx.db.get(args.workoutId);
     if (!workout) {
       throw new Error("Workout not found");
+    }
+
+    if (workout.clientId !== viewer._id && workout.trainerId !== viewer._id) {
+      throw new Error("Not authorized to view this workout");
     }
 
     // Get client and trainer info

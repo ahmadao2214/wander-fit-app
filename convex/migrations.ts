@@ -1,4 +1,6 @@
-import { mutation, query } from "./_generated/server";
+import { internalMutation, internalQuery } from "./_generated/server";
+
+// Every function here is internal: run it from the Convex dashboard or `npx convex run`, never from the app.
 
 const VALID_AGE_GROUPS = ["14-17", "18-35", "36+"];
 
@@ -15,7 +17,7 @@ function mapLegacyAgeGroup(ag: string): "14-17" | "18-35" | "36+" {
 /**
  * Find all documents with legacy ageGroup values across tables
  */
-export const findLegacyAgeGroups = query({
+export const findLegacyAgeGroups = internalQuery({
   args: {},
   handler: async (ctx) => {
     const results: Array<{ table: string; id: string; ageGroup: string }> = [];
@@ -49,7 +51,7 @@ export const findLegacyAgeGroups = query({
 /**
  * Fix all legacy ageGroup values across tables
  */
-export const fixLegacyAgeGroups = mutation({
+export const fixLegacyAgeGroups = internalMutation({
   args: {},
   handler: async (ctx) => {
     let fixed = 0;

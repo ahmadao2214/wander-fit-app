@@ -31,11 +31,12 @@ export function useAuth() {
   const clerkUserResult = useUser()
   const clerkUser = clerkUserResult?.user
   
-  // Try to get Convex user data even if Clerk auth state is inconsistent
-  // This works around mobile Clerk + Convex sync issues
+  // getCurrentUser reads the caller from the Convex auth token, so wait until
+  // Convex has the token. Querying earlier returns null, which would read as
+  // "needs setup" and flash the sign-up screen for an existing user.
   const convexUser = useQuery(
     api.users.getCurrentUser,
-    clerkUser ? { clerkId: clerkUser.id } : "skip"
+    clerkUser && isClerkAuthenticated ? { clerkId: clerkUser.id } : "skip"
   ) as User | undefined | null
 
   // Debug logging (only on significant state changes)
