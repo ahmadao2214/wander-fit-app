@@ -31,7 +31,7 @@ jobs:
           "@rollup/rollup-linux-x64-gnu@$(node -p "require('rollup/package.json').version")"
           "@esbuild/linux-x64@$(node -p "require('esbuild/package.json').version")"
       - run: bun run test:unit
-      - run: bunx vitest run lib/__tests__/signUpErrors.test.ts
+      - run: bunx vitest run lib/__tests__/signUpErrors.test.ts lib/__tests__/clerkCleanup.test.ts
 
   # Informational until the Jest/Vitest split is fixed: a failure here
   # shows on the PR but does not fail the workflow.
