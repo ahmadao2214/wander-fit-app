@@ -592,8 +592,24 @@ export const getById = query({
   },
 });
 
+/** Session statuses that belong in history (in-progress sessions are excluded) */
+export const HISTORY_STATUSES = ["completed", "abandoned"] as const;
+
 /**
- * Get session history for the current user
+ * Merge per-status session lists into one history list, newest first
+ */
+export function mergeHistorySessions<T extends { startedAt: number }>(
+  lists: T[][],
+  limit: number
+): T[] {
+  return lists
+    .flat()
+    .sort((a, b) => b.startedAt - a.startedAt)
+    .slice(0, limit);
+}
+
+/**
+ * Get finished (completed or abandoned) session history for the current user
  */
 export const getHistory = query({
   args: {
@@ -616,11 +632,20 @@ export const getHistory = query({
 
     const limit = args.limit || 20;
 
-    const sessions = await ctx.db
-      .query("gpp_workout_sessions")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .order("desc")
-      .take(limit);
+    // One indexed read per status; each takes `limit` so the merged list is
+    // the true newest `limit` across both
+    const perStatus = await Promise.all(
+      HISTORY_STATUSES.map((status) =>
+        ctx.db
+          .query("gpp_workout_sessions")
+          .withIndex("by_user_status", (q) =>
+            q.eq("userId", user._id).eq("status", status)
+          )
+          .order("desc")
+          .take(limit)
+      )
+    );
+    const sessions = mergeHistorySessions(perStatus, limit);
 
     // Enrich with template names
     const enriched = await Promise.all(
