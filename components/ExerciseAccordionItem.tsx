@@ -27,10 +27,19 @@ interface ExerciseData {
   orderIndex: number
   superset?: string
   exercise?: {
+    _id?: string
     name: string
     instructions?: string
     tags?: string[]
   }
+  sourceExercise?: {
+    _id?: string
+    name: string
+  }
+  equipmentMode?: 'gym' | 'home'
+  sourceEquipmentMode?: 'gym' | 'home'
+  hasEquipmentAlternative?: boolean
+  isEquipmentSwapped?: boolean
   // Intensity scaling fields (from getWorkoutWithIntensity)
   scaledSets?: number
   scaledReps?: string
@@ -73,6 +82,12 @@ export function ExerciseAccordionItem({
   intensityColor = "$primary",
 }: ExerciseAccordionItemProps) {
   const exerciseDetails = exercise.exercise
+  const sourceExerciseName = exercise.sourceExercise?.name
+  const isEquipmentSwapped =
+    Boolean(exercise.isEquipmentSwapped) &&
+    Boolean(sourceExerciseName) &&
+    sourceExerciseName !== exerciseDetails?.name
+  const equipmentModeLabel = exercise.equipmentMode === 'home' ? 'Home' : 'Gym'
 
   // Use scaled values if available, otherwise fall back to base values
   const displaySets = exercise.scaledSets ?? exercise.sets
@@ -132,22 +147,50 @@ export function ExerciseAccordionItem({
           activeOpacity={0.7}
         >
           <XStack items="center" gap="$2" flex={1}>
-            {/* Exercise Name */}
-            <Text flex={1} fontWeight="500" fontSize="$4" numberOfLines={1}>
-              {exerciseDetails?.name || 'Exercise'}
-            </Text>
+            <YStack flex={1} gap="$1">
+              <XStack items="center" gap="$2" flex={1}>
+                {/* Exercise Name */}
+                <Text flex={1} fontWeight="500" fontSize="$4" numberOfLines={1}>
+                  {exerciseDetails?.name || 'Exercise'}
+                </Text>
 
-            {/* Sets x Reps */}
-            <Text color="$color10" fontSize="$3">
-              {displaySets} × {displayReps}
-            </Text>
+                {/* Sets x Reps */}
+                <Text color="$color10" fontSize="$3">
+                  {displaySets} × {displayReps}
+                </Text>
 
-            {/* Expand/Collapse Chevron */}
-            {isExpanded ? (
-              <ChevronUp size={20} color="$gray8" />
-            ) : (
-              <ChevronDown size={20} color="$gray8" />
-            )}
+                {/* Expand/Collapse Chevron */}
+                {isExpanded ? (
+                  <ChevronUp size={20} color="$gray8" />
+                ) : (
+                  <ChevronDown size={20} color="$gray8" />
+                )}
+              </XStack>
+
+              {(isEquipmentSwapped || exercise.hasEquipmentAlternative) && (
+                <XStack gap="$1.5" flexWrap="wrap">
+                  <Card
+                    bg={isEquipmentSwapped ? '$blue2' : '$gray3'}
+                    px="$2"
+                    py="$0.5"
+                    rounded="$2"
+                  >
+                    <Text
+                      fontSize="$1"
+                      color={isEquipmentSwapped ? '$blue10' : '$color10'}
+                      fontWeight="700"
+                    >
+                      {isEquipmentSwapped ? 'SWAPPED' : 'ALT AVAILABLE'}
+                    </Text>
+                  </Card>
+                  <Card bg="$gray3" px="$2" py="$0.5" rounded="$2">
+                    <Text fontSize="$1" color="$color10" fontWeight="600">
+                      {equipmentModeLabel} mode
+                    </Text>
+                  </Card>
+                </XStack>
+              )}
+            </YStack>
           </XStack>
         </TouchableOpacity>
       </XStack>
@@ -212,6 +255,19 @@ export function ExerciseAccordionItem({
               </Text>
             </XStack>
           </XStack>
+
+          {isEquipmentSwapped && sourceExerciseName && (
+            <Card p="$3" bg="$blue2" borderColor="$blue6">
+              <YStack gap="$1">
+                <Text fontSize="$2" color="$blue10" fontWeight="700">
+                  Swapped for your {equipmentModeLabel.toLowerCase()} setup
+                </Text>
+                <Text fontSize="$2" color="$blue11">
+                  {sourceExerciseName} was replaced with {exerciseDetails?.name}.
+                </Text>
+              </YStack>
+            </Card>
+          )}
 
           {/* Superset Indicator */}
           {exercise.superset && (

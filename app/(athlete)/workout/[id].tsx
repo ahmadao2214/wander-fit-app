@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { View, StyleSheet, FlatList, Pressable } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
@@ -37,6 +37,7 @@ import DraggableFlatList, {
 } from 'react-native-draggable-flatlist'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { ExerciseAccordionItem } from '../../../components/ExerciseAccordionItem'
+import { EquipmentModeToggle, type EquipmentMode } from '../../../components/EquipmentModeToggle'
 import { PerformanceReviewItem } from '../../../components/workout/PerformanceReviewItem'
 import { WarmupSection, type WarmupExercise } from '../../../components/workout/WarmupSection'
 import { WARMUP_PHASES } from '../../../convex/warmupSequences'
@@ -59,6 +60,34 @@ type ExerciseItem = {
     instructions?: string
     tags?: string[]
   }
+  sourceExercise?: {
+    _id: string
+    name: string
+    instructions?: string
+    tags?: string[]
+  }
+  equipmentMode?: EquipmentMode
+  sourceEquipmentMode?: EquipmentMode
+  hasEquipmentAlternative?: boolean
+  isEquipmentSwapped?: boolean
+  equipmentVariants?: Partial<Record<EquipmentMode, {
+    exercise?: {
+      _id: string
+      name: string
+      instructions?: string
+      tags?: string[]
+    }
+    scaledSets?: number
+    scaledReps?: string
+    scaledRestSeconds?: number
+    targetWeight?: number
+    percentOf1RM?: number
+    rpeTarget?: { min: number; max: number }
+    isBodyweight?: boolean
+    isSubstituted?: boolean
+    substitutedExerciseSlug?: string
+    hasOneRepMax?: boolean
+  }>>
   // Intensity scaling fields
   scaledSets?: number
   scaledReps?: string
@@ -94,6 +123,8 @@ export default function WorkoutDetailScreen() {
 
   // All hooks must be called before any early returns
   const [isStarting, setIsStarting] = useState(false)
+  const [equipmentMode, setEquipmentMode] = useState<EquipmentMode>('gym')
+  const hasHydratedEquipmentMode = useRef(false)
 
   // Safe back navigation - respects where the user came from
   const handleBack = useCallback(() => {
@@ -143,6 +174,7 @@ export default function WorkoutDetailScreen() {
 
   // Mutation for starting workout session
   const startSession = useMutation(api.gppWorkoutSessions.startSession)
+  const saveEquipmentMode = useMutation(api.userPrograms.setEquipmentMode)
   
   // Mutation for setting today's focus (auto-focus on start)
   const setTodayFocus = useMutation(api.scheduleOverrides.setTodayFocus)
@@ -155,14 +187,52 @@ export default function WorkoutDetailScreen() {
 
   const isCompleted = session?.status === 'completed'
 
+  useEffect(() => {
+    if (!hasHydratedEquipmentMode.current && template?.equipmentMode) {
+      setEquipmentMode(template.equipmentMode as EquipmentMode)
+      hasHydratedEquipmentMode.current = true
+    }
+  }, [template?.equipmentMode])
+
   // Check if this workout's phase is unlocked
   const isPhaseUnlocked = (unlockedPhases?.phases as readonly ("GPP" | "SPP" | "SSP")[] | undefined)?.includes(
     template?.phase as "GPP" | "SPP" | "SSP"
   ) ?? false
 
+  const visibleTemplateExercises = useMemo(() => {
+    const allExercises = (template?.exercises ?? []) as (ExerciseItem & { section?: string; warmupPhase?: string })[]
+
+    return allExercises.map((exercise) => {
+      const activeVariant = exercise.equipmentVariants?.[equipmentMode]
+      const sourceExercise = exercise.sourceExercise ?? exercise.exercise
+      const fallbackExercise =
+        equipmentMode === exercise.sourceEquipmentMode ? sourceExercise : exercise.exercise
+
+      return {
+        ...exercise,
+        exercise: activeVariant?.exercise ?? fallbackExercise,
+        sourceExercise,
+        equipmentMode,
+        scaledSets: activeVariant?.scaledSets ?? exercise.scaledSets,
+        scaledReps: activeVariant?.scaledReps ?? exercise.scaledReps,
+        scaledRestSeconds: activeVariant?.scaledRestSeconds ?? exercise.scaledRestSeconds,
+        targetWeight: activeVariant?.targetWeight ?? exercise.targetWeight,
+        percentOf1RM: activeVariant?.percentOf1RM ?? exercise.percentOf1RM,
+        rpeTarget: activeVariant?.rpeTarget ?? exercise.rpeTarget,
+        isBodyweight: activeVariant?.isBodyweight ?? exercise.isBodyweight,
+        isSubstituted: activeVariant?.isSubstituted ?? exercise.isSubstituted,
+        substitutedExerciseSlug:
+          activeVariant?.substitutedExerciseSlug ?? exercise.substitutedExerciseSlug,
+        hasOneRepMax: activeVariant?.hasOneRepMax ?? exercise.hasOneRepMax,
+        isEquipmentSwapped:
+          (activeVariant?.exercise?._id ?? fallbackExercise?._id) !== sourceExercise?._id,
+      }
+    })
+  }, [equipmentMode, template?.exercises])
+
   // Split exercises into warmup and main sections
   const { warmupExercises, mainExercises } = useMemo(() => {
-    const allExercises = (template?.exercises ?? []) as (ExerciseItem & { section?: string; warmupPhase?: string })[]
+    const allExercises = visibleTemplateExercises as (ExerciseItem & { section?: string; warmupPhase?: string })[]
     const warmup: WarmupExercise[] = []
     const main: ExerciseItem[] = []
 
@@ -185,7 +255,7 @@ export default function WorkoutDetailScreen() {
     }
 
     return { warmupExercises: warmup, mainExercises: main }
-  }, [template?.exercises])
+  }, [visibleTemplateExercises])
 
   // Warmup duration from phase config (consistent with warmupSequences.ts)
   const warmupDuration = useMemo(() => {
@@ -245,6 +315,27 @@ export default function WorkoutDetailScreen() {
     })
   }, [])
 
+  const handleEquipmentModeChange = useCallback(
+    async (nextMode: EquipmentMode) => {
+      if (nextMode === equipmentMode) return
+
+      setEquipmentMode(nextMode)
+
+      try {
+        await saveEquipmentMode({ equipmentMode: nextMode })
+      } catch (error) {
+        console.error('Failed to update equipment mode:', error)
+        alert('Could not save your equipment preference yet, but the workout preview has been updated.')
+      }
+    },
+    [equipmentMode, saveEquipmentMode]
+  )
+
+  const isLegacyStartSessionContractError = useCallback((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error)
+    return message.includes('extra field `equipmentMode`')
+  }, [])
+
   // Start workout handler
   const startWorkout = useCallback(async () => {
     if (isStarting || !template) return
@@ -259,10 +350,25 @@ export default function WorkoutDetailScreen() {
       }
 
       // Pass custom exercise order (intensity is now auto-calculated from user profile)
-      const result = await startSession({
-        templateId: template._id,
-        exerciseOrder: hasCustomOrder ? orderIndices : undefined,
-      })
+      let result
+
+      try {
+        result = await startSession({
+          templateId: template._id,
+          exerciseOrder: hasCustomOrder ? orderIndices : undefined,
+          equipmentMode,
+        })
+      } catch (error) {
+        if (!isLegacyStartSessionContractError(error)) {
+          throw error
+        }
+
+        // Support older local Convex validators until the app reloads onto the fresh schema.
+        result = await startSession({
+          templateId: template._id,
+          exerciseOrder: hasCustomOrder ? orderIndices : undefined,
+        })
+      }
 
       // Navigate to execution screen with the session ID
       router.push({
@@ -275,7 +381,7 @@ export default function WorkoutDetailScreen() {
     } finally {
       setIsStarting(false)
     }
-  }, [isStarting, isCompleted, template, startSession, router, hasCustomOrder, orderIndices, todayWorkout, setTodayFocus])
+  }, [isStarting, isCompleted, template, startSession, router, hasCustomOrder, orderIndices, todayWorkout, setTodayFocus, equipmentMode, isLegacyStartSessionContractError])
 
   // Intensity for the badge (based on session target intensity)
   const targetIntensity = session?.targetIntensity || 'Moderate'
@@ -403,6 +509,25 @@ export default function WorkoutDetailScreen() {
             </Card>
           )}
         </XStack>
+
+        {isPhaseUnlocked && (
+          <Card p="$3" bg="$color2" borderColor="$borderColor">
+            <YStack gap="$3">
+              <YStack gap="$1">
+                <Text fontSize="$3" fontWeight="700" color="$color12">
+                  Training setup
+                </Text>
+                <Text fontSize="$2" color="$color10">
+                  Switch between gym and home variants before you start.
+                </Text>
+              </YStack>
+              <EquipmentModeToggle
+                value={equipmentMode}
+                onChange={handleEquipmentModeChange}
+              />
+            </YStack>
+          </Card>
+        )}
 
         {/* Reassessment Required Banner */}
         {!isPhaseUnlocked && reassessmentStatus?.reassessmentPending && (
@@ -609,7 +734,23 @@ export default function WorkoutDetailScreen() {
         </XStack>
       </YStack>
     )
-  }, [template, isPhaseUnlocked, isCompleted, canReorder, lastCompletedSession, viewMode, reassessmentStatus])
+  }, [
+    template,
+    isPhaseUnlocked,
+    isCompleted,
+    canReorder,
+    lastCompletedSession,
+    viewMode,
+    reassessmentStatus,
+    intensityColor,
+    intensityLabel,
+    equipmentMode,
+    handleEquipmentModeChange,
+    router,
+    warmupExercises,
+    warmupDuration,
+    phaseColor,
+  ])
 
   // Footer component with bottom padding
   const ListFooter = useMemo(() => {

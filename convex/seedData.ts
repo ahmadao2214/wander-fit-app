@@ -286,6 +286,11 @@ export const EQUIPMENT_GLOSSARY = [
 
   // Machines & Cables
   "cable_machine",
+  "assault_bike",
+  "battle_rope",
+  "ski_erg",
+  "stair_climber",
+  "treadmill",
 
   // Accessories
   "band",
@@ -1336,6 +1341,48 @@ export const EXERCISES = [
     progressions: {
       easier: "reverse_bear_crawl",
     },
+  },
+  {
+    name: "Battle Rope Slams",
+    slug: "battle_rope_slams",
+    tags: ["upper_body", "pull", "power", "conditioning"],
+    equipment: ["battle_rope"],
+    difficulty: "intermediate" as const,
+  },
+  {
+    name: "Battle Rope Waves",
+    slug: "battle_rope_waves",
+    tags: ["upper_body", "push", "conditioning"],
+    equipment: ["battle_rope"],
+    difficulty: "beginner" as const,
+  },
+  {
+    name: "Ski Erg Sprint",
+    slug: "ski_erg_sprint",
+    tags: ["full_body", "pull", "vertical", "conditioning", "power"],
+    equipment: ["ski_erg"],
+    difficulty: "intermediate" as const,
+  },
+  {
+    name: "Assault Bike Sprint",
+    slug: "assault_bike_sprint",
+    tags: ["full_body", "conditioning", "power"],
+    equipment: ["assault_bike"],
+    difficulty: "beginner" as const,
+  },
+  {
+    name: "Stair Climber Sprint",
+    slug: "stair_climber_sprint",
+    tags: ["lower_body", "conditioning", "power"],
+    equipment: ["stair_climber"],
+    difficulty: "beginner" as const,
+  },
+  {
+    name: "Curve/Woodway Sprint",
+    slug: "curve_woodway_sprint",
+    tags: ["lower_body", "conditioning", "power"],
+    equipment: ["treadmill"],
+    difficulty: "intermediate" as const,
   },
 
   // Upper Body - Power

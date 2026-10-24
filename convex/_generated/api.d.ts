@@ -14,12 +14,14 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as debug from "../debug.js";
+import type * as exerciseMatching from "../exerciseMatching.js";
 import type * as exercises from "../exercises.js";
 import type * as generateTemplates from "../generateTemplates.js";
 import type * as gppWorkoutSessions from "../gppWorkoutSessions.js";
 import type * as intensityScaling from "../intensityScaling.js";
 import type * as invitations from "../invitations.js";
 import type * as migrations_migrateAgeGroups from "../migrations/migrateAgeGroups.js";
+import type * as migrations_migrateTemplates from "../migrations/migrateTemplates.js";
 import type * as migrations from "../migrations.js";
 import type * as onboarding from "../onboarding.js";
 import type * as programTemplates from "../programTemplates.js";
@@ -47,12 +49,14 @@ import type * as workouts from "../workouts.js";
  */
 declare const fullApi: ApiFromModules<{
   debug: typeof debug;
+  exerciseMatching: typeof exerciseMatching;
   exercises: typeof exercises;
   generateTemplates: typeof generateTemplates;
   gppWorkoutSessions: typeof gppWorkoutSessions;
   intensityScaling: typeof intensityScaling;
   invitations: typeof invitations;
   "migrations/migrateAgeGroups": typeof migrations_migrateAgeGroups;
+  "migrations/migrateTemplates": typeof migrations_migrateTemplates;
   migrations: typeof migrations;
   onboarding: typeof onboarding;
   programTemplates: typeof programTemplates;

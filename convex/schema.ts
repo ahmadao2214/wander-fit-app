@@ -50,6 +50,11 @@ const intensityValidator = v.union(
   v.literal("High")
 );
 
+const equipmentModeValidator = v.union(
+  v.literal("gym"),
+  v.literal("home")
+);
+
 const oneRepMaxSourceValidator = v.union(
   v.literal("user_input"),     // Athlete entered manually
   v.literal("calculated"),     // Derived from workout history
@@ -105,6 +110,7 @@ export default defineSchema({
     instructions: v.optional(v.string()), // Markdown formatted
     tags: v.array(v.string()), // Flexible tagging system
     equipment: v.optional(v.array(v.string())), // ["dumbbell", "kettlebell"]
+    preferredAlternativeSlug: v.optional(v.string()), // Manual override for equipment swaps
     difficulty: v.optional(v.union(
       v.literal("beginner"),
       v.literal("intermediate"),
@@ -295,6 +301,9 @@ export default defineSchema({
     // Time-based intake (for planning)
     weeksUntilSeason: v.optional(v.number()), // How long until their season starts
 
+    // Training environment preference
+    equipmentMode: v.optional(equipmentModeValidator),
+
     // Calculated results
     assignedGppCategoryId: v.number(), // Derived from sport
     assignedSkillLevel: skillLevelValidator, // Derived from experience + assessments
@@ -348,6 +357,9 @@ export default defineSchema({
     // Dynamic Program Duration (from intake weeksUntilSeason)
     totalProgramWeeks: v.optional(v.number()), // Total weeks from intake (weeksUntilSeason)
     weeksPerPhase: v.optional(v.number()), // Calculated: totalProgramWeeks / 3, min 2, max 8
+
+    // Training environment preference
+    equipmentMode: v.optional(equipmentModeValidator),
 
     // "Scheduled Workout" pointer
     currentPhase: phaseValidator, // The active phase
@@ -405,6 +417,9 @@ export default defineSchema({
     // Target intensity for this session (affects all prescription variables)
     // Defaults to "Moderate" if not specified
     targetIntensity: v.optional(intensityValidator),
+
+    // Snapshot of the user's training environment when session started
+    equipmentMode: v.optional(equipmentModeValidator),
 
     // Exercise completion tracking
     exercises: v.array(v.object({

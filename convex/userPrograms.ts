@@ -1,6 +1,10 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { calculateWeeksPerPhase, DEFAULT_WEEKS_PER_PHASE } from "./weekMapping";
+import {
+  normalizeEquipmentMode,
+  type EquipmentMode,
+} from "./exerciseMatching";
 
 /**
  * User Programs - Active State Management
@@ -62,6 +66,11 @@ const intakeTypeValidator = v.union(
   v.literal("reassessment")
 );
 
+const equipmentModeValidator = v.union(
+  v.literal("gym"),
+  v.literal("home")
+);
+
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -93,6 +102,12 @@ function getDefaultTrainingDays(daysPerWeek: number): number[] {
     default:
       return [1, 3, 5]; // Default to Mon, Wed, Fri
   }
+}
+
+export function resolveEquipmentModePreference(
+  equipmentMode?: EquipmentMode | null,
+): EquipmentMode {
+  return normalizeEquipmentMode(equipmentMode);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -192,6 +207,7 @@ export const getCurrentProgramState = query({
       gppCategoryId: program.gppCategoryId,
       phase: program.currentPhase,
       skillLevel: program.skillLevel,
+      equipmentMode: resolveEquipmentModePreference(program.equipmentMode),
       week: program.currentWeek,
       day: program.currentDay,
       programId: program._id,
@@ -207,6 +223,28 @@ export const getCurrentProgramState = query({
       hasTodayFocusOverride: !!scheduleOverride?.todayFocusTemplateId,
       hasSlotOverrides: (scheduleOverride?.slotOverrides?.length ?? 0) > 0,
     };
+  },
+});
+
+export const getEquipmentMode = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) return null;
+
+    const program = await ctx.db
+      .query("user_programs")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .first();
+
+    return resolveEquipmentModePreference(program?.equipmentMode);
   },
 });
 
@@ -403,6 +441,7 @@ export const completeIntake = mutation({
     selectedTrainingDays: v.optional(v.array(v.number())), // [1, 3, 5] = Mon, Wed, Fri (0=Sun, 6=Sat)
     weeksUntilSeason: v.optional(v.number()),
     ageGroup: v.union(v.literal("14-17"), v.literal("18-35"), v.literal("36+")),
+    equipmentMode: v.optional(equipmentModeValidator),
     intakeType: v.optional(intakeTypeValidator), // Defaults to "initial"
   },
   handler: async (ctx, args) => {
@@ -438,6 +477,7 @@ export const completeIntake = mutation({
 
     const now = Date.now();
     const intakeType = args.intakeType ?? "initial";
+    const equipmentMode = resolveEquipmentModePreference(args.equipmentMode);
 
     // Generate default training days if not provided (based on count)
     // Common patterns: 3 days = Mon/Wed/Fri, 4 days = Mon/Tue/Thu/Fri, etc.
@@ -452,6 +492,7 @@ export const completeIntake = mutation({
       preferredTrainingDaysPerWeek: args.preferredTrainingDaysPerWeek,
       selectedTrainingDays,
       weeksUntilSeason: args.weeksUntilSeason,
+      equipmentMode,
       assignedGppCategoryId: sport.gppCategoryId,
       assignedSkillLevel: skillLevel,
       ageGroup: args.ageGroup,
@@ -472,6 +513,7 @@ export const completeIntake = mutation({
       await ctx.db.patch(existingProgram._id, {
         intakeResponseId,
         skillLevel,
+        equipmentMode,
         updatedAt: now,
       });
       programId = existingProgram._id;
@@ -488,6 +530,7 @@ export const completeIntake = mutation({
         gppCategoryId: sport.gppCategoryId,
         skillLevel,
         ageGroup: args.ageGroup,
+        equipmentMode,
         totalProgramWeeks,
         weeksPerPhase,
         currentPhase: "GPP",
@@ -515,6 +558,45 @@ export const completeIntake = mutation({
         ? "Program created successfully" 
         : "Skill level updated via re-assessment",
     };
+  },
+});
+
+export const setEquipmentMode = mutation({
+  args: {
+    equipmentMode: equipmentModeValidator,
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const program = await ctx.db
+      .query("user_programs")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .first();
+
+    if (!program) {
+      throw new Error("No active program found. Please complete intake first.");
+    }
+
+    const equipmentMode = resolveEquipmentModePreference(args.equipmentMode);
+
+    await ctx.db.patch(program._id, {
+      equipmentMode,
+      updatedAt: Date.now(),
+    });
+
+    return equipmentMode;
   },
 });
 

@@ -112,6 +112,7 @@ export const create = mutation({
     cues: v.optional(v.array(v.string())),
     tags: v.array(v.string()),
     equipment: v.optional(v.array(v.string())),
+    preferredAlternativeSlug: v.optional(v.string()),
     difficulty: v.optional(
       v.union(
         v.literal("beginner"),
@@ -148,6 +149,7 @@ export const upsertBySlug = mutation({
     cues: v.optional(v.array(v.string())),
     tags: v.array(v.string()),
     equipment: v.optional(v.array(v.string())),
+    preferredAlternativeSlug: v.optional(v.string()),
     difficulty: v.optional(
       v.union(
         v.literal("beginner"),
@@ -186,6 +188,7 @@ export const bulkInsert = mutation({
         cues: v.optional(v.array(v.string())),
         tags: v.array(v.string()),
         equipment: v.optional(v.array(v.string())),
+        preferredAlternativeSlug: v.optional(v.string()),
         difficulty: v.optional(
           v.union(
             v.literal("beginner"),

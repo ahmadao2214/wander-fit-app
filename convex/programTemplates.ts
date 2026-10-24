@@ -17,6 +17,11 @@ import {
   formatTempo,
   normalizeAgeGroup,
 } from "./intensityScaling";
+import {
+  buildExerciseModeVariants,
+  normalizeEquipmentMode,
+  type EquipmentMode,
+} from "./exerciseMatching";
 
 /**
  * Program Templates - The Logic Engine
@@ -59,6 +64,16 @@ const exercisePrescriptionValidator = v.object({
   orderIndex: v.number(),
   superset: v.optional(v.string()), // "A", "B"
 });
+
+export function selectActiveEquipmentVariant<T>(
+  activeEquipmentMode: EquipmentMode,
+  variants: { gym: T | null; home: T | null },
+  sourceVariant: T,
+): T {
+  return activeEquipmentMode === "gym"
+    ? (variants.gym ?? sourceVariant)
+    : (variants.home ?? sourceVariant);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // QUERIES
@@ -575,6 +590,8 @@ export const getWorkoutWithScaling = query({
       exercises.filter(Boolean).map((ex) => [ex!._id.toString(), ex!])
     );
 
+    const allExercises = (await ctx.db.query("exercises").collect()).filter(Boolean);
+
     // Get user's 1RM records for weight calculations
     const userMaxes = await ctx.db
       .query("user_maxes")
@@ -586,76 +603,120 @@ export const getWorkoutWithScaling = query({
       userMaxMap[max.exerciseId.toString()] = max.oneRepMax;
     }
 
-    // Apply category-specific scaling to each exercise
-    const scaledExercises = template.exercises.map((prescription) => {
-      const exercise = exerciseMap.get(prescription.exerciseId.toString());
-      const oneRepMax = userMaxMap[prescription.exerciseId.toString()];
-
-      // Detect exercise focus
-      const exerciseFocus = getExerciseFocus(exercise?.tags, exercise?.equipment);
-
-      // Get category-specific parameters
+    const buildScaledExerciseVariant = (
+      prescription: (typeof template.exercises)[number],
+      exercise: NonNullable<(typeof allExercises)[number]>,
+    ) => {
+      const oneRepMax = userMaxMap[exercise._id.toString()];
+      const exerciseFocus = getExerciseFocus(exercise.tags, exercise.equipment);
       const params = getCategoryExerciseParameters(
         categoryId,
         phase,
         ageGroup,
         yearsOfExperience,
         exerciseFocus,
-        exercise?.tags,
-        exercise?.equipment
+        exercise.tags,
+        exercise.equipment
       );
-
-      // Calculate average 1RM% for weight recommendation
       const avgPercent = (params.oneRepMaxPercent.min + params.oneRepMaxPercent.max) / 2;
 
       if (exerciseFocus === "bodyweight") {
-        // Bodyweight exercise - get variant based on phase + experience
         const variantResult = getBodyweightVariant(
-          exercise?.slug || "",
+          exercise.slug,
           phase,
           experienceBucket,
-          exercise?.progressions
+          exercise.progressions
         );
 
         return {
-          ...prescription,
           exercise,
-          // Scaled values from category-specific system
           scaledSets: params.sets,
           scaledReps: String(params.reps),
           scaledRestSeconds: params.restSeconds,
-          // Intensity metadata
           isBodyweight: true,
           isSubstituted: variantResult.isSubstituted,
           substitutedExerciseSlug: variantResult.isSubstituted ? variantResult.slug : undefined,
           rpeTarget: params.rpe,
           tempo: formatTempo(params.tempo),
-          // No weight for bodyweight exercises
           targetWeight: undefined,
           percentOf1RM: undefined,
           hasOneRepMax: false,
-        };
-      } else {
-        // Weighted exercise (strength or power)
-        return {
-          ...prescription,
-          exercise,
-          // Scaled values from category-specific system
-          scaledSets: params.sets,
-          scaledReps: String(params.reps),
-          scaledRestSeconds: params.restSeconds,
-          // Weight calculation (if 1RM known)
-          targetWeight: oneRepMax ? Math.round(oneRepMax * avgPercent) : undefined,
-          percentOf1RM: Math.round(avgPercent * 100),
-          // Intensity metadata
-          isBodyweight: false,
-          isSubstituted: false,
-          rpeTarget: params.rpe,
-          tempo: formatTempo(params.tempo),
-          hasOneRepMax: !!oneRepMax,
-          exerciseFocus, // Expose whether this is strength or power
+          exerciseFocus,
         };
       }
+
+      return {
+        exercise,
+        scaledSets: params.sets,
+        scaledReps: String(params.reps),
+        scaledRestSeconds: params.restSeconds,
+        targetWeight: oneRepMax ? Math.round(oneRepMax * avgPercent) : undefined,
+        percentOf1RM: Math.round(avgPercent * 100),
+        isBodyweight: false,
+        isSubstituted: false,
+        substitutedExerciseSlug: undefined,
+        rpeTarget: params.rpe,
+        tempo: formatTempo(params.tempo),
+        hasOneRepMax: !!oneRepMax,
+        exerciseFocus,
+      };
+    };
+
+    const activeEquipmentMode = normalizeEquipmentMode(userProgram.equipmentMode);
+
+    // Apply category-specific scaling to each exercise
+    const scaledExercises = template.exercises.map((prescription) => {
+      const sourceExercise = exerciseMap.get(prescription.exerciseId.toString());
+
+      if (!sourceExercise) {
+        return {
+          ...prescription,
+          exercise: undefined,
+        };
+      }
+
+      const sourceVariant = buildScaledExerciseVariant(prescription, sourceExercise);
+      const variants = buildExerciseModeVariants(sourceExercise, allExercises);
+      const gymVariant = variants.gym
+        ? buildScaledExerciseVariant(prescription, variants.gym)
+        : null;
+      const homeVariant = variants.home
+        ? buildScaledExerciseVariant(prescription, variants.home)
+        : null;
+      const activeVariant = selectActiveEquipmentVariant(
+        activeEquipmentMode,
+        {
+          gym: gymVariant,
+          home: homeVariant,
+        },
+        sourceVariant,
+      );
+
+      return {
+        ...prescription,
+        exercise: activeVariant.exercise,
+        scaledSets: activeVariant.scaledSets,
+        scaledReps: activeVariant.scaledReps,
+        scaledRestSeconds: activeVariant.scaledRestSeconds,
+        isBodyweight: activeVariant.isBodyweight,
+        isSubstituted: activeVariant.isSubstituted,
+        substitutedExerciseSlug: activeVariant.substitutedExerciseSlug,
+        rpeTarget: activeVariant.rpeTarget,
+        tempo: activeVariant.tempo,
+        targetWeight: activeVariant.targetWeight,
+        percentOf1RM: activeVariant.percentOf1RM,
+        hasOneRepMax: activeVariant.hasOneRepMax,
+        exerciseFocus: activeVariant.exerciseFocus,
+        sourceExercise,
+        equipmentMode: activeEquipmentMode,
+        sourceEquipmentMode: variants.sourceMode,
+        hasEquipmentAlternative: variants.hasAlternative,
+        isEquipmentSwapped: activeVariant.exercise._id !== sourceExercise._id,
+        equipmentVariants: {
+          gym: gymVariant,
+          home: homeVariant,
+        },
+      };
     });
 
     // Category name mapping for display
@@ -668,6 +729,7 @@ export const getWorkoutWithScaling = query({
 
     return {
       ...template,
+      equipmentMode: activeEquipmentMode,
       exercises: scaledExercises,
       // Scaling context for reference (used internally)
       scalingContext: {

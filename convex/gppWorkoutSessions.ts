@@ -17,6 +17,10 @@ import {
   formatTempo,
   normalizeAgeGroup,
 } from "./intensityScaling";
+import {
+  normalizeEquipmentMode,
+  type EquipmentMode,
+} from "./exerciseMatching";
 
 /**
  * GPP Workout Sessions - Execution Tracking
@@ -765,6 +769,18 @@ const intensityValidator = v.union(
   v.literal("High")
 );
 
+const equipmentModeValidator = v.union(
+  v.literal("gym"),
+  v.literal("home")
+);
+
+export function resolveSessionEquipmentMode(
+  requestedMode?: EquipmentMode | null,
+  storedMode?: EquipmentMode | null,
+): EquipmentMode {
+  return normalizeEquipmentMode(requestedMode ?? storedMode);
+}
+
 /**
  * Start a new workout session
  *
@@ -786,6 +802,7 @@ export const startSession = mutation({
     exerciseOrder: v.optional(v.array(v.number())),
     targetIntensity: v.optional(intensityValidator),
     skipCascade: v.optional(v.boolean()),
+    equipmentMode: v.optional(equipmentModeValidator),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -1104,6 +1121,10 @@ export const startSession = mutation({
     });
 
     const now = Date.now();
+    const equipmentMode = resolveSessionEquipmentMode(
+      args.equipmentMode,
+      userProgram.equipmentMode,
+    );
 
     const sessionId = await ctx.db.insert("gpp_workout_sessions", {
       userId: user._id,
@@ -1114,6 +1135,7 @@ export const startSession = mutation({
       exercises: initialExercises,
       exerciseOrder: args.exerciseOrder,
       targetIntensity: args.targetIntensity,
+      equipmentMode,
       scalingSnapshot,
       templateSnapshot: {
         name: template.name,
