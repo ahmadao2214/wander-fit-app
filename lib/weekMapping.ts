@@ -12,6 +12,7 @@
 export {
   calculateWeeksPerPhase,
   mapUserWeekToTemplateWeek,
+  getSlotTemplateWeek,
   getWeekFocusLabel,
   getWeekVolumeMultiplier,
   generateWeekMapping,

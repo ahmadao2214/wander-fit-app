@@ -17,6 +17,7 @@ import {
   formatTempo,
   normalizeAgeGroup,
 } from "./intensityScaling";
+import { DEFAULT_WEEKS_PER_PHASE, getSlotTemplateWeek } from "./weekMapping";
 
 /**
  * GPP Workout Sessions - Execution Tracking
@@ -195,7 +196,29 @@ function buildEmptySetCompletions(count: number) {
   }));
 }
 
-function normalizeSetCompletions<
+function hasLoggedData(set: {
+  completed: boolean;
+  skipped: boolean;
+  repsCompleted?: number;
+  durationSeconds?: number;
+  weight?: number;
+  rpe?: number;
+}): boolean {
+  return (
+    set.completed ||
+    set.skipped ||
+    set.repsCompleted !== undefined ||
+    set.durationSeconds !== undefined ||
+    set.weight !== undefined ||
+    set.rpe !== undefined
+  );
+}
+
+/**
+ * Fit a session's set completions to the prescribed set count: pad with empty
+ * sets, or trim trailing sets that have nothing logged.
+ */
+export function normalizeSetCompletions<
   T extends {
     completed: boolean;
     skipped: boolean;
@@ -212,7 +235,13 @@ function normalizeSetCompletions<
   }
 
   if (sets.length > targetCount) {
-    return sets.slice(0, targetCount);
+    // Only trim trailing sets with nothing logged, so a lower prescription
+    // never deletes recorded reps, weight or RPE
+    let keepCount = sets.length;
+    while (keepCount > targetCount && !hasLoggedData(sets[keepCount - 1])) {
+      keepCount--;
+    }
+    return sets.slice(0, keepCount);
   }
 
   return [
@@ -392,7 +421,11 @@ export const getById = query({
     // Check if we have the new scaling snapshot (category-specific system)
     if (session.scalingSnapshot) {
       // Use category-specific intensity system
-      const { categoryId, phase, ageGroup: rawAgeGroup, yearsOfExperience } = session.scalingSnapshot;
+      // templateWeek is the slot's week captured at start. Sessions started
+      // before the weekly wave have none and keep their peak prescription,
+      // so sets already logged against it are not cut.
+      const { categoryId, phase, ageGroup: rawAgeGroup, yearsOfExperience, templateWeek } =
+        session.scalingSnapshot;
       const ageGroup = normalizeAgeGroup(rawAgeGroup);
       const experienceBucket = getExperienceBucket(yearsOfExperience);
 
@@ -411,7 +444,8 @@ export const getById = query({
           yearsOfExperience,
           exerciseFocus,
           exercise?.tags,
-          exercise?.equipment
+          exercise?.equipment,
+          templateWeek
         );
 
         // Calculate average 1RM% for weight recommendation
@@ -487,6 +521,7 @@ export const getById = query({
           scalingContext: {
             categoryId,
             phase,
+            templateWeek,
             ageGroup,
             yearsOfExperience,
             experienceBucket,
@@ -1060,12 +1095,25 @@ export const startSession = mutation({
       .order("desc")
       .first();
 
+    // Week of the slot this workout now occupies (after any cascade above),
+    // so a template swapped into another week follows that week's wave
+    const scheduleOverride = await ctx.db
+      .query("user_schedule_overrides")
+      .withIndex("by_user_program", (q) => q.eq("userProgramId", userProgram._id))
+      .first();
+    const templateWeek = getSlotTemplateWeek(
+      { id: template._id, phase: template.phase, week: template.week, day: template.day },
+      scheduleOverride?.slotOverrides ?? [],
+      userProgram.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE
+    );
+
     // Create scaling snapshot to capture athlete profile at workout time
     const scalingSnapshot = {
       categoryId: userProgram.gppCategoryId,
       phase: template.phase as "GPP" | "SPP" | "SSP",
       ageGroup: normalizeAgeGroup(userProgram.ageGroup),
       yearsOfExperience: intake?.yearsOfExperience ?? 0,
+      templateWeek,
     };
 
     const exerciseIds = template.exercises.map((ex) => ex.exerciseId);
@@ -1090,7 +1138,8 @@ export const startSession = mutation({
           scalingSnapshot.yearsOfExperience,
           exerciseFocus,
           exercise?.tags,
-          exercise?.equipment
+          exercise?.equipment,
+          scalingSnapshot.templateWeek
         );
         prescribedSets = params.sets;
       }

@@ -17,6 +17,7 @@ import {
   formatTempo,
   normalizeAgeGroup,
 } from "./intensityScaling";
+import { DEFAULT_WEEKS_PER_PHASE, getSlotTemplateWeek } from "./weekMapping";
 
 /**
  * Program Templates - The Logic Engine
@@ -561,6 +562,17 @@ export const getWorkoutWithScaling = query({
     // Extract scaling parameters
     const categoryId = userProgram.gppCategoryId as CategoryId;
     const phase = template.phase as Phase;
+    // Week of the slot this template occupies, which differs from
+    // template.week after a cross-week swap; drives the weekly wave
+    const scheduleOverride = await ctx.db
+      .query("user_schedule_overrides")
+      .withIndex("by_user_program", (q) => q.eq("userProgramId", userProgram._id))
+      .first();
+    const templateWeek = getSlotTemplateWeek(
+      { id: template._id, phase: template.phase, week: template.week, day: template.day },
+      scheduleOverride?.slotOverrides ?? [],
+      userProgram.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE
+    );
     const ageGroup = normalizeAgeGroup(userProgram.ageGroup);
     const yearsOfExperience = intake?.yearsOfExperience ?? 0;
     const experienceBucket = getExperienceBucket(yearsOfExperience);
@@ -602,7 +614,8 @@ export const getWorkoutWithScaling = query({
         yearsOfExperience,
         exerciseFocus,
         exercise?.tags,
-        exercise?.equipment
+        exercise?.equipment,
+        templateWeek
       );
 
       // Calculate average 1RM% for weight recommendation
@@ -673,6 +686,7 @@ export const getWorkoutWithScaling = query({
       scalingContext: {
         categoryId,
         phase,
+        templateWeek,
         ageGroup,
         yearsOfExperience,
         experienceBucket,

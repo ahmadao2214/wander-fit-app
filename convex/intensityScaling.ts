@@ -15,6 +15,8 @@
  * - High: Heavier load, more sets, fewer reps, shorter rest, higher RPE
  */
 
+import { getWeekVolumeMultiplier } from "./weekMapping";
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -462,6 +464,38 @@ export const AGE_SAFETY_CONSTRAINTS: Record<AgeGroup, { maxSets: number | null; 
   "14-17": { maxSets: null, oneRepMaxCeiling: 0.85 },
   "18-35": { maxSets: null, oneRepMaxCeiling: 0.90 },
   "36+": { maxSets: null, oneRepMaxCeiling: 0.90 },
+};
+
+/**
+ * Weekly Wave (template week 1-4 within a phase)
+ *
+ * The category matrix and profile formulas describe the PEAK week (template
+ * week 3). The other weeks scale down from there so every phase follows
+ * intro → build → peak → deload. Template weeks come from
+ * mapUserWeekToTemplateWeek, so the last week of any phase is the deload.
+ *
+ * | Week | Focus        | Sets  | % of 1RM (strength track) | RPE target |
+ * |------|--------------|-------|---------------------------|------------|
+ * | 1    | Introduction | 0.70x | -5 pts                    | -1         |
+ * | 2    | Build        | 0.85x | -2.5 pts                  | 0          |
+ * | 3    | Peak         | 1.00x | 0                         | 0          |
+ * | 4    | Deload       | 0.60x | -10 pts                   | -2         |
+ *
+ * Set multipliers match WEEK_VOLUME_MULTIPLIERS in generateTemplates.ts.
+ * The wave only ever lowers a prescription, so age ceilings and primary-lift
+ * guardrails that hold at peak hold every week.
+ */
+export interface WeeklyWaveStep {
+  setsMultiplier: number;
+  oneRepMaxOffset: number;
+  rpeOffset: number;
+}
+
+export const WEEKLY_WAVE: Record<1 | 2 | 3 | 4, WeeklyWaveStep> = {
+  1: { setsMultiplier: getWeekVolumeMultiplier(1), oneRepMaxOffset: -0.05, rpeOffset: -1 },
+  2: { setsMultiplier: getWeekVolumeMultiplier(2), oneRepMaxOffset: -0.025, rpeOffset: 0 },
+  3: { setsMultiplier: getWeekVolumeMultiplier(3), oneRepMaxOffset: 0, rpeOffset: 0 },
+  4: { setsMultiplier: getWeekVolumeMultiplier(4), oneRepMaxOffset: -0.1, rpeOffset: -2 },
 };
 
 /**
@@ -1211,17 +1245,72 @@ function getPowerConditioningParameters(
 }
 
 /**
- * Get exercise parameters based on category, phase, age, and experience.
+ * Apply the weekly wave for a template week to peak-week parameters.
+ *
+ * - Sets scale by the week's volume multiplier (never below 1).
+ * - % of 1RM shifts down on the strength track only. Power work keeps its
+ *   load because it is prescribed for bar speed; bodyweight has no load.
+ * - RPE target shifts down (never below 1).
+ * - Mobility/recovery work is not periodized.
+ * - Any week outside 1-4 (or undefined) returns the peak prescription.
+ *
+ * @param params - Peak-week parameters
+ * @param templateWeek - Template week 1-4 (see mapUserWeekToTemplateWeek)
+ * @param profile - Exercise prescription profile
+ * @param ageGroup - Athlete's age group (re-applies the 1RM ceiling)
+ */
+export function applyWeeklyWave(
+  params: ScaledCategoryParameters,
+  templateWeek: number | undefined,
+  profile: ExercisePrescriptionProfile,
+  ageGroup: AgeGroup
+): ScaledCategoryParameters {
+  const wave = WEEKLY_WAVE[templateWeek as keyof typeof WEEKLY_WAVE];
+  if (!wave || profile === "mobility_recovery") {
+    return params;
+  }
+
+  const wavesLoad =
+    profile !== "power_conditioning" &&
+    profile !== "power" &&
+    profile !== "bodyweight" &&
+    params.oneRepMaxPercent.max > 0;
+  const ceiling = AGE_SAFETY_CONSTRAINTS[ageGroup].oneRepMaxCeiling;
+  const shiftPercent = (percent: number) =>
+    Math.round(Math.min(Math.max(0, percent + wave.oneRepMaxOffset), ceiling) * 1000) / 1000;
+  const rpeMin = Math.max(1, params.rpe.min + wave.rpeOffset);
+
+  return {
+    ...params,
+    sets: Math.max(1, Math.round(params.sets * wave.setsMultiplier)),
+    oneRepMaxPercent: wavesLoad
+      ? {
+          min: shiftPercent(params.oneRepMaxPercent.min),
+          max: shiftPercent(params.oneRepMaxPercent.max),
+        }
+      : params.oneRepMaxPercent,
+    rpe: {
+      min: rpeMin,
+      max: Math.max(rpeMin, params.rpe.max + wave.rpeOffset),
+    },
+  };
+}
+
+/**
+ * Get exercise parameters based on category, phase, age, experience and week.
  *
  * This is the main function for the category-specific intensity system.
  * It calculates the appropriate sets, reps, rest, tempo, RPE, and 1RM%
- * based on the athlete's profile.
+ * based on the athlete's profile, then applies the weekly wave.
  *
  * @param categoryId - Sport category (1-4)
  * @param phase - Training phase (GPP, SPP, SSP)
  * @param ageGroup - Athlete's age group
  * @param yearsOfExperience - Years of training experience
  * @param exerciseFocus - Type of exercise (strength, power, bodyweight)
+ * @param exerciseTags - Exercise tags (drive the prescription profile)
+ * @param exerciseEquipment - Exercise equipment (drive the prescription profile)
+ * @param templateWeek - Template week 1-4; omitted = peak week (no wave)
  * @returns Scaled parameters for the exercise
  */
 export function getCategoryExerciseParameters(
@@ -1231,17 +1320,40 @@ export function getCategoryExerciseParameters(
   yearsOfExperience: number,
   exerciseFocus: ExerciseFocus,
   exerciseTags?: string[],
-  exerciseEquipment?: string[]
+  exerciseEquipment?: string[],
+  templateWeek?: number
 ): ScaledCategoryParameters {
-  const config = CATEGORY_PHASE_CONFIG[categoryId][phase];
-  const expBucket = getExperienceBucket(yearsOfExperience);
-  const ageExpModifier = AGE_EXPERIENCE_MATRIX[ageGroup][expBucket];
-  const safetyConstraints = AGE_SAFETY_CONSTRAINTS[ageGroup];
   const prescriptionProfile = getExercisePrescriptionProfile(
     exerciseFocus,
     exerciseTags,
     exerciseEquipment
   );
+  const peakParams = getPeakExerciseParameters(
+    categoryId,
+    phase,
+    ageGroup,
+    yearsOfExperience,
+    exerciseFocus,
+    prescriptionProfile
+  );
+  return applyWeeklyWave(peakParams, templateWeek, prescriptionProfile, ageGroup);
+}
+
+/**
+ * Peak-week (template week 3) parameters for an exercise profile.
+ */
+function getPeakExerciseParameters(
+  categoryId: CategoryId,
+  phase: Phase,
+  ageGroup: AgeGroup,
+  yearsOfExperience: number,
+  exerciseFocus: ExerciseFocus,
+  prescriptionProfile: ExercisePrescriptionProfile
+): ScaledCategoryParameters {
+  const config = CATEGORY_PHASE_CONFIG[categoryId][phase];
+  const expBucket = getExperienceBucket(yearsOfExperience);
+  const ageExpModifier = AGE_EXPERIENCE_MATRIX[ageGroup][expBucket];
+  const safetyConstraints = AGE_SAFETY_CONSTRAINTS[ageGroup];
 
   if (prescriptionProfile === "primary_loaded_lift") {
     return getPrimaryLoadedLiftParameters(
