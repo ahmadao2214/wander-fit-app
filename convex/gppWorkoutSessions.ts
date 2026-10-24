@@ -395,6 +395,9 @@ export const getById = query({
       const { categoryId, phase, ageGroup: rawAgeGroup, yearsOfExperience } = session.scalingSnapshot;
       const ageGroup = normalizeAgeGroup(rawAgeGroup);
       const experienceBucket = getExperienceBucket(yearsOfExperience);
+      // Templates are looked up by mapUserWeekToTemplateWeek, so this is the
+      // template week (1-4) that drives the weekly wave.
+      const templateWeek = template.week;
 
       const scaledExercises = template.exercises.map((prescription) => {
         const exercise = exerciseMap.get(prescription.exerciseId.toString());
@@ -411,7 +414,8 @@ export const getById = query({
           yearsOfExperience,
           exerciseFocus,
           exercise?.tags,
-          exercise?.equipment
+          exercise?.equipment,
+          templateWeek
         );
 
         // Calculate average 1RM% for weight recommendation
@@ -487,6 +491,7 @@ export const getById = query({
           scalingContext: {
             categoryId,
             phase,
+            templateWeek,
             ageGroup,
             yearsOfExperience,
             experienceBucket,

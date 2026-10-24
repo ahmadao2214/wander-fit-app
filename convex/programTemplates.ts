@@ -561,6 +561,9 @@ export const getWorkoutWithScaling = query({
     // Extract scaling parameters
     const categoryId = userProgram.gppCategoryId as CategoryId;
     const phase = template.phase as Phase;
+    // Templates are looked up by mapUserWeekToTemplateWeek, so this is the
+    // template week (1-4) that drives the weekly wave.
+    const templateWeek = template.week;
     const ageGroup = normalizeAgeGroup(userProgram.ageGroup);
     const yearsOfExperience = intake?.yearsOfExperience ?? 0;
     const experienceBucket = getExperienceBucket(yearsOfExperience);
@@ -602,7 +605,8 @@ export const getWorkoutWithScaling = query({
         yearsOfExperience,
         exerciseFocus,
         exercise?.tags,
-        exercise?.equipment
+        exercise?.equipment,
+        templateWeek
       );
 
       // Calculate average 1RM% for weight recommendation
@@ -673,6 +677,7 @@ export const getWorkoutWithScaling = query({
       scalingContext: {
         categoryId,
         phase,
+        templateWeek,
         ageGroup,
         yearsOfExperience,
         experienceBucket,
