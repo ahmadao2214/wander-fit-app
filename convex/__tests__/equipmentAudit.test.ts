@@ -3,7 +3,13 @@ import { EXERCISES } from "../seedData";
 import {
   buildExerciseAudit,
   formatExerciseAuditMarkdown,
+  type ExerciseLike,
 } from "../exerciseMatching";
+
+const findEntry = (exercises: ExerciseLike[], slug: string) =>
+  buildExerciseAudit(exercises)
+    .flatMap((group) => group.entries)
+    .find((entry) => entry.exercise.slug === slug);
 
 describe("equipment audit foundation", () => {
   it("includes the new gym-conditioning exercises in seed data", () => {
@@ -33,21 +39,72 @@ describe("equipment audit foundation", () => {
     expect(horizontalPushGroup).toBeDefined();
     expect(
       horizontalPushGroup?.entries.some(
-        (entry) => entry.exercise.slug === "bench_press" && entry.alternative?.slug === "push_up",
+        (entry) => entry.exercise.slug === "bench_press" && entry.home?.slug === "push_up",
       ),
     ).toBe(true);
   });
 
-  it("flags unmatched exercises as gaps", () => {
-    const audit = buildExerciseAudit(EXERCISES);
-    const allEntries = audit.flatMap((group) => group.entries);
-    const gobletCarry = allEntries.find(
-      (entry) => entry.exercise.slug === "goblet_carry",
-    );
+  it("reports both directions for every exercise", () => {
+    const bench = findEntry(EXERCISES, "bench_press");
+    expect(bench?.gym?.slug).toBe("bench_press");
+    expect(bench?.home?.slug).toBe("push_up");
+
+    const pushUp = findEntry(EXERCISES, "push_up");
+    expect(pushUp?.gym?.slug).toBe("push_up");
+    expect(pushUp?.home?.slug).toBe("push_up");
+    expect(pushUp?.isGap).toBe(false);
+  });
+
+  it("flags gym exercises with no home match as gaps", () => {
+    const gobletCarry = findEntry(EXERCISES, "goblet_carry");
 
     expect(gobletCarry).toBeDefined();
     expect(gobletCarry?.isGap).toBe(true);
-    expect(gobletCarry?.alternative).toBeNull();
+    expect(gobletCarry?.home).toBeNull();
+  });
+
+  it("has no unresolved overrides in the seeded library", () => {
+    const unresolved = buildExerciseAudit(EXERCISES)
+      .flatMap((group) => group.entries)
+      .flatMap((entry) => entry.unresolvedOverrides);
+
+    expect(unresolved).toEqual([]);
+  });
+
+  it("flags overrides that do not resolve", () => {
+    const exercises: ExerciseLike[] = [
+      {
+        slug: "box_jump",
+        name: "Box Jump",
+        tags: ["plyometric"],
+        equipment: ["plyo_box"],
+        gymAlternativeSlug: "missing_slug",
+        homeAlternativeSlug: "sled_push",
+      },
+      { slug: "sled_push", name: "Sled Push", tags: [], equipment: ["sled"] },
+      {
+        slug: "push_up",
+        name: "Push-Up",
+        tags: ["push"],
+        equipment: ["bodyweight"],
+        homeAlternativeSlug: "sled_push",
+      },
+    ];
+
+    const boxJump = findEntry(exercises, "box_jump");
+    expect(boxJump?.unresolvedOverrides).toEqual([
+      { field: "gymAlternativeSlug", slug: "missing_slug", reason: "no exercise with this slug" },
+      { field: "homeAlternativeSlug", slug: "sled_push", reason: "target is not a home exercise" },
+    ]);
+
+    const pushUp = findEntry(exercises, "push_up");
+    expect(pushUp?.unresolvedOverrides).toEqual([
+      { field: "homeAlternativeSlug", slug: "sled_push", reason: "source is already a home exercise" },
+    ]);
+
+    const markdown = formatExerciseAuditMarkdown(buildExerciseAudit(exercises));
+    expect(markdown).toContain("## Unresolved overrides");
+    expect(markdown).toContain("missing_slug");
   });
 
   it("formats the audit as markdown", () => {
@@ -55,7 +112,8 @@ describe("equipment audit foundation", () => {
 
     expect(markdown).toContain("# Exercise Equipment Audit");
     expect(markdown).toContain("## bilateral + horizontal + push");
-    expect(markdown).toContain("| Exercise | Equipment | Mode | Target Mode | Auto Match | Override | Gap |");
+    expect(markdown).toContain("| Exercise | Equipment | Mode | Gym Mode | Home Mode | Overrides | Gap |");
     expect(markdown).toContain("Bench Press");
+    expect(markdown).not.toContain("## Unresolved overrides");
   });
 });

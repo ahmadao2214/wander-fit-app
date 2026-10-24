@@ -110,7 +110,8 @@ export default defineSchema({
     instructions: v.optional(v.string()), // Markdown formatted
     tags: v.array(v.string()), // Flexible tagging system
     equipment: v.optional(v.array(v.string())), // ["dumbbell", "kettlebell"]
-    preferredAlternativeSlug: v.optional(v.string()), // Manual override for equipment swaps
+    gymAlternativeSlug: v.optional(v.string()), // Deliberate swap in gym mode (gym mode never auto-matches)
+    homeAlternativeSlug: v.optional(v.string()), // Preferred home swap for a gym exercise, ahead of auto-matching
     difficulty: v.optional(v.union(
       v.literal("beginner"),
       v.literal("intermediate"),

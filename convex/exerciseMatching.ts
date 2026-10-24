@@ -4,19 +4,27 @@ export type EquipmentMode = "gym" | "home";
 
 export type ExerciseLike = Pick<
   Doc<"exercises">,
-  "slug" | "tags" | "equipment" | "preferredAlternativeSlug"
+  "slug" | "tags" | "equipment" | "gymAlternativeSlug" | "homeAlternativeSlug" | "difficulty"
 > & {
   _id?: unknown;
   name?: string;
 };
 
+export type OverrideField = "gymAlternativeSlug" | "homeAlternativeSlug";
+
+export type UnresolvedOverride = {
+  field: OverrideField;
+  slug: string;
+  reason: string;
+};
+
 export type ExerciseAuditEntry<T extends ExerciseLike> = {
   exercise: T;
   mode: EquipmentMode;
-  targetMode: EquipmentMode;
   signature: string[];
-  alternative: T | null;
-  hasOverride: boolean;
+  gym: T;
+  home: T | null;
+  unresolvedOverrides: UnresolvedOverride[];
   isGap: boolean;
 };
 
@@ -61,11 +69,58 @@ export const HOME_EQUIPMENT = new Set([
   "band",
   "mini_band",
   "pull_up_bar",
+  "wall",
 ]);
 
 export const MOVEMENT_SIGNATURE_TAGS = new Set(
   Object.keys(MOVEMENT_TAG_WEIGHTS),
 );
+
+// A home swap must share at least one of these.
+export const PRIMARY_PATTERN_TAGS = new Set([
+  "squat",
+  "hinge",
+  "lunge",
+  "push",
+  "pull",
+  "carry",
+  "rotation",
+  "anti_rotation",
+  "anti_extension",
+  "anti_lateral_flexion",
+]);
+
+// When both exercises declare a direction, they must share one.
+export const DIRECTION_TAGS = new Set(["horizontal", "vertical", "incline"]);
+
+// Carries are loaded isometric trunk work, so they share intent with holds.
+const INTENT_BY_TAG: Record<string, string> = {
+  power: "power",
+  plyometric: "power",
+  explosive: "power",
+  strength: "strength",
+  conditioning: "conditioning",
+  isometric: "isometric",
+  carry: "isometric",
+};
+
+const UNILATERAL_TAGS = new Set(["unilateral", "single_leg", "single_arm"]);
+
+const PLANE_TAGS = ["frontal", "transverse"];
+
+const DIFFICULTY_RANK: Record<string, number> = {
+  beginner: 0,
+  intermediate: 1,
+  advanced: 2,
+};
+
+const HOME_MATCH_WEIGHTS = {
+  pattern: 3,
+  direction: 2,
+  plane: 2,
+  intent: 1,
+  laterality: 1,
+};
 
 export function normalizeEquipmentMode(
   equipmentMode?: EquipmentMode | null,
@@ -96,14 +151,22 @@ export function calculateSignatureOverlap(
   }, 0);
 }
 
+/**
+ * An exercise is home if it needs no equipment, lists bodyweight (any load is
+ * optional, e.g. Reverse Lunge `[dumbbell, bodyweight]`), or only uses home gear.
+ */
 export function inferEquipmentMode(exercise: ExerciseLike): EquipmentMode {
   const equipment = exercise.equipment ?? [];
 
-  if (equipment.length === 0) {
+  if (equipment.length === 0 || equipment.includes("bodyweight")) {
     return "home";
   }
 
-  return equipment.every((item) => HOME_EQUIPMENT.has(item)) ? "home" : "gym";
+  return usesOnlyHomeEquipment(exercise) ? "home" : "gym";
+}
+
+function usesOnlyHomeEquipment(exercise: ExerciseLike): boolean {
+  return (exercise.equipment ?? []).every((item) => HOME_EQUIPMENT.has(item));
 }
 
 function isSameExercise(candidate: ExerciseLike, source: ExerciseLike): boolean {
@@ -118,77 +181,178 @@ function getSignatureKey(signature: string[]): string {
   return signature.length > 0 ? signature.join(" + ") : "uncategorized";
 }
 
-export function findAlternativeExercise<T extends ExerciseLike>(
-  exercise: T,
-  allExercises: T[],
-  targetMode: EquipmentMode,
-): T | null {
-  const overrideSlug = exercise.preferredAlternativeSlug;
+function countShared(a: Set<string>, b: Set<string>): number {
+  let shared = 0;
+  for (const tag of a) {
+    if (b.has(tag)) shared++;
+  }
+  return shared;
+}
 
-  if (overrideSlug) {
-    const override = allExercises.find(
-      (candidate) =>
-        candidate.slug === overrideSlug &&
-        !isSameExercise(candidate, exercise) &&
-        inferEquipmentMode(candidate) === targetMode,
-    );
+function tagsIn(tags: string[], allowed: Set<string>): Set<string> {
+  return new Set(tags.filter((tag) => allowed.has(tag)));
+}
 
-    if (override) {
-      return override;
-    }
+function intentsOf(tags: string[]): Set<string> {
+  return new Set(
+    tags.flatMap((tag) => (INTENT_BY_TAG[tag] ? [INTENT_BY_TAG[tag]] : [])),
+  );
+}
+
+function isUnilateral(tags: string[]): boolean {
+  return tags.some((tag) => UNILATERAL_TAGS.has(tag));
+}
+
+function planeOf(tags: string[]): string {
+  return PLANE_TAGS.find((plane) => tags.includes(plane)) ?? "sagittal";
+}
+
+function difficultyDistance(a: ExerciseLike, b: ExerciseLike): number {
+  if (!a.difficulty || !b.difficulty) {
+    return Number.POSITIVE_INFINITY;
   }
 
-  const sourceSignature = extractMovementSignature(exercise.tags);
+  return Math.abs(DIFFICULTY_RANK[a.difficulty] - DIFFICULTY_RANK[b.difficulty]);
+}
 
-  if (sourceSignature.length === 0) {
+/**
+ * Scores a home candidate for a gym source, or returns null when the candidate
+ * is not an acceptable coaching swap (no shared pattern, conflicting
+ * direction, or harder than the source).
+ */
+export function scoreHomeCandidate(
+  source: ExerciseLike,
+  candidate: ExerciseLike,
+): number | null {
+  const sharedPatterns = countShared(
+    tagsIn(source.tags, PRIMARY_PATTERN_TAGS),
+    tagsIn(candidate.tags, PRIMARY_PATTERN_TAGS),
+  );
+
+  if (sharedPatterns === 0) {
     return null;
   }
 
-  const rankedCandidates = allExercises
+  const sourceDirections = tagsIn(source.tags, DIRECTION_TAGS);
+  const candidateDirections = tagsIn(candidate.tags, DIRECTION_TAGS);
+  const sharedDirections = countShared(sourceDirections, candidateDirections);
+
+  if (sourceDirections.size > 0 && candidateDirections.size > 0 && sharedDirections === 0) {
+    return null;
+  }
+
+  if (
+    source.difficulty &&
+    candidate.difficulty &&
+    DIFFICULTY_RANK[candidate.difficulty] > DIFFICULTY_RANK[source.difficulty]
+  ) {
+    return null;
+  }
+
+  const sharedIntents = countShared(intentsOf(source.tags), intentsOf(candidate.tags));
+  const sameLaterality = isUnilateral(source.tags) === isUnilateral(candidate.tags);
+  const samePlane = planeOf(source.tags) === planeOf(candidate.tags);
+
+  return (
+    sharedPatterns * HOME_MATCH_WEIGHTS.pattern +
+    sharedDirections * HOME_MATCH_WEIGHTS.direction +
+    (samePlane ? HOME_MATCH_WEIGHTS.plane : 0) +
+    sharedIntents * HOME_MATCH_WEIGHTS.intent +
+    (sameLaterality ? HOME_MATCH_WEIGHTS.laterality : 0)
+  );
+}
+
+/**
+ * Strict auto-match for a gym exercise in home mode. Ties prefer moves that
+ * need no gym gear at all, then the closest difficulty.
+ */
+export function findHomeMatch<T extends ExerciseLike>(
+  exercise: T,
+  allExercises: T[],
+): T | null {
+  const ranked = allExercises
     .filter((candidate) => !isSameExercise(candidate, exercise))
-    .filter((candidate) => inferEquipmentMode(candidate) === targetMode)
+    .filter((candidate) => inferEquipmentMode(candidate) === "home")
     .map((candidate) => ({
       candidate,
-      score: calculateSignatureOverlap(
-        sourceSignature,
-        extractMovementSignature(candidate.tags),
-      ),
+      score: scoreHomeCandidate(exercise, candidate),
+      pureHome: usesOnlyHomeEquipment(candidate),
+      distance: difficultyDistance(exercise, candidate),
     }))
-    .filter((entry) => entry.score > 0)
+    .filter((entry) => entry.score !== null)
     .sort((a, b) => {
-      if (b.score !== a.score) {
-        return b.score - a.score;
-      }
-
+      if (b.score! !== a.score!) return b.score! - a.score!;
+      if (a.pureHome !== b.pureHome) return a.pureHome ? -1 : 1;
+      if (a.distance !== b.distance) return a.distance - b.distance;
       return a.candidate.slug.localeCompare(b.candidate.slug);
     });
 
-  return rankedCandidates[0]?.candidate ?? null;
+  return ranked[0]?.candidate ?? null;
 }
 
+function checkOverride<T extends ExerciseLike>(
+  exercise: T,
+  allExercises: T[],
+  field: OverrideField,
+): { target: T | null; problem: UnresolvedOverride | null } {
+  const slug = exercise[field];
+
+  if (!slug) {
+    return { target: null, problem: null };
+  }
+
+  const fail = (reason: string) => ({ target: null, problem: { field, slug, reason } });
+  const target = allExercises.find((candidate) => candidate.slug === slug);
+
+  if (!target) return fail("no exercise with this slug");
+  if (isSameExercise(target, exercise)) return fail("points at itself");
+
+  if (field === "homeAlternativeSlug") {
+    if (inferEquipmentMode(exercise) === "home") return fail("source is already a home exercise");
+    if (inferEquipmentMode(target) !== "home") return fail("target is not a home exercise");
+  }
+
+  return { target, problem: null };
+}
+
+/**
+ * Gym mode only swaps on a deliberate `gymAlternativeSlug`; it never
+ * auto-matches. Home mode keeps home exercises, and swaps a gym exercise for
+ * its `homeAlternativeSlug` or a strict auto-match, else null (keep original).
+ */
 export function resolveExerciseForMode<T extends ExerciseLike>(
   exercise: T,
   allExercises: T[],
   targetMode: EquipmentMode,
 ): T | null {
-  return inferEquipmentMode(exercise) === targetMode
-    ? exercise
-    : findAlternativeExercise(exercise, allExercises, targetMode);
+  if (targetMode === "gym") {
+    return checkOverride(exercise, allExercises, "gymAlternativeSlug").target ?? exercise;
+  }
+
+  if (inferEquipmentMode(exercise) === "home") {
+    return exercise;
+  }
+
+  return (
+    checkOverride(exercise, allExercises, "homeAlternativeSlug").target ??
+    findHomeMatch(exercise, allExercises)
+  );
 }
 
 export function buildExerciseModeVariants<T extends ExerciseLike>(
   exercise: T,
   allExercises: T[],
 ): ExerciseModeVariants<T> {
-  const sourceMode = inferEquipmentMode(exercise);
   const gym = resolveExerciseForMode(exercise, allExercises, "gym");
   const home = resolveExerciseForMode(exercise, allExercises, "home");
 
   return {
     gym,
     home,
-    sourceMode,
-    hasAlternative: sourceMode === "gym" ? home !== null : gym !== null,
+    sourceMode: inferEquipmentMode(exercise),
+    hasAlternative: [gym, home].some(
+      (variant) => variant !== null && !isSameExercise(variant, exercise),
+    ),
   };
 }
 
@@ -201,11 +365,12 @@ export function buildExerciseAudit<T extends ExerciseLike>(
 
   for (const exercise of sortedExercises) {
     const signature = extractMovementSignature(exercise.tags);
-    const variants = buildExerciseModeVariants(exercise, sortedExercises);
-    const mode = variants.sourceMode;
-    const targetMode: EquipmentMode = mode === "gym" ? "home" : "gym";
-    const alternative = mode === "gym" ? variants.home : variants.gym;
+    const mode = inferEquipmentMode(exercise);
+    const home = resolveExerciseForMode(exercise, sortedExercises, "home");
     const key = getSignatureKey(signature);
+    const unresolvedOverrides = (["gymAlternativeSlug", "homeAlternativeSlug"] as const)
+      .map((field) => checkOverride(exercise, sortedExercises, field).problem)
+      .filter((problem): problem is UnresolvedOverride => problem !== null);
 
     if (!groups.has(key)) {
       groups.set(key, {
@@ -218,29 +383,49 @@ export function buildExerciseAudit<T extends ExerciseLike>(
     groups.get(key)!.entries.push({
       exercise,
       mode,
-      targetMode,
       signature,
-      alternative,
-      hasOverride: Boolean(exercise.preferredAlternativeSlug),
-      isGap: alternative === null,
+      gym: resolveExerciseForMode(exercise, sortedExercises, "gym")!,
+      home,
+      unresolvedOverrides,
+      isGap: home === null,
     });
   }
 
   return [...groups.values()].sort((a, b) => a.key.localeCompare(b.key));
 }
 
+function describeVariant<T extends ExerciseLike>(exercise: T, variant: T | null): string {
+  if (variant === null) return "None (keeps original)";
+  if (isSameExercise(variant, exercise)) return "Same";
+  return variant.name ?? variant.slug;
+}
+
 export function formatExerciseAuditMarkdown<T extends ExerciseLike>(
   groups: ExerciseAuditGroup<T>[],
 ): string {
-  const totalExercises = groups.reduce(
-    (count, group) => count + group.entries.length,
-    0,
+  const entries = groups.flatMap((group) => group.entries);
+  const totalGaps = entries.filter((entry) => entry.isGap).length;
+  const gymSwaps = entries.filter((entry) => !isSameExercise(entry.gym, entry.exercise)).length;
+  const homeSwaps = entries.filter(
+    (entry) => entry.home !== null && !isSameExercise(entry.home, entry.exercise),
+  ).length;
+  const unresolved = entries.flatMap((entry) =>
+    entry.unresolvedOverrides.map((problem) => ({ entry, problem })),
   );
-  const totalGaps = groups.reduce(
-    (count, group) =>
-      count + group.entries.filter((entry) => entry.isGap).length,
-    0,
-  );
+
+  const unresolvedSection = unresolved.length === 0
+    ? []
+    : [
+        "## Unresolved overrides",
+        "",
+        "| Exercise | Field | Slug | Problem |",
+        "|---|---|---|---|",
+        ...unresolved.map(
+          ({ entry, problem }) =>
+            `| ${entry.exercise.name ?? entry.exercise.slug} | ${problem.field} | ${problem.slug} | ${problem.reason} |`,
+        ),
+        "",
+      ];
 
   const sections = groups.map((group) => {
     const heading = group.signature.length > 0
@@ -249,29 +434,40 @@ export function formatExerciseAuditMarkdown<T extends ExerciseLike>(
 
     const rows = group.entries.map((entry) => {
       const equipment = entry.exercise.equipment?.join(", ") ?? "bodyweight";
-      const alternative = entry.alternative?.name ?? "None";
-      const override = entry.exercise.preferredAlternativeSlug ?? "None";
+      const overrides = [
+        entry.exercise.gymAlternativeSlug && `gym: ${entry.exercise.gymAlternativeSlug}`,
+        entry.exercise.homeAlternativeSlug && `home: ${entry.exercise.homeAlternativeSlug}`,
+      ].filter(Boolean).join("; ") || "None";
 
-      return `| ${entry.exercise.name ?? entry.exercise.slug} | ${equipment} | ${entry.mode} | ${entry.targetMode} | ${alternative} | ${override} | ${entry.isGap ? "Yes" : "No"} |`;
+      return `| ${entry.exercise.name ?? entry.exercise.slug} | ${equipment} | ${entry.mode} | ${describeVariant(entry.exercise, entry.gym)} | ${describeVariant(entry.exercise, entry.home)} | ${overrides} | ${entry.isGap ? "Yes" : "No"} |`;
     });
 
     return [
       `## ${heading}`,
       "",
-      "| Exercise | Equipment | Mode | Target Mode | Auto Match | Override | Gap |",
+      "| Exercise | Equipment | Mode | Gym Mode | Home Mode | Overrides | Gap |",
       "|---|---|---|---|---|---|---|",
       ...rows,
+      "",
     ].join("\n");
   });
 
   return [
     "# Exercise Equipment Audit",
     "",
-    `Generated from ${totalExercises} seeded exercises.`,
+    `Generated from ${entries.length} seeded exercises.`,
+    "",
+    "Gym mode only swaps on `gymAlternativeSlug`. Home mode keeps home exercises and swaps gym exercises for `homeAlternativeSlug` or a strict auto-match (shared movement pattern, compatible direction, not harder). Warmup prescriptions never swap.",
+    "",
+    "Open product question: bench, plyo_box, medicine_ball and foam_roller are treated as gym equipment.",
     "",
     `- Signature groups: ${groups.length}`,
-    `- Exercises without an opposite-mode match: ${totalGaps}`,
+    `- Exercises swapped in gym mode: ${gymSwaps}`,
+    `- Exercises swapped in home mode: ${homeSwaps}`,
+    `- Gym exercises without a home match: ${totalGaps}`,
+    `- Unresolved overrides: ${unresolved.length}`,
     "",
+    ...unresolvedSection,
     ...sections,
     "",
   ].join("\n");

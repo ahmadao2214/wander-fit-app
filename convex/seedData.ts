@@ -1431,7 +1431,7 @@ export const EXERCISES = [
   {
     name: "Pike Push-Up",
     slug: "pike_pushup",
-    tags: ["upper_body", "push", "shoulder", "bodyweight"],
+    tags: ["upper_body", "push", "vertical", "shoulder", "bodyweight"],
     equipment: ["bodyweight"],
     difficulty: "intermediate" as const,
     progressions: {

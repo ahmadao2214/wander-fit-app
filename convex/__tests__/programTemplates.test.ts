@@ -4,7 +4,10 @@ import {
   buildExerciseModeVariants,
   normalizeEquipmentMode,
 } from "../exerciseMatching";
-import { selectActiveEquipmentVariant } from "../programTemplates";
+import {
+  buildPrescriptionModeVariants,
+  selectActiveEquipmentVariant,
+} from "../programTemplates";
 
 const getExercise = (slug: string) => {
   const exercise = EXERCISES.find((entry) => entry.slug === slug);
@@ -20,6 +23,31 @@ describe("programTemplates equipment variants", () => {
     expect(variants.gym?.slug).toBe("bench_press");
     expect(variants.home?.slug).toBe("push_up");
     expect(variants.hasAlternative).toBe(true);
+  });
+
+  it("never builds variants for warmup prescriptions", () => {
+    const variants = buildPrescriptionModeVariants(
+      { section: "warmup" },
+      getExercise("med_ball_chest_pass_warmup"),
+      EXERCISES,
+    );
+
+    expect(variants.gym?.slug).toBe("med_ball_chest_pass_warmup");
+    expect(variants.home?.slug).toBe("med_ball_chest_pass_warmup");
+    expect(variants.hasAlternative).toBe(false);
+  });
+
+  it("builds variants for main and unsectioned prescriptions", () => {
+    for (const section of ["main", undefined] as const) {
+      const variants = buildPrescriptionModeVariants(
+        { section },
+        getExercise("bench_press"),
+        EXERCISES,
+      );
+
+      expect(variants.home?.slug).toBe("push_up");
+      expect(variants.hasAlternative).toBe(true);
+    }
   });
 
   it("selects the active home variant when one exists", () => {

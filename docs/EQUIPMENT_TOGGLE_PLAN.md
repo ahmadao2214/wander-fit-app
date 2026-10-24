@@ -344,16 +344,17 @@ const equipmentModeValidator = v.union(
 
 #### `exercises`
 
-Add a manual override field for edge cases:
+Add two directional override fields:
 
 ```ts
-preferredAlternativeSlug: v.optional(v.string())
+gymAlternativeSlug: v.optional(v.string())  // deliberate swap in gym mode
+homeAlternativeSlug: v.optional(v.string()) // preferred home swap for a gym exercise
 ```
 
 Purpose:
 
-1. Escape hatch when tag matching picks the wrong move.
-2. Lets us correct individual swaps without rewriting the matching engine.
+1. Gym mode only changes an exercise through `gymAlternativeSlug`.
+2. `homeAlternativeSlug` corrects a home swap that the auto-match gets wrong or cannot find.
 
 #### `user_programs`
 
@@ -411,75 +412,50 @@ The movement signature needs to identify mechanical similarity, not general cate
 
 ### Equipment tier rules
 
-We should normalize exercises into an equipment tier:
+An exercise is `home` when any of these hold:
 
-```ts
-type EquipmentMode = "gym" | "home"
+1. Its equipment list is empty.
+2. Its equipment includes `bodyweight`. Any listed load is optional (Reverse Lunge is `[dumbbell, bodyweight]`).
+3. All of its equipment is in the home set: `bodyweight`, `band`, `mini_band`, `pull_up_bar`, `wall`.
 
-function inferEquipmentMode(exercise: ExerciseDoc): EquipmentMode {
-  const equipment = exercise.equipment ?? []
+Everything else is `gym`.
 
-  if (
-    equipment.length === 0 ||
-    equipment.every((item) =>
-      ["bodyweight", "resistance_band", "pull_up_bar"].includes(item)
-    )
-  ) {
-    return "home"
-  }
+Open product questions: `bench`, `plyo_box`, `medicine_ball` and `foam_roller` are treated as gym equipment for now. Do athletes training at home have these?
 
-  return "gym"
-}
-```
+### Matching rules (revised after the template simulation)
 
-This keeps the rule simple:
+A simulation over all 1,008 generated templates showed that the first design (match on movement-signature overlap in both directions) swapped 7,524 of 19,520 slots in gym mode, the default for every existing user. It mostly replaced bodyweight warmup drills with gym lifts, and many of its home swaps were poor coaching (Overhead Press -> Diamond Push-Up, Drop Jump -> Assisted Pull-Up). The rules are now:
 
-1. Bodyweight and minimal-gear movements are `home`.
-2. Full-gym equipment is `gym`.
+**Gym mode is a no-op except for deliberate swaps.** Use `gymAlternativeSlug` if it resolves to an existing exercise; otherwise keep the exercise. Gym mode never auto-matches.
 
-### Matching priority
+**Home mode:**
 
-Proposed order:
+1. A home exercise stays as it is.
+2. A gym exercise uses `homeAlternativeSlug` if it resolves to a home exercise.
+3. Otherwise, use a strict auto-match.
+4. Otherwise, return `null` and keep the original exercise.
 
-1. `preferredAlternativeSlug` if present and valid.
-2. Highest movement-signature overlap in the target mode.
-3. If no acceptable candidate is found, return `null`.
+**Strict home auto-match.** A candidate home exercise must:
 
-### Pseudocode
+1. Share a primary movement pattern: `squat`, `hinge`, `lunge`, `push`, `pull`, `carry`, `rotation`, `anti_rotation`, `anti_extension` or `anti_lateral_flexion`.
+2. Share a direction (`horizontal`, `vertical`, `incline`), if both exercises declare one.
+3. Be no harder than the source, when both have a `difficulty`.
 
-```ts
-function findAlternativeExercise(
-  exercise: ExerciseDoc,
-  allExercises: ExerciseDoc[],
-  targetMode: EquipmentMode
-) {
-  if (exercise.preferredAlternativeSlug) {
-    const override = allExercises.find(
-      (candidate) =>
-        candidate.slug === exercise.preferredAlternativeSlug &&
-        inferEquipmentMode(candidate) === targetMode
-    )
-    if (override) return override
-  }
+Scoring among the candidates that pass:
 
-  const sourceSignature = extractMovementSignature(exercise.tags)
+| Signal | Points |
+|---|---|
+| Each shared primary pattern | 3 |
+| Each shared direction | 2 |
+| Same plane (frontal, transverse, or sagittal by default) | 2 |
+| Each shared intent | 1 |
+| Same laterality (unilateral/single_leg/single_arm vs bilateral) | 1 |
 
-  const candidates = allExercises
-    .filter((candidate) => candidate._id !== exercise._id)
-    .filter((candidate) => inferEquipmentMode(candidate) === targetMode)
-    .map((candidate) => ({
-      candidate,
-      score: calculateSignatureOverlap(
-        sourceSignature,
-        extractMovementSignature(candidate.tags)
-      ),
-    }))
-    .filter((entry) => entry.score > 0)
-    .sort((a, b) => b.score - a.score)
+The intents are power (`power`, `plyometric`, `explosive`), strength, conditioning and isometric. A `carry` counts as isometric. Ties go to candidates that need only home gear, then to the closest difficulty, then to the slug.
 
-  return candidates[0]?.candidate ?? null
-}
-```
+**Warmups never swap.** `getWorkoutWithScaling` does not build variants for `section === "warmup"` prescriptions.
+
+The audit (`bun run audit:equipment`) reports both directions for every exercise. It also flags overrides that don't resolve: an unknown slug, a self-reference, a `homeAlternativeSlug` on a home exercise, or one that points to a gym exercise.
 
 ### Audit script
 
@@ -510,7 +486,8 @@ Functions:
 extractMovementSignature(tags: string[]): string[]
 calculateSignatureOverlap(a: string[], b: string[]): number
 inferEquipmentMode(exercise: ExerciseDoc): EquipmentMode
-findAlternativeExercise(exercise: ExerciseDoc, allExercises: ExerciseDoc[], targetMode: EquipmentMode): ExerciseDoc | null
+findHomeMatch(exercise: ExerciseDoc, allExercises: ExerciseDoc[]): ExerciseDoc | null
+resolveExerciseForMode(exercise: ExerciseDoc, allExercises: ExerciseDoc[], targetMode: EquipmentMode): ExerciseDoc | null
 ```
 
 ### `userPrograms`
@@ -687,7 +664,6 @@ Pseudocode:
       }
     })
   }, [template, equipmentMode])
-}, [template, equipmentMode])
 ```
 
 ### Exercise accordion item
@@ -746,8 +722,8 @@ Red phase:
 Example:
 
 ```ts
-it("prefers override before score-based matching", () => {
-  const alternative = findAlternativeExercise(source, allExercises, "gym")
+it("uses gymAlternativeSlug when it resolves", () => {
+  const alternative = resolveExerciseForMode(source, allExercises, "gym")
   expect(alternative?.slug).toBe("sled_push")
 })
 ```
@@ -907,7 +883,7 @@ Behavior:
 Recommendation:
 
 1. Treat `resistance_band` as `home` in v1.
-2. Use `preferredAlternativeSlug` for coaching exceptions instead of complicating the algorithm early.
+2. Use `homeAlternativeSlug` / `gymAlternativeSlug` for coaching exceptions. Power Day overrides (Box Jump -> Sled Push, etc.) still need product review before they are seeded.
 3. Persist immediately on toggle so the app feels consistent across screens.
 
 ## Summary for implementation

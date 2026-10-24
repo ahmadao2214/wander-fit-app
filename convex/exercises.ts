@@ -112,7 +112,8 @@ export const create = internalMutation({
     cues: v.optional(v.array(v.string())),
     tags: v.array(v.string()),
     equipment: v.optional(v.array(v.string())),
-    preferredAlternativeSlug: v.optional(v.string()),
+    gymAlternativeSlug: v.optional(v.string()),
+    homeAlternativeSlug: v.optional(v.string()),
     difficulty: v.optional(
       v.union(
         v.literal("beginner"),
@@ -149,7 +150,8 @@ export const upsertBySlug = internalMutation({
     cues: v.optional(v.array(v.string())),
     tags: v.array(v.string()),
     equipment: v.optional(v.array(v.string())),
-    preferredAlternativeSlug: v.optional(v.string()),
+    gymAlternativeSlug: v.optional(v.string()),
+    homeAlternativeSlug: v.optional(v.string()),
     difficulty: v.optional(
       v.union(
         v.literal("beginner"),
@@ -188,7 +190,8 @@ export const bulkInsert = internalMutation({
         cues: v.optional(v.array(v.string())),
         tags: v.array(v.string()),
         equipment: v.optional(v.array(v.string())),
-        preferredAlternativeSlug: v.optional(v.string()),
+        gymAlternativeSlug: v.optional(v.string()),
+        homeAlternativeSlug: v.optional(v.string()),
         difficulty: v.optional(
           v.union(
             v.literal("beginner"),
