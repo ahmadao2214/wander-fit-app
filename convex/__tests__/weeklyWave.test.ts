@@ -12,11 +12,13 @@ import {
   getExercisePrescriptionProfile,
 } from "../intensityScaling";
 import {
+  getSlotTemplateWeek,
   getWeekVolumeMultiplier,
   mapUserWeekToTemplateWeek,
   MIN_WEEKS_PER_PHASE,
   MAX_WEEKS_PER_PHASE,
 } from "../weekMapping";
+import { normalizeSetCompletions } from "../gppWorkoutSessions";
 import * as libScaling from "../../lib/intensityScaling";
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -318,5 +320,98 @@ describe("applyWeeklyWave", () => {
   it("re-applies the age ceiling to the result", () => {
     const teen = applyWeeklyWave({ ...base, oneRepMaxPercent: { min: 0.9, max: 0.9 } }, 3, "general_strength", "14-17");
     expect(teen.oneRepMaxPercent.max).toBe(0.85);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SWAPPED WORKOUTS FOLLOW THEIR SLOT'S WEEK
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("getSlotTemplateWeek", () => {
+  const peakDay1 = { id: "peak-d1", phase: "SPP", week: 3, day: 1 };
+  const deloadDay1 = { id: "deload-d1", phase: "SPP", week: 4, day: 1 };
+
+  it("uses the template's own week when nothing is overridden", () => {
+    expect(getSlotTemplateWeek(peakDay1, [], 4)).toBe(3);
+    expect(getSlotTemplateWeek(deloadDay1, [], 4)).toBe(4);
+  });
+
+  it("prescribes a peak template swapped into the last week as a deload", () => {
+    const swap = [
+      { phase: "SPP", week: 3, day: 1, templateId: "deload-d1" },
+      { phase: "SPP", week: 4, day: 1, templateId: "peak-d1" },
+    ];
+    expect(getSlotTemplateWeek(peakDay1, swap, 4)).toBe(4);
+    expect(getSlotTemplateWeek(deloadDay1, swap, 4)).toBe(3);
+  });
+
+  it("maps the slot's user week for longer phases", () => {
+    // 6-week phase maps user weeks to [1, 2, 2, 3, 3, 4]
+    const intro = { id: "intro-d2", phase: "GPP", week: 1, day: 2 };
+    const moved = [
+      { phase: "GPP", week: 1, day: 2, templateId: "other" },
+      { phase: "GPP", week: 6, day: 2, templateId: "intro-d2" },
+    ];
+    expect(getSlotTemplateWeek(intro, moved, 6)).toBe(4);
+  });
+
+  it("uses the first slot the template sits in", () => {
+    // Template week 2 serves user weeks 2 and 3 of a 6-week phase; moving the
+    // week-3 copy to week 6 still leaves it in its default week-2 slot first
+    const build = { id: "build-d1", phase: "GPP", week: 2, day: 1 };
+    const moved = [
+      { phase: "GPP", week: 3, day: 1, templateId: "other" },
+      { phase: "GPP", week: 6, day: 1, templateId: "build-d1" },
+    ];
+    expect(getSlotTemplateWeek(build, moved, 6)).toBe(2);
+  });
+
+  it("ignores overrides from other phases", () => {
+    const otherPhase = [{ phase: "GPP", week: 4, day: 1, templateId: "peak-d1" }];
+    expect(getSlotTemplateWeek(peakDay1, otherPhase, 4)).toBe(3);
+  });
+
+  it("feeds the deload prescription for a swapped peak template", () => {
+    const swap = [
+      { phase: "SPP", week: 3, day: 1, templateId: "deload-d1" },
+      { phase: "SPP", week: 4, day: 1, templateId: "peak-d1" },
+    ];
+    const week = getSlotTemplateWeek(peakDay1, swap, 4);
+    expect(params("primary_loaded_lift", 4, "SPP", "18-35", 2, week)).toEqual(
+      params("primary_loaded_lift", 4, "SPP", "18-35", 2, 4)
+    );
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LOGGED SETS SURVIVE A LOWER PRESCRIPTION
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("normalizeSetCompletions", () => {
+  const empty = () => ({ completed: false, skipped: false });
+  const logged = (weight: number) => ({ completed: true, skipped: false, repsCompleted: 8, weight });
+
+  it("keeps sets that have logged data even above the prescribed count", () => {
+    const sets = [logged(100), logged(100), logged(105), logged(105)];
+    expect(normalizeSetCompletions(sets, 2)).toEqual(sets);
+  });
+
+  it("trims only trailing empty sets", () => {
+    const sets = [logged(100), logged(100), logged(105), empty(), empty()];
+    expect(normalizeSetCompletions(sets, 2)).toEqual(sets.slice(0, 3));
+  });
+
+  it("treats partially entered or skipped sets as logged", () => {
+    const sets = [empty(), empty(), { completed: false, skipped: false, weight: 95 }, { completed: false, skipped: true }];
+    expect(normalizeSetCompletions(sets, 2)).toHaveLength(4);
+  });
+
+  it("trims empty sets down to the prescription", () => {
+    expect(normalizeSetCompletions([empty(), empty(), empty(), empty()], 2)).toHaveLength(2);
+  });
+
+  it("pads up to the prescription and keeps at least one set", () => {
+    expect(normalizeSetCompletions([logged(100)], 3)).toHaveLength(3);
+    expect(normalizeSetCompletions([], 0)).toHaveLength(1);
   });
 });

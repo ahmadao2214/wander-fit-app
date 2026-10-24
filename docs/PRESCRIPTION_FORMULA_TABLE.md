@@ -149,7 +149,7 @@ Used for category `4`.
 
 ## Week Dimension (Weekly Wave)
 
-Every value above is the **peak week** prescription. Each phase runs a four-step wave: intro → build → peak → deload. The athlete's week in the phase is mapped to a template week (1-4) by `mapUserWeekToTemplateWeek` (`convex/weekMapping.ts`), so the last week of any phase length (2-8 weeks) is always the deload. Runtime scaling takes that template week (`template.week`) and applies `WEEKLY_WAVE` on top of the profile formulas above:
+Every value above is the **peak week** prescription. Each phase runs a four-step wave: intro → build → peak → deload. The athlete's week in the phase is mapped to a template week (1-4) by `mapUserWeekToTemplateWeek` (`convex/weekMapping.ts`), so the last week of any phase length (2-8 weeks) is always the deload. The wave follows the **slot**, not the template: `getSlotTemplateWeek` finds the first slot the template occupies, counting swaps in `user_schedule_overrides`, and maps that slot's week. That way a peak workout swapped into the last week is still prescribed as a deload. `startSession` stores the result as `scalingSnapshot.templateWeek`, so a session keeps the week it started in. Sessions started before the wave existed have no `templateWeek` and keep the peak prescription. Runtime scaling applies `WEEKLY_WAVE` on top of the profile formulas above:
 
 | Template Week | Focus | Sets | % of 1RM (strength track) | RPE Target |
 |---------------|-------|------|---------------------------|------------|
