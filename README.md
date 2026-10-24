@@ -16,6 +16,7 @@
 - [Project Structure](#project-structure)
 - [Setup Instructions](#setup-instructions)
 - [Convex Backend](#convex-backend)
+- [Clerk user cleanup](#clerk-user-cleanup)
 - [Key Features](#key-features)
 - [Component Architecture](#component-architecture)
 - [State Management](#state-management)
@@ -195,6 +196,17 @@ export const getClientWorkouts = query({
   }
 });
 ```
+
+## 🧹 Clerk user cleanup
+
+The Clerk Development instance has a hard 100-user cap; once it's full, nobody can sign up.
+To clear out test and abandoned accounts in bulk:
+
+1. Add the Development secret key (`sk_test_...`, Clerk dashboard → WanderFit → Development → API keys) to `.env.local` as `CLERK_SECRET_KEY`. Never commit it.
+2. `npx tsx scripts/clerk-cleanup.ts` does a dry run: it lists every user, flags likely junk (`+clerk_test` / `@example.com` / test-like emails, no sign-in after sign-up, no verified email) and shows the count against the cap.
+3. `--delete` removes all flagged users, `--pick` lets you choose by number, and `--keep <email>` protects an account, and `--skip-convex-users` leaves anyone with a Convex `users` row alone. Both delete modes require typing a confirmation phrase.
+
+`claude-test-1792639039+clerk_test@example.com` (shared automated-test account) is always kept. Deleting from Clerk leaves rows in the Convex `users` table; the script reports them but doesn't touch Convex. Details and the proposed Convex cleanup are in [docs/CLERK_USER_CLEANUP.md](docs/CLERK_USER_CLEANUP.md).
 
 ## ✨ Key Features
 
