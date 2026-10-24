@@ -1,9 +1,11 @@
-import { query, mutation } from "./_generated/server";
+import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { Doc, Id } from "./_generated/dataModel";
 
+// Every function here is internal: run it from the Convex dashboard or `npx convex run`, never from the app.
+
 // Temporary debug query to find users by email pattern
-export const searchUsersByEmail = query({
+export const searchUsersByEmail = internalQuery({
   args: {},
   handler: async (ctx) => {
     const allUsers = await ctx.db.query("users").collect();
@@ -22,7 +24,7 @@ export const searchUsersByEmail = query({
 });
 
 // Create user for testing/debugging (admin only)
-export const createUserForClerkId = mutation({
+export const createUserForClerkId = internalMutation({
   args: {
     clerkId: v.string(),
     email: v.string(),
@@ -54,7 +56,7 @@ export const createUserForClerkId = mutation({
 });
 
 // Search users by email pattern
-export const searchUsersByPattern = query({
+export const searchUsersByPattern = internalQuery({
   args: { pattern: v.string() },
   handler: async (ctx, args) => {
     const allUsers = await ctx.db.query("users").collect();
@@ -91,7 +93,7 @@ export const searchUsersByPattern = query({
 });
 
 // Get all data for a specific user
-export const getUserData = query({
+export const getUserData = internalQuery({
   args: { clerkId: v.string() },
   handler: async (ctx, args) => {
     // Find user by clerkId
@@ -136,7 +138,7 @@ export const getUserData = query({
 });
 
 // Look up a user directly by document ID
-export const getUserById = query({
+export const getUserById = internalQuery({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId);
@@ -152,7 +154,7 @@ export const getUserById = query({
 });
 
 // Inspect sessions and overrides for a user (migration debugging)
-export const inspectUserSessions = query({
+export const inspectUserSessions = internalQuery({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
     const programId = (await ctx.db
@@ -256,7 +258,7 @@ export const inspectUserSessions = query({
 });
 
 // Fix user's intake/onboarding state
-export const fixUserOnboardingState = mutation({
+export const fixUserOnboardingState = internalMutation({
   args: {
     userId: v.id("users"),
     action: v.union(
@@ -319,7 +321,7 @@ export const fixUserOnboardingState = mutation({
  *
  * Usage: npx convex run debug:setupReassessmentTest '{"userEmail": "sebianmagrow@icloud.com"}'
  */
-export const setupReassessmentTest = mutation({
+export const setupReassessmentTest = internalMutation({
   args: {
     userEmail: v.string(),
   },
@@ -554,7 +556,7 @@ export const setupReassessmentTest = mutation({
  *
  * Usage: npx convex run debug:setupReassessmentBlocked '{"userEmail": "sebianmagrow@icloud.com"}' --prod
  */
-export const setupReassessmentBlocked = mutation({
+export const setupReassessmentBlocked = internalMutation({
   args: {
     userEmail: v.string(),
   },

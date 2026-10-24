@@ -1,5 +1,21 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import type { QueryCtx } from "./_generated/server";
+import { requireCurrentUser, requireTrainer } from "./authHelpers";
+
+// The email invitations are matched on: Clerk's verified email when the token
+// carries one, otherwise the email stored on the caller's users row.
+async function getCallerEmail(ctx: QueryCtx): Promise<string | null> {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) return null;
+  if (identity.email) return identity.email;
+
+  const user = await ctx.db
+    .query("users")
+    .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
+    .first();
+  return user?.email ?? null;
+}
 
 // Create a client invitation (instead of creating the user directly)
 export const createClientInvitation = mutation({
@@ -9,10 +25,9 @@ export const createClientInvitation = mutation({
     trainerId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    // Verify the trainer exists and has the right role
-    const trainer = await ctx.db.get(args.trainerId);
-    if (!trainer || trainer.role !== "trainer") {
-      throw new Error("Invalid trainer");
+    const trainer = await requireTrainer(ctx);
+    if (trainer._id !== args.trainerId) {
+      throw new Error("You can only send invitations as yourself");
     }
 
     // Check if there's already an invitation for this email
@@ -52,6 +67,11 @@ export const createClientInvitation = mutation({
 export const getTrainerInvitations = query({
   args: { trainerId: v.id("users") },
   handler: async (ctx, args) => {
+    const trainer = await requireTrainer(ctx);
+    if (trainer._id !== args.trainerId) {
+      throw new Error("You can only view your own invitations");
+    }
+
     return await ctx.db
       .query("clientInvitations")
       .filter((q) => q.eq(q.field("trainerId"), args.trainerId))
@@ -60,15 +80,22 @@ export const getTrainerInvitations = query({
   },
 });
 
-// Get invitation by email (for when client signs up)
+// Get the pending invitation for the signed-in user's email (for when client
+// signs up). Returns null for any other email, so it can't be used to probe
+// who has been invited.
 export const getInvitationByEmail = query({
   args: { email: v.string() },
   handler: async (ctx, args) => {
+    const callerEmail = await getCallerEmail(ctx);
+    if (!callerEmail || callerEmail.toLowerCase() !== args.email.toLowerCase()) {
+      return null;
+    }
+
     return await ctx.db
       .query("clientInvitations")
       .filter((q) => 
         q.and(
-          q.eq(q.field("email"), args.email),
+          q.eq(q.field("email"), callerEmail),
           q.eq(q.field("status"), "pending")
         )
       )
@@ -76,18 +103,26 @@ export const getInvitationByEmail = query({
   },
 });
 
-// Accept invitation (called during client signup)
+// Accept invitation (called during client signup). The invitation is looked
+// up by the caller's own email; `email` is kept in args for older app builds.
 export const acceptInvitation = mutation({
   args: {
     email: v.string(),
     clientId: v.id("users"),
   },
   handler: async (ctx, args) => {
+    const user = await requireCurrentUser(ctx);
+    if (user._id !== args.clientId) {
+      throw new Error("You can only accept invitations for yourself");
+    }
+
+    const callerEmail = (await getCallerEmail(ctx)) ?? user.email;
+
     const invitation = await ctx.db
       .query("clientInvitations")
       .filter((q) => 
         q.and(
-          q.eq(q.field("email"), args.email),
+          q.eq(q.field("email"), callerEmail),
           q.eq(q.field("status"), "pending")
         )
       )
@@ -131,9 +166,15 @@ export const acceptInvitation = mutation({
 export const cancelInvitation = mutation({
   args: { invitationId: v.id("clientInvitations") },
   handler: async (ctx, args) => {
+    const trainer = await requireTrainer(ctx);
+
     const invitation = await ctx.db.get(args.invitationId);
     if (!invitation) {
       throw new Error("Invitation not found");
+    }
+
+    if (invitation.trainerId !== trainer._id) {
+      throw new Error("You can only cancel your own invitations");
     }
 
     await ctx.db.patch(args.invitationId, {

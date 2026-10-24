@@ -1,8 +1,10 @@
-import { mutation } from "./_generated/server";
+import { internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 
+// Every function here is internal: run it from the Convex dashboard or `npx convex run`, never from the app.
+
 // Sample data creation script for development/testing
-export const createSampleData = mutation({
+export const createSampleData = internalMutation({
   args: {},
   handler: async (ctx) => {
     // Check if sample data already exists
@@ -264,7 +266,7 @@ export const createSampleData = mutation({
 });
 
 // Clear all sample data (for testing)
-export const clearSampleData = mutation({
+export const clearSampleData = internalMutation({
   args: {},
   handler: async (ctx) => {
     // Delete in reverse order of dependencies
@@ -301,7 +303,7 @@ export const clearSampleData = mutation({
 });
 
 // Get summary of current data (for testing)
-export const getDataSummary = mutation({
+export const getDataSummary = internalMutation({
   args: {},
   handler: async (ctx) => {
     const users = await ctx.db.query("users").collect();

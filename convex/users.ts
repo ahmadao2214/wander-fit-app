@@ -1,5 +1,10 @@
-import { mutation, query } from "./_generated/server";
+import { internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import {
+  getCurrentUser as getCurrentUserDoc,
+  requireCurrentUser,
+  requireTrainer,
+} from "./authHelpers";
 
 // Create a new user after Clerk authentication
 export const createUser = mutation({
@@ -11,6 +16,15 @@ export const createUser = mutation({
     trainerId: v.optional(v.id("users")), // only for clients
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+    // clerkId is kept in args for older app builds, but must be the caller's own
+    if (args.clerkId !== identity.subject) {
+      throw new Error("Cannot create a user for another account");
+    }
+
     // Check if user already exists
     const existingUser = await ctx.db
       .query("users")
@@ -30,7 +44,8 @@ export const createUser = mutation({
     }
 
     const userId = await ctx.db.insert("users", {
-      email: args.email,
+      // Prefer Clerk's verified email so invitations can't be claimed by spoofing it
+      email: identity.email ?? args.email,
       name: args.name,
       role: args.role,
       clerkId: args.clerkId,
@@ -53,27 +68,30 @@ export const createUser = mutation({
   },
 });
 
-// Get current user by Clerk ID
+// Get the signed-in user. clerkId is accepted for older app builds; any other
+// account's ID returns null rather than that account's record.
 export const getCurrentUser = query({
-  args: { clerkId: v.string() },
+  args: { clerkId: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    return await ctx.db
-      .query("users")
-      .withIndex("by_clerk", (q) => q.eq("clerkId", args.clerkId))
-      .first();
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    if (args.clerkId !== undefined && args.clerkId !== identity.subject) {
+      return null;
+    }
+    return await getCurrentUserDoc(ctx);
   },
 });
 
-// Get user by ID
-export const getUserById = query({
+// Get user by ID (internal: no client caller, and it returns any user's record)
+export const getUserById = internalQuery({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.userId);
   },
 });
 
-// Get all trainers (for client signup)
-export const getTrainers = query({
+// Get all trainers (internal: no client caller, and it lists every trainer's email)
+export const getTrainers = internalQuery({
   args: {},
   handler: async (ctx) => {
     return await ctx.db
@@ -87,6 +105,11 @@ export const getTrainers = query({
 export const getTrainerClients = query({
   args: { trainerId: v.id("users") },
   handler: async (ctx, args) => {
+    const trainer = await requireTrainer(ctx);
+    if (trainer._id !== args.trainerId) {
+      throw new Error("You can only view your own clients");
+    }
+
     // Get active relationships
     const relationships = await ctx.db
       .query("trainerClientRelationships")
@@ -110,8 +133,8 @@ export const getTrainerClients = query({
   },
 });
 
-// Get client's trainer
-export const getClientTrainer = query({
+// Get client's trainer (internal: no client caller)
+export const getClientTrainer = internalQuery({
   args: { clientId: v.id("users") },
   handler: async (ctx, args) => {
     const client = await ctx.db.get(args.clientId);
@@ -126,6 +149,8 @@ export const getClientTrainer = query({
 export const getUnassignedClients = query({
   args: {},
   handler: async (ctx) => {
+    await requireTrainer(ctx);
+
     return await ctx.db
       .query("users")
       .filter((q) => 
@@ -146,6 +171,11 @@ export const updateUser = mutation({
     email: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await requireCurrentUser(ctx);
+    if (user._id !== args.userId) {
+      throw new Error("You can only update your own profile");
+    }
+
     const { userId, ...updates } = args;
     const updateData = Object.fromEntries(
       Object.entries(updates).filter(([_, value]) => value !== undefined)
@@ -167,6 +197,11 @@ export const requestTrainerRelationship = mutation({
     trainerId: v.id("users"),
   },
   handler: async (ctx, args) => {
+    const caller = await requireCurrentUser(ctx);
+    if (caller._id !== args.clientId) {
+      throw new Error("You can only request a trainer for yourself");
+    }
+
     // Verify client and trainer exist and have correct roles
     const [client, trainer] = await Promise.all([
       ctx.db.get(args.clientId),
@@ -215,6 +250,11 @@ export const connectExistingClient = mutation({
     trainerId: v.id("users"),
   },
   handler: async (ctx, args) => {
+    const caller = await requireTrainer(ctx);
+    if (caller._id !== args.trainerId) {
+      throw new Error("You can only connect clients to yourself");
+    }
+
     // Verify client and trainer exist and have correct roles
     const [client, trainer] = await Promise.all([
       ctx.db.get(args.clientId),
@@ -273,9 +313,15 @@ export const approveTrainerRelationship = mutation({
     approve: v.boolean(),
   },
   handler: async (ctx, args) => {
+    const trainer = await requireTrainer(ctx);
+
     const relationship = await ctx.db.get(args.relationshipId);
     if (!relationship) {
       throw new Error("Relationship not found");
+    }
+
+    if (relationship.trainerId !== trainer._id) {
+      throw new Error("You can only approve requests sent to you");
     }
 
     if (relationship.status !== "pending") {
