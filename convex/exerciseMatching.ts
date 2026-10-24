@@ -356,6 +356,35 @@ export function buildExerciseModeVariants<T extends ExerciseLike>(
   };
 }
 
+// Warmups are short prep drills; swapping them for another equipment mode
+// (e.g. Hollow Body Hold -> a loaded carry) hurts more than it helps.
+export function buildPrescriptionModeVariants<T extends ExerciseLike>(
+  prescription: { section?: string },
+  exercise: T,
+  allExercises: T[],
+): ExerciseModeVariants<T> {
+  if (prescription.section === "warmup") {
+    return {
+      gym: exercise,
+      home: exercise,
+      sourceMode: inferEquipmentMode(exercise),
+      hasAlternative: false,
+    };
+  }
+
+  return buildExerciseModeVariants(exercise, allExercises);
+}
+
+// The exercise an athlete actually does for a prescription in the given mode.
+export function resolvePrescriptionExercise<T extends ExerciseLike>(
+  prescription: { section?: string },
+  exercise: T,
+  allExercises: T[],
+  mode: EquipmentMode,
+): T {
+  return buildPrescriptionModeVariants(prescription, exercise, allExercises)[mode] ?? exercise;
+}
+
 export function buildExerciseAudit<T extends ExerciseLike>(
   exercises: T[],
 ): ExerciseAuditGroup<T>[] {

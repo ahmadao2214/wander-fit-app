@@ -18,12 +18,9 @@ import {
   normalizeAgeGroup,
 } from "./intensityScaling";
 import {
-  buildExerciseModeVariants,
-  inferEquipmentMode,
+  buildPrescriptionModeVariants,
   normalizeEquipmentMode,
   type EquipmentMode,
-  type ExerciseLike,
-  type ExerciseModeVariants,
 } from "./exerciseMatching";
 
 /**
@@ -67,25 +64,6 @@ const exercisePrescriptionValidator = v.object({
   orderIndex: v.number(),
   superset: v.optional(v.string()), // "A", "B"
 });
-
-// Warmups are short prep drills; swapping them for another equipment mode
-// (e.g. Hollow Body Hold -> a loaded carry) hurts more than it helps.
-export function buildPrescriptionModeVariants<T extends ExerciseLike>(
-  prescription: { section?: string },
-  exercise: T,
-  allExercises: T[],
-): ExerciseModeVariants<T> {
-  if (prescription.section === "warmup") {
-    return {
-      gym: exercise,
-      home: exercise,
-      sourceMode: inferEquipmentMode(exercise),
-      hasAlternative: false,
-    };
-  }
-
-  return buildExerciseModeVariants(exercise, allExercises);
-}
 
 export function selectActiveEquipmentVariant<T>(
   activeEquipmentMode: EquipmentMode,

@@ -2,12 +2,11 @@ import { describe, expect, it } from "vitest";
 import { EXERCISES } from "../seedData";
 import {
   buildExerciseModeVariants,
-  normalizeEquipmentMode,
-} from "../exerciseMatching";
-import {
   buildPrescriptionModeVariants,
-  selectActiveEquipmentVariant,
-} from "../programTemplates";
+  normalizeEquipmentMode,
+  resolvePrescriptionExercise,
+} from "../exerciseMatching";
+import { selectActiveEquipmentVariant } from "../programTemplates";
 
 const getExercise = (slug: string) => {
   const exercise = EXERCISES.find((entry) => entry.slug === slug);
@@ -48,6 +47,16 @@ describe("programTemplates equipment variants", () => {
       expect(variants.home?.slug).toBe("push_up");
       expect(variants.hasAlternative).toBe(true);
     }
+  });
+
+  it("resolves the exercise an athlete does for a prescription in each mode", () => {
+    const bench = getExercise("bench_press");
+    const carry = getExercise("farmers_carry");
+
+    expect(resolvePrescriptionExercise({ section: "main" }, bench, EXERCISES, "home").slug).toBe("push_up");
+    expect(resolvePrescriptionExercise({ section: "main" }, bench, EXERCISES, "gym").slug).toBe("bench_press");
+    expect(resolvePrescriptionExercise({ section: "warmup" }, bench, EXERCISES, "home").slug).toBe("bench_press");
+    expect(resolvePrescriptionExercise({ section: "main" }, carry, EXERCISES, "home").slug).toBe("farmers_carry");
   });
 
   it("selects the active home variant when one exists", () => {

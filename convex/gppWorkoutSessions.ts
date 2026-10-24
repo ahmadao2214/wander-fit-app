@@ -20,8 +20,10 @@ import {
 } from "./intensityScaling";
 import {
   normalizeEquipmentMode,
+  resolvePrescriptionExercise,
   type EquipmentMode,
 } from "./exerciseMatching";
+import type { Id } from "./_generated/dataModel";
 
 /**
  * GPP Workout Sessions - Execution Tracking
@@ -233,6 +235,18 @@ function normalizeSetCompletions<
   ];
 }
 
+// Template-aligned ids of the exercises the athlete is doing. Sessions without
+// a usable snapshot (started before equipment swaps, or whose template has
+// since changed shape) fall back to the template exercises.
+export function resolveSessionExerciseIds(
+  templateExercises: { exerciseId: Id<"exercises"> }[],
+  activeExerciseIds?: Id<"exercises">[],
+): Id<"exercises">[] {
+  return activeExerciseIds && activeExerciseIds.length === templateExercises.length
+    ? activeExerciseIds
+    : templateExercises.map((ex) => ex.exerciseId);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // QUERIES
 // ─────────────────────────────────────────────────────────────────────────────
@@ -377,8 +391,15 @@ export const getById = query({
       return { ...session, template: null, exerciseDetails: [] };
     }
 
-    // Fetch all exercise details
-    const exerciseIds = template.exercises.map((e) => e.exerciseId);
+    const activeExerciseIds = resolveSessionExerciseIds(
+      template.exercises,
+      session.activeExerciseIds,
+    );
+
+    // Fetch all exercise details (template sources and equipment swaps)
+    const exerciseIds = [
+      ...new Set([...template.exercises.map((e) => e.exerciseId), ...activeExerciseIds]),
+    ];
     const exercises = await Promise.all(
       exerciseIds.map((id) => ctx.db.get(id))
     );
@@ -386,6 +407,17 @@ export const getById = query({
     const exerciseMap = new Map(
       exercises.filter(Boolean).map((ex) => [ex!._id.toString(), ex!])
     );
+
+    const withEquipmentSwap = <S extends object>(scaled: S, index: number) => {
+      const prescription = template.exercises[index];
+      return {
+        ...scaled,
+        exerciseId: activeExerciseIds[index],
+        sourceExerciseId: prescription.exerciseId,
+        sourceExercise: exerciseMap.get(prescription.exerciseId.toString()),
+        isEquipmentSwapped: activeExerciseIds[index] !== prescription.exerciseId,
+      };
+    };
 
     // Get user's 1RM records for intensity scaling
     let userMaxMap: Record<string, number> = {};
@@ -407,9 +439,9 @@ export const getById = query({
       const ageGroup = normalizeAgeGroup(rawAgeGroup);
       const experienceBucket = getExperienceBucket(yearsOfExperience);
 
-      const scaledExercises = template.exercises.map((prescription) => {
-        const exercise = exerciseMap.get(prescription.exerciseId.toString());
-        const oneRepMax = userMaxMap[prescription.exerciseId.toString()];
+      const scaledExercises = template.exercises.map((prescription, index) => {
+        const exercise = exerciseMap.get(activeExerciseIds[index].toString());
+        const oneRepMax = userMaxMap[activeExerciseIds[index].toString()];
 
         // Detect exercise focus
         const exerciseFocus = getExerciseFocus(exercise?.tags, exercise?.equipment);
@@ -476,7 +508,7 @@ export const getById = query({
             exerciseFocus,
           };
         }
-      });
+      }).map(withEquipmentSwap);
 
       const normalizedSessionExercises = session.exercises.map((exerciseCompletion, index) => {
         const scaledExercise = scaledExercises[index];
@@ -512,9 +544,9 @@ export const getById = query({
     const bwConfig = BODYWEIGHT_INTENSITY_CONFIG[intensity];
     const avgPercent = (config.oneRepMaxPercent.min + config.oneRepMaxPercent.max) / 2;
 
-    const scaledExercises = template.exercises.map((prescription) => {
-      const exercise = exerciseMap.get(prescription.exerciseId.toString());
-      const oneRepMax = userMaxMap[prescription.exerciseId.toString()];
+    const scaledExercises = template.exercises.map((prescription, index) => {
+      const exercise = exerciseMap.get(activeExerciseIds[index].toString());
+      const oneRepMax = userMaxMap[activeExerciseIds[index].toString()];
       const isBW = isBodyweightExercise(exercise?.equipment);
 
       // Parse original reps to number for weighted exercises
@@ -575,7 +607,7 @@ export const getById = query({
           hasOneRepMax: !!oneRepMax,
         };
       }
-    });
+    }).map(withEquipmentSwap);
 
     const normalizedSessionExercises = session.exercises.map((exerciseCompletion, index) => {
       const scaledExercise = scaledExercises[index];
@@ -1092,20 +1124,31 @@ export const startSession = mutation({
       yearsOfExperience: intake?.yearsOfExperience ?? 0,
     };
 
-    const exerciseIds = template.exercises.map((ex) => ex.exerciseId);
-    const exercises = await Promise.all(
-      exerciseIds.map((id) => ctx.db.get(id))
+    const equipmentMode = resolveSessionEquipmentMode(
+      args.equipmentMode,
+      userProgram.equipmentMode,
     );
-    const exerciseMap = new Map(
-      exercises.filter(Boolean).map((ex) => [ex!._id.toString(), ex!])
+
+    // Resolve the exercise the athlete will actually do for each prescription
+    // in this mode (e.g. Bench Press -> Push-Up at home).
+    const allExercises = await ctx.db.query("exercises").collect();
+    const exerciseMap = new Map(allExercises.map((ex) => [ex._id.toString(), ex]));
+    const activeExercises = template.exercises.map((ex) => {
+      const source = exerciseMap.get(ex.exerciseId.toString());
+      return source
+        ? resolvePrescriptionExercise(ex, source, allExercises, equipmentMode)
+        : undefined;
+    });
+    const activeExerciseIds = template.exercises.map(
+      (ex, index) => activeExercises[index]?._id ?? ex.exerciseId,
     );
 
     // Initialize exercise tracking structure using scaled set counts when available.
-    const initialExercises = template.exercises.map((ex) => {
+    const initialExercises = template.exercises.map((ex, index) => {
       let prescribedSets = ex.sets;
 
       if (scalingSnapshot) {
-        const exercise = exerciseMap.get(ex.exerciseId.toString());
+        const exercise = activeExercises[index];
         const exerciseFocus = getExerciseFocus(exercise?.tags, exercise?.equipment);
         const params = getCategoryExerciseParameters(
           scalingSnapshot.categoryId as CategoryId,
@@ -1120,7 +1163,7 @@ export const startSession = mutation({
       }
 
       return {
-        exerciseId: ex.exerciseId,
+        exerciseId: activeExerciseIds[index],
         completed: false,
         skipped: false,
         sets: buildEmptySetCompletions(prescribedSets),
@@ -1128,10 +1171,6 @@ export const startSession = mutation({
     });
 
     const now = Date.now();
-    const equipmentMode = resolveSessionEquipmentMode(
-      args.equipmentMode,
-      userProgram.equipmentMode,
-    );
 
     const sessionId = await ctx.db.insert("gpp_workout_sessions", {
       userId: user._id,
@@ -1143,6 +1182,7 @@ export const startSession = mutation({
       exerciseOrder: args.exerciseOrder,
       targetIntensity: args.targetIntensity,
       equipmentMode,
+      activeExerciseIds,
       scalingSnapshot,
       templateSnapshot: {
         name: template.name,

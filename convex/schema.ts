@@ -422,6 +422,11 @@ export default defineSchema({
     // Snapshot of the user's training environment when session started
     equipmentMode: v.optional(equipmentModeValidator),
 
+    // Exercise actually done for each template prescription (same order as
+    // template.exercises), resolved for equipmentMode at start. Snapshotted so
+    // the swap stays stable if matching rules or the preference change later.
+    activeExerciseIds: v.optional(v.array(v.id("exercises"))),
+
     // Exercise completion tracking
     exercises: v.array(v.object({
       exerciseId: v.id("exercises"),

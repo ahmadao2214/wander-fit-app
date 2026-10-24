@@ -563,6 +563,14 @@ Behavior:
 2. Otherwise fall back to `user_programs.equipmentMode`.
 3. Store the final mode on the session document.
 4. Include it in any session snapshot data returned to the UI.
+5. Resolve the exercise for each prescription in that mode, using the same rules as `getWorkoutWithScaling` (`resolvePrescriptionExercise`; warmups never swap). Store the result as `activeExerciseIds`, in the same order as `template.exercises`. Initialize `session.exercises` with these ids and size the sets from the swapped exercise.
+
+### `gppWorkoutSessions.getById`
+
+1. Read `session.activeExerciseIds`. Fall back to the template's exercise ids when the snapshot is missing or its length doesn't match the template.
+2. Scale each prescription with the swapped exercise, including its 1RM.
+3. Return `exerciseId` as the exercise the athlete is doing, plus `sourceExerciseId`, `sourceExercise` and `isEquipmentSwapped`.
+4. The swap is snapshotted at start, so changing the stored preference or the matching rules mid-session doesn't change it.
 
 ## Frontend proposal
 
