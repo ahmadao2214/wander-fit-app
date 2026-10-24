@@ -367,6 +367,93 @@ describe("invitations", () => {
     expect(trainerId).toBe(ids.trainer);
   });
 
+  it("never matches on the editable users.email", async () => {
+    const { t, invitationId } = await setupWithInvitation();
+    // No email claim in the token; the caller sets their profile email to the invitee's
+    const asNoClaim = t.withIdentity({ subject: "clerk_no_claim" });
+    const userId = await asNoClaim.mutation(api.users.createUser, {
+      email: "invitee@example.com",
+      name: "Impostor",
+      role: "client",
+      clerkId: "clerk_no_claim",
+    });
+
+    expect(
+      await asNoClaim.query(api.invitations.getInvitationByEmail, { email: "invitee@example.com" })
+    ).toBeNull();
+    expect(
+      await asNoClaim.mutation(api.invitations.acceptInvitation, {
+        email: "invitee@example.com",
+        clientId: userId,
+      })
+    ).toBeNull();
+    const invitation = await t.run((ctx) => ctx.db.get(invitationId));
+    expect(invitation?.status).toBe("pending");
+  });
+
+  it("ignores an email claim marked unverified", async () => {
+    const { t } = await setupWithInvitation();
+    const asUnverified = t.withIdentity({
+      subject: "clerk_unverified",
+      email: "invitee@example.com",
+      emailVerified: false,
+    });
+    expect(
+      await asUnverified.query(api.invitations.getInvitationByEmail, { email: "invitee@example.com" })
+    ).toBeNull();
+  });
+
+  it("stores new invitations with a normalized email", async () => {
+    const { t, asTrainer, ids } = await setup();
+    const invitationId = await asTrainer.mutation(api.invitations.createClientInvitation, {
+      email: "  Alex@Example.com ",
+      name: "Alex",
+      trainerId: ids.trainer,
+    });
+    const invitation = await t.run((ctx) => ctx.db.get(invitationId));
+    expect(invitation?.email).toBe("alex@example.com");
+
+    await expect(
+      asTrainer.mutation(api.invitations.createClientInvitation, {
+        email: "ALEX@example.com",
+        name: "Alex",
+        trainerId: ids.trainer,
+      })
+    ).rejects.toThrow("An invitation has already been sent to this email");
+  });
+
+  it("matches older mixed-case invitations case-insensitively", async () => {
+    const { t, ids } = await setup();
+    const invitationId = await t.run((ctx) =>
+      ctx.db.insert("clientInvitations", {
+        email: "Alex@Example.com",
+        name: "Alex",
+        trainerId: ids.trainer,
+        status: "pending",
+        createdAt: Date.now(),
+        expiresAt: Date.now() + 60_000,
+      })
+    );
+    const asAlex = t.withIdentity({ subject: "clerk_alex", email: "alex@example.com" });
+
+    const found = await asAlex.query(api.invitations.getInvitationByEmail, {
+      email: "Alex@Example.com",
+    });
+    expect(found?._id).toBe(invitationId);
+
+    const alexId = await asAlex.mutation(api.users.createUser, {
+      email: "Alex@Example.com",
+      name: "Alex",
+      role: "client",
+      clerkId: "clerk_alex",
+    });
+    const trainerId = await asAlex.mutation(api.invitations.acceptInvitation, {
+      email: "Alex@Example.com",
+      clientId: alexId,
+    });
+    expect(trainerId).toBe(ids.trainer);
+  });
+
   it("cancelInvitation is only for the inviting trainer", async () => {
     const { t, asOtherTrainer, asTrainer, invitationId } = await setupWithInvitation();
     await expect(t.mutation(api.invitations.cancelInvitation, { invitationId })).rejects.toThrow(

@@ -3,18 +3,29 @@ import { v } from "convex/values";
 import type { QueryCtx } from "./_generated/server";
 import { requireCurrentUser, requireTrainer } from "./authHelpers";
 
-// The email invitations are matched on: Clerk's verified email when the token
-// carries one, otherwise the email stored on the caller's users row.
+// Invitations are matched on lowercased, trimmed emails
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+// The email invitations are matched on: the email claim in the caller's Clerk
+// token. users.email is never used because the caller can edit it (createUser,
+// updateUser) and could set it to someone else's invited address.
 async function getCallerEmail(ctx: QueryCtx): Promise<string | null> {
   const identity = await ctx.auth.getUserIdentity();
-  if (!identity) return null;
-  if (identity.email) return identity.email;
+  if (!identity?.email || identity.emailVerified === false) return null;
+  return normalizeEmail(identity.email);
+}
 
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
-    .first();
-  return user?.email ?? null;
+// Pending invitations are scanned rather than looked up by the by_email index
+// because invitations created before emails were normalized keep their
+// original casing.
+async function findPendingInvitation(ctx: QueryCtx, email: string) {
+  const pending = await ctx.db
+    .query("clientInvitations")
+    .withIndex("by_status", (q) => q.eq("status", "pending"))
+    .collect();
+  return pending.find((invitation) => normalizeEmail(invitation.email) === email) ?? null;
 }
 
 // Create a client invitation (instead of creating the user directly)
@@ -30,10 +41,12 @@ export const createClientInvitation = mutation({
       throw new Error("You can only send invitations as yourself");
     }
 
+    const email = normalizeEmail(args.email);
+
     // Check if there's already an invitation for this email
     const existingInvitation = await ctx.db
       .query("clientInvitations")
-      .filter((q) => q.eq(q.field("email"), args.email))
+      .withIndex("by_email", (q) => q.eq("email", email))
       .first();
 
     if (existingInvitation) {
@@ -43,7 +56,7 @@ export const createClientInvitation = mutation({
     // Check if user already exists
     const existingUser = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .withIndex("by_email", (q) => q.eq("email", email))
       .first();
 
     if (existingUser) {
@@ -51,7 +64,7 @@ export const createClientInvitation = mutation({
     }
 
     const invitationId = await ctx.db.insert("clientInvitations", {
-      email: args.email,
+      email,
       name: args.name,
       trainerId: args.trainerId,
       status: "pending",
@@ -87,24 +100,17 @@ export const getInvitationByEmail = query({
   args: { email: v.string() },
   handler: async (ctx, args) => {
     const callerEmail = await getCallerEmail(ctx);
-    if (!callerEmail || callerEmail.toLowerCase() !== args.email.toLowerCase()) {
+    if (!callerEmail || callerEmail !== normalizeEmail(args.email)) {
       return null;
     }
 
-    return await ctx.db
-      .query("clientInvitations")
-      .filter((q) => 
-        q.and(
-          q.eq(q.field("email"), callerEmail),
-          q.eq(q.field("status"), "pending")
-        )
-      )
-      .first();
+    return await findPendingInvitation(ctx, callerEmail);
   },
 });
 
 // Accept invitation (called during client signup). The invitation is looked
-// up by the caller's own email; `email` is kept in args for older app builds.
+// up by the email in the caller's Clerk token; `email` is kept in args for
+// older app builds. Without an email claim there is nothing to accept.
 export const acceptInvitation = mutation({
   args: {
     email: v.string(),
@@ -116,17 +122,12 @@ export const acceptInvitation = mutation({
       throw new Error("You can only accept invitations for yourself");
     }
 
-    const callerEmail = (await getCallerEmail(ctx)) ?? user.email;
+    const callerEmail = await getCallerEmail(ctx);
+    if (!callerEmail) {
+      return null;
+    }
 
-    const invitation = await ctx.db
-      .query("clientInvitations")
-      .filter((q) => 
-        q.and(
-          q.eq(q.field("email"), callerEmail),
-          q.eq(q.field("status"), "pending")
-        )
-      )
-      .first();
+    const invitation = await findPendingInvitation(ctx, callerEmail);
 
     if (!invitation) {
       return null; // No invitation found, that's ok
