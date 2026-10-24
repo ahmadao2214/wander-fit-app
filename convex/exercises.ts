@@ -1,4 +1,4 @@
-import { query, mutation } from "./_generated/server";
+import { query, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 
 /**
@@ -102,7 +102,7 @@ export const getAllTags = query({
 /**
  * Create a new exercise (for seeding)
  */
-export const create = mutation({
+export const create = internalMutation({
   args: {
     name: v.string(),
     slug: v.string(),
@@ -138,7 +138,7 @@ export const create = mutation({
 /**
  * Upsert exercise by slug (for seeding - creates or updates)
  */
-export const upsertBySlug = mutation({
+export const upsertBySlug = internalMutation({
   args: {
     name: v.string(),
     slug: v.string(),
@@ -174,7 +174,7 @@ export const upsertBySlug = mutation({
 /**
  * Bulk insert exercises (for initial seeding)
  */
-export const bulkInsert = mutation({
+export const bulkInsert = internalMutation({
   args: {
     exercises: v.array(
       v.object({

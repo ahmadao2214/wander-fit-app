@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { canViewUserData, requireCurrentUser } from "./authHelpers";
 
 // Completed set schema
 const completedSetSchema = v.object({
@@ -403,9 +404,15 @@ export const getClientSessionHistory = query({
 export const getSessionById = query({
   args: { sessionId: v.id("workoutSessions") },
   handler: async (ctx, args) => {
+    const viewer = await requireCurrentUser(ctx);
+
     const session = await ctx.db.get(args.sessionId);
     if (!session) {
       throw new Error("Session not found");
+    }
+
+    if (!(await canViewUserData(ctx, viewer, session.clientId))) {
+      throw new Error("Not authorized to view this session");
     }
 
     const [workout, client] = await Promise.all([

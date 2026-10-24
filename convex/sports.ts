@@ -1,4 +1,4 @@
-import { query, mutation } from "./_generated/server";
+import { query, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 
 /**
@@ -119,7 +119,7 @@ export const getSportsGroupedByCategory = query({
 /**
  * Create a new sport
  */
-export const createSport = mutation({
+export const createSport = internalMutation({
   args: {
     name: v.string(),
     gppCategoryId: v.number(),
@@ -142,7 +142,7 @@ export const createSport = mutation({
 /**
  * Create a GPP category
  */
-export const createCategory = mutation({
+export const createCategory = internalMutation({
   args: {
     categoryId: v.number(),
     name: v.string(),
@@ -167,7 +167,7 @@ export const createCategory = mutation({
 /**
  * Bulk seed sports and categories
  */
-export const seedSportsAndCategories = mutation({
+export const seedSportsAndCategories = internalMutation({
   args: {
     categories: v.array(
       v.object({
