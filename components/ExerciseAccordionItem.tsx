@@ -4,6 +4,7 @@ import {
   XStack, 
   Text, 
   Card,
+  type ColorTokens,
 } from 'tamagui'
 import { 
   GripVertical,
@@ -61,7 +62,7 @@ interface ExerciseAccordionItemProps {
   drag?: () => void
   isActive?: boolean
   /** Intensity color token (e.g., "$intensityLow6", "$intensityMed6", "$intensityHigh6") */
-  intensityColor?: string
+  intensityColor?: ColorTokens
 }
 
 /**

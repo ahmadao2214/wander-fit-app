@@ -180,7 +180,7 @@ export function CalendarMonthView({
   return (
     <YStack flex={1} gap="$2">
       {/* Navigation header */}
-      <XStack alignItems="center" justifyContent="space-between" px="$2">
+      <XStack items="center" justify="space-between" px="$2">
         {/* Previous arrow - hidden at first month of program */}
         {isFirstMonth ? (
           <YStack width={32} height={32} />
@@ -194,7 +194,7 @@ export function CalendarMonthView({
           />
         )}
 
-        <XStack alignItems="center" gap="$2">
+        <XStack items="center" gap="$2">
           <Text fontSize="$4" fontWeight="600" color="$color12">
             {formatMonthYear(currentMonth)}
           </Text>
@@ -228,7 +228,7 @@ export function CalendarMonthView({
       {/* Day names header */}
       <XStack px="$2">
         {DAY_NAMES.map((day) => (
-          <YStack key={day} flex={1} alignItems="center">
+          <YStack key={day} flex={1} items="center">
             <Text fontSize={10} fontWeight="500" color="$color10">
               {day}
             </Text>

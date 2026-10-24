@@ -13,7 +13,9 @@
     "ios": "expo run:ios",
     "web": "expo start --web --clear",
     "test": "jest --watchAll",
-    "test:unit": "vitest run convex/__tests__",
+    "test:ci": "jest --ci",
+    "test:unit": "vitest run",
+    "typecheck": "tsc --noEmit",
     "audit:equipment": "bun run scripts/exercise-audit.ts"
   },
   "overrides": {
@@ -64,12 +66,15 @@
     "tamagui": "^1.139.2"
   },
   "devDependencies": {
+    "@edge-runtime/vm": "^5.0.0",
     "@expo/metro-runtime": "~6.1.2",
     "@tamagui/babel-plugin": "^1.139.2",
     "@tamagui/cli": "^1.139.2",
     "@tamagui/metro-plugin": "^1.139.2",
+    "@types/jest": "^29.5.14",
     "@types/node": "^24.10.1",
     "@types/react": "~19.1.10",
+    "convex-test": "0.0.41",
     "typescript": "~5.9.2",
     "vitest": "^4.0.15"
   }

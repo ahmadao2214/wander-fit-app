@@ -375,9 +375,9 @@ const WeeksDisplay = ({ weeks, sportName }: WeeksDisplayProps) => {
           {/* The connecting line */}
           <YStack
             position="absolute"
-            left={0}
-            right={0}
-            top={26}
+            l={0}
+            r={0}
+            t={26}
             height={4}
             bg="$primary"
             opacity={0.3}

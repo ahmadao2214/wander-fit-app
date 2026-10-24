@@ -5,6 +5,7 @@
  * 4 Categories × 3 Phases × 3 Skill Levels × 4 Weeks × 7 Days = 1,008 templates
  *
  * Run via Convex dashboard: generateTemplates.generateAllTemplates({})
+ * Every function here is internal: run it from the Convex dashboard or `npx convex run`, never from the app.
  *
  * Template Structure:
  * - Day 1: Lower Body A (Squat dominant)
@@ -27,7 +28,7 @@
  * - Week 4: Deload (60% volume)
  */
 
-import { mutation, query } from "./_generated/server";
+import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { generateWarmupPrescriptions } from "./warmupSequences";
@@ -989,7 +990,7 @@ export function generateTemplate(
  * Generate and seed all 1,008 templates
  * 4 Categories × 3 Phases × 3 Skill Levels × 4 Weeks × 7 Days = 1,008
  */
-export const generateAllTemplates = mutation({
+export const generateAllTemplates = internalMutation({
   args: {
     dryRun: v.optional(v.boolean()), // If true, just return count without inserting
   },
@@ -1103,7 +1104,7 @@ export const generateAllTemplates = mutation({
 /**
  * Generate templates for a specific category only
  */
-export const generateCategoryTemplates = mutation({
+export const generateCategoryTemplates = internalMutation({
   args: {
     categoryId: v.number(),
     dryRun: v.optional(v.boolean()),
@@ -1208,7 +1209,7 @@ export const generateCategoryTemplates = mutation({
 /**
  * Preview a single template (for review before bulk generation)
  */
-export const previewTemplate = query({
+export const previewTemplate = internalQuery({
   args: {
     categoryId: v.number(),
     phase: v.union(v.literal("GPP"), v.literal("SPP"), v.literal("SSP")),
@@ -1242,7 +1243,7 @@ export const previewTemplate = query({
 /**
  * Get generation status - how many templates exist vs expected
  */
-export const getGenerationStatus = query({
+export const getGenerationStatus = internalQuery({
   args: {},
   handler: async (ctx) => {
     const templates = await ctx.db.query("program_templates").collect();
@@ -1288,7 +1289,7 @@ export const getGenerationStatus = query({
  *   npx convex run generateTemplates:regenerateCategoryTemplates '{"categoryId": 3}'
  *   npx convex run generateTemplates:regenerateCategoryTemplates '{"categoryId": 4}'
  */
-export const regenerateCategoryTemplates = mutation({
+export const regenerateCategoryTemplates = internalMutation({
   args: {
     categoryId: v.number(),
   },
@@ -1377,7 +1378,7 @@ export const regenerateCategoryTemplates = mutation({
 /**
  * Clear all generated templates (for development - use with caution!)
  */
-export const clearAllTemplates = mutation({
+export const clearAllTemplates = internalMutation({
   args: {
     confirmClear: v.boolean(),
   },

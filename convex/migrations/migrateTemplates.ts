@@ -261,7 +261,7 @@ export const cleanupStaleOverrides = internalMutation({
 
       // Filter slotOverrides to remove entries pointing to deleted templates
       if (override.slotOverrides && override.slotOverrides.length > 0) {
-        const validSlotOverrides = [];
+        const validSlotOverrides: NonNullable<typeof override.slotOverrides> = [];
         for (const slot of override.slotOverrides) {
           const template = await ctx.db.get(slot.templateId);
           if (template) {

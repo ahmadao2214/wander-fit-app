@@ -1,4 +1,4 @@
-import { query, mutation } from "./_generated/server";
+import { query, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import {
   INTENSITY_CONFIG,
@@ -282,7 +282,7 @@ export const getCount = query({
 /**
  * Create a program template
  */
-export const create = mutation({
+export const create = internalMutation({
   args: {
     gppCategoryId: v.number(),
     phase: phaseValidator,
@@ -321,7 +321,7 @@ export const create = mutation({
 /**
  * Upsert a program template (for seeding - creates or updates)
  */
-export const upsert = mutation({
+export const upsert = internalMutation({
   args: {
     gppCategoryId: v.number(),
     phase: phaseValidator,
@@ -359,7 +359,7 @@ export const upsert = mutation({
 /**
  * Delete a template (for cleanup during development)
  */
-export const remove = mutation({
+export const remove = internalMutation({
   args: { templateId: v.id("program_templates") },
   handler: async (ctx, args) => {
     await ctx.db.delete(args.templateId);

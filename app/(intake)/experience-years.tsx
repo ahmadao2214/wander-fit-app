@@ -59,7 +59,7 @@ const VETERAN_STYLE = {
   color: '$yellow10',
   label: 'Veteran',
   description: 'A decade of dedication',
-}
+} as const
 
 // Trophy styling based on year index (0-9)
 // Earlier years = smaller/duller, later years = bigger/shinier
@@ -129,7 +129,7 @@ const TrophyCase = ({ years }: TrophyCaseProps) => {
     >
       {/* Shelf */}
       <YStack
-        minHeight={70}
+        minH={70}
         items="center"
         justify="flex-end"
       >

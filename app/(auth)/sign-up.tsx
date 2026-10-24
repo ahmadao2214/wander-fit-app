@@ -1,9 +1,9 @@
 import * as React from 'react'
-import { Platform, ScrollView, KeyboardAvoidingView, Keyboard } from 'react-native'
+import { Platform, ScrollView, KeyboardAvoidingView, Keyboard, View } from 'react-native'
 import { Text, Input, YStack, XStack, Button, RadioGroup, Label, Card, Spinner, styled } from 'tamagui'
 import { useSignUp, useSSO, useUser, useClerk } from '@clerk/clerk-expo'
 import { Link, useRouter } from 'expo-router'
-import { useMutation, useQuery } from 'convex/react'
+import { useConvexAuth, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import * as AuthSession from 'expo-auth-session'
 import { PublicOnlyRoute } from '../../components/AuthGuard'
@@ -11,6 +11,8 @@ import { useAuth } from '../../hooks/useAuth'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Zap, UserPlus, User, Users, Eye, EyeOff } from '@tamagui/lucide-icons'
 import { RadioButton } from '../../components/RadioButton'
+import { getVerificationErrorMessage } from '../../lib/signUpErrors'
+import { waitFor } from '../../lib/waitFor'
 import { GoogleIcon } from '../../components/GoogleIcon'
 import { VerificationCodeInput } from '../../components/VerificationCodeInput'
 
@@ -60,6 +62,15 @@ export default function SignUpScreen() {
   const router = useRouter()
   const createUser = useMutation(api.users.createUser)
   const acceptInvitation = useMutation(api.invitations.acceptInvitation)
+
+  // Convex functions check the caller's identity, so after setActive we wait
+  // for the new Clerk session's token to reach Convex before calling createUser
+  const { isAuthenticated: isConvexAuthenticated } = useConvexAuth()
+  const isConvexAuthenticatedRef = React.useRef(isConvexAuthenticated)
+  React.useEffect(() => {
+    isConvexAuthenticatedRef.current = isConvexAuthenticated
+  }, [isConvexAuthenticated])
+  const waitForConvexAuth = () => waitFor(() => isConvexAuthenticatedRef.current)
   
   const { needsSetup, isLoading: isAuthLoading } = useAuth()
 
@@ -88,12 +99,6 @@ export default function SignUpScreen() {
     }
   }, [clerkUser, needsSetup])
 
-  // Check for invitation when email changes
-  const invitation = useQuery(
-    api.invitations.getInvitationByEmail,
-    emailAddress ? { email: emailAddress } : "skip"
-  )
-
   // Handle completing setup for users who already have a Clerk account
   const onCompleteSetupPress = async () => {
     if (!clerkUser) return
@@ -102,6 +107,7 @@ export default function SignUpScreen() {
     setIsCreatingUser(true)
 
     try {
+      await waitForConvexAuth()
       const userId = await createUser({
         email: clerkUser.emailAddresses?.[0]?.emailAddress || emailAddress,
         name: name || `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || 'User',
@@ -110,7 +116,8 @@ export default function SignUpScreen() {
       })
 
       const userEmail = clerkUser.emailAddresses?.[0]?.emailAddress || emailAddress
-      if (invitation && role === 'client' && userEmail) {
+      // acceptInvitation is a no-op (returns null) when there is no pending invitation
+      if (role === 'client' && userEmail) {
         try {
           await acceptInvitation({
             email: userEmail,
@@ -179,7 +186,8 @@ export default function SignUpScreen() {
         
         if (signUpAttempt.status === 'complete') {
           await setActive!({ session: signUpAttempt.createdSessionId })
-          
+          await waitForConvexAuth()
+
           await createUser({
             email: signUp.emailAddress!,
             name: `${signUp.firstName || ''} ${signUp.lastName || ''}`.trim() || signUp.emailAddress!,
@@ -289,6 +297,7 @@ export default function SignUpScreen() {
 
     try {
       setIsCreatingUser(true)
+      setError('')
 
       const signUpAttempt = await signUp.attemptEmailAddressVerification({
         code,
@@ -298,6 +307,7 @@ export default function SignUpScreen() {
         await setActive({ session: signUpAttempt.createdSessionId })
 
         try {
+          await waitForConvexAuth()
           const userId = await createUser({
             email: emailAddress,
             name: name,
@@ -305,7 +315,8 @@ export default function SignUpScreen() {
             clerkId: signUpAttempt.createdUserId!,
           })
 
-          if (invitation && role === 'client') {
+          // acceptInvitation is a no-op (returns null) when there is no pending invitation
+          if (role === 'client') {
             try {
               await acceptInvitation({
                 email: emailAddress,
@@ -327,9 +338,14 @@ export default function SignUpScreen() {
         }
       } else {
         console.error(JSON.stringify(signUpAttempt, null, 2))
+        setError('Verification could not be completed. Please try again.')
+        setCode('')
       }
     } catch (err) {
       console.error(JSON.stringify(err, null, 2))
+      setError(getVerificationErrorMessage(err))
+      // Clearing the code stops the auto-submit effect from retrying the same failed code
+      setCode('')
     } finally {
       setIsCreatingUser(false)
     }
@@ -368,6 +384,14 @@ export default function SignUpScreen() {
                   We sent a verification code to{'\n'}{emailAddress}
                 </Subtitle>
               </YStack>
+
+              {error ? (
+                <Card bg="$errorLight" p="$3" rounded="$3">
+                  <Text color="$error" text="center" fontSize={14} fontFamily="$body">
+                    {error}
+                  </Text>
+                </Card>
+              ) : null}
 
               <YStack gap="$4">
                 <VerificationCodeInput
@@ -650,7 +674,6 @@ export default function SignUpScreen() {
                   hoverStyle={{ bg: '#f1f3f4', borderColor: '#c0c4c7' }}
                   pressStyle={{ bg: '#e8eaed', scale: 0.98 }}
                   icon={<GoogleIcon size={20} />}
-                  iconAfter={false}
                 >
                   Continue with Google
                 </Button>
@@ -735,9 +758,9 @@ export default function SignUpScreen() {
                     />
                     <XStack
                       position="absolute"
-                      right="$3"
-                      top={0}
-                      bottom={0}
+                      r="$3"
+                      t={0}
+                      b={0}
                       items="center"
                       justify="center"
                       onPress={() => setShowPassword(!showPassword)}
@@ -757,6 +780,9 @@ export default function SignUpScreen() {
                     </Text>
                   ) : null}
                 </YStack>
+
+                {/* Clerk bot protection renders its CAPTCHA here on web */}
+                {Platform.OS === 'web' && <View nativeID="clerk-captcha" />}
 
                 {/* Sign Up Button */}
                 <Button

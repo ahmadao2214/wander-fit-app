@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { getCurrentUser } from "./authHelpers";
 import {
   INTENSITY_CONFIG,
   BODYWEIGHT_INTENSITY_CONFIG,
@@ -360,8 +361,14 @@ export const getSessionForTemplate = query({
 export const getById = query({
   args: { sessionId: v.id("gpp_workout_sessions") },
   handler: async (ctx, args) => {
+    // Same "not found" result for someone else's session, so IDs can't be probed
+    const user = await getCurrentUser(ctx);
+    if (!user) {
+      return null;
+    }
+
     const session = await ctx.db.get(args.sessionId);
-    if (!session) {
+    if (!session || session.userId !== user._id) {
       return null;
     }
 
