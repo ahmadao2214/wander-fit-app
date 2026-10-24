@@ -2,6 +2,7 @@ import { YStack, XStack, Text, Card, Button, ScrollView, Spinner, styled } from 
 import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
+import { getLocalDayArgs } from '../../lib/streaks'
 import { SignOutButton } from '../../components/SignOutButton'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -108,7 +109,7 @@ export default function AthleteDashboard() {
   // Get progress summary
   const progress = useQuery(
     api.userPrograms.getProgressSummary,
-    user ? {} : "skip"
+    user ? getLocalDayArgs() : "skip"
   )
 
   // Get today's workout (with override support)
