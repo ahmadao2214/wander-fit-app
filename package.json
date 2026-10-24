@@ -15,7 +15,8 @@
     "test": "jest --watchAll",
     "test:ci": "jest --ci",
     "test:unit": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "audit:equipment": "bun run scripts/exercise-audit.ts"
   },
   "overrides": {
     "esbuild": "0.25.4"

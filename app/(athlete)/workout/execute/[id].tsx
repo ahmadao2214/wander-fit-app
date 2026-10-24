@@ -29,6 +29,7 @@ import { SetTracker } from '../../../../components/workout/SetTracker'
 import { InstructionsAccordion } from '../../../../components/workout/InstructionsAccordion'
 import { ExerciseQueue } from '../../../../components/workout/ExerciseQueue'
 import { ConfettiEffect } from '../../../../components/workout/ConfettiEffect'
+import { EquipmentModeBadge } from '../../../../components/workout/EquipmentModeBadge'
 import { WarmupSection, type WarmupExercise } from '../../../../components/workout/WarmupSection'
 import { WARMUP_PHASES } from '../../../../convex/warmupSequences'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -876,6 +877,12 @@ export default function WorkoutExecutionScreen() {
             </TimerDisplay>
           </XStack>
         </XStack>
+
+        {session?.equipmentMode && (
+          <XStack px="$4" pb="$2">
+            <EquipmentModeBadge mode={session.equipmentMode} />
+          </XStack>
+        )}
 
         {/* Main Content */}
         <ScrollView 
