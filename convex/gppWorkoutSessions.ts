@@ -1095,7 +1095,8 @@ export const startSession = mutation({
           scalingSnapshot.yearsOfExperience,
           exerciseFocus,
           exercise?.tags,
-          exercise?.equipment
+          exercise?.equipment,
+          template.week
         );
         prescribedSets = params.sets;
       }
