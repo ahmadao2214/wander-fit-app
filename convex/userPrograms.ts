@@ -1,6 +1,11 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { calculateWeeksPerPhase, DEFAULT_WEEKS_PER_PHASE } from "./weekMapping";
+import {
+  calculateAverageWorkoutsPerWeek,
+  calculateStreaks,
+  toLocalDateISO,
+} from "../lib/streaks";
 
 /**
  * User Programs - Active State Management
@@ -220,10 +225,18 @@ export const getWorkoutLookupParams = getCurrentProgramState;
  * 
  * HYBRID MODEL: Shows scheduled workout + unlocked phases for browsing
  * PROGRESS METRICS: Completion (days/weeks/blocks), coverage, consistency
+ *
+ * All metrics are derived from completed gpp_workout_sessions at read time
+ * (see lib/streaks.ts for the streak rule). The client passes its local date
+ * and UTC offset so days are the athlete's days and the result refreshes when
+ * the date changes; older clients that pass neither fall back to UTC.
  */
 export const getProgressSummary = query({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    today: v.optional(v.string()), // Athlete's local date, "YYYY-MM-DD"
+    timezoneOffsetMinutes: v.optional(v.number()), // Date#getTimezoneOffset()
+  },
+  handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
 
@@ -264,17 +277,30 @@ export const getProgressSummary = query({
       }
     }
 
-    // Get progress metrics if available
-    const progressRecord = await ctx.db
-      .query("user_progress")
-      .withIndex("by_program", (q) => q.eq("userProgramId", program._id))
-      .first();
-
     // Get intake record for training days per week
     const intake = program.intakeResponseId
       ? await ctx.db.get(program.intakeResponseId)
       : null;
     const trainingDaysPerWeek = intake?.preferredTrainingDaysPerWeek ?? 3;
+    const selectedTrainingDays =
+      intake?.selectedTrainingDays ?? getDefaultTrainingDays(trainingDaysPerWeek);
+
+    // Consistency metrics, derived from completed sessions rather than read
+    // from user_progress (which nothing outside seed/debug writes)
+    const timezoneOffsetMinutes = args.timezoneOffsetMinutes ?? 0;
+    const today = args.today ?? toLocalDateISO(Date.now(), timezoneOffsetMinutes);
+    const { currentStreak, longestStreak } = calculateStreaks({
+      completedAt: completedSessions.map((s) => s.completedAt ?? s.startedAt),
+      trainingDays: selectedTrainingDays,
+      timezoneOffsetMinutes,
+      today,
+    });
+    const averageWorkoutsPerWeek = calculateAverageWorkoutsPerWeek({
+      completedCount: completedSessions.length,
+      programStartedAt: program.createdAt,
+      timezoneOffsetMinutes,
+      today,
+    });
 
     // Calculate weeks and blocks completed
     const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
@@ -302,10 +328,10 @@ export const getProgressSummary = query({
       // Coverage metrics
       uniqueExercisesPerformed: uniqueExerciseIds.size,
       
-      // Consistency (from progress record if available)
-      averageWorkoutsPerWeek: progressRecord?.averageWorkoutsPerWeek ?? 0,
-      currentStreak: progressRecord?.currentStreak ?? 0,
-      longestStreak: progressRecord?.longestStreak ?? 0,
+      // Consistency
+      averageWorkoutsPerWeek,
+      currentStreak,
+      longestStreak,
       
       // Pause status
       isPaused: !!program.pausedAt,
