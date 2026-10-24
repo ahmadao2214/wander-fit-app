@@ -235,7 +235,7 @@ export function WorkoutCalendar({
       <XStack justify="center">
         <XStack
           bg="$color3"
-          borderRadius="$4"
+          rounded="$4"
           p="$1"
         >
           <Button
@@ -244,7 +244,7 @@ export function WorkoutCalendar({
             color={viewMode === 'week' ? 'white' : '$color11'}
             onPress={() => setViewMode('week')}
             pressStyle={{ opacity: 0.8 }}
-            borderRadius="$3"
+            rounded="$3"
             px="$4"
           >
             Week
@@ -255,7 +255,7 @@ export function WorkoutCalendar({
             color={viewMode === 'month' ? 'white' : '$color11'}
             onPress={() => setViewMode('month')}
             pressStyle={{ opacity: 0.8 }}
-            borderRadius="$3"
+            rounded="$3"
             px="$4"
           >
             Month

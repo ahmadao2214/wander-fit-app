@@ -1,4 +1,4 @@
-import { YStack, XStack, H2, H3, Text, Card, Button, Spinner, ScrollView } from 'tamagui'
+import { YStack, XStack, H2, H3, Text, Card, Button, Spinner, ScrollView, type ColorTokens } from 'tamagui'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useQuery } from 'convex/react'
@@ -76,14 +76,14 @@ export default function ResultsScreen() {
   const weeksPerPhase = calculateWeeksPerPhase(weeks)
 
   // Helper: Get category-specific colors
-  const getCategoryColor = (categoryId: number) => {
-    const colors = {
+  const getCategoryColor = (categoryId: number): ColorTokens => {
+    const colors: Record<number, ColorTokens> = {
       1: '$catEndurance',      // Teal
       2: '$catPower',          // Purple
       3: '$catRotation',       // Orange
       4: '$catStrength',       // Blue
     }
-    return colors[categoryId as keyof typeof colors] || '$catEndurance'
+    return colors[categoryId] || '$catEndurance'
   }
 
   // Helper: Get category-specific icons

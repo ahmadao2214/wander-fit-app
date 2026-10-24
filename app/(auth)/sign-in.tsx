@@ -221,7 +221,6 @@ export default function SignInPage() {
                   hoverStyle={{ bg: '#f1f3f4', borderColor: '#c0c4c7' }}
                   pressStyle={{ bg: '#e8eaed', scale: 0.98 }}
                   icon={<GoogleIcon size={20} />}
-                  iconAfter={false}
                 >
                   Continue with Google
                 </Button>

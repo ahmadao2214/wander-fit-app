@@ -53,6 +53,7 @@
         "@tamagui/babel-plugin": "^1.139.2",
         "@tamagui/cli": "^1.139.2",
         "@tamagui/metro-plugin": "^1.139.2",
+        "@types/jest": "^29.5.14",
         "@types/node": "^24.10.1",
         "@types/react": "~19.1.10",
         "typescript": "~5.9.2",
@@ -859,6 +860,8 @@
     "@types/istanbul-lib-report": ["@types/istanbul-lib-report@3.0.3", "", { "dependencies": { "@types/istanbul-lib-coverage": "*" } }, ""],
 
     "@types/istanbul-reports": ["@types/istanbul-reports@3.0.4", "", { "dependencies": { "@types/istanbul-lib-report": "*" } }, ""],
+
+    "@types/jest": ["@types/jest@29.5.14", "", { "dependencies": { "expect": "^29.0.0", "pretty-format": "^29.0.0" } }, "sha512-ZN+4sdnLUbo8EVvVc2ao0GFW6oVrQRPn4K2lglySj7APvSrgzxHiNNK99us4WDMi57xxA2yggblIAMNhXOotLQ=="],
 
     "@types/js-yaml": ["@types/js-yaml@4.0.9", "", {}, ""],
 

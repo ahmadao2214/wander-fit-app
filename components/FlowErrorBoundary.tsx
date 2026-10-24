@@ -73,15 +73,15 @@ function ErrorFallback({
           fontSize="$7"
           fontWeight="700"
           color="$color12"
-          textAlign="center"
+          text="center"
         >
           Something went wrong
         </Text>
         <Text
           fontSize="$4"
           color="$color10"
-          textAlign="center"
-          maxWidth={300}
+          text="center"
+          maxW={300}
         >
           {errorMessage || "We hit a snag. Don't worry, your progress is saved."}
         </Text>
@@ -93,10 +93,10 @@ function ErrorFallback({
           bg="$gray3"
           p="$3"
           rounded="$3"
-          maxWidth={320}
-          maxHeight={120}
+          maxW={320}
+          maxH={120}
         >
-          <Text fontSize="$2" color="$gray11" fontFamily="$mono">
+          <Text fontSize="$2" color="$gray11">
             {error.message.slice(0, 200)}
             {error.message.length > 200 ? '...' : ''}
           </Text>

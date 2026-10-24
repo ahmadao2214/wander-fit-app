@@ -1,6 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { Id } from "./_generated/dataModel";
+import { Doc, Id } from "./_generated/dataModel";
 
 // Temporary debug query to find users by email pattern
 export const searchUsersByEmail = query({
@@ -63,7 +63,11 @@ export const searchUsersByPattern = query({
       u.name.toLowerCase().includes(args.pattern.toLowerCase())
     );
 
-    const results = [];
+    const results: {
+      user: Doc<"users">;
+      intakes: Doc<"intake_responses">[];
+      programs: Doc<"user_programs">[];
+    }[] = [];
     for (const user of matched) {
       const intakes = await ctx.db
         .query("intake_responses")
@@ -164,7 +168,14 @@ export const inspectUserSessions = query({
       .collect();
 
     // For each in-progress session, check if templateId still resolves
-    const sessionDetails = [];
+    const sessionDetails: {
+      sessionId: Id<"gpp_workout_sessions">;
+      templateId: Id<"program_templates">;
+      templateExists: boolean;
+      templateName: string | null;
+      snapshotName: string | null;
+      status: Doc<"gpp_workout_sessions">["status"];
+    }[] = [];
     for (const session of inProgressSessions) {
       const template = await ctx.db.get(session.templateId);
       sessionDetails.push({
@@ -178,7 +189,7 @@ export const inspectUserSessions = query({
     }
 
     // Get schedule overrides
-    let overrides = null;
+    let overrides: Doc<"user_schedule_overrides"> | null = null;
     if (programId) {
       overrides = await ctx.db
         .query("user_schedule_overrides")
@@ -187,13 +198,22 @@ export const inspectUserSessions = query({
     }
 
     // Check if any override templateIds are stale
-    let overrideDetails = null;
+    type SlotDetail = Doc<"user_schedule_overrides">["slotOverrides"][number] & {
+      templateExists: boolean;
+      templateName: string | null;
+    };
+    let overrideDetails: {
+      todayFocusTemplateId: Id<"program_templates"> | undefined;
+      todayFocusExists: boolean;
+      todayFocusName: string | null;
+      slotOverrides: SlotDetail[];
+    } | null = null;
     if (overrides) {
       const focusTemplate = overrides.todayFocusTemplateId
         ? await ctx.db.get(overrides.todayFocusTemplateId)
         : null;
 
-      const slotDetails = [];
+      const slotDetails: SlotDetail[] = [];
       for (const slot of overrides.slotOverrides) {
         const t = await ctx.db.get(slot.templateId);
         slotDetails.push({

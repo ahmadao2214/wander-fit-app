@@ -167,16 +167,16 @@ export function CalendarDayCell({
       >
         {/* Day number */}
         <YStack
-          alignItems="center"
+          items="center"
           pb="$0.5"
         >
           <YStack
             width={20}
             height={20}
-            borderRadius={10}
-            backgroundColor={isToday ? '$primary' : 'transparent'}
-            alignItems="center"
-            justifyContent="center"
+            rounded={10}
+            bg={isToday ? '$primary' : 'transparent'}
+            items="center"
+            justify="center"
           >
             <Text
               fontSize={11}
@@ -219,7 +219,7 @@ export function CalendarDayCell({
             })}
             {/* Show +N more if there are more workouts */}
             {workouts.length > 3 && (
-              <Text fontSize={8} color="$color9" textAlign="center">
+              <Text fontSize={8} color="$color9" text="center">
                 +{workouts.length - 3} more
               </Text>
             )}

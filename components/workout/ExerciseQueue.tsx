@@ -6,6 +6,7 @@ import {
   Card,
   Button,
   styled,
+  type ColorTokens,
 } from 'tamagui'
 import {
   Check,
@@ -65,7 +66,7 @@ interface ExerciseQueueProps {
   onExerciseSelect: (index: number) => void
   onReorder: (fromIndex: number, toIndex: number) => void
   /** Primary intensity color token (e.g., "$intensityLow6") */
-  intensityColor?: string
+  intensityColor?: ColorTokens
 }
 
 const DRAWER_WIDTH = Dimensions.get('window').width * 0.85

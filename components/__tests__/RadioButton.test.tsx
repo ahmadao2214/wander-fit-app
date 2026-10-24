@@ -54,7 +54,7 @@ describe('RadioButton', () => {
   })
 
   it('renders checked state', () => {
-    const { getByTestId } = render(
+    const { getByText } = render(
       <RadioButton {...defaultProps} checked={true} />,
       { wrapper: AllTheProviders }
     )
@@ -74,12 +74,12 @@ describe('RadioButton', () => {
   })
 
   it('renders without description when not provided', () => {
-    const { queryByText } = render(
+    const { getByText, queryByText } = render(
       <RadioButton {...defaultProps} />,
       { wrapper: AllTheProviders }
     )
 
     expect(getByText('Test Label')).toBeTruthy()
-    // Description should not be present
+    expect(queryByText('Test description')).toBeNull()
   })
 })
