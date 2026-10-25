@@ -34,13 +34,14 @@ import { TimelineView, createPhaseTimeline } from '../../components/onboarding'
 export default function ResultsScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
-  const { sportId, yearsOfExperience, trainingDays, selectedTrainingDays, weeksUntilSeason, ageGroup } = useLocalSearchParams<{
+  const { sportId, yearsOfExperience, trainingDays, selectedTrainingDays, weeksUntilSeason, ageGroup, equipmentMode } = useLocalSearchParams<{
     sportId: string
     yearsOfExperience: string
     trainingDays: string
     selectedTrainingDays: string
     weeksUntilSeason: string
     ageGroup: AgeGroup
+    equipmentMode: string
   }>()
 
 
@@ -107,7 +108,7 @@ export default function ResultsScreen() {
     if (route) {
       router.push({
         pathname: route,
-        params: { sportId, yearsOfExperience, trainingDays, selectedTrainingDays, weeksUntilSeason, ageGroup },
+        params: { sportId, yearsOfExperience, trainingDays, selectedTrainingDays, weeksUntilSeason, ageGroup, equipmentMode },
       } as any)
     }
   }
@@ -123,6 +124,7 @@ export default function ResultsScreen() {
         selectedTrainingDays,
         weeksUntilSeason,
         ageGroup,
+        equipmentMode,
       },
     } as any)
   }

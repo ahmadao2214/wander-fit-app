@@ -21,13 +21,14 @@ import type { AgeGroup } from '../../types'
 export default function CommitmentScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
-  const { sportId, ageGroup, yearsOfExperience, trainingDays: trainingDaysParam, selectedTrainingDays: selectedTrainingDaysParam, weeksUntilSeason } = useLocalSearchParams<{
+  const { sportId, ageGroup, yearsOfExperience, trainingDays: trainingDaysParam, selectedTrainingDays: selectedTrainingDaysParam, weeksUntilSeason, equipmentMode: equipmentModeParam } = useLocalSearchParams<{
     sportId: string
     ageGroup: AgeGroup
     yearsOfExperience: string
     trainingDays: string
     selectedTrainingDays: string
     weeksUntilSeason: string
+    equipmentMode: string
   }>()
   const [hasCommitted, setHasCommitted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -59,6 +60,10 @@ export default function CommitmentScreen() {
   // Parse selectedTrainingDays from comma-separated string: "1,3,5" → [1, 3, 5]
   const selectedTrainingDays = selectedTrainingDaysParam
     ? selectedTrainingDaysParam.split(',').map(d => parseInt(d, 10))
+    : undefined
+  // Omitted when the param is missing or unknown; completeIntake defaults to gym
+  const equipmentMode = equipmentModeParam === 'gym' || equipmentModeParam === 'home'
+    ? equipmentModeParam
     : undefined
 
   // Navigate to athlete dashboard after success
@@ -96,6 +101,7 @@ export default function CommitmentScreen() {
           selectedTrainingDays,
           weeksUntilSeason: weeks,
           ageGroup: ageGroup as "14-17" | "18-35" | "36+",
+          equipmentMode,
         })
       }
 
@@ -133,7 +139,7 @@ export default function CommitmentScreen() {
     if (route) {
       router.push({
         pathname: route,
-        params: { sportId, yearsOfExperience, trainingDays: trainingDaysParam, selectedTrainingDays: selectedTrainingDaysParam, weeksUntilSeason, ageGroup },
+        params: { sportId, yearsOfExperience, trainingDays: trainingDaysParam, selectedTrainingDays: selectedTrainingDaysParam, weeksUntilSeason, ageGroup, equipmentMode: equipmentModeParam },
       } as any)
     }
   }
