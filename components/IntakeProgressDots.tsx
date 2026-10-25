@@ -108,18 +108,19 @@ export function IntakeProgressDots({
 /**
  * Total number of screens in the combined intake + onboarding flow
  *
- * Interleaved flow (9 screens):
+ * Interleaved flow (10 screens):
  * 1. Sport Selection         ← Intake
  * 2. Training Overview       ← Onboarding (consolidated: Science-Backed + 3 Phases)
  * 3. Age Group               ← Intake
  * 4. Experience Years        ← Intake
  * 5. Training Days           ← Intake
- * 6. Season Timeline         ← Intake
- * 7. Maxes                   ← Intake (Know Your Starting Point)
- * 8. Results                 ← Intake (Program Preview + Timeline)
- * 9. Commitment              ← Onboarding (Final step - create program)
+ * 6. Equipment               ← Intake (Gym vs Home)
+ * 7. Season Timeline         ← Intake
+ * 8. Maxes                   ← Intake (Know Your Starting Point)
+ * 9. Results                 ← Intake (Program Preview + Timeline)
+ * 10. Commitment             ← Onboarding (Final step - create program)
  */
-export const COMBINED_FLOW_SCREEN_COUNT = 9
+export const COMBINED_FLOW_SCREEN_COUNT = 10
 
 /** @deprecated Use COMBINED_FLOW_SCREEN_COUNT instead */
 export const INTAKE_SCREEN_COUNT = 7
@@ -133,14 +134,15 @@ export const COMBINED_FLOW_SCREENS = {
   AGE_GROUP: 2,
   EXPERIENCE_YEARS: 3,
   TRAINING_DAYS: 4,
-  SEASON_TIMELINE: 5,
-  MAXES: 6,
-  RESULTS: 7,
-  COMMITMENT: 8,
+  EQUIPMENT: 5,
+  SEASON_TIMELINE: 6,
+  MAXES: 7,
+  RESULTS: 8,
+  COMMITMENT: 9,
   /** @deprecated Phases overview consolidated into WHY_IT_WORKS */
   PHASES_OVERVIEW: 1,
   /** @deprecated Personal timeline merged into Results */
-  PERSONAL_TIMELINE: 7,
+  PERSONAL_TIMELINE: 8,
 } as const
 
 /**
@@ -167,8 +169,9 @@ export const COMBINED_FLOW_ROUTES: Record<number, string> = {
   2: '/(intake)/age-group',
   3: '/(intake)/experience-years',
   4: '/(intake)/training-days',
-  5: '/(intake)/season-timeline',
-  6: '/(intake)/maxes',
-  7: '/(intake)/results',
-  8: '/(onboarding)/commitment',
+  5: '/(intake)/equipment',
+  6: '/(intake)/season-timeline',
+  7: '/(intake)/maxes',
+  8: '/(intake)/results',
+  9: '/(onboarding)/commitment',
 }

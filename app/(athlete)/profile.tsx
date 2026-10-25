@@ -555,9 +555,7 @@ export default function ProfilePage() {
               borderWidth={1}
               borderColor="$borderColor"
               pressStyle={{ bg: '$surfaceHover' }}
-              onPress={() => {
-                console.log('Settings pressed')
-              }}
+              onPress={() => router.push('/(athlete)/settings' as any)}
             >
               <XStack items="center" gap="$3">
                 <YStack bg="$color4" p="$2" rounded="$10">

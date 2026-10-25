@@ -34,13 +34,14 @@ function validateWeight(value: string): string | null {
 export default function MaxesScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
-  const { sportId, yearsOfExperience, trainingDays, selectedTrainingDays, weeksUntilSeason, ageGroup } = useLocalSearchParams<{
+  const { sportId, yearsOfExperience, trainingDays, selectedTrainingDays, weeksUntilSeason, ageGroup, equipmentMode } = useLocalSearchParams<{
     sportId: string
     yearsOfExperience: string
     trainingDays: string
     selectedTrainingDays: string
     weeksUntilSeason: string
     ageGroup: string
+    equipmentMode: string
   }>()
 
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -84,7 +85,7 @@ export default function MaxesScreen() {
     if (route) {
       router.push({
         pathname: route,
-        params: { sportId, yearsOfExperience, trainingDays, selectedTrainingDays, weeksUntilSeason, ageGroup },
+        params: { sportId, yearsOfExperience, trainingDays, selectedTrainingDays, weeksUntilSeason, ageGroup, equipmentMode },
       } as any)
     }
   }
@@ -128,6 +129,7 @@ export default function MaxesScreen() {
           selectedTrainingDays,
           weeksUntilSeason,
           ageGroup,
+          equipmentMode,
         },
       } as any)
     } catch (error) {
@@ -149,6 +151,7 @@ export default function MaxesScreen() {
         selectedTrainingDays,
         weeksUntilSeason,
         ageGroup,
+        equipmentMode,
       },
     } as any)
   }

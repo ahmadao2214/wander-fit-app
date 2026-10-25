@@ -170,7 +170,7 @@ export default function TrainingDaysScreen() {
       // Sort days in order (0=Sun through 6=Sat)
       const sortedDays = Array.from(selectedDays).sort((a, b) => a - b)
       router.push({
-        pathname: '/(intake)/season-timeline',
+        pathname: '/(intake)/equipment',
         params: {
           sportId,
           ageGroup,
@@ -178,7 +178,7 @@ export default function TrainingDaysScreen() {
           trainingDays: selectedDays.size.toString(),
           selectedTrainingDays: sortedDays.join(','), // "1,3,5" for Mon,Wed,Fri
         },
-      })
+      } as any)
     }
   }
 

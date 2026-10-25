@@ -209,6 +209,7 @@ describe('Swipe Configuration Per Screen', () => {
     { screen: 'age-group', canSwipeRight: true, canSwipeLeft: false },
     { screen: 'experience-years', canSwipeRight: true, canSwipeLeft: false },
     { screen: 'training-days', canSwipeRight: true, canSwipeLeft: false },
+    { screen: 'equipment', canSwipeRight: true, canSwipeLeft: false },
     { screen: 'season-timeline', canSwipeRight: true, canSwipeLeft: false },
     { screen: 'maxes', canSwipeRight: true, canSwipeLeft: false },
     { screen: 'results', canSwipeRight: true, canSwipeLeft: false },
