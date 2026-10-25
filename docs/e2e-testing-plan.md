@@ -1,6 +1,7 @@
 # E2E Testing Plan
 
-> **Status:** approved plan, resolved through a `/grill-with-docs` session (5 rounds). Nothing is built yet.
+> **Status:** approved plan, resolved through a `/grill-with-docs` session (5 rounds). Nothing E2E-specific is built yet.
+> **Baseline:** re-checked against `main` at `d7ee34b`. Three things this plan first listed as prerequisites have since landed: PR #63 (Convex lockdown), PR #61 (Jest/Vitest split; `tsc --noEmit` clean; `checks.yml` CI) and PR #62 (Clerk cleanup script). §10 marks them done.
 > **Decisions of record:** [ADR-0001](adr/0001-maestro-only-e2e-with-web-beta-as-pr-gate.md) Maestro only · [ADR-0002](adr/0002-e2e-isolated-backend-and-per-run-users.md) isolated backend and per-run users · [ADR-0003](adr/0003-native-e2e-on-github-actions-not-eas-workflows.md) native E2E on GitHub Actions · [ADR-0004](adr/0004-jest-is-the-only-unit-test-runner.md) Jest only.
 > **Vocabulary:** [GLOSSARY.md](../GLOSSARY.md). We say *athlete*, not *client*.
 
@@ -23,6 +24,7 @@ Ranked by business importance × risk. All paths are under `app/`.
 | 2 | **Sign-up → intake** | Account creation. Two recent bug-fix commits touched it (captcha, verification loop) | `(auth)/sign-up` (form, verification, COMPLETE SETUP) | `users.createUser` (+ `invitations.acceptInvitation` if invited) |
 | 3 | **Activation: intake → commitment → Today** | The only path to an active athlete, with the most writes | `(intake)/sport, age-group, experience-years, training-days, season-timeline, maxes, results`, `(onboarding)/why-it-works, commitment` | `userMaxes.setMultipleMaxes`, `userPrograms.completeIntake` (intake_responses + user_programs), `onboarding.completeOnboarding` |
 | 4 | **Workout loop: start → complete sets → finish** | Daily value. `execute/[id]` is the most complex screen, and finishing advances the program | `(athlete)/index`, `workout/[id]`, `workout/execute/[id]` | `scheduleOverrides.setTodayFocus`, `gppWorkoutSessions.startSession / updateProgress / completeSession`, `userPrograms.advanceToNextDay` |
+| 4b | **Equipment toggle (Gym/Home)** in the workout loop ([#56](https://github.com/ahmadao2214/wander-fit-app/pull/56)) | Changes which exercises an athlete actually does. The choice is saved on the program and snapshotted into the session, so a wrong swap persists | `workout/[id]` (`EquipmentModeToggle`, "SWAPPED" / "ALT AVAILABLE" tags), `workout/execute/[id]` (`EquipmentModeBadge`) | `userPrograms.setEquipmentMode` (user_programs), `gppWorkoutSessions.startSession` with `equipmentMode` (session `equipmentMode` + `activeExerciseIds`) |
 | 5 | **Reassessment at phase end** | Unlocks SPP and SSP. Rare, so regressions here go unnoticed | `(reassessment)/celebration, self-assessment, maxes, results` | `userMaxes.setMultipleMaxes`, `userPrograms.completeReassessment` |
 | 6 | Edit a max from Profile | Drives every scaled weight | `(athlete)/profile` + `OneRepMaxSheet` | `userMaxes.setMaxBySlug` |
 | 7 | Abandon / resume a session | Risk of losing data | `execute/[id]` exit dialog, Today "Resume" | `gppWorkoutSessions.abandonSession` |
@@ -72,7 +74,7 @@ Ranked by business importance × risk. All paths are under `app/`.
 
 **Selectors:**
 - Use visible text where it's stable: "Sign In", "Start Workout", "Continue to Check-In".
-- Add `testID`s where there's no stable text: sport tiles (`sport-tile-<slug>`), set pills (`set-pill-<exercise>-<set>`, plus a `set-pill-pending` marker), the commit button (`commit-hold-button`), reassessment options, and the Today workout card (`today-workout-card`).
+- Add `testID`s where there's no stable text: sport tiles (`sport-tile-<slug>`), set pills (`set-pill-<exercise>-<set>`, plus a `set-pill-pending` marker), the commit button (`commit-hold-button`), reassessment options, the Today workout card (`today-workout-card`), and, for #56, the equipment toggle (`equipment-mode-gym`, `equipment-mode-home`) and the execution badge (`equipment-mode-badge`).
 - React Native Web renders `testID` as `data-testid`, and Maestro matches `id:` on native. Confirming that Maestro web matches the same `id:` is a Phase 1 check.
 
 ## 4. Test data
@@ -92,9 +94,10 @@ Ranked by business importance × risk. All paths are under `app/`.
 **Users are created fresh for each flow and deleted afterwards.** The lever is `scripts/e2e/persona.ts`, run with bun, with JSON output for agents:
 
 ```
-persona create --state <new|needs-intake|onboarded|phase-end> --json
+persona create --state <new|needs-intake|onboarded|phase-end> [--equipment-mode gym|home] [--require-home-swap] --json
   → { email, password, clerkUserId, convexUserId }
-persona inspect <email> --json   # read-only: user, program phase/week/day, sessions
+persona inspect <email> --json   # read-only: user, program phase/week/day + equipmentMode,
+                                 # sessions (status, equipmentMode, activeExerciseIds, template exerciseIds)
 persona delete <email>           # Clerk user + all Convex rows
 persona sweep --older-than 2h [--dry-run]   # removes leaked e2e-* users
 ```
@@ -102,16 +105,19 @@ persona sweep --older-than 2h [--dry-run]   # removes leaked e2e-* users
 **How `create` works:**
 1. It creates the Clerk user through the Backend API (`CLERK_SECRET_KEY`), with email `e2e-<run>-<state>+clerk_test@example.com`. Doing this server-side avoids the CAPTCHA.
 2. For any state except `new`, it calls the **internal** Convex function `e2e:seedPersona` through `npx convex run`.
-3. `seedPersona` generalizes today's `debug:setupReassessmentTest` and sets up each state:
+3. `seedPersona` generalizes `debug:setupReassessmentTest` (internal since #63) and sets up each state:
    - `needs-intake`: the user row only.
    - `onboarded`: intake, onboarding, and a program at GPP week 1 day 1, with training days that **include today's weekday** so Today always has a workout.
    - `phase-end`: last GPP workout done, reassessment pending.
+4. Optional arguments, needed once #56 lands:
+   - `equipmentMode` (`gym` | `home`) is written to `user_programs.equipmentMode`, and to `intake_responses.equipmentMode` for symmetry with intake. Omitted means the field stays unset, which the app treats as gym.
+   - `requireHomeSwap: true` makes the persona's **first workout** (GPP W1D1) contain at least one gym exercise with a home alternative. Seeding chooses the sport category and skill level for this using #56's own matcher (`buildPrescriptionModeVariants` / `resolvePrescriptionExercise` in `convex/exerciseMatching.ts`). It **throws** if no seeded template qualifies, so a gap in the seed data fails the run instead of quietly weakening the flow.
 
-**Cap:** each run creates about 5 Clerk users and deletes them all. The nightly sweeper keeps the instance well under its 100-user cap.
+**Cap:** each run creates about 6 Clerk users and deletes them all. The nightly sweeper keeps the instance well under its 100-user cap. `sweep` reuses the flagging rules in `lib/clerkCleanup.ts` (#62), so it never deletes anything that script would keep, such as the shared test account. Unlike that script, `persona delete` also removes the user's Convex rows. That closes the "Convex rows left behind" gap described in `docs/CLERK_USER_CLEANUP.md`, for E2E users at least.
 
 **Other accounts:** the shared `TEST_USER_*` account in `.env.local` stays only for a manual smoke check.
 
-## 5. The first five flows
+## 5. The first six flows
 
 **Layout:**
 - `.maestro/journeys/*.yaml` holds the steps.
@@ -133,6 +139,7 @@ persona sweep --older-than 2h [--dry-run]   # removes leaked e2e-* users
 3. **`activation`**: `needs-intake` persona.
    - Steps: sign in → sport tile → Training Overview Continue → age group → experience → training days → season date → "I'll set these later" → results Continue → `longPressOn: commit-hold-button` → "You're Committed!" → Today shows `today-workout-card`.
    - Then `persona inspect` must report phase GPP, week 1, day 1.
+   - **When the stacked follow-up to #56 adds an equipment step to intake,** that PR updates this flow, per the §8 rule. It adds a tap on `equipment-mode-home` at the new step, and `persona inspect` must then show `equipmentMode: "home"` on both the intake response and the program. If this flow doesn't exist yet when that PR lands, it's written with the step from the start.
 4. **`workout-loop`**: `onboarded` persona.
    - Steps: Start Workout → Start → tap every `set-pill-pending` (a `repeat … while visible` loop) → Next/Finish → Done.
    - Today has advanced, and `persona inspect` shows a completed session and day 2.
@@ -140,6 +147,29 @@ persona sweep --older-than 2h [--dry-run]   # removes leaked e2e-* users
 5. **`reassessment`**: `phase-end` persona.
    - Steps: Today banner "Start Now" → "Continue to Check-In" → difficulty "Just right" → Continue → maxes "Skip" → confirm.
    - `persona inspect` must show SPP unlocked and the reassessment cleared.
+6. **`equipment-toggle`**: `onboarded` persona created with `--require-home-swap` (no `--equipment-mode`, so the program starts in gym mode). It needs #56 merged.
+   - Steps:
+     1. Today → open the workout (`today-workout-card`).
+     2. Expect "ALT AVAILABLE" on at least one exercise and `assertNotVisible: "SWAPPED"`. That's the gym baseline, since #56 makes gym mode a no-op.
+     3. Tap `equipment-mode-home`.
+     4. Expect at least one "SWAPPED" tag (`assertVisible: "SWAPPED"`).
+     5. Screenshot `03-home-swapped`.
+     6. Start.
+     7. On the execution screen, expect the "Home setup" badge (`EquipmentModeBadge`).
+     8. Screenshot `05-execute-home-badge`.
+   - `persona inspect` must show:
+     - the in-progress session's `equipmentMode: "home"`
+     - `activeExerciseIds` that **differ from** the template's `exerciseId` list in at least one position, with the same length
+     - the program's `equipmentMode: "home"`, because the toggle saves through `userPrograms.setEquipmentMode`
+   - Why `testID`s rather than text:
+     - The toggle's accessibility labels ("Gym mode" / "Home mode") are the same as the "Home mode" tag text that appears on every swapped exercise.
+     - "Home" alone also matches other copy.
+     - So #56's `EquipmentModeToggle` gets `testID="equipment-mode-gym"` and `testID="equipment-mode-home"`, and `EquipmentModeBadge` gets `testID="equipment-mode-badge"`, which the flow also checks for the text "Home setup".
+   - It doesn't complete the workout. Flow 4 covers finishing, and keeping this flow short keeps it fast.
+   - **Evidence:** this flow's `recording.mp4` is the video for #56's **Evidence** section. Once Phase 1 exists:
+     - If #56 is still open, run the flow against its branch and link the artifact from its description.
+     - If #56 has merged, the flow's own PR carries the evidence and #56's description is edited to link it.
+     - Either way, #56's description needs rewriting with Matt's `/pr` template first. It still reads "No code changes — this is a plan document", but the branch now contains the feature.
 
 **Known hazards** (each handled in its flow, never by weakening an assertion):
 - **Dates:** season-timeline choices are relative to today, and Today depends on the server's clock. Pick dates relative to now, and assert on structure, not on specific workout names.
@@ -163,9 +193,9 @@ persona sweep --older-than 2h [--dry-run]   # removes leaked e2e-* users
 
 ## 7. CI wiring (GitHub Actions)
 
-`.github/workflows/ci.yml`, triggered by `pull_request` and `push: main`:
-- **`unit`:** `bun install --frozen-lockfile`, then `bun run test --ci`.
-- **`typecheck`:** `scripts/typecheck-ratchet.ts` runs `tsc --noEmit`. It fails if the error count is above `.typecheck-baseline`, and tells you to lower the baseline when the count drops.
+Extend the existing `.github/workflows/checks.yml` (from #60/#61), triggered by `pull_request` and `push: main`. Today it has a blocking **Vitest (Convex)** job and an informational **Jest** job (`continue-on-error`).
+- **`unit`:** after 0b, one blocking job: `bun install --frozen-lockfile`, then `bun run test:ci`. It replaces both current jobs and the step that adds the Linux Rollup/esbuild binaries.
+- **`typecheck`:** blocking `bun run typecheck` (`tsc --noEmit`). It's **already clean on `main`**, so no ratchet is needed.
 - **`e2e-web`** (needs `unit`, concurrency `e2e-backend`):
   1. Deploy `convex/` to `wander-fit-e2e` and seed it.
   2. `npx expo export --platform web` with `EXPO_PUBLIC_CONVEX_URL` pointing at the E2E project and the Dev-instance `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`.
@@ -190,13 +220,13 @@ persona sweep --older-than 2h [--dry-run]   # removes leaked e2e-* users
 - `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`
 
 **Merge gates on `main`** (branch protection, so no more direct pushes):
-- `unit` and `typecheck` are required once Phase 0b lands.
+- `typecheck` can be required now. `unit` becomes required once 0b lands.
 - `e2e-web` becomes required after **10 consecutive green runs on `main`**.
 - Native jobs are advisory and report through `e2e-failure` issues.
 
 ## 8. When features need E2E
 
-This rule goes into the Testing section of `CLAUDE.md` when Phase 1 lands:
+This rule goes into the Testing section of `AGENTS.md` when Phase 1 lands:
 
 - A **new user journey** ships with a new Maestro flow and a feature-map entry, in the same PR.
 - A **change to an existing journey** updates or extends that journey's flow, in the same PR.
@@ -236,7 +266,7 @@ Each spec's *Testing Decisions* section (Matt's `/to-spec`) names the seam: unit
 1. **Automated checks:** the §7 jobs.
 2. **E2E failure reporting:** the nightly `report` job, with no auto-fix.
 3. **Automated review:** a Claude Code GitHub Action using the enabled `code-review` plugin, on PR open.
-4. **Ratchet:** a daily run that fixes a few TypeScript errors, opens a PR, and lowers `.typecheck-baseline`.
+4. **Ratchet:** no longer needed for TypeScript, since #61 left `tsc` clean. Keep the task shape for the next stricter check you switch on (for example a lint rule with an exception list).
 
 The implementer task (ticket labelled ready → draft PR) waits until 1–3 have earned trust. Every loop of runs is capped at a few tries before it hands back to a human.
 
@@ -244,27 +274,31 @@ The implementer task (ticket labelled ready → draft PR) waits until 1–3 have
 
 Each item is a PR. Items 0a–0c are prerequisites.
 
-- **0a: Security lockdown (blocking).**
-  - Make `seed.*`, `debug.*`, `generateTemplates.*`, `sampleData.*` and `migrations.fixLegacyAgeGroups` `internal*`.
-  - `users.createUser` and `users.getCurrentUser` read `ctx.auth.getUserIdentity()` instead of taking `clerkId`, so update `app/(auth)/sign-up.tsx` and `hooks/useAuth.ts`.
-  - Why: the repo and `eas.json` are public, so today anyone can call `clearAllData` or read any user's record.
-- **0b: Tooling cleanup.**
-  - Bun only: drop `packageManager: yarn@4.5.0`, and regenerate `bun.lock` so it carries Linux binaries (today it has only `@rollup/rollup-darwin-arm64`, so installs on Linux CI break Vitest).
-  - Jest only: a two-project config. Delete the `vitest` import from 31 files, then remove `vitest` and `vitest.config.ts`.
-  - Dependencies: add `jest` and `@types/jest` as dev dependencies. Move `jest-expo` and `@testing-library/react-native` to dev dependencies.
-  - Scripts: `test` becomes `jest` (no more `--watchAll`), and add `test:watch`.
-  - Fix the `calendarUtils` "program starting mid-week" test: the expected first workout is **Fri Feb 6**, as the code does.
-  - Fix `RadioButton.test.tsx`: it calls `getByText` without destructuring it.
-  - Delete `GoogleIcon.test.tsx`: it asserts SVG internals and uses APIs removed in React Native Testing Library v13.
-  - Add the typecheck ratchet (baseline: 80 errors in non-test files today, before `@types/jest`).
-  - Add `ci.yml` with `unit` and `typecheck`, and update `CLAUDE.md`'s test commands.
-- **0c: Fix History.** Read `gpp_workout_sessions` (`api.gppWorkoutSessions.getHistory` already exists).
+- ~~**0a: Security lockdown.**~~ **Done in #63.** Admin, seed and debug functions are `internal*`, and `users.getCurrentUser` checks the caller's identity.
+- **0b: Tooling cleanup.** PR #61 already did part of it:
+  - **Already done in #61:** the runners no longer collect each other's files; the calendar, RadioButton and GoogleIcon tests were fixed; `tsc --noEmit` is clean; `checks.yml` exists.
+  - **Still to do:**
+    - **Jest only** (ADR-0004; this reverses the two-runner split that #61 documented):
+      - A two-project `jest.config.js`: a Node project for `convex/`, `lib/` and `hooks/`, and `jest-expo` for `app/` and `components/`.
+      - Delete the `from 'vitest'` import from every Node test file: 35 on `main`, plus #56's 5 if it lands first.
+      - Remove `vitest`, `vitest.config.ts` and `test:unit`.
+      - Build this as a rerunnable codemod (`scripts/codemods/vitest-to-jest.ts`). None of the files use `vi.*` today; the codemod maps `vi.fn` → `jest.fn` if any appear. Any branch that lands late, #56 included, then converts with one command.
+    - **Bun only:** drop `packageManager: yarn@4.5.0`, and regenerate `bun.lock` so it records the Linux binaries. Today it has only the macOS Rollup/esbuild builds, which `checks.yml` works around.
+    - **Scripts:** `test` becomes `jest` (no more `--watchAll`), add `test:watch`, and keep `test:ci`.
+    - **CI:** one blocking `unit` job and a blocking `typecheck` job in `checks.yml` (§7).
+    - **Docs:** rewrite `AGENTS.md`'s "Two Test Runners: Jest vs Vitest" section, which #61 added, to describe one runner.
+  - **Ordering with #56:** whichever lands second does the conversion. Recommended: merge #56 first and let 0b's codemod convert all 40 files at once, so #56 isn't held up.
+- **0c: Fix History.** It still reads `api.workoutSessions.getHistory`, the legacy table. Switch it to `gpp_workout_sessions` (`api.gppWorkoutSessions.getHistory` already exists).
 - **1: E2E framework.**
   - `convex/e2e.ts` (internal `seedPersona`, `deletePersonaData`, `inspectPersona`) and `scripts/e2e/persona.ts`.
   - The `.maestro/` layout and evidence subflows, plus `testID`s.
-  - The **`sign-in` flow** as the tracer bullet, the `e2e-web` job, and the §8 rule in `CLAUDE.md`.
+  - The **`sign-in` flow** as the tracer bullet, the `e2e-web` job, and the §8 rule in `AGENTS.md`.
   - Phase 1 checks: Maestro web `id:` matching, subflow headers, `longPressOn` on web.
 - **1b to 1e:** the `sign-up`, `activation`, `workout-loop` and `reassessment` flows, one PR each.
+- **1f: `equipment-toggle` flow.** Needs #56 merged and Phase 1.
+  - Adds `equipmentMode` and `requireHomeSwap` to `seedPersona`, the session and program fields to `persona inspect`, and the three equipment `testID`s.
+  - Links its `recording.mp4` from #56's Evidence section (§5, flow 6).
+  - The stacked intake-equipment PR then updates `activation` (flow 3).
 - **2: Native.** The `e2e-native.yml` jobs for Android and iOS, the `report` job, `sweep`, and the gallery.
 - **3: PStack and the factory.** The verify skill and nightly maintenance; automated review; the TypeScript ratchet run.
 - **Gate:** make `e2e-web` required after 10 green runs on `main`.
@@ -272,16 +306,17 @@ Each item is a PR. Items 0a–0c are prerequisites.
 **Follow-ups found along the way** (separate tickets, outside this plan):
 - Refactor `hooks/useAuth.ts` and `components/AuthGuard.tsx` onto `lib/authState.ts` and `lib/authGuard.ts`, so those tests cover real code.
 - Clerk Production instance before launch: it needs a domain; then set the `production` profile to `pk_live_…` and the production Convex `CLERK_JWT_ISSUER_DOMAIN`.
-- Dead code: `hooks/useOnboarding.ts` calls Convex functions that don't exist, and `(onboarding)/progression.tsx` pushes to a route that doesn't exist.
+- Dead code: `(onboarding)/progression.tsx` pushes to `/(onboarding)/first-workout`, which doesn't exist. (`hooks/useOnboarding.ts` has already been removed on `main`.)
+- Rewrite #56's PR description with the `/pr` template. It still says "No code changes".
 - Remove the legacy trainer/client screens, or decide to keep them.
 
 ## 11. Steps only you can do
 
 - [ ] Create the free Convex project `wander-fit-e2e`. Set its `CLERK_JWT_ISSUER_DOMAIN` to `https://electric-leopard-75.clerk.accounts.dev`, and create a production deploy key.
-- [ ] Clerk Dev instance: turn off bot sign-up protection, and copy the `sk_test_…` secret key.
+- [ ] Clerk Dev instance: turn off bot sign-up protection. The `sk_test_…` key is already in your `.env.local` for the cleanup script (#62); CI needs it as a secret too.
 - [ ] GitHub repo settings:
   - secrets `CONVEX_DEPLOY_KEY_E2E` and `CLERK_SECRET_KEY`
   - variables `EXPO_PUBLIC_CONVEX_URL_E2E` and `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`
   - Pages source "GitHub Actions" (phase 2)
-  - branch protection on `main` (after 0b)
-- [ ] Convex dashboard: check `fleet-mallard-22`'s logs for unexpected calls to `clearAllData` and the `debug:*` functions.
+  - branch protection on `main` (`typecheck` now; `unit` after 0b)
+- [ ] Convex dashboard: check `fleet-mallard-22`'s logs from before #63 for unexpected calls to `clearAllData` and the `debug:*` functions.
