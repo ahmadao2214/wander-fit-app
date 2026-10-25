@@ -1,4 +1,4 @@
-import { mutation, query } from "./_generated/server";
+import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { GPP_CATEGORIES, SPORTS, EXERCISES, SAMPLE_TEMPLATE, EXAMPLE_INTAKE } from "./seedData";
 import { Id } from "./_generated/dataModel";
@@ -8,6 +8,7 @@ import { Id } from "./_generated/dataModel";
  * 
  * These mutations populate the database with reference data.
  * Run from Convex dashboard: seed.seedAll({})
+ * Every function here is internal: run it from the Convex dashboard or `npx convex run`, never from the app.
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -18,7 +19,7 @@ import { Id } from "./_generated/dataModel";
  * Seeds all reference data (categories, sports, exercises)
  * Safe to run multiple times - skips existing records
  */
-export const seedAll = mutation({
+export const seedAll = internalMutation({
   args: {},
   handler: async (ctx) => {
     const results = {
@@ -86,7 +87,7 @@ export const seedAll = mutation({
 /**
  * Seed only GPP categories
  */
-export const seedCategories = mutation({
+export const seedCategories = internalMutation({
   args: {},
   handler: async (ctx) => {
     let created = 0;
@@ -113,7 +114,7 @@ export const seedCategories = mutation({
 /**
  * Seed only sports
  */
-export const seedSports = mutation({
+export const seedSports = internalMutation({
   args: {},
   handler: async (ctx) => {
     let created = 0;
@@ -140,7 +141,7 @@ export const seedSports = mutation({
 /**
  * Seed only exercises
  */
-export const seedExercises = mutation({
+export const seedExercises = internalMutation({
   args: {},
   handler: async (ctx) => {
     let created = 0;
@@ -172,7 +173,7 @@ export const seedExercises = mutation({
  * Seed a sample program template (for testing)
  * Requires exercises to be seeded first
  */
-export const seedSampleTemplate = mutation({
+export const seedSampleTemplate = internalMutation({
   args: {},
   handler: async (ctx) => {
     // Helper to get exercise ID by slug
@@ -239,7 +240,7 @@ export const seedSampleTemplate = mutation({
  * Seed templates for all skill levels (for Week 1, Days 1-3)
  * This ensures athletes of any skill level have workouts available
  */
-export const seedAllSkillLevelTemplates = mutation({
+export const seedAllSkillLevelTemplates = internalMutation({
   args: {},
   handler: async (ctx) => {
     // Helper to get exercise ID by slug
@@ -501,7 +502,7 @@ export const seedAllSkillLevelTemplates = mutation({
  * - intensityPercent: for "@ 65%" prescriptions
  * - section: for warmup/main/circuit/finisher grouping
  */
-export const seedBasketballProgram = mutation({
+export const seedBasketballProgram = internalMutation({
   args: {},
   handler: async (ctx) => {
     // Helper to get exercise ID by slug
@@ -719,7 +720,7 @@ export const seedBasketballProgram = mutation({
  * 2. A user_programs record
  * 3. A user_progress record
  */
-export const seedExampleUserProgram = mutation({
+export const seedExampleUserProgram = internalMutation({
   args: { 
     userId: v.id("users"),
   },
@@ -816,7 +817,7 @@ export const seedExampleUserProgram = mutation({
 /**
  * Get exercise ID by slug (utility for template creation)
  */
-export const getExerciseIdBySlug = query({
+export const getExerciseIdBySlug = internalQuery({
   args: { slug: v.string() },
   handler: async (ctx, args) => {
     const exercise = await ctx.db
@@ -831,7 +832,7 @@ export const getExerciseIdBySlug = query({
 /**
  * Get all exercise slugs (for reference when creating templates)
  */
-export const getAllExerciseSlugs = query({
+export const getAllExerciseSlugs = internalQuery({
   args: {},
   handler: async (ctx) => {
     const exercises = await ctx.db.query("exercises").collect();
@@ -842,7 +843,7 @@ export const getAllExerciseSlugs = query({
 /**
  * Get seed status (for development - check what's seeded)
  */
-export const getSeedStatus = query({
+export const getSeedStatus = internalQuery({
   args: {},
   handler: async (ctx) => {
     const [categories, sports, exercises, templates, programs, intakes, progress] = await Promise.all([
@@ -871,7 +872,7 @@ export const getSeedStatus = query({
 /**
  * Clear all GPP data (USE WITH CAUTION - for development only)
  */
-export const clearAllData = mutation({
+export const clearAllData = internalMutation({
   args: { confirmClear: v.boolean() },
   handler: async (ctx, args) => {
     if (!args.confirmClear) {

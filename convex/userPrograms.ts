@@ -1,4 +1,4 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { calculateWeeksPerPhase, DEFAULT_WEEKS_PER_PHASE } from "./weekMapping";
 
@@ -125,7 +125,7 @@ export const getCurrentUserProgram = query({
 /**
  * Get user program by user ID
  */
-export const getByUserId = query({
+export const getByUserId = internalQuery({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
     return await ctx.db

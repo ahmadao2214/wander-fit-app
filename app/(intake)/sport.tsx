@@ -234,9 +234,9 @@ export default function SportSelectionScreen() {
       {/* Sign Out Button - positioned in top right */}
       <XStack
         position="absolute"
-        top={insets.top + 8}
-        right={16}
-        zIndex={10}
+        t={insets.top + 8}
+        r={16}
+        z={10}
       >
         <Button
           size="$3"
@@ -309,7 +309,7 @@ export default function SportSelectionScreen() {
           <XStack
             width="100%"
             flexWrap="wrap"
-            justifyContent="space-between"
+            justify="space-between"
           >
             {sortedSports.map((sport) => (
               <YStack

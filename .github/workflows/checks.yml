@@ -1,0 +1,51 @@
+# Free PR checks (public repo). Builds run on EAS Workflows, see .eas/workflows/.
+name: Checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  vitest:
+    name: Vitest (Convex)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.5
+      - run: bun install --frozen-lockfile
+      # bun.lock only records the macOS builds of Rollup and esbuild, which
+      # Vitest needs; add the Linux ones at the installed versions.
+      - name: Add Linux native binaries missing from bun.lock
+        run: >-
+          bun add --no-save
+          "@rollup/rollup-linux-x64-gnu@$(node -p "require('rollup/package.json').version")"
+          "@esbuild/linux-x64@$(node -p "require('esbuild/package.json').version")"
+      - run: bun run test:unit
+      - run: bunx vitest run lib/__tests__/signUpErrors.test.ts
+
+  # Informational until the Jest/Vitest split is fixed: a failure here
+  # shows on the PR but does not fail the workflow.
+  jest:
+    name: Jest (informational)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.5
+      - run: bun install --frozen-lockfile
+      - run: npx jest --ci

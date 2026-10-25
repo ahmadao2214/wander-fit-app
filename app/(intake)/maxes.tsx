@@ -176,7 +176,7 @@ export default function MaxesScreen() {
         <ScrollView 
           flex={1} 
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ flexGrow: 1 }}
+          contentContainerStyle={{ grow: 1 }}
           automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
         >
           <YStack

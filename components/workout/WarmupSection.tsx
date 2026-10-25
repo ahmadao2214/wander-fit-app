@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { ScrollView, View, StyleSheet, Pressable } from 'react-native'
-import { YStack, XStack, Text, Button, Card, H3 } from 'tamagui'
+import { YStack, XStack, Text, Button, Card, H3, type ColorTokens } from 'tamagui'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ChevronDown, ChevronUp, ChevronLeft, Check } from '@tamagui/lucide-icons'
 import type { WarmupPhase, ExerciseSection } from '../../types'
@@ -28,7 +28,7 @@ interface WarmupSectionProps {
   onComplete: () => void
   onBack?: () => void
   mode: "preview" | "flow"
-  phaseColor?: string
+  phaseColor?: ColorTokens
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -88,7 +88,7 @@ function PhaseCard({ phase, exercises, phaseIndex, isCompleted, onToggle, phaseC
   phaseIndex: number
   isCompleted?: boolean
   onToggle?: () => void
-  phaseColor?: string
+  phaseColor?: ColorTokens
 }) {
   const badgeColor = phaseColor ?? "$primary"
 

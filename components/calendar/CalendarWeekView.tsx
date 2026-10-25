@@ -276,9 +276,9 @@ export function CalendarWeekView({
         : !isInPast
 
       return (
-        <YStack key={dateISO} flex={1} gap="$1" minWidth={0}>
+        <YStack key={dateISO} flex={1} gap="$1" minW={0}>
           {/* Day header */}
-          <YStack alignItems="center" gap="$0.5">
+          <YStack items="center" gap="$0.5">
             <Text
               fontSize={11}
               fontWeight="500"
@@ -289,10 +289,10 @@ export function CalendarWeekView({
             <YStack
               width={28}
               height={28}
-              borderRadius={14}
-              backgroundColor={isDateToday ? '$primary' : 'transparent'}
-              alignItems="center"
-              justifyContent="center"
+              rounded={14}
+              bg={isDateToday ? '$primary' : 'transparent'}
+              items="center"
+              justify="center"
             >
               <Text
                 fontSize={14}
@@ -339,7 +339,7 @@ export function CalendarWeekView({
         {/* Second row: Thu, Fri, Sat (+ empty spacer for alignment) - always takes half the space */}
         <XStack gap="$1.5" flex={1}>
           {secondRowDays.map(renderDayColumn)}
-          <YStack flex={1} minWidth={0} />
+          <YStack flex={1} minW={0} />
         </XStack>
       </YStack>
     )
@@ -350,7 +350,7 @@ export function CalendarWeekView({
   return (
     <YStack flex={1} gap="$2">
       {/* Navigation header */}
-      <XStack alignItems="center" justifyContent="space-between" px="$2">
+      <XStack items="center" justify="space-between" px="$2">
         {/* Previous arrow - hidden at first week */}
         {isFirstWeek ? (
           <YStack width={32} height={32} />
@@ -364,7 +364,7 @@ export function CalendarWeekView({
           />
         )}
 
-        <XStack alignItems="center" gap="$2">
+        <XStack items="center" gap="$2">
           <Text fontSize="$4" fontWeight="600" color="$color12">
             {formatWeekRange(displayedWeek)}
           </Text>
