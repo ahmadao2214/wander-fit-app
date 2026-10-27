@@ -285,3 +285,7 @@ Default five-role vocabulary (needs-triage, needs-info, ready-for-agent, ready-f
 ### Domain docs
 
 Single-context: root `GLOSSARY.md` + `docs/adr/`. See `docs/agents/domain.md`.
+
+### Skill stacks
+
+Which skill (Matt Pocock's, pstack, tstack) to use at each stage, and where they clash. See `docs/agents/skills-playbook.md`.
