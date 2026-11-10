@@ -35,7 +35,7 @@ const Subtitle = styled(Text, {
 /**
  * History Tab - Completed Workouts Log
  * 
- * Shows all completed workout sessions with:
+ * Shows finished GPP workout sessions (completed or abandoned) with:
  * - Date and duration
  * - Workout name and phase
  * - Completion status
@@ -45,11 +45,11 @@ export default function HistoryPage() {
   const insets = useSafeAreaInsets()
 
   const sessions = useQuery(
-    api.workoutSessions.getHistory,
+    api.gppWorkoutSessions.getHistory,
     user ? {} : "skip"
   )
 
-  if (authLoading) {
+  if (authLoading || (user && sessions === undefined)) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
         <Spinner size="large" color="$primary" />
@@ -70,7 +70,7 @@ export default function HistoryPage() {
   }
 
   const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
+    const mins = Math.max(1, Math.round(seconds / 60))
     return `${mins} min`
   }
 
@@ -97,88 +97,95 @@ export default function HistoryPage() {
           {/* Sessions List */}
           {sessions && sessions.length > 0 ? (
             <YStack gap="$3">
-              {sessions.map((session: any) => (
-                <Card
-                  key={session._id}
-                  p="$4"
-                  bg="$surface"
-                  rounded="$4"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                  pressStyle={{ bg: '$surfaceHover' }}
-                >
-                  <XStack items="center" gap="$3">
-                    {/* Status Icon */}
-                    <YStack
-                      width={44}
-                      height={44}
-                      rounded="$5"
-                      bg={session.status === 'completed' ? '$intensityLow2' : '$accent1'}
-                      items="center"
-                      justify="center"
-                    >
-                      {session.status === 'completed' ? (
-                        <CheckCircle size={22} color="$success" />
-                      ) : (
-                        <XCircle size={22} color="$accent" />
-                      )}
-                    </YStack>
+              {sessions.map((session) => {
+                // Snapshot preserves what was done even if the template changed
+                const name = session.templateSnapshot?.name ?? session.templateName
+                const phase = session.templateSnapshot?.phase ?? session.phase
+                const week = session.templateSnapshot?.week ?? session.week
+                const day = session.templateSnapshot?.day ?? session.day
 
-                    {/* Session Details */}
-                    <YStack flex={1} gap="$1">
-                      <Text 
-                        fontSize={15} 
-                        fontFamily="$body" fontWeight="600"
-                        color="$color12"
+                return (
+                  <Card
+                    key={session._id}
+                    p="$4"
+                    bg="$surface"
+                    rounded="$4"
+                    borderWidth={1}
+                    borderColor="$borderColor"
+                  >
+                    <XStack items="center" gap="$3">
+                      {/* Status Icon */}
+                      <YStack
+                        width={44}
+                        height={44}
+                        rounded="$5"
+                        bg={session.status === 'completed' ? '$intensityLow2' : '$accent1'}
+                        items="center"
+                        justify="center"
                       >
-                        {session.templateSnapshot?.name || session.workout?.name || 'Workout'}
-                      </Text>
-                      <XStack gap="$3" flexWrap="wrap">
-                        <XStack items="center" gap="$1">
-                          <Calendar size={13} color="$color10" />
-                          <Text fontSize={12} color="$color10" fontFamily="$body">
-                            {formatDate(session.startedAt)}
-                          </Text>
+                        {session.status === 'completed' ? (
+                          <CheckCircle size={22} color="$success" />
+                        ) : (
+                          <XCircle size={22} color="$accent" />
+                        )}
+                      </YStack>
+
+                      {/* Session Details */}
+                      <YStack flex={1} gap="$1">
+                        <Text 
+                          fontSize={15} 
+                          fontFamily="$body" fontWeight="600"
+                          color="$color12"
+                        >
+                          {name}
+                        </Text>
+                        <XStack gap="$3" flexWrap="wrap">
+                          <XStack items="center" gap="$1">
+                            <Calendar size={13} color="$color10" />
+                            <Text fontSize={12} color="$color10" fontFamily="$body">
+                              {formatDate(session.startedAt)}
+                            </Text>
+                          </XStack>
+                          {session.totalDurationSeconds ? (
+                            <XStack items="center" gap="$1">
+                              <Clock size={13} color="$color10" />
+                              <Text fontSize={12} color="$color10" fontFamily="$body">
+                                {formatDuration(session.totalDurationSeconds)}
+                              </Text>
+                            </XStack>
+                          ) : null}
+                          {phase ? (
+                            <XStack items="center" gap="$1">
+                              <Dumbbell size={13} color="$color10" />
+                              <Text fontSize={12} color="$color10" fontFamily="$body">
+                                {phase} W{week}D{day}
+                              </Text>
+                            </XStack>
+                          ) : null}
                         </XStack>
-                        {session.totalDuration && (
-                          <XStack items="center" gap="$1">
-                            <Clock size={13} color="$color10" />
-                            <Text fontSize={12} color="$color10" fontFamily="$body">
-                              {formatDuration(session.totalDuration)}
-                            </Text>
-                          </XStack>
-                        )}
-                        {session.templateSnapshot?.phase && (
-                          <XStack items="center" gap="$1">
-                            <Dumbbell size={13} color="$color10" />
-                            <Text fontSize={12} color="$color10" fontFamily="$body">
-                              {session.templateSnapshot.phase} W{session.templateSnapshot.week}D{session.templateSnapshot.day}
-                            </Text>
-                          </XStack>
-                        )}
-                      </XStack>
-                    </YStack>
+                      </YStack>
 
-                    {/* Status Badge */}
-                    <Card
-                      bg={session.status === 'completed' ? '$intensityLow2' : '$accent1'}
-                      px="$2"
-                      py="$1"
-                      rounded="$2"
-                    >
-                      <Text
-                        fontSize={10}
-                        fontFamily="$body" fontWeight="700"
-                        letterSpacing={0.5}
-                        color={session.status === 'completed' ? '$success' : '$accent'}
-                        textTransform="uppercase"
+                      {/* Status Badge */}
+                      <Card
+                        bg={session.status === 'completed' ? '$intensityLow2' : '$accent1'}
+                        px="$2"
+                        py="$1"
+                        rounded="$2"
                       >
-                        {session.status}
-                      </Text>
-                    </Card>
-                  </XStack>
-                </Card>
-              ))}
+                        <Text
+                          fontSize={10}
+                          fontFamily="$body" fontWeight="700"
+                          letterSpacing={0.5}
+                          color={session.status === 'completed' ? '$success' : '$accent'}
+                          textTransform="uppercase"
+                        >
+                          {session.status}
+                        </Text>
+                      </Card>
+                    </XStack>
+                  </Card>
+                )
+              })}
             </YStack>
           ) : (
             <Card 
