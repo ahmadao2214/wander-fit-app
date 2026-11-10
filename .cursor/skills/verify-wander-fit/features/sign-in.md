@@ -20,7 +20,7 @@ Preconditions: `node scripts/verify/run.mjs doctor` passed, and `node scripts/ve
 - Expect `WELCOME BACK`, `Sign in to continue your training journey`, `Email address`, `Password`, and `Sign In`.
 - Tap `Email address`.
 - Expect `Sign In` to still be visible. The screen-only flow does not press it.
-- When `.env.e2e` is present, `node scripts/verify/run.mjs all` uses `.maestro/sign-in-submit.yaml` instead. It types the persona email and password, presses Sign In, and expects `Welcome back,`.
+- `node scripts/verify/run.mjs all` requires the e2e URL. It uses `.maestro/sign-in-submit.yaml`, types the persona email and password, presses Sign In, and expects `Welcome back,`. The signed-out screen is `node scripts/verify/run.mjs screen`.
 - Proof of the submitted path is `03-today` under `e2e-artifacts/sign-in/web/`.
 
 ## Gotchas

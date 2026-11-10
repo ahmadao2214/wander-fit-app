@@ -15,7 +15,9 @@ import {
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 const distDir = path.join(root, "dist-verify")
 const evidenceDir = path.join(root, "e2e-artifacts/sign-in/web")
-const stateFile = "/tmp/wander-fit-verify.json"
+// Tests set these so cleanup does not kill a live server.
+const stateFile = process.env.VERIFY_STATE_FILE || "/tmp/wander-fit-verify.json"
+const readyFile = process.env.VERIFY_READY_FILE || "/tmp/wander-fit-verify.ready"
 const port = Number(process.env.VERIFY_PORT || 4173)
 
 function readDotenv(file) {
@@ -48,7 +50,11 @@ function clerkKey() {
 }
 
 function e2eUrl() {
-  if (process.env.EXPO_PUBLIC_CONVEX_URL_E2E) return process.env.EXPO_PUBLIC_CONVEX_URL_E2E
+  // An explicit empty variable means "not configured", including in CI.
+  // Fall back to .env.e2e only when the variable is unset.
+  if (process.env.EXPO_PUBLIC_CONVEX_URL_E2E !== undefined) {
+    return process.env.EXPO_PUBLIC_CONVEX_URL_E2E.trim()
+  }
   return readDotenv(path.join(root, ".env.e2e")).EXPO_PUBLIC_CONVEX_URL_E2E || ""
 }
 
@@ -223,6 +229,12 @@ function startServer() {
   return server
 }
 
+// Curl can succeed against a different process already bound to this port.
+// The child writes its pid only after listen succeeds.
+export function ownServerReady(readyText, pid) {
+  return Number(pid) > 0 && String(readyText).trim() === String(pid)
+}
+
 function verifyUrl() {
   const signIn = path.join(distDir, "sign-in.html")
   return fs.existsSync(signIn)
@@ -247,13 +259,17 @@ function launch() {
   const url = verifyUrl()
   const deadline = Date.now() + 15000
   while (Date.now() < deadline) {
-    const ready = spawnSync("bash", ["-lc", `curl -sf -o /dev/null "${url}"`], { encoding: "utf8" })
-    if (ready.status === 0) {
-      console.log(`serving ${url}`)
-      return url
+    const marked = fs.existsSync(readyFile) ? fs.readFileSync(readyFile, "utf8") : ""
+    if (ownServerReady(marked, child.pid)) {
+      const ready = spawnSync("bash", ["-lc", `curl -sf -o /dev/null "${url}"`], { encoding: "utf8" })
+      if (ready.status === 0) {
+        console.log(`serving ${url}`)
+        return url
+      }
     }
     spawnSync("bash", ["-lc", "sleep 0.2"])
   }
+  cleanupServer()
   fail(`Server did not answer at ${url}`)
 }
 
@@ -277,11 +293,10 @@ function createPersona() {
   if (line) console.log(line)
 }
 
-function drive(url) {
+function drive(url, submitting = submitMode()) {
   const maestro = maestroBin()
   if (!maestro) fail("Maestro is not installed.")
   fs.mkdirSync(evidenceDir, { recursive: true })
-  const submitting = submitMode()
   const flow = submitting ? ".maestro/sign-in-submit.yaml" : ".maestro/sign-in.yaml"
   const args = [
     "test",
@@ -302,55 +317,92 @@ function drive(url) {
   }
   args.push(flow)
   const result = spawnSync(maestro, args, { cwd: root, stdio: "inherit", env })
-  if (result.status !== 0) process.exit(result.status ?? 1)
+  if (result.status !== 0) {
+    const error = new Error(`Maestro exited ${result.status ?? 1}`)
+    error.exitStatus = result.status ?? 1
+    throw error
+  }
   console.log(`evidence: ${evidenceDir}`)
 }
 
 function cleanupServer() {
-  if (!fs.existsSync(stateFile)) return
-  try {
-    const state = JSON.parse(fs.readFileSync(stateFile, "utf8"))
-    if (state.pid) {
-      try {
-        process.kill(state.pid)
-      } catch {
-        // already gone
+  if (fs.existsSync(stateFile)) {
+    try {
+      const state = JSON.parse(fs.readFileSync(stateFile, "utf8"))
+      if (state.pid) {
+        try {
+          process.kill(state.pid)
+        } catch {
+          // already gone
+        }
       }
+    } finally {
+      fs.rmSync(stateFile, { force: true })
     }
-  } finally {
-    fs.rmSync(stateFile, { force: true })
   }
+  fs.rmSync(readyFile, { force: true })
 }
 
-const command = process.argv[2] || "all"
-
-if (command === "serve") {
-  const server = startServer()
-  console.log(`verify server on 127.0.0.1:${port}`)
-  server.on("error", (error) => fail(error.message))
-} else if (command === "doctor") {
-  doctor()
-} else if (command === "export") {
-  exportWeb()
-} else if (command === "launch") {
-  launch()
-} else if (command === "drive") {
-  const url = process.argv[3] || verifyUrl()
-  drive(url)
-} else if (command === "cleanup") {
-  cleanupServer()
-  console.log(`left evidence in ${evidenceDir}`)
-} else if (command === "all") {
-  doctor()
-  if (submitMode()) createPersona()
-  exportWeb()
-  const url = launch()
+// Throw from drive so this finally still runs. process.exit would skip it.
+export function runDrive(url, submitting = submitMode()) {
   try {
-    drive(url)
+    drive(url, submitting)
   } finally {
     cleanupServer()
   }
-  console.log(`left evidence in ${evidenceDir}`)
-} else {
-  fail("Use doctor, export, launch, drive, cleanup, or all.")
+}
+
+function main() {
+  const command = process.argv[2] || "all"
+
+  if (command === "serve") {
+    const server = startServer()
+    server.on("error", (error) => fail(error.message))
+    server.on("listening", () => {
+      fs.writeFileSync(readyFile, String(process.pid))
+      console.log(`verify server on 127.0.0.1:${port}`)
+    })
+  } else if (command === "doctor") {
+    doctor()
+  } else if (command === "export") {
+    exportWeb()
+  } else if (command === "launch") {
+    launch()
+  } else if (command === "drive") {
+    const url = process.argv[3] || verifyUrl()
+    drive(url)
+  } else if (command === "cleanup") {
+    cleanupServer()
+    console.log(`left evidence in ${evidenceDir}`)
+  } else if (command === "screen") {
+    doctor()
+    exportWeb()
+    runDrive(launch(), false)
+    console.log(`left evidence in ${evidenceDir}`)
+  } else if (command === "all") {
+    if (!e2eUrl()) {
+      fail(
+        "all needs EXPO_PUBLIC_CONVEX_URL_E2E. The signed-out screen is: node scripts/verify/run.mjs screen"
+      )
+    }
+    doctor()
+    createPersona()
+    exportWeb()
+    runDrive(launch(), true)
+    console.log(`left evidence in ${evidenceDir}`)
+  } else {
+    fail("Use doctor, export, launch, drive, cleanup, screen, or all.")
+  }
+}
+
+const invokedDirectly =
+  process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+
+if (invokedDirectly) {
+  try {
+    main()
+  } catch (error) {
+    console.error(error.message || error)
+    process.exit(error.exitStatus ?? 1)
+  }
 }

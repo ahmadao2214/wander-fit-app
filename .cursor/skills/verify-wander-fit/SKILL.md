@@ -15,11 +15,17 @@ From the repo root:
 node scripts/verify/run.mjs all
 ```
 
-`all` runs doctor, exports web, serves it on `127.0.0.1:4173`, runs Maestro, then stops the server. Evidence stays in `e2e-artifacts/sign-in/web/`.
+`all` requires `EXPO_PUBLIC_CONVEX_URL_E2E` in the environment or in `.env.e2e`. It runs doctor, creates a fresh onboarded persona, exports web, serves it on `127.0.0.1:4173`, submits Sign In, waits until `Welcome back,` is visible, and then stops the server. Evidence stays in `e2e-artifacts/sign-in/web/`. A missing URL is a failed check, not a signed-out pass.
 
-The export sets `EXPO_NO_DOTENV=1`. It bakes `EXPO_PUBLIC_CONVEX_URL_E2E` from the environment or from `.env.e2e`. Otherwise it bakes `https://wander-fit-e2e.invalid` and the flow only looks at the signed-out screen. It refuses to serve a bundle that contains `fleet-mallard-22.convex.cloud`, `accomplished-tapir-54.convex.cloud`, or a real Clerk secret (`sk_test_` or `sk_live_` followed by a token).
+The signed-out screen is a separate command. It does not create a persona or submit:
 
-When an e2e URL is configured, `all` creates a fresh onboarded persona, submits Sign In, and waits until `Welcome back,` is visible. Ready on the screen-only path means Maestro can see `WELCOME BACK`.
+```bash
+node scripts/verify/run.mjs screen
+```
+
+With no e2e URL, `screen` bakes `https://wander-fit-e2e.invalid`. Ready on that path means Maestro can see `WELCOME BACK`.
+
+The export sets `EXPO_NO_DOTENV=1`. It refuses to serve a bundle that contains `fleet-mallard-22.convex.cloud`, `accomplished-tapir-54.convex.cloud`, or a real Clerk secret (`sk_test_` or `sk_live_` followed by a token).
 
 ## Doctor
 
@@ -38,7 +44,9 @@ node scripts/verify/run.mjs launch
 node scripts/verify/run.mjs drive
 ```
 
-With no e2e URL, `.maestro/sign-in.yaml` opens the signed-out screen, checks the welcome copy and the fields, taps the email field, and does not submit. With `EXPO_PUBLIC_CONVEX_URL_E2E` set, `.maestro/sign-in-submit.yaml` types the fresh persona and submits Sign In. The password stays in `e2e-artifacts/persona-latest.json` and is not printed.
+`launch` and `drive` are the signed-out pieces. Submitted sign-in is `all`, which creates the persona first. `drive` fails when an e2e URL is set and `e2e-artifacts/persona-latest.json` is missing.
+
+With no e2e URL, `screen` and `drive` use `.maestro/sign-in.yaml`. That flow opens the signed-out screen, checks the welcome copy and the fields, taps the email field, and does not submit. `all` uses `.maestro/sign-in-submit.yaml`, types the fresh persona, and submits Sign In. The password stays in `e2e-artifacts/persona-latest.json` and is not printed.
 
 ## Evidence
 

@@ -233,6 +233,21 @@ async function remove() {
   printJson(result)
 }
 
+// Clerk's Backend API sends created_at as milliseconds. Date.parse on that
+// number is NaN, which would make sweep skip every user.
+export function createdAtMs(value) {
+  if (typeof value === "number" && Number.isFinite(value)) return value
+  if (typeof value === "string") {
+    if (/^\d+$/.test(value)) {
+      const asNumber = Number(value)
+      if (Number.isFinite(asNumber)) return asNumber
+    }
+    const parsed = Date.parse(value)
+    if (Number.isFinite(parsed)) return parsed
+  }
+  return 0
+}
+
 function olderThanMs() {
   const raw = flag("--older-than") || "2h"
   const match = raw.match(/^(\d+)([mhd])$/)
@@ -250,7 +265,7 @@ async function sweep() {
     const users = await clerk(`/users?limit=100&offset=${offset}&order_by=-created_at`)
     if (!Array.isArray(users) || users.length === 0) break
     for (const user of users) {
-      const created = user.created_at ? Date.parse(user.created_at) : 0
+      const created = createdAtMs(user.created_at)
       if (!created || created > cutoff) continue
       const email = user.email_addresses?.[0]?.email_address || ""
       if (!emailPattern.test(email)) continue
@@ -264,17 +279,22 @@ async function sweep() {
   if (!process.argv.includes("--json")) console.log(JSON.stringify({ removed: removed.length }))
 }
 
-if (!known.has(command)) {
-  fail(`Unknown persona command "${command}". Use create, inspect, delete, or sweep.`)
-}
+const invokedDirectly =
+  process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 
-if (command === "help") {
-  console.log(`persona create --state <new|needs-intake|onboarded|phase-end> --json
+if (invokedDirectly) {
+  if (!known.has(command)) {
+    fail(`Unknown persona command "${command}". Use create, inspect, delete, or sweep.`)
+  }
+
+  if (command === "help") {
+    console.log(`persona create --state <new|needs-intake|onboarded|phase-end> --json
 persona inspect <email> --json
 persona delete <email>
 persona sweep --older-than 2h`)
-  process.exit(0)
-}
+    process.exit(0)
+  }
 
-const action = { create, inspect, delete: remove, sweep }[command]
-action().catch((error) => fail(error?.message || String(error)))
+  const action = { create, inspect, delete: remove, sweep }[command]
+  action().catch((error) => fail(error?.message || String(error)))
+}
