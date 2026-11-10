@@ -4,6 +4,7 @@ import { useQuery } from 'convex/react'
 import { useRouter } from 'expo-router'
 import { api } from 'convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
+import { getLocalDayArgs } from '../../lib/streaks'
 import { SignOutButton } from '../../components/SignOutButton'
 import { OneRepMaxSheet } from '../../components/OneRepMaxSheet'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -74,7 +75,7 @@ export default function ProfilePage() {
 
   const progress = useQuery(
     api.userPrograms.getProgressSummary,
-    user ? {} : "skip"
+    user ? getLocalDayArgs() : "skip"
   )
 
   const intakeHistory = useQuery(
