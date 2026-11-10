@@ -1,0 +1,15 @@
+url: ${VERIFY_URL}
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "WELCOME BACK"
+    timeout: 90000
+- assertVisible: "Sign in to continue your training journey"
+- assertVisible: "Email address"
+- assertVisible: "Password"
+- assertVisible: "Sign In"
+- takeScreenshot: 01-sign-in
+- tapOn: "Email address"
+- assertVisible: "Sign In"
+- takeScreenshot: 02-email-focused

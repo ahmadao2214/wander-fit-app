@@ -15,7 +15,9 @@
     "test": "jest --watchAll",
     "test:ci": "jest --ci",
     "test:unit": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "verify:doctor": "node scripts/verify/run.mjs doctor",
+    "verify:web": "node scripts/verify/run.mjs all"
   },
   "overrides": {
     "esbuild": "0.25.4"

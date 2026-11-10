@@ -1,8 +1,8 @@
 import { defineConfig } from "vitest/config";
 
-// Vitest runs the pure TypeScript tests: Convex functions, lib/ utilities and
-// hook logic. React Native component and screen tests run under Jest (jest-expo);
-// see jest.config.js. Keep the two `include`/`testMatch` lists disjoint.
+// Vitest runs the pure tests: Convex functions, lib/ utilities, hook logic,
+// and the verifier command. React Native component and screen tests run under
+// Jest (jest-expo); see jest.config.js. Keep the two include/testMatch lists disjoint.
 export default defineConfig({
   test: {
     // Test environment
@@ -13,6 +13,7 @@ export default defineConfig({
       "convex/__tests__/**/*.test.ts",
       "lib/__tests__/**/*.test.ts",
       "hooks/__tests__/**/*.test.ts",
+      "scripts/verify/**/*.test.mjs",
     ],
 
     // Allow importing from tamagui.config.ts

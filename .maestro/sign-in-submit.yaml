@@ -1,0 +1,21 @@
+url: ${VERIFY_URL}
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "WELCOME BACK"
+    timeout: 90000
+- tapOn:
+    id: sign-in-email
+- inputText: ${PERSONA_EMAIL}
+- tapOn:
+    id: sign-in-password
+- inputText: ${PERSONA_PASSWORD}
+- takeScreenshot: 02-filled
+- tapOn:
+    id: sign-in-submit
+- extendedWaitUntil:
+    visible: "Welcome back,.*"
+    timeout: 90000
+- assertVisible: "Today"
+- takeScreenshot: 03-today
