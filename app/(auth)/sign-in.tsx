@@ -256,6 +256,8 @@ export default function SignInPage() {
               {/* Email/Password Section */}
               <YStack gap="$3">
                 <Input
+                  testID="sign-in-email"
+                  nativeID="sign-in-email"
                   autoCapitalize="none"
                   keyboardType="email-address"
                   autoComplete="email"
@@ -279,6 +281,10 @@ export default function SignInPage() {
                   }}
                 />
                 <Input
+                  testID="sign-in-password"
+                  // DOM id. Maestro web types into the xpath of the focused node,
+                  // and without this the password is entered into the email field.
+                  nativeID="sign-in-password"
                   value={password}
                   placeholder="Password"
                   placeholderTextColor="$placeholderColor"
@@ -302,6 +308,7 @@ export default function SignInPage() {
                   }}
                 />
                 <Button
+                  testID="sign-in-submit"
                   onPress={onSignInPress}
                   disabled={isSigningIn}
                   size="$5"

@@ -47,3 +47,8 @@ node_modules
 ios
 android
 yarn.lock
+
+# Local verification export and proof. Do not commit recordings.
+dist-verify/
+e2e-artifacts/
+.env.e2e
