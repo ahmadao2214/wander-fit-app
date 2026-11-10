@@ -208,6 +208,51 @@ export function mapUserWeekToTemplateWeek(
 }
 
 /**
+ * Template week (1-4) of the first slot a template currently occupies.
+ *
+ * A template's own `week` is where the generator put it, but swaps
+ * (setTodayFocusWithSwap, the startSession cascade) can move it into another
+ * user week. The weekly wave should follow the slot, so a peak template moved
+ * into the last week of a phase is prescribed as a deload.
+ *
+ * Walks user weeks 1..weeksPerPhase and returns the mapped week of the first
+ * one where the template sits, either through a slot override or in its
+ * default slot (not overridden). Falls back to the template's own week.
+ *
+ * @param template - The template's id, phase, week and day
+ * @param slotOverrides - The user's slot overrides (user weeks)
+ * @param weeksPerPhase - Total weeks in the phase
+ * @returns Template week (1-4) for the weekly wave
+ */
+export function getSlotTemplateWeek(
+  template: { id: string; phase: string; week: number; day: number },
+  slotOverrides: ReadonlyArray<{ phase: string; week: number; day: number; templateId: string }>,
+  weeksPerPhase: number = DEFAULT_WEEKS_PER_PHASE
+): number {
+  const phaseOverrides = slotOverrides.filter((o) => o.phase === template.phase);
+  const clampedWeeksPerPhase = Math.max(
+    MIN_WEEKS_PER_PHASE,
+    Math.min(MAX_WEEKS_PER_PHASE, weeksPerPhase)
+  );
+
+  for (let userWeek = 1; userWeek <= clampedWeeksPerPhase; userWeek++) {
+    const mappedWeek = mapUserWeekToTemplateWeek(userWeek, clampedWeeksPerPhase);
+    const movedHere = phaseOverrides.some(
+      (o) => o.week === userWeek && o.templateId === template.id
+    );
+    const inDefaultSlot =
+      mappedWeek === template.week &&
+      !phaseOverrides.some((o) => o.week === userWeek && o.day === template.day);
+
+    if (movedHere || inDefaultSlot) {
+      return mappedWeek;
+    }
+  }
+
+  return template.week;
+}
+
+/**
  * Get the display label for a week based on template mapping
  *
  * @param templateWeek - The template week (1-4)

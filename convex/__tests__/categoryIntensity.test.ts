@@ -843,3 +843,27 @@ describe("Category-Specific Intensity Integration", () => {
     expect(params18_35.oneRepMaxPercent.max).toBe(params36.oneRepMaxPercent.max);
   });
 });
+
+describe("getCategoryExerciseParameters templateWeek argument", () => {
+  const squat = (week?: number) =>
+    getCategoryExerciseParameters(4, "SSP", "18-35", 7, "strength", ["lower_body", "squat", "compound"], ["barbell", "rack"], week);
+
+  it("treats the matrix values above as the peak week (template week 3)", () => {
+    expect(squat(3)).toEqual(squat());
+    expect(squat(3).sets).toBe(4);
+    expect(squat(3).oneRepMaxPercent.max).toBe(0.8);
+  });
+
+  it("lightens the deload week (template week 4)", () => {
+    expect(squat(4).sets).toBe(2);
+    expect(squat(4).oneRepMaxPercent.max).toBe(0.7);
+    expect(squat(4).reps).toBe(squat().reps);
+  });
+
+  it("keeps the teen 85% ceiling in every week", () => {
+    for (const week of [1, 2, 3, 4]) {
+      const params = getCategoryExerciseParameters(2, "SSP", "14-17", 3, "strength", undefined, undefined, week);
+      expect(params.oneRepMaxPercent.max).toBeLessThanOrEqual(0.85);
+    }
+  });
+});
