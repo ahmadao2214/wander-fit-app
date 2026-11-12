@@ -2,6 +2,7 @@ url: ${VERIFY_URL}
 ---
 - launchApp:
     clearState: true
+- startRecording: recording
 - extendedWaitUntil:
     visible: "WELCOME BACK"
     timeout: 90000
@@ -19,3 +20,4 @@ url: ${VERIFY_URL}
     timeout: 90000
 - assertVisible: "Today"
 - takeScreenshot: 03-today
+- stopRecording

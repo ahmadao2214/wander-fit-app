@@ -38,7 +38,7 @@ export function renderSummary({ flows, results, artifacts, runUrl }) {
   if (runUrl) lines.push("", `Run: ${runUrl}`)
   lines.push(
     "",
-    "Evidence is Maestro's step screenshots, `commands.json` and `logs/maestro.log`, with the persona password redacted. There is no video yet."
+    "Evidence is Maestro's step screenshots, `commands.json`, `logs/maestro.log`, and `startRecording/recording.mp4`, with the persona password redacted."
   )
   return `${lines.join("\n")}\n`
 }

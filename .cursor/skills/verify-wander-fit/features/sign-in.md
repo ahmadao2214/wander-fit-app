@@ -21,11 +21,11 @@ Preconditions: `node scripts/verify/run.mjs doctor` passed, and `node scripts/ve
 - Tap `Email address`.
 - Expect `Sign In` to still be visible. The screen-only flow does not press it.
 - `node scripts/verify/run.mjs all sign-in` requires the e2e URL. It uses `.maestro/web/sign-in.yaml`, types the persona email and password, presses Sign In, and expects `Welcome back,`. The signed-out screen is `node scripts/verify/run.mjs screen`.
-- Proof of the submitted path is `03-today` under `e2e-artifacts/sign-in/web/`.
+- Proof of the submitted path is `03-today` and `startRecording/recording.mp4` under `e2e-artifacts/sign-in/web/`.
 
 ## Gotchas
 
 - The submitted path uses a new `e2e.<timestamp>+clerk_test@example.com` user on `wander-fit-e2e`. It does not use the shared manual account.
 - A missing Clerk publishable key leaves the page on `Loading...`.
 - `testID`s `sign-in-email`, `sign-in-password`, and `sign-in-submit` are on the controls. The inputs also have matching `nativeID`s. Maestro web types into `document.activeElement`, and its xpath collapses to the first shared ancestor. Without a unique id, the password is typed into the email field.
-- If `startRecording` fails on a Chrome and Maestro mismatch, the screenshots are still the proof for this feature. Do not weaken the text assertions to make a video succeed.
+- `startRecording` writes `startRecording/recording.mp4` into the evidence folder. A recording failure fails the flow. Do not weaken the text assertions to make a video succeed.

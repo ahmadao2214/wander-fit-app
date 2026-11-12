@@ -29,6 +29,14 @@ describe("web flows", () => {
     expect(listWebFlows()).toContain("sign-in")
   })
 
+  it("records the sign-in journey into the uploaded evidence folder", () => {
+    const flow = fs.readFileSync(path.join(root, ".maestro/web/sign-in.yaml"), "utf8")
+    const start = flow.indexOf("startRecording: recording")
+    const stop = flow.lastIndexOf("stopRecording")
+    expect(start).toBeGreaterThan(flow.indexOf("launchApp"))
+    expect(stop).toBeGreaterThan(flow.indexOf("takeScreenshot: 03-today"))
+  })
+
   it("has an upload step in the checks workflow for every web flow", () => {
     const uploads = job.steps
       .filter((step) => String(step.uses || "").startsWith("actions/upload-artifact@"))
@@ -109,5 +117,6 @@ describe("summary", () => {
     const markdown = renderSummary({ flows: ["sign-in"], results: null, artifacts: {}, runUrl: "" })
     expect(markdown).toContain("No flow ran.")
     expect(markdown).toContain("| sign-in | ⚪ not run |")
+    expect(markdown).toContain("startRecording/recording.mp4")
   })
 })
