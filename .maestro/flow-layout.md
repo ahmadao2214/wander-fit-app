@@ -6,7 +6,9 @@ Credentials are Maestro env vars. The runner passes `PERSONA_EMAIL` and `PERSONA
 
 ## Maestro web and testID
 
-Maestro web matches a React Native Web `testID` with `id:`. On the sign-in flow that is `sign-in-email`, `sign-in-password`, `sign-in-submit`, `today-workout-card`, and `sign-out`. The driver reports the testID as `resource-id`. `nativeID` is only for typing into an input whose xpath would otherwise collapse.
+Maestro web matches a React Native Web `testID` with `id:`. On the sign-in flow that is `sign-in-email`, `sign-in-password`, `sign-in-submit`, `today-workout-card`, and `sign-out`. On the sign-up flow it is `sign-up-name`, `sign-up-email`, `sign-up-password`, `sign-up-submit`, and `sign-up-code` (the first code box).
+
+Maestro web's `scroll` and `scrollUntilVisible` move `window` only, and the driver omits elements outside the viewport. A screen that scrolls inside a React Native `ScrollView` does not move. A `swipe` sends a touch drag, which does scroll that inner view. The sign-up form uses one to bring the password field and Continue with Email into view. The driver reports the testID as `resource-id`. `nativeID` is only for typing into an input whose xpath would otherwise collapse.
 
 ## Subflow headers
 

@@ -18,11 +18,18 @@ import {
   listWebFlows,
   pendingFile,
   personaFile,
+  personaMode,
   resultsFile,
   root,
   webFlowFile,
 } from "./flows.mjs"
-import { convexInvocation } from "./persona.mjs"
+import {
+  convexInvocation,
+  generatePassword,
+  parseRunResult,
+  signupEmail,
+  writeCredentials,
+} from "./persona.mjs"
 
 const distDir = path.join(root, "dist-verify")
 // The signed-out screen check. It is not a journey, so it is not under .maestro/web.
@@ -301,6 +308,11 @@ function personaCredentials() {
   return record
 }
 
+function maskPassword(password) {
+  // Hide the generated password from the job log if anything echoes it.
+  if (process.env.GITHUB_ACTIONS === "true") console.log(`::add-mask::${password}`)
+}
+
 function createPersona() {
   const result = spawnSync(
     process.execPath,
@@ -323,9 +335,53 @@ function createPersona() {
   if (line) console.log(line)
   const persona = readPersonaFile()
   if (!persona) throw new Error("persona create did not write e2e-artifacts/persona-latest.json")
-  // Hide the generated password from the job log if anything echoes it.
-  if (process.env.GITHUB_ACTIONS === "true") console.log(`::add-mask::${persona.password}`)
+  maskPassword(persona.password)
   return persona
+}
+
+// The sign-up flow creates the Clerk user and the Convex row through the UI.
+// Write the cleanup record first, so a run that fails partway still deletes
+// whatever the app made. No Clerk or Convex call happens here.
+export function createSignupPersona({ file = personaFile, now = Date.now, mask = maskPassword } = {}) {
+  const record = {
+    email: signupEmail(now()),
+    password: generatePassword(),
+    state: "signup",
+    createdAt: new Date(now()).toISOString(),
+  }
+  writeCredentials(record, file)
+  mask(record.password)
+  console.log(JSON.stringify({ email: record.email, state: record.state, credentialsFile: "e2e-artifacts/persona-latest.json" }))
+  return record
+}
+
+// persona inspect prints the Convex object. convex run pretty-prints it, so the
+// last line is often "}" and is not the result.
+export function assertSignedUp(output, email) {
+  let parsed = null
+  try {
+    parsed = parseRunResult(output)
+  } catch {
+    parsed = null
+  }
+  if (parsed?.found !== true) {
+    const detail = parsed ? JSON.stringify({ found: parsed.found, email: parsed.email }) : "no inspect output"
+    throw new Error(`sign-up left no Convex user for ${email}: ${detail}`)
+  }
+  return parsed
+}
+
+function inspectPersona(persona) {
+  const result = spawnSync(
+    process.execPath,
+    ["scripts/verify/persona.mjs", "inspect", persona.email, "--json"],
+    { cwd: root, encoding: "utf8" }
+  )
+  if (result.stderr) process.stderr.write(result.stderr)
+  if (result.status !== 0) throw new Error(`persona inspect exited ${result.status ?? 1}`)
+  const inspected = assertSignedUp(result.stdout, persona.email)
+  console.log(`inspect: ${JSON.stringify(inspected)}`)
+  return inspected
 }
 
 function deletePersona(persona) {
@@ -467,6 +523,7 @@ export function runSuite(flows, steps, now = Date.now) {
     try {
       persona = steps.createPersona(flow)
       steps.drive(flow, persona)
+      steps.verify?.(flow, persona)
     } catch (error) {
       errors.push(error?.message || String(error))
       if (!persona && error?.persona) persona = error.persona
@@ -514,27 +571,50 @@ function selectFlows(requested) {
   return requested
 }
 
-function runWebFlows(url, flows) {
-  return runSuite(flows, {
+function redactFlow(flow, persona) {
+  const dir = evidenceDirFor(flow)
+  fs.rmSync(scrubMarker(dir), { force: true })
+  redactEvidence(dir, persona.password)
+  if (fs.existsSync(dir)) fs.writeFileSync(scrubMarker(dir), "")
+}
+
+const webIo = {
+  createOnboardedPersona: createPersona,
+  createSignupPersona: () => createSignupPersona(),
+  inspectPersona,
+  runMaestro: (flow, url, persona) => runMaestro(webFlowFile(flow), evidenceDirFor(flow), url, persona),
+  redact: redactFlow,
+  deletePersona,
+  readPending,
+  writePending,
+  releasePersona: (persona) => releasePersonaFile(persona.email),
+}
+
+// Each flow's persona mode picks how it is created and whether the account
+// is inspected after Maestro passes. Cleanup is the same for both.
+export function webSuiteSteps(url, io = webIo) {
+  return {
     createPersona: (flow) => {
       console.log(`\n== ${flow} (web) ==`)
-      return createPersona()
+      return personaMode(flow) === "signup" ? io.createSignupPersona() : io.createOnboardedPersona()
     },
     drive: (flow, persona) => {
       console.log(`driving ${flow} for ${persona.email}`)
-      runMaestro(webFlowFile(flow), evidenceDirFor(flow), url, persona)
+      io.runMaestro(flow, url, persona)
     },
-    redact: (flow, persona) => {
-      const dir = evidenceDirFor(flow)
-      fs.rmSync(scrubMarker(dir), { force: true })
-      redactEvidence(dir, persona.password)
-      if (fs.existsSync(dir)) fs.writeFileSync(scrubMarker(dir), "")
+    verify: (flow, persona) => {
+      if (personaMode(flow) === "signup") io.inspectPersona(persona)
     },
-    deletePersona,
-    readPending,
-    writePending,
-    releasePersona: (persona) => releasePersonaFile(persona.email),
-  })
+    redact: io.redact,
+    deletePersona: io.deletePersona,
+    readPending: io.readPending,
+    writePending: io.writePending,
+    releasePersona: io.releasePersona,
+  }
+}
+
+function runWebFlows(url, flows) {
+  return runSuite(flows, webSuiteSteps(url))
 }
 
 function writeResults(results) {

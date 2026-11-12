@@ -176,4 +176,45 @@ describe('VerificationCodeInput', () => {
     expect(getByDisplayValue('5')).toBeTruthy()
     expect(getByDisplayValue('6')).toBeTruthy()
   })
+
+  it('puts firstInputId on the first box only, and a full code there fills every box', () => {
+    const { getByTestId, getAllByTestId } = render(
+      <VerificationCodeInput value="" onChange={mockOnChange} firstInputId="sign-up-code" />,
+      { wrapper: AllTheProviders }
+    )
+
+    expect(getAllByTestId('sign-up-code')).toHaveLength(1)
+    const first = getByTestId('sign-up-code')
+    expect(first.props.nativeID).toBe('sign-up-code')
+    fireEvent.changeText(first, '424242')
+    expect(mockOnChange).toHaveBeenCalledWith('424242')
+  })
+
+  it('keeps filling the next empty box when keys keep landing in a filled box', () => {
+    // Maestro web sends each key to the first box. After a key, that box
+    // shows one digit again, so the next key arrives as "<digit><key>".
+    function Harness() {
+      const [code, setCode] = React.useState('')
+      return <VerificationCodeInput value={code} onChange={setCode} firstInputId="sign-up-code" />
+    }
+    const { getByTestId, getAllByDisplayValue, getByDisplayValue } = render(<Harness />, {
+      wrapper: AllTheProviders,
+    })
+    const first = getByTestId('sign-up-code')
+    for (const key of '424242') {
+      fireEvent.changeText(first, `${first.props.value}${key}`)
+    }
+    expect(getAllByDisplayValue('4')).toHaveLength(3)
+    expect(getAllByDisplayValue('2')).toHaveLength(3)
+    expect(() => getByDisplayValue('')).toThrow()
+  })
+
+  it('replaces the digit when every later box is already filled', () => {
+    const { getAllByDisplayValue } = render(
+      <VerificationCodeInput value="123456" onChange={mockOnChange} />,
+      { wrapper: AllTheProviders }
+    )
+    fireEvent.changeText(getAllByDisplayValue('6')[0], '69')
+    expect(mockOnChange).toHaveBeenCalledWith('123459')
+  })
 })

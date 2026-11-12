@@ -35,8 +35,9 @@ describe("web flows", () => {
     }
   })
 
-  it("includes sign-in", () => {
+  it("includes sign-in and sign-up", () => {
     expect(listWebFlows()).toContain("sign-in")
+    expect(listWebFlows()).toContain("sign-up")
   })
 
   it("keeps launch on the web entry and a parseable header on the shared files", () => {
@@ -96,6 +97,66 @@ describe("web flows", () => {
     expect(profileShot).toBeGreaterThan(signOutLabel)
     expect(signedOut).toBeGreaterThan(profileShot)
     expect(stop).toBeGreaterThan(flow.indexOf("takeScreenshot: 05-signed-out"))
+  })
+
+  it("keeps the sign-up entry thin and its journey launch-free", () => {
+    const entry = fs.readFileSync(path.join(root, ".maestro/web/sign-up.yaml"), "utf8")
+    expect(entry.startsWith("url: ${VERIFY_URL}\n")).toBe(true)
+    expect(entry).toContain("clearState: true")
+    expect(entry.indexOf("launchApp:")).toBeGreaterThan(-1)
+    expect(entry.indexOf("launchApp:")).toBeLessThan(entry.indexOf("runFlow: ../journeys/sign-up.yaml"))
+    expect(entry).not.toContain("appId:")
+    expect(entry).not.toContain("inputText:")
+    const journey = fs.readFileSync(path.join(root, ".maestro/journeys/sign-up.yaml"), "utf8")
+    expect(journey).toMatch(/^url: \$\{VERIFY_URL\}\n---\n/)
+    expect(journey).not.toMatch(/^appId:/m)
+    expect(journey).not.toContain("launchApp")
+    expect(journey).not.toMatch(/^env:/m)
+  })
+
+  it("records sign-up through the code screen to the intake sport screen", () => {
+    const flow = expandFlow(path.join(root, ".maestro/web/sign-up.yaml"))
+    const screen = fs.readFileSync(path.join(root, "app/(auth)/sign-up.tsx"), "utf8")
+    for (const id of ["sign-up-name", "sign-up-email", "sign-up-password"]) {
+      expect(screen).toContain(`testID="${id}"`)
+      expect(screen).toContain(`nativeID="${id}"`)
+    }
+    expect(screen).toContain('testID="sign-up-submit"')
+    expect(screen).toContain('firstInputId="sign-up-code"')
+    const launch = flow.indexOf("launchApp")
+    const start = flow.indexOf("startRecording: recording")
+    const welcome = flow.indexOf('visible: "WELCOME BACK"')
+    const signUpLink = flow.indexOf('tapOn: "Sign up"')
+    const swipe = flow.indexOf("- swipe:")
+    const name = flow.indexOf("id: sign-up-name\n- inputText")
+    const fullName = flow.indexOf('inputText: "Verify Athlete"')
+    const email = flow.indexOf("inputText: ${PERSONA_EMAIL}")
+    const password = flow.indexOf("inputText: ${PERSONA_PASSWORD}")
+    const submit = flow.indexOf("id: sign-up-submit\n- extendedWaitUntil")
+    const verify = flow.indexOf('visible: "VERIFY EMAIL"')
+    const codeBox = flow.indexOf("id: sign-up-code")
+    const code = flow.indexOf('inputText: "424242"')
+    const sport = flow.indexOf('visible: "Search sports..."')
+    const noSetup = flow.indexOf('assertNotVisible: "COMPLETE SETUP"')
+    const shot = flow.indexOf("takeScreenshot: 04-sport")
+    const stop = flow.lastIndexOf("stopRecording")
+    expect(flow).not.toContain("Trainer")
+    expect(start).toBeGreaterThan(launch)
+    expect(welcome).toBeGreaterThan(start)
+    expect(signUpLink).toBeGreaterThan(welcome)
+    expect(swipe).toBeGreaterThan(signUpLink)
+    expect(name).toBeGreaterThan(swipe)
+    expect(fullName).toBeGreaterThan(name)
+    expect(email).toBeGreaterThan(fullName)
+    expect(password).toBeGreaterThan(email)
+    expect(submit).toBeGreaterThan(password)
+    expect(verify).toBeGreaterThan(submit)
+    expect(codeBox).toBeGreaterThan(verify)
+    expect(code).toBeGreaterThan(codeBox)
+    expect(sport).toBeGreaterThan(code)
+    expect(noSetup).toBeGreaterThan(sport)
+    expect(shot).toBeGreaterThan(noSetup)
+    expect(stop).toBeGreaterThan(shot)
   })
 
   it("has an upload step in the checks workflow for every web flow", () => {

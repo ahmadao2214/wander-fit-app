@@ -9,12 +9,15 @@ export interface VerificationCodeInputProps {
   value: string
   onChange: (value: string) => void
   length?: number
+  /** testID and DOM id for the first box. Typing the whole code there fills every box. */
+  firstInputId?: string
 }
 
 export function VerificationCodeInput({
   value,
   onChange,
-  length = 6
+  length = 6,
+  firstInputId,
 }: VerificationCodeInputProps) {
   const theme = useTheme()
   // Only track focus state on non-Android platforms to avoid re-render flickering
@@ -82,6 +85,21 @@ export function VerificationCodeInput({
       const newDigits = [...digits]
       newDigits[index] = ''
       onChange(newDigits.join(''))
+      return
+    }
+
+    // A key typed into a box that already holds a digit arrives as that digit
+    // plus the new one. Put the new digit in the next empty box, so typing
+    // keeps going even when focus has not moved yet.
+    if (numericText.length === 2 && digits[index] && numericText[0] === digits[index]) {
+      const newDigits = [...digits]
+      const nextEmpty = newDigits.findIndex((digit, i) => i > index && !digit)
+      const target = nextEmpty === -1 ? index : nextEmpty
+      newDigits[target] = numericText[1]
+      onChange(newDigits.join(''))
+      if (target < length - 1) {
+        focusInput(target + 1)
+      }
       return
     }
 
@@ -155,6 +173,8 @@ export function VerificationCodeInput({
       {digits.map((digit, index) => (
         <TextInput
           key={index}
+          testID={index === 0 ? firstInputId : undefined}
+          nativeID={index === 0 ? firstInputId : undefined}
           ref={(ref) => {
             inputRefs.current[index] = ref
           }}

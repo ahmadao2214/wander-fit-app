@@ -1,0 +1,54 @@
+url: ${VERIFY_URL}
+---
+- runFlow: ../subflows/_evidence-start.yaml
+- extendedWaitUntil:
+    visible: "WELCOME BACK"
+    timeout: 90000
+- takeScreenshot: 01-sign-in
+- tapOn: "Sign up"
+- extendedWaitUntil:
+    visible:
+      id: sign-up-name
+    timeout: 30000
+# The form scrolls inside the page, and the password field and button start
+# below the fold. Maestro web's scroll moves only the window, and it omits
+# elements outside the viewport. A touch swipe scrolls the inner list.
+- swipe:
+    start: 50%, 85%
+    end: 50%, 15%
+    duration: 800
+- extendedWaitUntil:
+    visible:
+      id: sign-up-submit
+    timeout: 30000
+# Role defaults to Athlete. Each input has its own DOM id, so typed text lands
+# in the field that was tapped.
+- tapOn:
+    id: sign-up-name
+- inputText: "Verify Athlete"
+- tapOn:
+    id: sign-up-email
+- inputText: ${PERSONA_EMAIL}
+- tapOn:
+    id: sign-up-password
+- inputText: ${PERSONA_PASSWORD}
+- takeScreenshot: 02-filled
+- tapOn:
+    id: sign-up-submit
+- extendedWaitUntil:
+    visible: "VERIFY EMAIL"
+    timeout: 90000
+- takeScreenshot: 03-verify-email
+# Clerk's fixed code for +clerk_test addresses. Maestro web sends every key to
+# the first box; each key after the first goes to the next empty box. The
+# screen submits on its own at six digits.
+- tapOn:
+    id: sign-up-code
+- inputText: "424242"
+- extendedWaitUntil:
+    visible: "Search sports..."
+    timeout: 90000
+# COMPLETE SETUP means Clerk has the user and Convex does not.
+- assertNotVisible: "COMPLETE SETUP"
+- takeScreenshot: 04-sport
+- runFlow: ../subflows/_evidence-stop.yaml

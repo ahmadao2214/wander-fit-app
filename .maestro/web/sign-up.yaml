@@ -1,0 +1,5 @@
+url: ${VERIFY_URL}
+---
+- launchApp:
+    clearState: true
+- runFlow: ../journeys/sign-up.yaml
