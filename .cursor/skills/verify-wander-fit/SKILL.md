@@ -60,7 +60,7 @@ With no e2e URL, `screen` and `drive` use `.maestro/sign-in-screen.yaml`. That f
 
 `e2e-artifacts/<flow>/web/` holds Maestro's screenshots, `commands.json`, `logs/maestro.log`, and the runner's `result.json`. The signed-out screen writes to `e2e-artifacts/sign-in-screen/web/`. The directory is gitignored. Cleanup must leave it in place.
 
-Maestro's log records the typed text, including the persona password. The runner replaces the password with `[redacted]` in every text file before it deletes the persona. The flows do not record video yet.
+Maestro's log records the typed text, including the persona password. The runner replaces the password with `[redacted]` in every text file before it deletes the persona. The sign-in flow records `startRecording/recording.mp4` in its evidence folder.
 
 ## Cleanup
 
