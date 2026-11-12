@@ -11,10 +11,24 @@ import {
   assertConvexUrlAllowed,
   convexHost,
 } from "./targets.mjs"
+import {
+  artifactName,
+  artifactsDir,
+  evidenceDirFor,
+  listWebFlows,
+  personaFile,
+  resultsFile,
+  root,
+  webFlowFile,
+} from "./flows.mjs"
+import { convexInvocation } from "./persona.mjs"
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 const distDir = path.join(root, "dist-verify")
-const evidenceDir = path.join(root, "e2e-artifacts/sign-in/web")
+// The signed-out screen check. It is not a journey, so it is not under .maestro/web.
+const screenFlow = ".maestro/sign-in-screen.yaml"
+const screenEvidenceDir = evidenceDirFor("sign-in-screen")
+// Files the Convex CLI may rewrite. Deploy restores them afterwards.
+const guardedFiles = [".env", ".env.local", ".gitignore"]
 // Tests set these so cleanup does not kill a live server.
 const stateFile = process.env.VERIFY_STATE_FILE || "/tmp/wander-fit-verify.json"
 const readyFile = process.env.VERIFY_READY_FILE || "/tmp/wander-fit-verify.ready"
@@ -273,11 +287,16 @@ function launch() {
   fail(`Server did not answer at ${url}`)
 }
 
+function readPersonaFile() {
+  if (!fs.existsSync(personaFile)) return null
+  const record = JSON.parse(fs.readFileSync(personaFile, "utf8"))
+  if (!record.email || !record.password) throw new Error("Persona file is missing email or password.")
+  return record
+}
+
 function personaCredentials() {
-  const file = path.join(root, "e2e-artifacts/persona-latest.json")
-  if (!fs.existsSync(file)) fail("Missing e2e-artifacts/persona-latest.json. Run persona create first.")
-  const record = JSON.parse(fs.readFileSync(file, "utf8"))
-  if (!record.email || !record.password) fail("Persona file is missing email or password.")
+  const record = readPersonaFile()
+  if (!record) fail("Missing e2e-artifacts/persona-latest.json. Run persona create first.")
   return record
 }
 
@@ -288,41 +307,211 @@ function createPersona() {
     { cwd: root, encoding: "utf8" }
   )
   if (result.stderr) process.stderr.write(result.stderr)
-  if (result.status !== 0) process.exit(result.status ?? 1)
+  if (result.status !== 0) throw new Error(`persona create exited ${result.status ?? 1}`)
   const line = (result.stdout || "").trim().split("\n").filter(Boolean).at(-1) || ""
   if (line) console.log(line)
+  const persona = readPersonaFile()
+  if (!persona) throw new Error("persona create did not write e2e-artifacts/persona-latest.json")
+  // Hide the generated password from the job log if anything echoes it.
+  if (process.env.GITHUB_ACTIONS === "true") console.log(`::add-mask::${persona.password}`)
+  return persona
 }
 
-function drive(url, submitting = submitMode()) {
+function deletePersona(persona) {
+  const result = spawnSync(process.execPath, ["scripts/verify/persona.mjs", "delete", persona.email], {
+    cwd: root,
+    encoding: "utf8",
+  })
+  if (result.stderr) process.stderr.write(result.stderr)
+  if (result.status !== 0) throw new Error(`persona delete exited ${result.status ?? 1}`)
+  fs.rmSync(personaFile, { force: true })
+}
+
+const binaryEvidence = /\.(png|jpe?g|gif|webp|mp4|webm|mov|zip)$/i
+
+// Maestro's log records the evaluated inputText, so the persona password
+// lands in logs/maestro.log. Strip it before anything uploads the folder.
+export function redactEvidence(dir, secret, skip = []) {
+  if (!secret || !fs.existsSync(dir)) return 0
+  let changed = 0
+  const walk = (current) => {
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const full = path.join(current, entry.name)
+      if (skip.includes(full)) continue
+      if (entry.isDirectory()) {
+        walk(full)
+        continue
+      }
+      if (!entry.isFile() || binaryEvidence.test(entry.name)) continue
+      const text = fs.readFileSync(full, "utf8")
+      if (!text.includes(secret)) continue
+      fs.writeFileSync(full, text.split(secret).join("[redacted]"))
+      changed++
+    }
+  }
+  walk(dir)
+  return changed
+}
+
+function runMaestro(flowFile, outDir, url, persona) {
   const maestro = maestroBin()
   if (!maestro) fail("Maestro is not installed.")
-  fs.mkdirSync(evidenceDir, { recursive: true })
-  const flow = submitting ? ".maestro/sign-in-submit.yaml" : ".maestro/sign-in.yaml"
-  const args = [
-    "test",
-    "--headless",
-    "--test-output-dir",
-    evidenceDir,
-    "-e",
-    `VERIFY_URL=${url}`,
-  ]
+  fs.mkdirSync(outDir, { recursive: true })
+  const args = ["test", "--headless", "--test-output-dir", outDir, "-e", `VERIFY_URL=${url}`]
   const env = { ...process.env, MAESTRO_CLI_NO_ANALYTICS: "1" }
-  if (submitting) {
-    const persona = personaCredentials()
+  delete env.PERSONA_PASSWORD
+  if (persona) {
     args.push("-e", `PERSONA_EMAIL=${persona.email}`, "-e", `PERSONA_PASSWORD=${persona.password}`)
-    delete env.PERSONA_PASSWORD
-    console.log(`driving sign-in for ${persona.email}`)
-  } else {
-    console.log("driving signed-out screen")
   }
-  args.push(flow)
+  args.push(flowFile)
   const result = spawnSync(maestro, args, { cwd: root, stdio: "inherit", env })
   if (result.status !== 0) {
     const error = new Error(`Maestro exited ${result.status ?? 1}`)
     error.exitStatus = result.status ?? 1
     throw error
   }
-  console.log(`evidence: ${evidenceDir}`)
+  console.log(`evidence: ${outDir}`)
+}
+
+function drive(url, submitting = submitMode(), flow = "sign-in") {
+  if (submitting) {
+    const persona = personaCredentials()
+    console.log(`driving ${flow} for ${persona.email}`)
+    runMaestro(webFlowFile(flow), evidenceDirFor(flow), url, persona)
+  } else {
+    console.log("driving signed-out screen")
+    runMaestro(screenFlow, screenEvidenceDir, url)
+  }
+}
+
+// Runs each flow with its own persona. A failed flow does not stop the next
+// one, and the persona is deleted whether the flow passed or not.
+export function runSuite(flows, steps, now = Date.now) {
+  const results = []
+  for (const flow of flows) {
+    const started = now()
+    const result = { flow, status: "passed", artifact: artifactName(flow) }
+    const errors = []
+    let persona = null
+    try {
+      persona = steps.createPersona(flow)
+      steps.drive(flow, persona)
+    } catch (error) {
+      errors.push(error?.message || String(error))
+    } finally {
+      if (persona) {
+        try {
+          steps.redact(flow, persona)
+        } catch (error) {
+          errors.push(`redact failed: ${error?.message || error}`)
+        }
+        try {
+          steps.deletePersona(persona)
+        } catch (error) {
+          errors.push(`persona delete failed: ${error?.message || error}`)
+        }
+      }
+    }
+    if (errors.length) {
+      result.status = "failed"
+      result.error = errors.join("; ")
+    }
+    result.seconds = Math.round((now() - started) / 1000)
+    results.push(result)
+  }
+  return results
+}
+
+function selectFlows(requested) {
+  const available = listWebFlows()
+  if (!available.length) fail("No flows under .maestro/web.")
+  if (!requested.length) return available
+  const unknown = requested.filter((flow) => !available.includes(flow))
+  if (unknown.length) fail(`Unknown web flow: ${unknown.join(", ")}. Flows: ${available.join(", ")}`)
+  return requested
+}
+
+function runWebFlows(url, flows) {
+  return runSuite(flows, {
+    createPersona: (flow) => {
+      console.log(`\n== ${flow} (web) ==`)
+      return createPersona()
+    },
+    drive: (flow, persona) => {
+      console.log(`driving ${flow} for ${persona.email}`)
+      runMaestro(webFlowFile(flow), evidenceDirFor(flow), url, persona)
+    },
+    redact: (flow, persona) => {
+      redactEvidence(evidenceDirFor(flow), persona.password)
+    },
+    deletePersona,
+  })
+}
+
+function writeResults(results) {
+  fs.mkdirSync(artifactsDir, { recursive: true })
+  fs.writeFileSync(resultsFile, JSON.stringify({ platform: "web", flows: results }, null, 2))
+  for (const result of results) {
+    const dir = evidenceDirFor(result.flow)
+    fs.mkdirSync(dir, { recursive: true })
+    fs.writeFileSync(path.join(dir, "result.json"), JSON.stringify(result, null, 2))
+  }
+  console.log("\nweb flows:")
+  for (const result of results) {
+    console.log(`- ${result.flow}: ${result.status} (${result.seconds}s)${result.error ? ` ${result.error}` : ""}`)
+  }
+}
+
+export function snapshotFiles(names, base = root) {
+  return names.map((name) => {
+    const full = path.join(base, name)
+    return { full, content: fs.existsSync(full) ? fs.readFileSync(full) : null }
+  })
+}
+
+export function restoreFiles(snapshot) {
+  for (const { full, content } of snapshot) {
+    if (content === null) {
+      fs.rmSync(full, { force: true })
+    } else if (!fs.existsSync(full) || !fs.readFileSync(full).equals(content)) {
+      fs.writeFileSync(full, content)
+    }
+  }
+}
+
+function convexCli(args, env) {
+  const snapshot = snapshotFiles(guardedFiles)
+  try {
+    return spawnSync("npx", ["convex", ...args], { cwd: root, env, stdio: "inherit" })
+  } finally {
+    restoreFiles(snapshot)
+  }
+}
+
+// Push this checkout's convex/ functions to wander-fit-e2e, then seed it.
+// convexInvocation refuses the app deployments and a mismatched deploy key.
+function deployBackend() {
+  const { env, host } = convexInvocation()
+  console.log(`deploying convex functions to ${host}`)
+  const pushed = convexCli(["dev", "--once", "--codegen", "disable", "--typecheck", "disable"], env)
+  if (pushed.status !== 0) fail(`convex dev --once exited ${pushed.status ?? 1}`)
+  console.log(`seeding ${host}`)
+  const seeded = convexCli(["run", "seed:seedAll", "{}"], env)
+  if (seeded.status !== 0) fail(`seed:seedAll exited ${seeded.status ?? 1}`)
+}
+
+// For a cancelled or crashed run: stop the server, scrub the password from the
+// evidence, and delete the persona that is still on record.
+function teardown() {
+  cleanupServer()
+  const persona = readPersonaFile()
+  if (!persona) {
+    console.log("teardown: no persona left to delete")
+    return
+  }
+  redactEvidence(artifactsDir, persona.password, [personaFile])
+  deletePersona(persona)
+  console.log(`teardown: deleted ${persona.email}`)
 }
 
 function cleanupServer() {
@@ -370,28 +559,40 @@ function main() {
     launch()
   } else if (command === "drive") {
     const url = process.argv[3] || verifyUrl()
-    drive(url)
+    drive(url, submitMode(), process.argv[4] || "sign-in")
   } else if (command === "cleanup") {
     cleanupServer()
-    console.log(`left evidence in ${evidenceDir}`)
+    console.log(`left evidence in ${artifactsDir}`)
   } else if (command === "screen") {
     doctor()
     exportWeb()
     runDrive(launch(), false)
-    console.log(`left evidence in ${evidenceDir}`)
+    console.log(`left evidence in ${screenEvidenceDir}`)
+  } else if (command === "deploy") {
+    deployBackend()
+  } else if (command === "teardown") {
+    teardown()
   } else if (command === "all") {
     if (!e2eUrl()) {
       fail(
         "all needs EXPO_PUBLIC_CONVEX_URL_E2E. The signed-out screen is: node scripts/verify/run.mjs screen"
       )
     }
+    const flows = selectFlows(process.argv.slice(3))
     doctor()
-    createPersona()
     exportWeb()
-    runDrive(launch(), true)
-    console.log(`left evidence in ${evidenceDir}`)
+    const url = launch()
+    let results
+    try {
+      results = runWebFlows(url, flows)
+    } finally {
+      cleanupServer()
+    }
+    writeResults(results)
+    console.log(`left evidence in ${artifactsDir}`)
+    if (results.some((result) => result.status !== "passed")) process.exit(1)
   } else {
-    fail("Use doctor, export, launch, drive, cleanup, screen, or all.")
+    fail("Use doctor, export, launch, drive, cleanup, screen, deploy, teardown, or all.")
   }
 }
 

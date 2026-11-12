@@ -65,7 +65,7 @@ function deployKeyHost(key) {
   return host
 }
 
-function convexInvocation() {
+export function convexInvocation() {
   const url = e2eUrl()
   if (!url) {
     fail(

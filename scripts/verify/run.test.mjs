@@ -5,7 +5,7 @@ import os from "node:os"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
-import { ownServerReady } from "./run.mjs"
+import { ownServerReady, redactEvidence, restoreFiles, runSuite, snapshotFiles } from "./run.mjs"
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 const runScript = path.join(root, "scripts/verify/run.mjs")
@@ -124,6 +124,115 @@ describe("verify run", () => {
       child.kill()
       blocker.close()
       fs.rmSync(readyFile, { force: true })
+    }
+  })
+})
+
+describe("web suite", () => {
+  function recorder({ failDrive = [], failCreate = [], failDelete = [] } = {}) {
+    const calls = []
+    return {
+      calls,
+      steps: {
+        createPersona: (flow) => {
+          calls.push(`create ${flow}`)
+          if (failCreate.includes(flow)) throw new Error("clerk down")
+          return { email: `e2e.${flow}+clerk_test@example.com`, password: `pw-${flow}` }
+        },
+        drive: (flow) => {
+          calls.push(`drive ${flow}`)
+          if (failDrive.includes(flow)) throw new Error("Maestro exited 1")
+        },
+        redact: (flow) => calls.push(`redact ${flow}`),
+        deletePersona: (persona) => {
+          calls.push(`delete ${persona.email}`)
+          if (failDelete.some((flow) => persona.email.includes(flow))) throw new Error("clerk 500")
+        },
+      },
+    }
+  }
+
+  it("gives each flow its own persona and deletes it", () => {
+    const { calls, steps } = recorder()
+    const results = runSuite(["a", "b"], steps, () => 0)
+    expect(calls).toEqual([
+      "create a",
+      "drive a",
+      "redact a",
+      "delete e2e.a+clerk_test@example.com",
+      "create b",
+      "drive b",
+      "redact b",
+      "delete e2e.b+clerk_test@example.com",
+    ])
+    expect(results.map((result) => [result.flow, result.status, result.artifact])).toEqual([
+      ["a", "passed", "e2e-web-a"],
+      ["b", "passed", "e2e-web-b"],
+    ])
+  })
+
+  it("deletes the persona and keeps going after a flow fails", () => {
+    const { calls, steps } = recorder({ failDrive: ["a"] })
+    const results = runSuite(["a", "b"], steps, () => 0)
+    expect(calls).toContain("delete e2e.a+clerk_test@example.com")
+    expect(calls).toContain("drive b")
+    expect(results[0]).toMatchObject({ status: "failed", error: "Maestro exited 1" })
+    expect(results[1].status).toBe("passed")
+  })
+
+  it("fails a flow whose persona could not be deleted", () => {
+    const { steps } = recorder({ failDelete: ["a"] })
+    const [result] = runSuite(["a"], steps, () => 0)
+    expect(result.status).toBe("failed")
+    expect(result.error).toContain("persona delete failed")
+  })
+
+  it("does not drive or delete when persona create fails", () => {
+    const { calls, steps } = recorder({ failCreate: ["a"] })
+    const [result] = runSuite(["a"], steps, () => 0)
+    expect(calls).toEqual(["create a"])
+    expect(result).toMatchObject({ status: "failed", error: "clerk down" })
+  })
+})
+
+describe("evidence redaction", () => {
+  it("removes the password from text evidence and leaves images alone", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "verify-redact-"))
+    try {
+      fs.mkdirSync(path.join(dir, "run/logs"), { recursive: true })
+      fs.writeFileSync(path.join(dir, "run/logs/maestro.log"), "Input text s3cretPW COMPLETED\ntext: s3cretPW\n")
+      fs.writeFileSync(path.join(dir, "run/commands.json"), '{"text":"s3cretPW"}')
+      fs.writeFileSync(path.join(dir, "run/shot.png"), "s3cretPW")
+      const keep = path.join(dir, "persona.json")
+      fs.writeFileSync(keep, "s3cretPW")
+      expect(redactEvidence(dir, "s3cretPW", [keep])).toBe(2)
+      expect(fs.readFileSync(path.join(dir, "run/logs/maestro.log"), "utf8")).toBe(
+        "Input text [redacted] COMPLETED\ntext: [redacted]\n"
+      )
+      expect(fs.readFileSync(path.join(dir, "run/commands.json"), "utf8")).not.toContain("s3cretPW")
+      expect(fs.readFileSync(path.join(dir, "run/shot.png"), "utf8")).toBe("s3cretPW")
+      expect(fs.readFileSync(keep, "utf8")).toBe("s3cretPW")
+      expect(redactEvidence(dir, "")).toBe(0)
+      expect(redactEvidence(path.join(dir, "missing"), "s3cretPW")).toBe(0)
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  })
+})
+
+describe("convex file guard", () => {
+  it("restores rewritten files and removes created ones", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "verify-guard-"))
+    try {
+      fs.writeFileSync(path.join(dir, ".env.local"), "KEEP=1\n")
+      const snapshot = snapshotFiles([".env.local", ".env"], dir)
+      fs.writeFileSync(path.join(dir, ".env.local"), "CONVEX_DEPLOYMENT=dev:other\n")
+      fs.writeFileSync(path.join(dir, ".env"), "NEW=1\n")
+      restoreFiles(snapshot)
+      expect(fs.readFileSync(path.join(dir, ".env.local"), "utf8")).toBe("KEEP=1\n")
+      expect(fs.existsSync(path.join(dir, ".env"))).toBe(false)
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
     }
   })
 })
