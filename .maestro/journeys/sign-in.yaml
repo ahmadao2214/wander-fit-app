@@ -1,0 +1,37 @@
+url: ${VERIFY_URL}
+---
+- runFlow: ../subflows/_evidence-start.yaml
+- extendedWaitUntil:
+    visible: "WELCOME BACK"
+    timeout: 90000
+- runFlow: ../subflows/_sign-in.yaml
+- extendedWaitUntil:
+    visible: "Welcome back,.*"
+    timeout: 90000
+- assertVisible: "Today"
+# The card is missing while Today still says COMPLETE YOUR SETUP.
+- extendedWaitUntil:
+    visible:
+      id: today-workout-card
+    timeout: 90000
+- assertVisible: "Start Workout"
+- takeScreenshot: 03-today
+- tapOn: "Profile"
+- extendedWaitUntil:
+    visible: "PROGRESS STATS"
+    timeout: 30000
+# The profile list scrolls inside the page. Maestro web only scrolls the window,
+# and it omits text that sits outside the viewport.
+- evalScript: ${var base = VERIFY_URL; if (base.endsWith('/')) base = base.slice(0, -1); if (base.endsWith('/sign-in')) base = base.slice(0, -8); output.signOutUrl = base + '/profile#sign-out'}
+- openLink: ${output.signOutUrl}
+- extendedWaitUntil:
+    visible: "Sign Out"
+    timeout: 30000
+- takeScreenshot: 04-profile
+- tapOn:
+    id: sign-out
+- extendedWaitUntil:
+    visible: "WELCOME BACK"
+    timeout: 90000
+- takeScreenshot: 05-signed-out
+- runFlow: ../subflows/_evidence-stop.yaml

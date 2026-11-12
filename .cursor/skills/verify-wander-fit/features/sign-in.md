@@ -21,7 +21,7 @@ Preconditions: `node scripts/verify/run.mjs doctor` passed, and `node scripts/ve
 - Expect `WELCOME BACK`, `Sign in to continue your training journey`, `Email address`, `Password`, and `Sign In`.
 - Tap `Email address`.
 - Expect `Sign In` to still be visible. The screen-only flow does not press it.
-- `node scripts/verify/run.mjs all sign-in` requires the e2e URL. It uses `.maestro/web/sign-in.yaml`, types the persona email and password, presses Sign In, and expects `Welcome back,` and `Today`. It then waits for `today-workout-card` and `Start Workout`, opens Profile, taps Sign Out, and expects `WELCOME BACK`. The signed-out screen check, which never submits, is `node scripts/verify/run.mjs screen`.
+- `node scripts/verify/run.mjs all sign-in` requires the e2e URL. The web entry `.maestro/web/sign-in.yaml` sets `url: ${VERIFY_URL}`, launches, and runs `.maestro/journeys/sign-in.yaml`. That journey starts evidence, runs `.maestro/subflows/_sign-in.yaml` with `PERSONA_EMAIL` and `PERSONA_PASSWORD`, expects `Welcome back,` and `Today`, waits for `today-workout-card` and `Start Workout`, opens Profile, taps Sign Out, expects `WELCOME BACK`, and stops evidence. The shared files do not launch. The signed-out screen check, which never submits, is `node scripts/verify/run.mjs screen`.
 - Proof of the submitted path is `03-today`, `04-profile`, `05-signed-out`, and `startRecording/recording.mp4` under `e2e-artifacts/sign-in/web/`.
 
 ## Gotchas
