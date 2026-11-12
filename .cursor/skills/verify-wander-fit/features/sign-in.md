@@ -16,11 +16,11 @@ A signed-out athlete sees the welcome screen, with an email field, a password fi
 
 Preconditions: `node scripts/verify/run.mjs doctor` passed, and `node scripts/verify/run.mjs launch` is serving the export. No Clerk session is stored in Maestro's browser.
 
-- Open the served URL: `.maestro/sign-in.yaml` launches `${VERIFY_URL}` with a cleared browser state.
+- Open the served URL: `.maestro/sign-in-screen.yaml` launches `${VERIFY_URL}` with a cleared browser state.
 - Expect `WELCOME BACK`, `Sign in to continue your training journey`, `Email address`, `Password`, and `Sign In`.
 - Tap `Email address`.
 - Expect `Sign In` to still be visible. The screen-only flow does not press it.
-- `node scripts/verify/run.mjs all` requires the e2e URL. It uses `.maestro/sign-in-submit.yaml`, types the persona email and password, presses Sign In, and expects `Welcome back,`. The signed-out screen is `node scripts/verify/run.mjs screen`.
+- `node scripts/verify/run.mjs all sign-in` requires the e2e URL. It uses `.maestro/web/sign-in.yaml`, types the persona email and password, presses Sign In, and expects `Welcome back,`. The signed-out screen is `node scripts/verify/run.mjs screen`.
 - Proof of the submitted path is `03-today` under `e2e-artifacts/sign-in/web/`.
 
 ## Gotchas

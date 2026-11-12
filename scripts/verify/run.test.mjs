@@ -5,7 +5,17 @@ import os from "node:os"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
-import { ownServerReady } from "./run.mjs"
+import {
+  cleanupPending,
+  ownServerReady,
+  readPending,
+  redactEvidence,
+  restoreFiles,
+  runSuite,
+  settlePersona,
+  snapshotFiles,
+  writePending,
+} from "./run.mjs"
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 const runScript = path.join(root, "scripts/verify/run.mjs")
@@ -124,6 +134,278 @@ describe("verify run", () => {
       child.kill()
       blocker.close()
       fs.rmSync(readyFile, { force: true })
+    }
+  })
+})
+
+describe("web suite", () => {
+  function recorder({
+    failDrive = [],
+    failCreate = [],
+    failAfterClerk = [],
+    failDelete = [],
+    failRedact = [],
+  } = {}) {
+    const calls = []
+    let pending = []
+    return {
+      calls,
+      pending: () => pending,
+      steps: {
+        createPersona: (flow) => {
+          calls.push(`create ${flow}`)
+          if (failCreate.includes(flow)) throw new Error("clerk down")
+          const persona = { email: `e2e.${flow}+clerk_test@example.com`, password: `pw-${flow}` }
+          if (failAfterClerk.includes(flow)) {
+            const error = new Error("convex down")
+            error.persona = persona
+            throw error
+          }
+          return persona
+        },
+        drive: (flow) => {
+          calls.push(`drive ${flow}`)
+          if (failDrive.includes(flow)) throw new Error("Maestro exited 1")
+        },
+        redact: (flow) => {
+          calls.push(`redact ${flow}`)
+          if (failRedact.includes(flow)) throw new Error("log busy")
+        },
+        deletePersona: (persona) => {
+          calls.push(`delete ${persona.email}`)
+          if (failDelete.some((flow) => persona.email.startsWith(`e2e.${flow}+`))) {
+            throw new Error("clerk 500")
+          }
+        },
+        readPending: () => pending,
+        writePending: (records) => {
+          pending = records
+        },
+      },
+    }
+  }
+
+  it("gives each flow its own persona and deletes it", () => {
+    const { calls, steps } = recorder()
+    const results = runSuite(["a", "b"], steps, () => 0)
+    expect(calls).toEqual([
+      "create a",
+      "drive a",
+      "redact a",
+      "delete e2e.a+clerk_test@example.com",
+      "create b",
+      "drive b",
+      "redact b",
+      "delete e2e.b+clerk_test@example.com",
+    ])
+    expect(results.map((result) => [result.flow, result.status, result.artifact])).toEqual([
+      ["a", "passed", "e2e-web-a"],
+      ["b", "passed", "e2e-web-b"],
+    ])
+  })
+
+  it("deletes the persona and keeps going after a flow fails", () => {
+    const { calls, steps } = recorder({ failDrive: ["a"] })
+    const results = runSuite(["a", "b"], steps, () => 0)
+    expect(calls).toContain("delete e2e.a+clerk_test@example.com")
+    expect(calls).toContain("drive b")
+    expect(results[0]).toMatchObject({ status: "failed", error: "Maestro exited 1" })
+    expect(results[1].status).toBe("passed")
+  })
+
+  it("fails a flow whose persona could not be deleted", () => {
+    const { steps } = recorder({ failDelete: ["a"] })
+    const [result] = runSuite(["a"], steps, () => 0)
+    expect(result.status).toBe("failed")
+    expect(result.error).toContain("persona delete failed")
+  })
+
+  it("deletes the Clerk user when create fails after the account exists", () => {
+    const { calls, pending, steps } = recorder({ failAfterClerk: ["a"] })
+    const [result] = runSuite(["a"], steps, () => 0)
+    expect(calls).toEqual(["create a", "redact a", "delete e2e.a+clerk_test@example.com"])
+    expect(result).toMatchObject({ status: "failed", error: "convex down" })
+    expect(pending()).toEqual([])
+  })
+
+  it("does not drive or delete when persona create fails", () => {
+    const { calls, steps } = recorder({ failCreate: ["a"] })
+    const [result] = runSuite(["a"], steps, () => 0)
+    expect(calls).toEqual(["create a"])
+    expect(result).toMatchObject({ status: "failed", error: "clerk down" })
+  })
+
+  it("keeps a persona whose delete failed after the next flow finishes", () => {
+    const { pending, steps } = recorder({ failDelete: ["a"] })
+    runSuite(["a", "b"], steps, () => 0)
+    expect(pending()).toEqual([
+      {
+        email: "e2e.a+clerk_test@example.com",
+        flows: ["a"],
+        scrubbed: true,
+        deleted: false,
+      },
+    ])
+  })
+
+  it("keeps the password when the scrub fails and the account delete succeeds", () => {
+    const { pending, steps } = recorder({ failRedact: ["a"] })
+    const [result] = runSuite(["a"], steps, () => 0)
+    expect(result.status).toBe("failed")
+    expect(pending()).toEqual([
+      {
+        email: "e2e.a+clerk_test@example.com",
+        password: "pw-a",
+        flows: ["a"],
+        scrubbed: false,
+        deleted: true,
+      },
+    ])
+  })
+})
+
+describe("pending personas", () => {
+  it("drops a finished persona and keeps the password only while the scrub is open", () => {
+    const persona = { email: "e2e.1+clerk_test@example.com", password: "pw" }
+    const scrubbed = settlePersona([], persona, { flow: "sign-in", scrubbed: true, deleted: false })
+    expect(scrubbed).toEqual([
+      { email: persona.email, flows: ["sign-in"], scrubbed: true, deleted: false },
+    ])
+    expect(settlePersona(scrubbed, persona, { flow: "sign-in", scrubbed: true, deleted: true })).toEqual([])
+    const leaked = settlePersona([], persona, { flow: "sign-in", scrubbed: false, deleted: true })
+    expect(leaked[0].password).toBe("pw")
+  })
+
+  it("deletes later personas when an earlier delete fails", () => {
+    const records = [
+      { email: "e2e.1+clerk_test@example.com", flows: ["sign-in"], scrubbed: true, deleted: false },
+      { email: "e2e.2+clerk_test@example.com", flows: ["sign-in"], scrubbed: true, deleted: false },
+    ]
+    const deleted = []
+    let marked = 0
+    let cleared = 0
+    const hooks = {
+      clearMarkers() {
+        cleared += 1
+      },
+      markScrubbed() {
+        marked += 1
+      },
+      redact() {},
+      deleteAccount(record) {
+        if (record.email.startsWith("e2e.1+")) throw new Error("clerk 500")
+        deleted.push(record.email)
+      },
+      persist() {},
+      release() {},
+    }
+    expect(() => cleanupPending(records, hooks)).toThrow(/teardown left 1 persona: e2e\.1\+/)
+    expect(deleted).toEqual(["e2e.2+clerk_test@example.com"])
+    expect(records.map((record) => record.deleted)).toEqual([false, true])
+    expect(marked).toBe(1)
+    expect(cleared).toBe(0)
+  })
+
+  it("withholds every upload marker when an earlier password scrub fails", () => {
+    const records = [
+      {
+        email: "e2e.1+clerk_test@example.com",
+        password: "pw-1",
+        flows: ["sign-in"],
+        scrubbed: false,
+        deleted: true,
+      },
+      {
+        email: "e2e.2+clerk_test@example.com",
+        password: "pw-2",
+        flows: ["sign-up"],
+        scrubbed: false,
+        deleted: true,
+      },
+    ]
+    let marked = 0
+    let cleared = 0
+    const redacted = []
+    expect(() =>
+      cleanupPending(records, {
+        clearMarkers() {
+          cleared += 1
+        },
+        markScrubbed() {
+          marked += 1
+        },
+        redact(record) {
+          redacted.push(record.email)
+          if (record.email.startsWith("e2e.1+")) throw new Error("log busy")
+        },
+        deleteAccount() {},
+        persist() {},
+        release() {},
+      })
+    ).toThrow(/e2e\.1\+clerk_test@example.com/)
+    expect(redacted).toEqual([
+      "e2e.1+clerk_test@example.com",
+      "e2e.2+clerk_test@example.com",
+    ])
+    expect(records.map((record) => record.scrubbed)).toEqual([false, true])
+    expect(marked).toBe(0)
+    expect(cleared).toBe(1)
+  })
+
+  it("round-trips the pending file and removes it when nothing is left", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "verify-pending-"))
+    const file = path.join(dir, "persona-pending.json")
+    try {
+      const open = [{ email: "e2e.1+clerk_test@example.com", flows: ["sign-in"], scrubbed: false, deleted: false, password: "pw" }]
+      writePending(open, file)
+      expect(fs.statSync(file).mode & 0o777).toBe(0o600)
+      expect(readPending(file)).toEqual(open)
+      writePending([], file)
+      expect(fs.existsSync(file)).toBe(false)
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  })
+})
+
+describe("evidence redaction", () => {
+  it("removes the password from text evidence and leaves images alone", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "verify-redact-"))
+    try {
+      fs.mkdirSync(path.join(dir, "run/logs"), { recursive: true })
+      fs.writeFileSync(path.join(dir, "run/logs/maestro.log"), "Input text s3cretPW COMPLETED\ntext: s3cretPW\n")
+      fs.writeFileSync(path.join(dir, "run/commands.json"), '{"text":"s3cretPW"}')
+      fs.writeFileSync(path.join(dir, "run/shot.png"), "s3cretPW")
+      const keep = path.join(dir, "persona.json")
+      fs.writeFileSync(keep, "s3cretPW")
+      expect(redactEvidence(dir, "s3cretPW", [keep])).toBe(2)
+      expect(fs.readFileSync(path.join(dir, "run/logs/maestro.log"), "utf8")).toBe(
+        "Input text [redacted] COMPLETED\ntext: [redacted]\n"
+      )
+      expect(fs.readFileSync(path.join(dir, "run/commands.json"), "utf8")).not.toContain("s3cretPW")
+      expect(fs.readFileSync(path.join(dir, "run/shot.png"), "utf8")).toBe("s3cretPW")
+      expect(fs.readFileSync(keep, "utf8")).toBe("s3cretPW")
+      expect(redactEvidence(dir, "")).toBe(0)
+      expect(redactEvidence(path.join(dir, "missing"), "s3cretPW")).toBe(0)
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  })
+})
+
+describe("convex file guard", () => {
+  it("restores rewritten files and removes created ones", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "verify-guard-"))
+    try {
+      fs.writeFileSync(path.join(dir, ".env.local"), "KEEP=1\n")
+      const snapshot = snapshotFiles([".env.local", ".env"], dir)
+      fs.writeFileSync(path.join(dir, ".env.local"), "CONVEX_DEPLOYMENT=dev:other\n")
+      fs.writeFileSync(path.join(dir, ".env"), "NEW=1\n")
+      restoreFiles(snapshot)
+      expect(fs.readFileSync(path.join(dir, ".env.local"), "utf8")).toBe("KEEP=1\n")
+      expect(fs.existsSync(path.join(dir, ".env"))).toBe(false)
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
     }
   })
 })
