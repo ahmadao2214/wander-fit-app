@@ -32,7 +32,7 @@ url: ${VERIFY_URL}
     timeout: 30000
 # The profile list scrolls inside the page. Maestro web only scrolls the window,
 # and it omits text that sits outside the viewport.
-- evalScript: ${output.signOutUrl = VERIFY_URL.replace('/sign-in', '/profile#sign-out')}
+- evalScript: ${var base = VERIFY_URL; if (base.endsWith('/')) base = base.slice(0, -1); if (base.endsWith('/sign-in')) base = base.slice(0, -8); output.signOutUrl = base + '/profile#sign-out'}
 - openLink: ${output.signOutUrl}
 - extendedWaitUntil:
     visible: "Sign Out"
