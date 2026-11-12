@@ -16,6 +16,7 @@ This directory is the maintained source for verifying Wander Fit on the web expo
 - Start from the signed-out screen unless a feature file says otherwise.
 - Prefer visible text (`WELCOME BACK`, `Sign In`) over coordinates.
 - Treat the commands in each feature file as literal.
+- Web entries are thin. The journey and the shared subflows are the steps. The findings on `id:` and subflow headers are in `.maestro/flow-layout.md`.
 - Leave proof files in `e2e-artifacts/`. Cleanup removes the server, not the proof.
 
 ## Proof and skip reporting

@@ -160,6 +160,16 @@ const handleAction = async () => {
 
 **All new features must include unit tests.** This is a mandatory requirement for any PR.
 
+### Journeys
+
+- A new journey ships with a new Maestro flow and a feature-map entry in `.cursor/skills/verify-wander-fit/features/`.
+- A changed journey updates its flow in the same PR.
+- Pure logic needs unit tests only.
+- An escaped bug gets a regression flow.
+- If the per-PR web suite goes over 10 minutes, the slowest flows move to nightly.
+
+The flow layout and the Maestro findings for this suite are in `.maestro/flow-layout.md`.
+
 ### Two Test Runners: Jest vs Vitest
 
 The repo uses **two** test runners, split by directory. Each runner only collects its own directories, so never mix them in one folder.

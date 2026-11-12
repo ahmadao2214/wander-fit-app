@@ -45,7 +45,7 @@ Doctor checks the Clerk publishable key, Java, Maestro, and the Convex host. It 
 
 ## Drive
 
-Web flows: `.maestro/web/<flow>.yaml`, one entry file per journey. Signed-out screen: `.maestro/sign-in-screen.yaml`.
+Web flows: `.maestro/web/<flow>.yaml`, one entry file per journey. The entry sets `url:` and `runFlow`s `.maestro/journeys/<flow>.yaml`. Sign-in, evidence start, and evidence stop are shared subflows. See `.maestro/flow-layout.md`. Signed-out screen: `.maestro/sign-in-screen.yaml`.
 
 ```bash
 node scripts/verify/run.mjs launch

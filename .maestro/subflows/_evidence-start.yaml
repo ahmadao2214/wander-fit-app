@@ -1,0 +1,3 @@
+url: ${VERIFY_URL}
+---
+- startRecording: recording

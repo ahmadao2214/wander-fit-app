@@ -9,6 +9,16 @@ import { renderSummary } from "./summary.mjs"
 const checks = parse(fs.readFileSync(path.join(root, ".github/workflows/checks.yml"), "utf8"))
 const job = checks.jobs["web-e2e"]
 
+function expandFlow(file, seen = new Set()) {
+  const full = path.resolve(file)
+  if (seen.has(full)) throw new Error(`runFlow cycle at ${full}`)
+  seen.add(full)
+  const text = fs.readFileSync(full, "utf8")
+  return text.replace(/runFlow:\s*(\S+\.yaml)/g, (_, relative) => {
+    return expandFlow(path.resolve(path.dirname(full), relative), seen)
+  })
+}
+
 describe("web flows", () => {
   it("lists the entry files directly under the folder", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "verify-flows-"))
@@ -29,8 +39,34 @@ describe("web flows", () => {
     expect(listWebFlows()).toContain("sign-in")
   })
 
+  it("keeps launch on the web entry and a parseable header on the shared files", () => {
+    const entry = fs.readFileSync(path.join(root, ".maestro/web/sign-in.yaml"), "utf8")
+    expect(entry.startsWith("url: ${VERIFY_URL}\n")).toBe(true)
+    expect(entry).toContain("launchApp:")
+    expect(entry.indexOf("launchApp:")).toBeLessThan(entry.indexOf("runFlow: ../journeys/sign-in.yaml"))
+    expect(entry).not.toContain("appId:")
+    expect(entry).not.toContain("inputText:")
+    const shared = [
+      ".maestro/journeys/sign-in.yaml",
+      ".maestro/subflows/_sign-in.yaml",
+      ".maestro/subflows/_evidence-start.yaml",
+      ".maestro/subflows/_evidence-stop.yaml",
+    ]
+    for (const file of shared) {
+      const text = fs.readFileSync(path.join(root, file), "utf8")
+      expect(text, file).toMatch(/^url: \$\{VERIFY_URL\}\n---\n/)
+      expect(text, file).not.toMatch(/^appId:/m)
+      expect(text, file).not.toContain("launchApp")
+      expect(text, file).not.toMatch(/^env:/m)
+    }
+    const notes = fs.readFileSync(path.join(root, ".maestro/flow-layout.md"), "utf8")
+    expect(notes).toContain("matches a React Native Web `testID` with `id:`")
+    expect(notes).toContain("copies the header of the file that contains `launchApp`")
+    expect(notes).toContain("left Chromium at `data:,`")
+  })
+
   it("records sign-in through Profile sign-out", () => {
-    const flow = fs.readFileSync(path.join(root, ".maestro/web/sign-in.yaml"), "utf8")
+    const flow = expandFlow(path.join(root, ".maestro/web/sign-in.yaml"))
     const screen = fs.readFileSync(path.join(root, "app/(athlete)/index.tsx"), "utf8")
     const signOutButton = fs.readFileSync(path.join(root, "components/SignOutButton.tsx"), "utf8")
     const signOutScroll = fs.readFileSync(path.join(root, "lib/signOutScroll.ts"), "utf8")

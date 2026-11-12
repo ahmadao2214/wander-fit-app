@@ -12,8 +12,8 @@ export const personaFile = path.join(artifactsDir, "persona-latest.json")
 // Separate from persona-latest.json, which the next create overwrites.
 export const pendingFile = path.join(artifactsDir, "persona-pending.json")
 
-// Every *.yaml directly under .maestro/web is one web flow. Subfolders hold
-// shared steps, not entry files.
+// Every *.yaml directly under .maestro/web is one web flow. Journey steps
+// live in .maestro/journeys, and shared subflows live in .maestro/subflows.
 export function listWebFlows(dir = webFlowsDir) {
   if (!fs.existsSync(dir)) return []
   return fs
