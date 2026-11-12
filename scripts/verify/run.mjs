@@ -589,11 +589,42 @@ function loosePersona() {
   }
 }
 
+// One failed scrub or delete must not skip the personas after it.
+export function cleanupPending(records, hooks) {
+  const failures = []
+  for (const record of records) {
+    try {
+      if (!record.scrubbed) {
+        if (!record.password) {
+          hooks.clearMarkers()
+          throw new Error(`Cannot scrub ${record.email}: the password record is missing.`)
+        }
+        hooks.redact(record)
+        record.scrubbed = true
+        delete record.password
+        hooks.persist(records)
+      }
+      if (!record.deleted) {
+        hooks.deleteAccount(record)
+        record.deleted = true
+        hooks.persist(records)
+      }
+      if (record.scrubbed && record.deleted) hooks.release(record)
+    } catch (error) {
+      failures.push(`${record.email}: ${error?.message || error}`)
+      hooks.persist(records)
+    }
+  }
+  if (failures.length) {
+    throw new Error(`teardown left ${failures.length} persona${failures.length === 1 ? "" : "s"}: ${failures.join("; ")}`)
+  }
+}
+
 // Cancelled runs skip the suite's finally. Retry every persona still on
 // record: scrub first, then delete the account, and keep whatever is left.
 function teardown() {
   cleanupServer()
-  let pending = readPending()
+  const pending = readPending()
   const current = loosePersona()
   if (current && !pending.some((record) => record.email === current.email)) {
     pending.push({
@@ -609,28 +640,24 @@ function teardown() {
     return
   }
   const skip = [personaFile, pendingFile]
-  for (const record of pending) {
-    if (!record.scrubbed) {
-      if (!record.password) {
-        for (const dir of evidenceDirs()) fs.rmSync(scrubMarker(dir), { force: true })
-        writePending(pending)
-        throw new Error(`Cannot scrub ${record.email}: the password record is missing.`)
-      }
+  cleanupPending(pending, {
+    clearMarkers() {
+      for (const dir of evidenceDirs()) fs.rmSync(scrubMarker(dir), { force: true })
+    },
+    redact(record) {
       for (const dir of evidenceDirs()) fs.rmSync(scrubMarker(dir), { force: true })
       redactEvidence(artifactsDir, record.password, skip)
       for (const dir of evidenceDirs()) fs.writeFileSync(scrubMarker(dir), "")
-      record.scrubbed = true
-      delete record.password
-      writePending(pending)
-    }
-    if (!record.deleted) {
+    },
+    deleteAccount(record) {
       deletePersona(record)
-      record.deleted = true
-      writePending(pending)
       console.log(`teardown: deleted ${record.email}`)
-    }
-    if (record.scrubbed && record.deleted) releasePersonaFile(record.email)
-  }
+    },
+    persist: writePending,
+    release(record) {
+      releasePersonaFile(record.email)
+    },
+  })
 }
 
 function cleanupServer() {

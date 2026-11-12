@@ -6,6 +6,7 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
 import {
+  cleanupPending,
   ownServerReady,
   readPending,
   redactEvidence,
@@ -253,6 +254,27 @@ describe("pending personas", () => {
     expect(settlePersona(scrubbed, persona, { flow: "sign-in", scrubbed: true, deleted: true })).toEqual([])
     const leaked = settlePersona([], persona, { flow: "sign-in", scrubbed: false, deleted: true })
     expect(leaked[0].password).toBe("pw")
+  })
+
+  it("deletes later personas when an earlier delete fails", () => {
+    const records = [
+      { email: "e2e.1+clerk_test@example.com", flows: ["sign-in"], scrubbed: true, deleted: false },
+      { email: "e2e.2+clerk_test@example.com", flows: ["sign-in"], scrubbed: true, deleted: false },
+    ]
+    const deleted = []
+    const hooks = {
+      clearMarkers() {},
+      redact() {},
+      deleteAccount(record) {
+        if (record.email.startsWith("e2e.1+")) throw new Error("clerk 500")
+        deleted.push(record.email)
+      },
+      persist() {},
+      release() {},
+    }
+    expect(() => cleanupPending(records, hooks)).toThrow(/teardown left 1 persona: e2e\.1\+/)
+    expect(deleted).toEqual(["e2e.2+clerk_test@example.com"])
+    expect(records.map((record) => record.deleted)).toEqual([false, true])
   })
 
   it("round-trips the pending file and removes it when nothing is left", () => {
