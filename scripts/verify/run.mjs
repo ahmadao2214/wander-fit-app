@@ -16,6 +16,7 @@ import {
   artifactsDir,
   evidenceDirFor,
   listWebFlows,
+  pendingFile,
   personaFile,
   resultsFile,
   root,
@@ -324,7 +325,66 @@ function deletePersona(persona) {
   })
   if (result.stderr) process.stderr.write(result.stderr)
   if (result.status !== 0) throw new Error(`persona delete exited ${result.status ?? 1}`)
-  fs.rmSync(personaFile, { force: true })
+}
+
+// Drop persona-latest.json only after both the scrub and the account delete
+// have succeeded. The next create overwrites that file, so a half-finished
+// persona has to live in persona-pending.json instead.
+function releasePersonaFile(email) {
+  if (!email || !fs.existsSync(personaFile)) return
+  const current = JSON.parse(fs.readFileSync(personaFile, "utf8"))
+  if (current.email === email) fs.rmSync(personaFile, { force: true })
+}
+
+export function readPending(file = pendingFile) {
+  if (!fs.existsSync(file)) return []
+  const parsed = JSON.parse(fs.readFileSync(file, "utf8"))
+  if (!Array.isArray(parsed)) throw new Error("persona-pending.json is not a list.")
+  return parsed
+}
+
+export function writePending(records, file = pendingFile) {
+  const open = records.filter((record) => !record.scrubbed || !record.deleted)
+  if (!open.length) {
+    fs.rmSync(file, { force: true })
+    return
+  }
+  fs.mkdirSync(path.dirname(file), { recursive: true })
+  fs.writeFileSync(file, JSON.stringify(open, null, 2))
+  fs.chmodSync(file, 0o600)
+}
+
+// One row per email. A finished row is dropped. A row that still needs a scrub
+// keeps its password; a row that only needs a delete does not.
+export function settlePersona(records, persona, outcome) {
+  const previous = records.find((record) => record.email === persona.email) || {}
+  const rest = records.filter((record) => record.email !== persona.email)
+  if (outcome.scrubbed && outcome.deleted) return rest
+  const flows = [...new Set([...(previous.flows || []), outcome.flow].filter(Boolean))]
+  const record = {
+    email: persona.email,
+    flows,
+    scrubbed: outcome.scrubbed,
+    deleted: outcome.deleted,
+  }
+  if (!outcome.scrubbed) {
+    const password = persona.password || previous.password
+    if (password) record.password = password
+  }
+  rest.push(record)
+  return rest
+}
+
+function scrubMarker(dir) {
+  return path.join(dir, ".scrubbed")
+}
+
+function evidenceDirs() {
+  if (!fs.existsSync(artifactsDir)) return []
+  return fs
+    .readdirSync(artifactsDir)
+    .map((name) => path.join(artifactsDir, name, "web"))
+    .filter((dir) => fs.existsSync(dir))
 }
 
 const binaryEvidence = /\.(png|jpe?g|gif|webp|mp4|webm|mov|zip)$/i
@@ -388,6 +448,7 @@ function drive(url, submitting = submitMode(), flow = "sign-in") {
 // one, and the persona is deleted whether the flow passed or not.
 export function runSuite(flows, steps, now = Date.now) {
   const results = []
+  let pending = steps.readPending?.() ?? []
   for (const flow of flows) {
     const started = now()
     const result = { flow, status: "passed", artifact: artifactName(flow) }
@@ -400,16 +461,27 @@ export function runSuite(flows, steps, now = Date.now) {
       errors.push(error?.message || String(error))
     } finally {
       if (persona) {
+        // Record the scrub outcome before delete. Deleting the account must
+        // not drop the password teardown needs when the scrub failed.
+        let scrubbed = false
         try {
           steps.redact(flow, persona)
+          scrubbed = true
         } catch (error) {
           errors.push(`redact failed: ${error?.message || error}`)
         }
+        pending = settlePersona(pending, persona, { flow, scrubbed, deleted: false })
+        steps.writePending?.(pending)
+        let deleted = false
         try {
           steps.deletePersona(persona)
+          deleted = true
         } catch (error) {
           errors.push(`persona delete failed: ${error?.message || error}`)
         }
+        pending = settlePersona(pending, persona, { flow, scrubbed, deleted })
+        steps.writePending?.(pending)
+        if (scrubbed && deleted) steps.releasePersona?.(persona)
       }
     }
     if (errors.length) {
@@ -442,9 +514,15 @@ function runWebFlows(url, flows) {
       runMaestro(webFlowFile(flow), evidenceDirFor(flow), url, persona)
     },
     redact: (flow, persona) => {
-      redactEvidence(evidenceDirFor(flow), persona.password)
+      const dir = evidenceDirFor(flow)
+      fs.rmSync(scrubMarker(dir), { force: true })
+      redactEvidence(dir, persona.password)
+      if (fs.existsSync(dir)) fs.writeFileSync(scrubMarker(dir), "")
     },
     deletePersona,
+    readPending,
+    writePending,
+    releasePersona: (persona) => releasePersonaFile(persona.email),
   })
 }
 
@@ -500,18 +578,59 @@ function deployBackend() {
   if (seeded.status !== 0) fail(`seed:seedAll exited ${seeded.status ?? 1}`)
 }
 
-// For a cancelled or crashed run: stop the server, scrub the password from the
-// evidence, and delete the persona that is still on record.
+function loosePersona() {
+  if (!fs.existsSync(personaFile)) return null
+  try {
+    const record = JSON.parse(fs.readFileSync(personaFile, "utf8"))
+    if (!record?.email) return null
+    return record
+  } catch {
+    return null
+  }
+}
+
+// Cancelled runs skip the suite's finally. Retry every persona still on
+// record: scrub first, then delete the account, and keep whatever is left.
 function teardown() {
   cleanupServer()
-  const persona = readPersonaFile()
-  if (!persona) {
+  let pending = readPending()
+  const current = loosePersona()
+  if (current && !pending.some((record) => record.email === current.email)) {
+    pending.push({
+      email: current.email,
+      password: current.password,
+      flows: [],
+      scrubbed: false,
+      deleted: false,
+    })
+  }
+  if (!pending.length) {
     console.log("teardown: no persona left to delete")
     return
   }
-  redactEvidence(artifactsDir, persona.password, [personaFile])
-  deletePersona(persona)
-  console.log(`teardown: deleted ${persona.email}`)
+  const skip = [personaFile, pendingFile]
+  for (const record of pending) {
+    if (!record.scrubbed) {
+      if (!record.password) {
+        for (const dir of evidenceDirs()) fs.rmSync(scrubMarker(dir), { force: true })
+        writePending(pending)
+        throw new Error(`Cannot scrub ${record.email}: the password record is missing.`)
+      }
+      for (const dir of evidenceDirs()) fs.rmSync(scrubMarker(dir), { force: true })
+      redactEvidence(artifactsDir, record.password, skip)
+      for (const dir of evidenceDirs()) fs.writeFileSync(scrubMarker(dir), "")
+      record.scrubbed = true
+      delete record.password
+      writePending(pending)
+    }
+    if (!record.deleted) {
+      deletePersona(record)
+      record.deleted = true
+      writePending(pending)
+      console.log(`teardown: deleted ${record.email}`)
+    }
+    if (record.scrubbed && record.deleted) releasePersonaFile(record.email)
+  }
 }
 
 function cleanupServer() {

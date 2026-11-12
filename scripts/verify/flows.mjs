@@ -8,6 +8,9 @@ export const artifactsDir = path.join(root, "e2e-artifacts")
 export const webFlowsDir = path.join(root, ".maestro/web")
 export const resultsFile = path.join(artifactsDir, "web-results.json")
 export const personaFile = path.join(artifactsDir, "persona-latest.json")
+// Personas whose account delete or password scrub still has to be retried.
+// Separate from persona-latest.json, which the next create overwrites.
+export const pendingFile = path.join(artifactsDir, "persona-pending.json")
 
 // Every *.yaml directly under .maestro/web is one web flow. Subfolders hold
 // shared steps, not entry files.

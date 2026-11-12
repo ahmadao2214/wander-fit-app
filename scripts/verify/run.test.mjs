@@ -5,7 +5,16 @@ import os from "node:os"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
-import { ownServerReady, redactEvidence, restoreFiles, runSuite, snapshotFiles } from "./run.mjs"
+import {
+  ownServerReady,
+  readPending,
+  redactEvidence,
+  restoreFiles,
+  runSuite,
+  settlePersona,
+  snapshotFiles,
+  writePending,
+} from "./run.mjs"
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 const runScript = path.join(root, "scripts/verify/run.mjs")
@@ -129,10 +138,12 @@ describe("verify run", () => {
 })
 
 describe("web suite", () => {
-  function recorder({ failDrive = [], failCreate = [], failDelete = [] } = {}) {
+  function recorder({ failDrive = [], failCreate = [], failDelete = [], failRedact = [] } = {}) {
     const calls = []
+    let pending = []
     return {
       calls,
+      pending: () => pending,
       steps: {
         createPersona: (flow) => {
           calls.push(`create ${flow}`)
@@ -143,10 +154,19 @@ describe("web suite", () => {
           calls.push(`drive ${flow}`)
           if (failDrive.includes(flow)) throw new Error("Maestro exited 1")
         },
-        redact: (flow) => calls.push(`redact ${flow}`),
+        redact: (flow) => {
+          calls.push(`redact ${flow}`)
+          if (failRedact.includes(flow)) throw new Error("log busy")
+        },
         deletePersona: (persona) => {
           calls.push(`delete ${persona.email}`)
-          if (failDelete.some((flow) => persona.email.includes(flow))) throw new Error("clerk 500")
+          if (failDelete.some((flow) => persona.email.startsWith(`e2e.${flow}+`))) {
+            throw new Error("clerk 500")
+          }
+        },
+        readPending: () => pending,
+        writePending: (records) => {
+          pending = records
         },
       },
     }
@@ -192,6 +212,62 @@ describe("web suite", () => {
     const [result] = runSuite(["a"], steps, () => 0)
     expect(calls).toEqual(["create a"])
     expect(result).toMatchObject({ status: "failed", error: "clerk down" })
+  })
+
+  it("keeps a persona whose delete failed after the next flow finishes", () => {
+    const { pending, steps } = recorder({ failDelete: ["a"] })
+    runSuite(["a", "b"], steps, () => 0)
+    expect(pending()).toEqual([
+      {
+        email: "e2e.a+clerk_test@example.com",
+        flows: ["a"],
+        scrubbed: true,
+        deleted: false,
+      },
+    ])
+  })
+
+  it("keeps the password when the scrub fails and the account delete succeeds", () => {
+    const { pending, steps } = recorder({ failRedact: ["a"] })
+    const [result] = runSuite(["a"], steps, () => 0)
+    expect(result.status).toBe("failed")
+    expect(pending()).toEqual([
+      {
+        email: "e2e.a+clerk_test@example.com",
+        password: "pw-a",
+        flows: ["a"],
+        scrubbed: false,
+        deleted: true,
+      },
+    ])
+  })
+})
+
+describe("pending personas", () => {
+  it("drops a finished persona and keeps the password only while the scrub is open", () => {
+    const persona = { email: "e2e.1+clerk_test@example.com", password: "pw" }
+    const scrubbed = settlePersona([], persona, { flow: "sign-in", scrubbed: true, deleted: false })
+    expect(scrubbed).toEqual([
+      { email: persona.email, flows: ["sign-in"], scrubbed: true, deleted: false },
+    ])
+    expect(settlePersona(scrubbed, persona, { flow: "sign-in", scrubbed: true, deleted: true })).toEqual([])
+    const leaked = settlePersona([], persona, { flow: "sign-in", scrubbed: false, deleted: true })
+    expect(leaked[0].password).toBe("pw")
+  })
+
+  it("round-trips the pending file and removes it when nothing is left", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "verify-pending-"))
+    const file = path.join(dir, "persona-pending.json")
+    try {
+      const open = [{ email: "e2e.1+clerk_test@example.com", flows: ["sign-in"], scrubbed: false, deleted: false, password: "pw" }]
+      writePending(open, file)
+      expect(fs.statSync(file).mode & 0o777).toBe(0o600)
+      expect(readPending(file)).toEqual(open)
+      writePending([], file)
+      expect(fs.existsSync(file)).toBe(false)
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
   })
 })
 

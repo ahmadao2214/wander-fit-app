@@ -111,9 +111,10 @@ jobs:
           CONVEX_DEPLOY_KEY_E2E: ${{ secrets.CONVEX_DEPLOY_KEY_E2E }}
         run: node scripts/verify/run.mjs teardown
       # One upload per flow under .maestro/web. scripts/verify/flows.test.mjs
-      # fails when a flow has no step here.
+      # fails when a flow has no step here. The marker is written only after
+      # that flow's password scrub succeeds, so a failed scrub is not uploaded.
       - name: Upload sign-in evidence
-        if: always()
+        if: always() && hashFiles('e2e-artifacts/sign-in/web/.scrubbed') != ''
         uses: actions/upload-artifact@v4
         with:
           name: e2e-web-sign-in

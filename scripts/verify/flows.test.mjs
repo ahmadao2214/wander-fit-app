@@ -32,12 +32,13 @@ describe("web flows", () => {
   it("has an upload step in the checks workflow for every web flow", () => {
     const uploads = job.steps
       .filter((step) => String(step.uses || "").startsWith("actions/upload-artifact@"))
-      .map((step) => ({ name: step.with.name, path: step.with.path, always: step.if === "always()" }))
+      .map((step) => ({ name: step.with.name, path: step.with.path, if: step.if }))
     for (const flow of listWebFlows()) {
+      const evidence = `${path.relative(root, evidenceDirFor(flow))}/`
       const expected = {
         name: artifactName(flow),
-        path: `${path.relative(root, evidenceDirFor(flow))}/`,
-        always: true,
+        path: evidence,
+        if: `always() && hashFiles('${evidence}.scrubbed') != ''`,
       }
       expect(uploads, `add an upload step for .maestro/web/${flow}.yaml`).toContainEqual(expected)
     }
