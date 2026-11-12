@@ -262,8 +262,15 @@ describe("pending personas", () => {
       { email: "e2e.2+clerk_test@example.com", flows: ["sign-in"], scrubbed: true, deleted: false },
     ]
     const deleted = []
+    let marked = 0
+    let cleared = 0
     const hooks = {
-      clearMarkers() {},
+      clearMarkers() {
+        cleared += 1
+      },
+      markScrubbed() {
+        marked += 1
+      },
       redact() {},
       deleteAccount(record) {
         if (record.email.startsWith("e2e.1+")) throw new Error("clerk 500")
@@ -275,6 +282,54 @@ describe("pending personas", () => {
     expect(() => cleanupPending(records, hooks)).toThrow(/teardown left 1 persona: e2e\.1\+/)
     expect(deleted).toEqual(["e2e.2+clerk_test@example.com"])
     expect(records.map((record) => record.deleted)).toEqual([false, true])
+    expect(marked).toBe(1)
+    expect(cleared).toBe(0)
+  })
+
+  it("withholds every upload marker when an earlier password scrub fails", () => {
+    const records = [
+      {
+        email: "e2e.1+clerk_test@example.com",
+        password: "pw-1",
+        flows: ["sign-in"],
+        scrubbed: false,
+        deleted: true,
+      },
+      {
+        email: "e2e.2+clerk_test@example.com",
+        password: "pw-2",
+        flows: ["sign-up"],
+        scrubbed: false,
+        deleted: true,
+      },
+    ]
+    let marked = 0
+    let cleared = 0
+    const redacted = []
+    expect(() =>
+      cleanupPending(records, {
+        clearMarkers() {
+          cleared += 1
+        },
+        markScrubbed() {
+          marked += 1
+        },
+        redact(record) {
+          redacted.push(record.email)
+          if (record.email.startsWith("e2e.1+")) throw new Error("log busy")
+        },
+        deleteAccount() {},
+        persist() {},
+        release() {},
+      })
+    ).toThrow(/e2e\.1\+clerk_test@example.com/)
+    expect(redacted).toEqual([
+      "e2e.1+clerk_test@example.com",
+      "e2e.2+clerk_test@example.com",
+    ])
+    expect(records.map((record) => record.scrubbed)).toEqual([false, true])
+    expect(marked).toBe(0)
+    expect(cleared).toBe(1)
   })
 
   it("round-trips the pending file and removes it when nothing is left", () => {

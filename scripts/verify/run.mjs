@@ -596,7 +596,6 @@ export function cleanupPending(records, hooks) {
     try {
       if (!record.scrubbed) {
         if (!record.password) {
-          hooks.clearMarkers()
           throw new Error(`Cannot scrub ${record.email}: the password record is missing.`)
         }
         hooks.redact(record)
@@ -615,6 +614,10 @@ export function cleanupPending(records, hooks) {
       hooks.persist(records)
     }
   }
+  // One persona's scrub removes only that password. A later success must not
+  // mark every folder, or an earlier password is uploaded as clean.
+  if (records.every((record) => record.scrubbed)) hooks.markScrubbed()
+  else hooks.clearMarkers()
   if (failures.length) {
     throw new Error(`teardown left ${failures.length} persona${failures.length === 1 ? "" : "s"}: ${failures.join("; ")}`)
   }
@@ -644,10 +647,11 @@ function teardown() {
     clearMarkers() {
       for (const dir of evidenceDirs()) fs.rmSync(scrubMarker(dir), { force: true })
     },
-    redact(record) {
-      for (const dir of evidenceDirs()) fs.rmSync(scrubMarker(dir), { force: true })
-      redactEvidence(artifactsDir, record.password, skip)
+    markScrubbed() {
       for (const dir of evidenceDirs()) fs.writeFileSync(scrubMarker(dir), "")
+    },
+    redact(record) {
+      redactEvidence(artifactsDir, record.password, skip)
     },
     deleteAccount(record) {
       deletePersona(record)
