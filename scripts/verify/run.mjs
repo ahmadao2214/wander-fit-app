@@ -308,7 +308,17 @@ function createPersona() {
     { cwd: root, encoding: "utf8" }
   )
   if (result.stderr) process.stderr.write(result.stderr)
-  if (result.status !== 0) throw new Error(`persona create exited ${result.status ?? 1}`)
+  if (result.status !== 0) {
+    let leftover = null
+    try {
+      leftover = readPersonaFile()
+    } catch {
+      leftover = null
+    }
+    const error = new Error(`persona create exited ${result.status ?? 1}`)
+    if (leftover) error.persona = leftover
+    throw error
+  }
   const line = (result.stdout || "").trim().split("\n").filter(Boolean).at(-1) || ""
   if (line) console.log(line)
   const persona = readPersonaFile()
@@ -459,6 +469,7 @@ export function runSuite(flows, steps, now = Date.now) {
       steps.drive(flow, persona)
     } catch (error) {
       errors.push(error?.message || String(error))
+      if (!persona && error?.persona) persona = error.persona
     } finally {
       if (persona) {
         // Record the scrub outcome before delete. Deleting the account must

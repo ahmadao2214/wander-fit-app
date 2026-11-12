@@ -139,7 +139,13 @@ describe("verify run", () => {
 })
 
 describe("web suite", () => {
-  function recorder({ failDrive = [], failCreate = [], failDelete = [], failRedact = [] } = {}) {
+  function recorder({
+    failDrive = [],
+    failCreate = [],
+    failAfterClerk = [],
+    failDelete = [],
+    failRedact = [],
+  } = {}) {
     const calls = []
     let pending = []
     return {
@@ -149,7 +155,13 @@ describe("web suite", () => {
         createPersona: (flow) => {
           calls.push(`create ${flow}`)
           if (failCreate.includes(flow)) throw new Error("clerk down")
-          return { email: `e2e.${flow}+clerk_test@example.com`, password: `pw-${flow}` }
+          const persona = { email: `e2e.${flow}+clerk_test@example.com`, password: `pw-${flow}` }
+          if (failAfterClerk.includes(flow)) {
+            const error = new Error("convex down")
+            error.persona = persona
+            throw error
+          }
+          return persona
         },
         drive: (flow) => {
           calls.push(`drive ${flow}`)
@@ -206,6 +218,14 @@ describe("web suite", () => {
     const [result] = runSuite(["a"], steps, () => 0)
     expect(result.status).toBe("failed")
     expect(result.error).toContain("persona delete failed")
+  })
+
+  it("deletes the Clerk user when create fails after the account exists", () => {
+    const { calls, pending, steps } = recorder({ failAfterClerk: ["a"] })
+    const [result] = runSuite(["a"], steps, () => 0)
+    expect(calls).toEqual(["create a", "redact a", "delete e2e.a+clerk_test@example.com"])
+    expect(result).toMatchObject({ status: "failed", error: "convex down" })
+    expect(pending()).toEqual([])
   })
 
   it("does not drive or delete when persona create fails", () => {

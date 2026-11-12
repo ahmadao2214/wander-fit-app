@@ -158,10 +158,18 @@ function password() {
   return out
 }
 
-function writeCredentials(record) {
-  fs.mkdirSync(path.dirname(credentialsFile), { recursive: true })
-  fs.writeFileSync(credentialsFile, JSON.stringify(record, null, 2))
-  fs.chmodSync(credentialsFile, 0o600)
+function writeCredentials(record, file = credentialsFile) {
+  fs.mkdirSync(path.dirname(file), { recursive: true })
+  fs.writeFileSync(file, JSON.stringify(record, null, 2))
+  fs.chmodSync(file, 0o600)
+}
+
+// The Clerk user already exists. Write the cleanup record before Convex
+// provisioning so a failed seed or provision can still be deleted.
+export function provisionPersona(record, steps, file = credentialsFile) {
+  writeCredentials(record, file)
+  steps.seed()
+  steps.provision()
 }
 
 function printJson(value) {
@@ -186,19 +194,22 @@ async function create() {
   })
   const clerkId = created?.id
   if (!clerkId) fail("Clerk did not return a user id.")
-  convexRun("seed:seedAll", {})
-  convexRun("e2e:provision", {
-    clerkId,
-    email,
-    name: "Verify Athlete",
-    state,
-  })
-  writeCredentials({
+  const record = {
     email,
     password: secretPassword,
     clerkId,
     state,
     createdAt: new Date().toISOString(),
+  }
+  provisionPersona(record, {
+    seed: () => convexRun("seed:seedAll", {}),
+    provision: () =>
+      convexRun("e2e:provision", {
+        clerkId,
+        email,
+        name: "Verify Athlete",
+        state,
+      }),
   })
   console.error(`persona: created ${email} (${state})`)
   printJson({ email, clerkId, state, credentialsFile: "e2e-artifacts/persona-latest.json" })
