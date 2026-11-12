@@ -54,7 +54,7 @@ node scripts/verify/run.mjs drive
 
 `launch` and `drive` are manual pieces. `drive <url> <flow>` runs one web flow with the persona already in `e2e-artifacts/persona-latest.json`, and fails when an e2e URL is set and that file is missing. It does not create or delete the persona. `all` does both.
 
-With no e2e URL, `screen` and `drive` use `.maestro/sign-in-screen.yaml`. That flow opens the signed-out screen, checks the welcome copy and the fields, taps the email field, and does not submit. `.maestro/web/sign-in.yaml` types the fresh persona and submits Sign In. The password stays in `e2e-artifacts/persona-latest.json` until the persona is deleted, and is not printed.
+With no e2e URL, `screen` and `drive` use `.maestro/sign-in-screen.yaml`. That flow opens the signed-out screen, checks the welcome copy and the fields, taps the email field, and does not submit. `.maestro/web/sign-in.yaml` types the fresh persona, submits Sign In, waits for the Today workout card, opens Profile, and taps Sign Out. The password stays in `e2e-artifacts/persona-latest.json` until the persona is deleted, and is not printed.
 
 ## Evidence
 

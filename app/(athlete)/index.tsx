@@ -296,6 +296,7 @@ export default function AthleteDashboard() {
 
           {/* Today's Workout Card */}
           <Card
+            testID="today-workout-card"
             bg={isCompleted ? '$surface' : '$brand1'}
             borderWidth={isCompleted ? 1 : 0}
             borderColor="$borderColor"
