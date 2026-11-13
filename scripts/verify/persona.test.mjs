@@ -1,7 +1,15 @@
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
-import { createdAtMs, isGeneratedEmail, parseRunResult, provisionPersona, signupEmail } from "./persona.mjs"
+import {
+  createdAtMs,
+  isGeneratedEmail,
+  parseRunResult,
+  provisionPersona,
+  REVIEW_EMAIL,
+  reviewPlan,
+  signupEmail,
+} from "./persona.mjs"
 
 describe("persona sweep timestamps", () => {
   it("keeps Clerk's millisecond created_at", () => {
@@ -91,5 +99,44 @@ describe("persona inspect output", () => {
     const stdout = '{\n  "email": "e2e-1-signup+clerk_test@example.com",\n  "found": true\n}\n'
     expect(parseRunResult(stdout)).toEqual({ email: "e2e-1-signup+clerk_test@example.com", found: true })
     expect(() => parseRunResult("")).toThrow(/no object/)
+  })
+})
+
+describe("persona review account", () => {
+  const onboarded = { found: true, onboardingCompleted: true, hasProgram: true }
+
+  it("is never an address delete or sweep accepts", () => {
+    expect(isGeneratedEmail(REVIEW_EMAIL)).toBe(false)
+  })
+
+  it("creates the user and its program when nothing exists", () => {
+    expect(reviewPlan({ clerkId: "", saved: null, inspected: null })).toEqual({
+      createUser: true,
+      setPassword: false,
+      provision: true,
+    })
+  })
+
+  it("changes nothing on a second run", () => {
+    const saved = { clerkId: "user_1", password: "pw" }
+    expect(reviewPlan({ clerkId: "user_1", saved, inspected: onboarded })).toEqual({
+      createUser: false,
+      setPassword: false,
+      provision: false,
+    })
+  })
+
+  it("sets a new password when the saved one is for another user or missing", () => {
+    expect(reviewPlan({ clerkId: "user_1", saved: null, inspected: onboarded }).setPassword).toBe(true)
+    expect(
+      reviewPlan({ clerkId: "user_1", saved: { clerkId: "user_0", password: "pw" }, inspected: onboarded }).setPassword
+    ).toBe(true)
+  })
+
+  it("provisions only an account without a program, so its data is kept", () => {
+    const saved = { clerkId: "user_1", password: "pw" }
+    expect(reviewPlan({ clerkId: "user_1", saved, inspected: { found: false } }).provision).toBe(true)
+    expect(reviewPlan({ clerkId: "user_1", saved, inspected: { ...onboarded, hasProgram: false } }).provision).toBe(true)
+    expect(reviewPlan({ clerkId: "user_1", saved, inspected: onboarded }).provision).toBe(false)
   })
 })
