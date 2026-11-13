@@ -14,6 +14,7 @@ export default defineConfig({
       "lib/__tests__/**/*.test.ts",
       "hooks/__tests__/**/*.test.ts",
       "scripts/verify/**/*.test.mjs",
+      "babel/__tests__/**/*.test.mjs",
     ],
 
     // Allow importing from tamagui.config.ts
