@@ -1,0 +1,7 @@
+appId: com.offseason.asrafit
+---
+- assertVisible: "READY TO TRAIN?"
+- tapOn: "Start Workout"
+- assertVisible: "Start"
+- assertVisible: "Goblet Squat.*"
+- takeScreenshot: native-workout-navigation

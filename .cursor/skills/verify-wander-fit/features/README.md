@@ -27,6 +27,9 @@ This directory is the maintained source for verifying Wander Fit on the web expo
 
 ## Features
 
+- [Native launch](./native-launch.md) covers the iOS 27 Release launch/relaunch regression on a dedicated simulator.
+- [Native workout reorder](./workout-reorder.md) covers changed ordered keys in the patched draggable list; authenticated runtime proof remains pending.
+
 - [Sign in](./sign-in.md) covers the signed-out welcome screen, signing in to Today, and signing out from Profile.
 - [Sign up](./sign-up.md) covers creating an athlete with email, password, and the emailed code, through to the intake sport screen.
 - [Activation](./activation.md) covers a needs-intake athlete going through intake, onboarding, and the one-tap commitment to the Today workout card, checked with `persona inspect`.

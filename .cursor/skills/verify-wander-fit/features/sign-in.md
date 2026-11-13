@@ -5,6 +5,7 @@ A signed-out athlete sees the welcome screen, with an email field, a password fi
 ## Sub-features
 
 - `sign-in-screen`: the welcome heading, the training subtitle, both fields, and Sign In are visible.
+- `web-document-hydration`: Router 58's custom HTML forwards document-context attributes, head assets and body scripts. The static export must hydrate past `Loading...`; the screen flow also asserts the three sign-in control IDs. A successful export alone does not prove hydration.
 - `sign-in-email-focus`: tapping the email field leaves Sign In on screen and does not start a session.
 - `sign-in-today`: with a fresh onboarded persona, submitting Sign In shows `Welcome back,` and the Today workout card.
 - `sign-in-sign-out`: that same persona opens Profile, taps Sign Out, and sees `WELCOME BACK` again.

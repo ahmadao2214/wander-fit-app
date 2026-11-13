@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react'
-import { ScrollView, View, StyleSheet, Pressable } from 'react-native'
+import { ScrollView, View, StyleSheet, Pressable, type ScrollViewInstance } from 'react-native'
 import { YStack, XStack, Text, Button, Card, H3, type ColorTokens } from 'tamagui'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ChevronDown, ChevronUp, ChevronLeft, Check } from '@tamagui/lucide-icons'
@@ -175,7 +175,7 @@ function WarmupFlow({ exercises, totalDuration, onComplete, onBack, phaseColor }
 
   // Phase-level checklist state
   const [completedPhases, setCompletedPhases] = useState<Set<WarmupPhase>>(new Set())
-  const scrollRef = useRef<ScrollView>(null)
+  const scrollRef = useRef<ScrollViewInstance>(null)
   const phaseLayoutsRef = useRef<Map<WarmupPhase, number>>(new Map())
   const justToggledRef = useRef(false)
 

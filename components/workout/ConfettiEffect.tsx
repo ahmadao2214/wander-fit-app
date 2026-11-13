@@ -77,7 +77,7 @@ export function ConfettiEffect({ trigger, onComplete }: ConfettiEffectProps) {
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 1000,
   },
 })

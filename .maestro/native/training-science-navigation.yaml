@@ -1,0 +1,6 @@
+appId: com.offseason.asrafit
+---
+- assertVisible: "Training Science"
+- tapOn: "Training Science"
+- assertVisible: "UNDERSTAND YOUR PROGRAM"
+- takeScreenshot: native-training-science-navigation

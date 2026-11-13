@@ -720,7 +720,7 @@ export default function WorkoutDetailScreen() {
               data={lastCompletedSession.exercises}
               keyExtractor={reviewKeyExtractor}
               renderItem={renderReviewItem}
-              ListHeaderComponent={ListHeader}
+              ListHeaderComponent={ListHeader ?? undefined}
               ListFooterComponent={ListFooter}
               contentContainerStyle={styles.contentContainer}
               style={styles.flatList}
@@ -732,7 +732,7 @@ export default function WorkoutDetailScreen() {
               onDragEnd={handleDragEnd}
               keyExtractor={keyExtractor}
               renderItem={renderExerciseItem}
-              ListHeaderComponent={ListHeader}
+              ListHeaderComponent={ListHeader ?? undefined}
               ListFooterComponent={ListFooter}
               contentContainerStyle={styles.contentContainer}
               containerStyle={styles.flatList}

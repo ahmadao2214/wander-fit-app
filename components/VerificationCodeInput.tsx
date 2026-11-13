@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Platform, TextInput, StyleSheet } from 'react-native'
+import { Platform, TextInput, StyleSheet, type TextInputInstance } from 'react-native'
 import { XStack, useTheme } from 'tamagui'
 
 // Minimal delay - just enough to let React Native process the state update
@@ -22,7 +22,7 @@ export function VerificationCodeInput({
   const theme = useTheme()
   // Only track focus state on non-Android platforms to avoid re-render flickering
   const [focusedIndex, setFocusedIndex] = React.useState<number | null>(null)
-  const inputRefs = React.useRef<(TextInput | null)[]>([])
+  const inputRefs = React.useRef<(TextInputInstance | null)[]>([])
   // Track if we're in the middle of a focus change to prevent race conditions
   const isFocusingRef = React.useRef(false)
   const prevValueRef = React.useRef(value)
