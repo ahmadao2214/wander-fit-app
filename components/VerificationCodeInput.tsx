@@ -9,12 +9,15 @@ export interface VerificationCodeInputProps {
   value: string
   onChange: (value: string) => void
   length?: number
+  /** testID and DOM id for the first box. Typing the whole code there fills every box. */
+  firstInputId?: string
 }
 
 export function VerificationCodeInput({
   value,
   onChange,
-  length = 6
+  length = 6,
+  firstInputId,
 }: VerificationCodeInputProps) {
   const theme = useTheme()
   // Only track focus state on non-Android platforms to avoid re-render flickering
@@ -23,6 +26,8 @@ export function VerificationCodeInput({
   // Track if we're in the middle of a focus change to prevent race conditions
   const isFocusingRef = React.useRef(false)
   const prevValueRef = React.useRef(value)
+  // Web fires onChange and then onChangeText for one paste. Skip the second.
+  const pastedTextRef = React.useRef<string | null>(null)
 
   // When value is cleared externally (e.g., resend code), focus first input
   React.useEffect(() => {
@@ -73,11 +78,12 @@ export function VerificationCodeInput({
     })
   }
 
-  const handleChange = (text: string, index: number) => {
+  const handleChange = (text: string, index: number, fromPaste = false) => {
     // Only allow numbers
     const numericText = text.replace(/[^0-9]/g, '')
 
     if (numericText.length === 0) {
+      if (fromPaste) return
       // Handle deletion
       const newDigits = [...digits]
       newDigits[index] = ''
@@ -85,8 +91,29 @@ export function VerificationCodeInput({
       return
     }
 
+    // On web, a key typed into a box that already holds a digit arrives as
+    // that digit plus the new one, because focus has not moved yet. A paste
+    // is not that case: it replaces the code from the first box.
+    const stuckFocusKey =
+      !fromPaste &&
+      Platform.OS === 'web' &&
+      numericText.length === 2 &&
+      digits[index] &&
+      numericText[0] === digits[index]
+    if (stuckFocusKey) {
+      const newDigits = [...digits]
+      const nextEmpty = newDigits.findIndex((digit, i) => i > index && !digit)
+      const target = nextEmpty === -1 ? index : nextEmpty
+      newDigits[target] = numericText[1]
+      onChange(newDigits.join(''))
+      if (target < length - 1) {
+        focusInput(target + 1)
+      }
+      return
+    }
+
     // Handle paste of multiple digits or typing multiple characters
-    if (numericText.length > 1) {
+    if (fromPaste || numericText.length > 1) {
       // When pasting, fill from the first empty box or from the beginning
       const pastedDigits = numericText.split('').slice(0, length)
       const newDigits = new Array(length).fill('')
@@ -155,12 +182,30 @@ export function VerificationCodeInput({
       {digits.map((digit, index) => (
         <TextInput
           key={index}
+          testID={index === 0 ? firstInputId : undefined}
+          nativeID={index === 0 ? firstInputId : undefined}
           ref={(ref) => {
             inputRefs.current[index] = ref
           }}
           style={getInputStyle(index, digit)}
           value={digit}
-          onChangeText={(text) => handleChange(text, index)}
+          onChange={(event) => {
+            // inputType exists only on web, where nativeEvent is the DOM InputEvent.
+            const nativeEvent = event?.nativeEvent as { text?: string; inputType?: string } | undefined
+            const inputType = nativeEvent?.inputType
+            if (inputType !== 'insertFromPaste' && inputType !== 'insertFromDrop') return
+            const text = nativeEvent?.text ?? ''
+            pastedTextRef.current = text
+            handleChange(text, index, true)
+          }}
+          onChangeText={(text) => {
+            if (pastedTextRef.current !== null && text === pastedTextRef.current) {
+              pastedTextRef.current = null
+              return
+            }
+            pastedTextRef.current = null
+            handleChange(text, index)
+          }}
           onKeyPress={(e) => handleKeyPress(e, index)}
           onFocus={() => handleFocus(index)}
           onBlur={handleBlur}

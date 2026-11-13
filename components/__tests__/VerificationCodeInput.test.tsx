@@ -1,4 +1,5 @@
 import React from 'react'
+import { Platform } from 'react-native'
 import { render, fireEvent } from '@testing-library/react-native'
 import { VerificationCodeInput } from '../VerificationCodeInput'
 import { TamaguiProvider } from 'tamagui'
@@ -175,5 +176,86 @@ describe('VerificationCodeInput', () => {
     expect(getByDisplayValue('4')).toBeTruthy()
     expect(getByDisplayValue('5')).toBeTruthy()
     expect(getByDisplayValue('6')).toBeTruthy()
+  })
+
+  it('puts firstInputId on the first box only, and a full code there fills every box', () => {
+    const { getByTestId, getAllByTestId } = render(
+      <VerificationCodeInput value="" onChange={mockOnChange} firstInputId="sign-up-code" />,
+      { wrapper: AllTheProviders }
+    )
+
+    expect(getAllByTestId('sign-up-code')).toHaveLength(1)
+    const first = getByTestId('sign-up-code')
+    expect(first.props.nativeID).toBe('sign-up-code')
+    fireEvent.changeText(first, '424242')
+    expect(mockOnChange).toHaveBeenCalledWith('424242')
+  })
+
+  it('pastes two digits over an occupied box without adding an extra digit', () => {
+    const { getByDisplayValue } = render(
+      <VerificationCodeInput value="42" onChange={mockOnChange} />,
+      { wrapper: AllTheProviders }
+    )
+
+    fireEvent.changeText(getByDisplayValue('4'), '42')
+
+    expect(mockOnChange).toHaveBeenCalledWith('42')
+  })
+
+  it('keeps a web paste of two digits from appending one of them', () => {
+    const previous = Platform.OS
+    Platform.OS = 'web'
+    try {
+      const { getByDisplayValue } = render(
+        <VerificationCodeInput value="42" onChange={mockOnChange} />,
+        { wrapper: AllTheProviders }
+      )
+      fireEvent(getByDisplayValue('4'), 'change', {
+        nativeEvent: { text: '42', inputType: 'insertFromPaste' },
+      })
+      expect(mockOnChange).toHaveBeenCalledWith('42')
+    } finally {
+      Platform.OS = previous
+    }
+  })
+
+  it('keeps filling the next empty box when keys keep landing in a filled box', () => {
+    // Maestro web sends each key to the first box. After a key, that box
+    // shows one digit again, so the next key arrives as "<digit><key>".
+    const previous = Platform.OS
+    Platform.OS = 'web'
+    try {
+      function Harness() {
+        const [code, setCode] = React.useState('')
+        return <VerificationCodeInput value={code} onChange={setCode} firstInputId="sign-up-code" />
+      }
+      const { getByTestId, getAllByDisplayValue, getByDisplayValue } = render(<Harness />, {
+        wrapper: AllTheProviders,
+      })
+      const first = getByTestId('sign-up-code')
+      for (const key of '424242') {
+        fireEvent.changeText(first, `${first.props.value}${key}`)
+      }
+      expect(getAllByDisplayValue('4')).toHaveLength(3)
+      expect(getAllByDisplayValue('2')).toHaveLength(3)
+      expect(() => getByDisplayValue('')).toThrow()
+    } finally {
+      Platform.OS = previous
+    }
+  })
+
+  it('replaces the digit when every later box is already filled', () => {
+    const previous = Platform.OS
+    Platform.OS = 'web'
+    try {
+      const { getAllByDisplayValue } = render(
+        <VerificationCodeInput value="123456" onChange={mockOnChange} />,
+        { wrapper: AllTheProviders }
+      )
+      fireEvent.changeText(getAllByDisplayValue('6')[0], '69')
+      expect(mockOnChange).toHaveBeenCalledWith('123459')
+    } finally {
+      Platform.OS = previous
+    }
   })
 })

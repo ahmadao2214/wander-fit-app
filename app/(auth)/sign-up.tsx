@@ -398,6 +398,7 @@ export default function SignUpScreen() {
                   value={code}
                   onChange={setCode}
                   length={6}
+                  firstInputId="sign-up-code"
                 />
                 <Button
                   onPress={onVerifyPress}
@@ -692,8 +693,11 @@ export default function SignUpScreen() {
                   <Divider />
                 </XStack>
 
-                {/* Email/Password Section */}
+                {/* Email/Password Section. testIDs for Maestro web; nativeID gives each
+                    input its own DOM id so typed text lands in the focused field. */}
                 <Input
+                  testID="sign-up-name"
+                  nativeID="sign-up-name"
                   value={name}
                   placeholder="Full name"
                   onChangeText={(name) => {
@@ -711,6 +715,8 @@ export default function SignUpScreen() {
 
                 <YStack gap="$1">
                   <Input
+                    testID="sign-up-email"
+                    nativeID="sign-up-email"
                     autoCapitalize="none"
                     keyboardType="email-address"
                     value={emailAddress}
@@ -738,6 +744,8 @@ export default function SignUpScreen() {
                 <YStack gap="$1">
                   <XStack position="relative">
                     <Input
+                      testID="sign-up-password"
+                      nativeID="sign-up-password"
                       value={password}
                       placeholder="Password"
                       secureTextEntry={!showPassword}
@@ -786,6 +794,7 @@ export default function SignUpScreen() {
 
                 {/* Sign Up Button */}
                 <Button
+                  testID="sign-up-submit"
                   onPress={onSignUpPress}
                   size="$5"
                   bg="$primary"

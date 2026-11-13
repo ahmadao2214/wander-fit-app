@@ -5,8 +5,11 @@ import os from "node:os"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
+import { isGeneratedEmail } from "./persona.mjs"
 import {
+  assertSignedUp,
   cleanupPending,
+  createSignupPersona,
   ownServerReady,
   readPending,
   redactEvidence,
@@ -14,6 +17,7 @@ import {
   runSuite,
   settlePersona,
   snapshotFiles,
+  webSuiteSteps,
   writePending,
 } from "./run.mjs"
 
@@ -261,6 +265,106 @@ describe("web suite", () => {
         deleted: true,
       },
     ])
+  })
+})
+
+describe("persona modes", () => {
+  function webIo({ failMaestro = [], inspectFound = true } = {}) {
+    const calls = []
+    let pending = []
+    const io = {
+      createOnboardedPersona: () => {
+        calls.push("create onboarded")
+        return { email: "e2e.1+clerk_test@example.com", password: "pw-in" }
+      },
+      createSignupPersona: () => {
+        calls.push("create signup")
+        return { email: "e2e-2-signup+clerk_test@example.com", password: "pw-up" }
+      },
+      inspectPersona: (persona) => {
+        calls.push(`inspect ${persona.email}`)
+        if (!inspectFound) throw new Error(`sign-up left no Convex user for ${persona.email}`)
+        return { found: true }
+      },
+      runMaestro: (flow) => {
+        calls.push(`maestro ${flow}`)
+        if (failMaestro.includes(flow)) throw new Error("Maestro exited 1")
+      },
+      redact: (flow) => calls.push(`redact ${flow}`),
+      deletePersona: (persona) => calls.push(`delete ${persona.email}`),
+      readPending: () => pending,
+      writePending: (records) => {
+        pending = records
+      },
+      releasePersona: () => {},
+    }
+    return { calls, io, pending: () => pending }
+  }
+
+  it("signs in as an onboarded persona and signs up without provisioning one", () => {
+    const { calls, io } = webIo()
+    const results = runSuite(["sign-in", "sign-up"], webSuiteSteps("http://127.0.0.1:1", io), () => 0)
+    expect(calls).toEqual([
+      "create onboarded",
+      "maestro sign-in",
+      "redact sign-in",
+      "delete e2e.1+clerk_test@example.com",
+      "create signup",
+      "maestro sign-up",
+      "inspect e2e-2-signup+clerk_test@example.com",
+      "redact sign-up",
+      "delete e2e-2-signup+clerk_test@example.com",
+    ])
+    expect(results.map((result) => result.status)).toEqual(["passed", "passed"])
+  })
+
+  it("fails sign-up and still deletes when inspect finds no Convex user", () => {
+    const { calls, io, pending } = webIo({ inspectFound: false })
+    const [result] = runSuite(["sign-up"], webSuiteSteps("http://127.0.0.1:1", io), () => 0)
+    expect(result.status).toBe("failed")
+    expect(result.error).toContain("no Convex user")
+    expect(calls.slice(-2)).toEqual(["redact sign-up", "delete e2e-2-signup+clerk_test@example.com"])
+    expect(pending()).toEqual([])
+  })
+
+  it("deletes the signup email when Maestro fails, without inspecting", () => {
+    const { calls, io } = webIo({ failMaestro: ["sign-up"] })
+    const [result] = runSuite(["sign-up"], webSuiteSteps("http://127.0.0.1:1", io), () => 0)
+    expect(result).toMatchObject({ status: "failed", error: "Maestro exited 1" })
+    expect(calls).toEqual([
+      "create signup",
+      "maestro sign-up",
+      "redact sign-up",
+      "delete e2e-2-signup+clerk_test@example.com",
+    ])
+  })
+
+  it("writes the signup record before Maestro with no Clerk or Convex call", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "verify-signup-"))
+    const file = path.join(dir, "persona-latest.json")
+    const masked = []
+    try {
+      const persona = createSignupPersona({ file, now: () => 1731400000000, mask: (pw) => masked.push(pw) })
+      expect(persona.email).toBe("e2e-1731400000000-signup+clerk_test@example.com")
+      expect(isGeneratedEmail(persona.email)).toBe(true)
+      expect(persona.password.length).toBeGreaterThanOrEqual(16)
+      expect(JSON.parse(fs.readFileSync(file, "utf8"))).toEqual(persona)
+      expect(fs.statSync(file).mode & 0o777).toBe(0o600)
+      expect(masked).toEqual([persona.password])
+      expect(persona).not.toHaveProperty("clerkId")
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it("requires found true from persona inspect", () => {
+    const email = "e2e-2-signup+clerk_test@example.com"
+    expect(assertSignedUp(`noise\n{"found":true,"email":"${email}"}\n`, email)).toMatchObject({ found: true })
+    const pretty = `{\n  "email": "${email}",\n  "found": true\n}\n`
+    expect(assertSignedUp(pretty, email)).toMatchObject({ found: true })
+    expect(() => assertSignedUp(`{"found":false,"email":"${email}"}`, email)).toThrow(/no Convex user/)
+    expect(() => assertSignedUp("", email)).toThrow(/no inspect output/)
+    expect(() => assertSignedUp("not json", email)).toThrow(/no Convex user/)
   })
 })
 

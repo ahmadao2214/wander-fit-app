@@ -13,7 +13,21 @@ const envFile = path.join(root, ".env.e2e")
 const command = process.argv[2] || "help"
 const known = new Set(["create", "inspect", "delete", "sweep", "help"])
 const states = new Set(["new", "needs-intake", "onboarded", "phase-end"])
-const emailPattern = /^e2e\.\d+\+clerk_test@example\.com$/
+// Generated addresses only. e2e.<run> is the onboarded persona from create.
+// e2e-<run>-signup is the account the sign-up flow makes through the UI.
+const emailPatterns = [
+  /^e2e\.\d+\+clerk_test@example\.com$/,
+  /^e2e-\d+-signup\+clerk_test@example\.com$/,
+]
+
+// Delete and sweep refuse every address this does not accept.
+export function isGeneratedEmail(email) {
+  return typeof email === "string" && emailPatterns.some((pattern) => pattern.test(email))
+}
+
+export function signupEmail(run = Date.now()) {
+  return `e2e-${run}-signup+clerk_test@example.com`
+}
 
 function readDotenv(file) {
   if (!fs.existsSync(file)) return {}
@@ -150,7 +164,7 @@ async function clerk(pathname, options = {}) {
   return body
 }
 
-function password() {
+export function generatePassword() {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"
   const bytes = crypto.randomBytes(24)
   let out = ""
@@ -158,7 +172,7 @@ function password() {
   return out
 }
 
-function writeCredentials(record, file = credentialsFile) {
+export function writeCredentials(record, file = credentialsFile) {
   fs.mkdirSync(path.dirname(file), { recursive: true })
   fs.writeFileSync(file, JSON.stringify(record, null, 2))
   fs.chmodSync(file, 0o600)
@@ -181,7 +195,7 @@ async function create() {
   if (!states.has(state)) fail(`Unknown persona state "${state}".`)
   convexInvocation()
   const email = `e2e.${Date.now()}+clerk_test@example.com`
-  const secretPassword = password()
+  const secretPassword = generatePassword()
   const created = await clerk("/users", {
     method: "POST",
     body: JSON.stringify({
@@ -219,13 +233,22 @@ async function inspect() {
   const email = process.argv[3]
   if (!email || email.startsWith("--")) fail("Usage: persona inspect <email>")
   const stdout = convexRun("e2e:inspect", { email })
-  const line = stdout.trim().split("\n").filter(Boolean).at(-1) || "{}"
-  console.log(line)
+  console.log(JSON.stringify(parseRunResult(stdout)))
+}
+
+// convex run pretty-prints the returned object over several lines.
+export function parseRunResult(stdout) {
+  const text = String(stdout || "").trim()
+  const start = text.indexOf("{")
+  if (start === -1) throw new Error(`convex run printed no object: ${text.slice(0, 200)}`)
+  return JSON.parse(text.slice(start))
 }
 
 async function deleteOne(email) {
-  if (!emailPattern.test(email)) {
-    fail(`Refusing to delete ${email}. Only generated e2e.+clerk_test addresses can be deleted.`)
+  if (!isGeneratedEmail(email)) {
+    fail(
+      `Refusing to delete ${email}. Only generated e2e.<run>+clerk_test and e2e-<run>-signup+clerk_test addresses can be deleted.`
+    )
   }
   const matches = await clerk(`/users?email_address=${encodeURIComponent(email)}`)
   const users = Array.isArray(matches) ? matches : []
@@ -279,7 +302,7 @@ async function sweep() {
       const created = createdAtMs(user.created_at)
       if (!created || created > cutoff) continue
       const email = user.email_addresses?.[0]?.email_address || ""
-      if (!emailPattern.test(email)) continue
+      if (!isGeneratedEmail(email)) continue
       removed.push(await deleteOne(email))
     }
     if (users.length < 100) break
