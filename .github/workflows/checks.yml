@@ -48,10 +48,13 @@ jobs:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # One backend: every E2E job waits for the one before it.
+    # One backend: every E2E job waits for the one before it. `queue: max`
+    # keeps up to 100 waiting runs in order; without it GitHub keeps one
+    # pending run and cancels it when a newer one arrives.
     concurrency:
       group: e2e-backend
       cancel-in-progress: false
+      queue: max
     permissions:
       contents: read
       actions: read
