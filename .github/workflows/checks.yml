@@ -48,11 +48,14 @@ jobs:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # One backend: every E2E job waits for the one before it. `queue: max`
-    # keeps up to 100 waiting runs in order; without it GitHub keeps one
-    # pending run and cancels it when a newer one arrives.
+    # Pull request runs each get their own Convex preview deployment, named
+    # after the branch, so PRs run side by side. A newer push to the same PR
+    # cancels the older run through the workflow-level group. Every other run
+    # (main) shares the one wander-fit-e2e dev deployment and waits its turn.
+    # `queue: max` keeps up to 100 waiting runs in order; without it GitHub
+    # keeps one pending run and cancels it when a newer one arrives.
     concurrency:
-      group: e2e-backend
+      group: ${{ github.event_name == 'pull_request' && format('e2e-preview-{0}', github.head_ref) || 'e2e-backend' }}
       cancel-in-progress: false
       queue: max
     permissions:
@@ -60,7 +63,8 @@ jobs:
       actions: read
     env:
       EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-      EXPO_PUBLIC_CONVEX_URL_E2E: ${{ vars.EXPO_PUBLIC_CONVEX_URL_E2E }}
+      # Set on pull requests only. It selects the preview deployment.
+      CONVEX_PREVIEW_NAME_E2E: ${{ github.event_name == 'pull_request' && github.head_ref || '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -79,22 +83,31 @@ jobs:
           curl -Ls "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
       # Secrets go only to the steps that need them, not to install scripts.
+      # Pull requests get only the preview key, main gets only the dev key.
+      # The step's convex_url output is the deployment the later steps use.
       - name: Deploy functions to wander-fit-e2e and seed
+        id: backend
         env:
-          CONVEX_DEPLOY_KEY_E2E: ${{ secrets.CONVEX_DEPLOY_KEY_E2E }}
+          EXPO_PUBLIC_CONVEX_URL_E2E: ${{ vars.EXPO_PUBLIC_CONVEX_URL_E2E }}
+          CONVEX_DEPLOY_KEY_E2E: ${{ github.event_name != 'pull_request' && secrets.CONVEX_DEPLOY_KEY_E2E || '' }}
+          CONVEX_PREVIEW_DEPLOY_KEY_E2E: ${{ github.event_name == 'pull_request' && secrets.CONVEX_PREVIEW_DEPLOY_KEY_E2E || '' }}
         run: node scripts/verify/run.mjs deploy
       - name: Run web flows
         env:
+          EXPO_PUBLIC_CONVEX_URL_E2E: ${{ steps.backend.outputs.convex_url }}
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
-          CONVEX_DEPLOY_KEY_E2E: ${{ secrets.CONVEX_DEPLOY_KEY_E2E }}
+          CONVEX_DEPLOY_KEY_E2E: ${{ github.event_name != 'pull_request' && secrets.CONVEX_DEPLOY_KEY_E2E || '' }}
+          CONVEX_PREVIEW_DEPLOY_KEY_E2E: ${{ github.event_name == 'pull_request' && secrets.CONVEX_PREVIEW_DEPLOY_KEY_E2E || '' }}
         run: node scripts/verify/run.mjs all
       # Deletes a persona a cancelled run left behind and redacts its password
       # from the evidence. It must run before the uploads.
       - name: Tear down
         if: always()
         env:
+          EXPO_PUBLIC_CONVEX_URL_E2E: ${{ steps.backend.outputs.convex_url }}
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
-          CONVEX_DEPLOY_KEY_E2E: ${{ secrets.CONVEX_DEPLOY_KEY_E2E }}
+          CONVEX_DEPLOY_KEY_E2E: ${{ github.event_name != 'pull_request' && secrets.CONVEX_DEPLOY_KEY_E2E || '' }}
+          CONVEX_PREVIEW_DEPLOY_KEY_E2E: ${{ github.event_name == 'pull_request' && secrets.CONVEX_PREVIEW_DEPLOY_KEY_E2E || '' }}
         run: node scripts/verify/run.mjs teardown
       # One upload per flow under .maestro/web. scripts/verify/flows.test.mjs
       # fails when a flow has no step here. The marker is written only after

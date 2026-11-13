@@ -9,7 +9,9 @@ import {
   BLOCKED_CONVEX_HOSTS,
   PLACEHOLDER_CONVEX_URL,
   assertConvexUrlAllowed,
+  assertPreviewKey,
   convexHost,
+  previewName,
 } from "./targets.mjs"
 import {
   artifactName,
@@ -703,9 +705,87 @@ function convexCli(args, env) {
   }
 }
 
-// Push this checkout's convex/ functions to wander-fit-e2e, then seed it.
-// convexInvocation refuses the app deployments and a mismatched deploy key.
+// The deploy step hands the deployment URL to the later steps as a step
+// output (convex_url). Locally it is only printed.
+function publishConvexUrl(url) {
+  console.log(`convex url: ${url}`)
+  if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `convex_url=${url}\n`)
+}
+
+// convex deploy runs --cmd with the new deployment's URL in this variable.
+// `run.mjs record-url` writes it here for deployPreview to read back.
+const previewUrlFile = path.join(artifactsDir, "convex-preview-url.txt")
+const previewUrlVar = "EXPO_PUBLIC_CONVEX_URL_E2E"
+
+export function previewDeployArgs(name) {
+  return [
+    "deploy",
+    "--preview-create",
+    name,
+    "--preview-run",
+    "seed:seedAll",
+    "--codegen",
+    "disable",
+    "--typecheck",
+    "disable",
+    "--cmd",
+    "node scripts/verify/run.mjs record-url",
+    "--cmd-url-env-var-name",
+    previewUrlVar,
+  ]
+}
+
+// Pull request runs: push this checkout's convex/ functions to the branch's
+// own preview deployment in wander-fit-e2e and seed it. The preview key can
+// reach only that project's previews, never the app deployments.
+function deployPreview(key) {
+  if (process.env.CONVEX_DEPLOY_KEY_E2E) {
+    fail("Set CONVEX_DEPLOY_KEY_E2E or CONVEX_PREVIEW_DEPLOY_KEY_E2E, not both.")
+  }
+  let name = ""
+  try {
+    assertPreviewKey(key)
+    name = previewName(process.env.CONVEX_PREVIEW_NAME_E2E)
+  } catch (error) {
+    fail(error.message)
+  }
+  const env = { ...process.env, CONVEX_DEPLOY_KEY: key }
+  for (const variable of [
+    "CONVEX_DEPLOYMENT",
+    "CONVEX_DEPLOY_KEY_E2E",
+    "CONVEX_PREVIEW_DEPLOY_KEY_E2E",
+    "CLERK_SECRET_KEY",
+    "TEST_USER_PASSWORD",
+    "EXPO_PUBLIC_CONVEX_URL",
+    previewUrlVar,
+  ]) {
+    delete env[variable]
+  }
+  fs.rmSync(previewUrlFile, { force: true })
+  console.log(`deploying convex functions to preview "${name}" of wander-fit-e2e, then seeding it`)
+  const pushed = convexCli(previewDeployArgs(name), env)
+  if (pushed.status !== 0) fail(`convex deploy exited ${pushed.status ?? 1}`)
+  const url = fs.existsSync(previewUrlFile) ? fs.readFileSync(previewUrlFile, "utf8").trim() : ""
+  if (!url) fail("convex deploy did not report the preview deployment URL.")
+  let host = ""
+  try {
+    host = assertConvexUrlAllowed(url)
+  } catch (error) {
+    fail(error.message)
+  }
+  console.log(`deployed and seeded ${host}`)
+  publishConvexUrl(url)
+}
+
+// Main and local runs: push this checkout's convex/ functions to the
+// wander-fit-e2e dev deployment, then seed it. convexInvocation refuses the
+// app deployments and a mismatched deploy key.
 function deployBackend() {
+  const previewKey = process.env.CONVEX_PREVIEW_DEPLOY_KEY_E2E || ""
+  if (previewKey) {
+    deployPreview(previewKey)
+    return
+  }
   const { env, host } = convexInvocation()
   console.log(`deploying convex functions to ${host}`)
   const pushed = convexCli(["dev", "--once", "--codegen", "disable", "--typecheck", "disable"], env)
@@ -713,6 +793,7 @@ function deployBackend() {
   console.log(`seeding ${host}`)
   const seeded = convexCli(["run", "seed:seedAll", "{}"], env)
   if (seeded.status !== 0) fail(`seed:seedAll exited ${seeded.status ?? 1}`)
+  publishConvexUrl(e2eUrl())
 }
 
 function loosePersona() {
@@ -857,6 +938,12 @@ function main() {
     console.log(`left evidence in ${screenEvidenceDir}`)
   } else if (command === "deploy") {
     deployBackend()
+  } else if (command === "record-url") {
+    // Called by convex deploy --cmd, not by hand.
+    const url = (process.env[previewUrlVar] || "").trim()
+    if (!url) fail(`record-url needs ${previewUrlVar} from convex deploy.`)
+    fs.mkdirSync(path.dirname(previewUrlFile), { recursive: true })
+    fs.writeFileSync(previewUrlFile, `${url}\n`)
   } else if (command === "teardown") {
     teardown()
   } else if (command === "all") {
