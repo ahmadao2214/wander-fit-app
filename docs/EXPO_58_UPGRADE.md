@@ -27,6 +27,8 @@ TypeScript 6 removes the old `baseUrl`/Node resolution configuration; bundler re
 
 The legacy splash object moves into `expo-splash-screen` plugin options, preserving its image, white background and fullscreen containment. Jest's RN project maps RN's private interface and setup entry to the installed RN 0.88 files/mocks; this avoids initializing real Performance C++ modules in Jest while leaving the Node project independent.
 
+Router 58's custom `+html` document must forward `useServerDocumentContext()` attributes, `headNodes` and `bodyNodes`. Initial advisory CI exposed missing hydration assets: all three journeys stopped at the static `Loading...` shell before credentials. Forwarding this context restores stylesheet/script injection. A component regression asserts assets, attributes and screen children, and the existing signed-out Maestro flow checks the hydrated control IDs.
+
 ## Observed local proof (2026-11-13)
 
 Evidence root: `/Volumes/wander-fit-review/expo58-upgrade/evidence` (local, not committed).
@@ -37,6 +39,8 @@ Evidence root: `/Volumes/wander-fit-review/expo58-upgrade/evidence` (local, not 
 - `bun run typecheck` passes (`typecheck-final.log`). Web static export passes (`export-web.log`). These are compilation/unit proofs, not authenticated runtime acceptance.
 - A clean frozen Bun install removes stale same-version nested Expo modules from the incremental installation. Expo Doctor found the removed splash schema and Tamagui tooling's duplicate RN Web; the config migration and override address these findings.
 - Final clean-install checks: typecheck passes (`typecheck-final-clean.log`), all 54 suites / 2,138 tests pass (`tests-final-clean.log`), Expo dependency alignment passes (`expo-check-final-clean.log`), and Expo Doctor passes 20/20 (`expo-doctor-accepted.log`). Android bundle export passes (`export-android.log`); this does not prove Android native launch.
+- After the reorder fix: 55 suites / 2,140 tests and typecheck pass (`tests-patched.log`, `typecheck-patched.log`). Final native Release configuration builds successfully (`build-release-final.log`), but that binary is not yet runtime-validated.
+- After the HTML hydration fix: 56 suites / 2,141 tests and typecheck pass (`tests-html.log`, `typecheck-html.log`); static export passes (`export-web-fixed.log`). A fresh incognito browser on the local E2E export renders styled `WELCOME BACK`, email/password inputs and Sign In (`web-sign-in-hydrated.png`). No account credentials are entered. Full web journey CI must rerun on the updated head.
 
 ## Incomplete acceptance / follow-up
 

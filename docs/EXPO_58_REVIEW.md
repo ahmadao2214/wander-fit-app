@@ -19,3 +19,14 @@ Code approval does not satisfy the runtime/production merge gate. Authenticated 
 - Reviewed the persisted patch across all three entrypoints, its installed scratch copy, regression proof, and native regression assets. All 55 suites / 2,140 tests and typecheck pass after the fix (`tests-patched.log`, `typecheck-patched.log`).
 - Native reorder and final-config launch remain incomplete; no code-review verdict waives them.
 - Staged post-review snapshot: 22 files, 2,194 insertions / 657 deletions, including lockfile and generated Bun dependency patch. The patch's blank context lines carry required unified-diff space prefixes; whitespace checks exclude that generated patch, not application files.
+
+## CI follow-up
+
+- S2 / should / resolved: initial PR advisory Web E2E failed all journeys before sign-in. Router 58 no longer injects assets into the old custom HTML automatically; forwarding document-context attributes/head/body nodes fixes hydration. Local browser sign-in proof and a document component regression cover the fix; authenticated CI journey acceptance must rerun on the new head.
+
+## Round 3
+
+- Reviewer: GPT 6.1 Sol, Codex provider, medium reasoning. Usage not returned.
+- Verdict: APPROVE, code review only. S2 resolved; S1 not reopened; no new findings (S3).
+- Confirmed Router's installed document-context contract, asset/attribute/children regression, matching scratch source, static export assets, 56 suites / 2,141 tests and typecheck evidence.
+- Updated-head web CI, final-binary native launch and authenticated athlete/coach/reorder acceptance remain incomplete. Approval does not lift merge/EAS/workflow-change or device-input holds.

@@ -9,6 +9,12 @@ url: ${VERIFY_URL}
 - assertVisible: "Email address"
 - assertVisible: "Password"
 - assertVisible: "Sign In"
+- assertVisible:
+    id: sign-in-email
+- assertVisible:
+    id: sign-in-password
+- assertVisible:
+    id: sign-in-submit
 - takeScreenshot: 01-sign-in
 - tapOn: "Email address"
 - assertVisible: "Sign In"
