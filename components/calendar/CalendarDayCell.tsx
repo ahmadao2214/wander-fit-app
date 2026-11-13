@@ -1,6 +1,6 @@
 import { useCallback, useRef, useEffect, useMemo } from 'react'
 import { YStack, XStack, Text } from 'tamagui'
-import { View, LayoutChangeEvent } from 'react-native'
+import { View, LayoutChangeEvent, type ViewInstance } from 'react-native'
 import { CalendarWorkoutCard, CalendarWorkoutCardProps } from './CalendarWorkoutCard'
 import { DraggableWorkoutCard } from './DraggableWorkoutCard'
 import type { Phase } from '../../types'
@@ -90,7 +90,7 @@ export function CalendarDayCell({
 }: CalendarDayCellProps) {
   const dayNumber = date.getDate()
   const dateISO = dateISOProp ?? formatDateISO(date)
-  const viewRef = useRef<View>(null)
+  const viewRef = useRef<ViewInstance>(null)
 
   // Handle layout for drop zone registration (all days are drop zones now)
   const handleLayout = useCallback((event: LayoutChangeEvent) => {

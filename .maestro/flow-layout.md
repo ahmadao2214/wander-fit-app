@@ -1,6 +1,6 @@
 # Flow layout
 
-`.maestro/web/<flow>.yaml` is the web entry. It sets `url: ${VERIFY_URL}`, launches the app, and `runFlow`s `.maestro/journeys/<flow>.yaml`. Sign-in, evidence start, and evidence stop live in `.maestro/subflows/`. A native entry is not in this suite. When one is added, it sets `appId: com.offseason.asrafit`, launches, and `runFlow`s the same journey.
+`.maestro/web/<flow>.yaml` is the web entry. It sets `url: ${VERIFY_URL}`, launches the app, and `runFlow`s `.maestro/journeys/<flow>.yaml`. Sign-in, evidence start, and evidence stop live in `.maestro/subflows/`. `.maestro/native/native-launch.yaml` is a standalone iOS launch/relaunch regression with `appId: com.offseason.asrafit`; it does not sign in or reset an account. Future native journey entries should launch and `runFlow` the shared journey.
 
 Credentials are Maestro env vars. The runner passes `PERSONA_EMAIL` and `PERSONA_PASSWORD` with `-e`. The sign-in subflow reads `${PERSONA_EMAIL}` and `${PERSONA_PASSWORD}`.
 

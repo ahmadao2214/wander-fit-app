@@ -417,10 +417,10 @@ const styles = StyleSheet.create({
     zIndex: 100,
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   backdropInner: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'black',
   },
   drawer: {

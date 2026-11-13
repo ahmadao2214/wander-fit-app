@@ -1,0 +1,21 @@
+appId: com.offseason.asrafit
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "WELCOME BACK"
+    timeout: 90000
+- assertVisible: "Sign in to continue your training journey"
+- assertVisible:
+    id: sign-in-email
+- assertVisible:
+    id: sign-in-password
+- assertVisible:
+    id: sign-in-submit
+- takeScreenshot: native-launch-sign-in
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible: "WELCOME BACK"
+    timeout: 30000
+- takeScreenshot: native-relaunch-sign-in

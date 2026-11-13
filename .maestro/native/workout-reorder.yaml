@@ -1,0 +1,13 @@
+appId: com.offseason.asrafit
+---
+- assertVisible: "${MOVED_EXERCISE}"
+- assertVisible: "${TARGET_EXERCISE}"
+- swipe:
+    start: "${DRAG_START}"
+    end: "${DRAG_END}"
+    duration: 2000
+- assertVisible:
+    text: "${MOVED_EXERCISE}"
+    below:
+      text: "${TARGET_EXERCISE}"
+- takeScreenshot: native-workout-reordered
