@@ -1,11 +1,12 @@
 #!/usr/bin/env node
-// Fresh Clerk users seeded on wander-fit-e2e. Never targets an app deployment.
+// Fresh Clerk users seeded on wander-fit-e2e (this PR's preview deployment, or
+// the dev deployment on main). Never targets an app deployment.
 import { spawnSync } from "node:child_process"
 import crypto from "node:crypto"
 import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
-import { assertConvexUrlAllowed, BLOCKED_CONVEX_HOSTS } from "./targets.mjs"
+import { resolveConvexTarget } from "./targets.mjs"
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 const credentialsFile = path.join(root, "e2e-artifacts/persona-latest.json")
@@ -66,67 +67,38 @@ function clerkSecret() {
   return process.env.CLERK_SECRET_KEY || readDotenv(path.join(root, ".env.local")).CLERK_SECRET_KEY || ""
 }
 
-function deployKeyHost(key) {
-  const prefix = key.split("|")[0] || ""
-  const [kind, name] = prefix.split(":")
-  if (kind !== "dev" || !name) {
-    throw new Error("CONVEX_DEPLOY_KEY_E2E must be a dev deploy key for wander-fit-e2e.")
-  }
-  const host = `${name}.convex.cloud`
-  if (BLOCKED_CONVEX_HOSTS.includes(host)) {
-    throw new Error(`Refusing Convex host "${host}". Verification uses wander-fit-e2e, not an app deployment.`)
-  }
-  return host
-}
-
+// Pass the deployment on the process env. `--env-file` skips the logged-in
+// Convex token unless that file also contains a deploy key. `args` selects the
+// branch's preview deployment on pull request runs.
 export function convexInvocation() {
-  const url = e2eUrl()
-  if (!url) {
-    fail(
-      "persona is locked. Set EXPO_PUBLIC_CONVEX_URL_E2E or write it to .env.e2e before create, inspect, delete, or sweep."
-    )
-  }
-  let host = ""
+  let target = null
   try {
-    host = assertConvexUrlAllowed(url)
+    target = resolveConvexTarget({
+      url: e2eUrl(),
+      devKey: process.env.CONVEX_DEPLOY_KEY_E2E || "",
+      previewKey: process.env.CONVEX_PREVIEW_DEPLOY_KEY_E2E || "",
+      previewLabel: process.env.CONVEX_PREVIEW_NAME_E2E || "",
+      envFileDeployment: readDotenv(envFile).CONVEX_DEPLOYMENT || "",
+    })
   } catch (error) {
     fail(error.message)
   }
-  // Pass the deployment on the process env. `--env-file` skips the logged-in
-  // Convex token unless that file also contains a deploy key.
   const env = { ...process.env }
   delete env.CONVEX_DEPLOY_KEY
   delete env.CONVEX_DEPLOYMENT
+  delete env.CONVEX_DEPLOY_KEY_E2E
+  delete env.CONVEX_PREVIEW_DEPLOY_KEY_E2E
   delete env.CLERK_SECRET_KEY
   delete env.TEST_USER_PASSWORD
-  const key = process.env.CONVEX_DEPLOY_KEY_E2E || ""
-  if (key) {
-    let keyHost = ""
-    try {
-      keyHost = deployKeyHost(key)
-    } catch (error) {
-      fail(error.message)
-    }
-    if (keyHost !== host) {
-      fail(`Deploy key host ${keyHost} does not match EXPO_PUBLIC_CONVEX_URL_E2E host ${host}.`)
-    }
-    env.CONVEX_DEPLOY_KEY = key
-  } else {
-    const deployment = readDotenv(envFile).CONVEX_DEPLOYMENT || ""
-    const name = deployment.split(":").pop()
-    if (!deployment.startsWith("dev:") || `${name}.convex.cloud` !== host) {
-      fail("`.env.e2e` must select the wander-fit-e2e dev deployment.")
-    }
-    env.CONVEX_DEPLOYMENT = deployment
-  }
-  return { env, host }
+  Object.assign(env, target.env)
+  return { env, host: target.host, mode: target.mode, args: target.args }
 }
 
 function convexRun(fn, args) {
-  const { env } = convexInvocation()
+  const { env, args: target } = convexInvocation()
   const result = spawnSync(
     "npx",
-    ["convex", "run", fn, JSON.stringify(args)],
+    ["convex", "run", ...target, fn, JSON.stringify(args)],
     { cwd: root, env, encoding: "utf8" }
   )
   const output = `${result.stdout || ""}\n${result.stderr || ""}`

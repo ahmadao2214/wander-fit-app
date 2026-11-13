@@ -23,7 +23,9 @@ node scripts/verify/run.mjs all
 node scripts/verify/run.mjs deploy
 ```
 
-`deploy` runs `npx convex dev --once` against wander-fit-e2e only, through `CONVEX_DEPLOY_KEY_E2E` or `.env.e2e`. It never passes `--env-file`, and it restores `.env`, `.env.local` and `.gitignore` if the Convex CLI rewrites them. Then it runs `seed:seedAll`, which skips rows that already exist.
+`deploy` runs `npx convex dev --once` against the wander-fit-e2e dev deployment only, through `CONVEX_DEPLOY_KEY_E2E` or `.env.e2e`. It never passes `--env-file`, and it restores `.env`, `.env.local` and `.gitignore` if the Convex CLI rewrites them. Then it runs `seed:seedAll`, which skips rows that already exist.
+
+With `CONVEX_PREVIEW_DEPLOY_KEY_E2E` and `CONVEX_PREVIEW_NAME_E2E` (`pr-<number>` in CI) set instead, `deploy` runs `npx convex deploy --preview-create <name> --preview-run seed:seedAll`. That deploys to the PR's own preview deployment in wander-fit-e2e and seeds it. The name is lowercased, with every other character turned into `-` and a 40-character cap. Deploying the same name again replaces that preview deployment with a new, empty one. `deploy` prints the new URL (`convex url: ...`) and writes it as the `convex_url` step output in CI. Later commands need it in `EXPO_PUBLIC_CONVEX_URL_E2E`, plus the same two preview variables. The key must be a preview key for wander-fit-e2e (`preview:<team>:wander-fit-e2e|...`). Setting both keys is refused. The project's default env vars for previews supply `CLERK_JWT_ISSUER_DOMAIN` (`npx convex@latest env default list --type preview --project wander-fit-e2e`). Without it, sign-in fails on a preview. On the Free plan, previews are deleted after 5 days and count toward the team's 40 deployments.
 
 The signed-out screen is a separate command. It does not create a persona or submit:
 
@@ -78,7 +80,7 @@ Teardown is for an interrupted run. It stops the server, redacts the password of
 
 ## CI
 
-The `Web E2E (advisory)` job in `.github/workflows/checks.yml` runs on every same-repo PR, on pushes to `main`, and on manual dispatch. It runs after the unit test job: deploy, `all`, teardown, one artifact per flow (`e2e-web-<flow>`), then `scripts/verify/summary.mjs` writes the pass/fail table to the job summary. Every E2E job shares the `e2e-backend` concurrency group. Fork PRs skip it. It is not a required check.
+The `Web E2E (advisory)` job in `.github/workflows/checks.yml` runs on every same-repo PR, on pushes to `main`, and on manual dispatch. It runs after the unit test job: deploy, `all`, teardown, one artifact per flow (`e2e-web-<flow>`), then `scripts/verify/summary.mjs` writes the pass/fail table to the job summary. Each PR run deploys to its own preview deployment, named `pr-<number>`, with the `CONVEX_PREVIEW_DEPLOY_KEY_E2E` secret, so PR runs don't wait for each other. Its concurrency group is `e2e-preview-pr-<number>`, and a newer push cancels the older run through the workflow's group. Every other run (pushes to `main`, manual dispatch) uses the dev deployment in `vars.EXPO_PUBLIC_CONVEX_URL_E2E` with `CONVEX_DEPLOY_KEY_E2E`, and those runs wait in the one `e2e-backend` group. A PR step never gets the dev key, and a main step never gets the preview key. Fork PRs skip it. It is not a required check.
 
 A new flow under `.maestro/web/` needs its own upload step in that job. `scripts/verify/flows.test.mjs` fails until it has one.
 
@@ -88,7 +90,7 @@ A new flow under `.maestro/web/` needs its own upload step in that job. `scripts
 node scripts/verify/persona.mjs help
 ```
 
-`create`, `inspect`, `delete`, and `sweep` talk only to `wander-fit-e2e` (`.env.e2e` or `CONVEX_DEPLOY_KEY_E2E`) and the Clerk Backend API. They refuse the two app deployments named above. `create` writes the password to `e2e-artifacts/persona-latest.json` and prints the email. `delete` and `sweep` only remove `e2e.<timestamp>+clerk_test@example.com` and `e2e-<timestamp>-signup+clerk_test@example.com` addresses. Deleting an address that was never created does nothing.
+`create`, `inspect`, `delete`, and `sweep` talk only to `wander-fit-e2e` (`.env.e2e`, `CONVEX_DEPLOY_KEY_E2E`, or a PR's preview through `CONVEX_PREVIEW_DEPLOY_KEY_E2E` and `--preview-name`) and the Clerk Backend API. They refuse the two app deployments named above. `create` writes the password to `e2e-artifacts/persona-latest.json` and prints the email. `delete` and `sweep` only remove `e2e.<timestamp>+clerk_test@example.com` and `e2e-<timestamp>-signup+clerk_test@example.com` addresses. Deleting an address that was never created does nothing.
 
 ## Feature map
 
