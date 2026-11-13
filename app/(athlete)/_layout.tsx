@@ -82,14 +82,16 @@ export default function AthleteLayout() {
         <Tabs.Screen
           name="workout"
           options={{
-            href: null, // This IS the recommended pattern per Expo docs for nested stacks
+            tabBarButton: () => null,
+            tabBarItemStyle: { display: 'none' },
           }}
         />
         {/* Training Science Stack - accessed via Profile, not a tab */}
         <Tabs.Screen
           name="training-science"
           options={{
-            href: null,
+            tabBarButton: () => null,
+            tabBarItemStyle: { display: 'none' },
             headerShown: false, // Stack has its own header
           }}
         />

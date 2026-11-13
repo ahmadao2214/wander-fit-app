@@ -1,0 +1,8 @@
+appId: com.offseason.asrafit
+---
+- assertVisible: "YOUR ATHLETES"
+- tapOn: "Create, tab, 2 of 3"
+- assertVisible: "Workout Details"
+- assertVisible: "Assign to Client"
+- assertVisible: "Exercises \\(0\\)"
+- takeScreenshot: native-coach-builder
