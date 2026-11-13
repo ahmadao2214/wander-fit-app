@@ -59,7 +59,8 @@ function checkSpace({ needCheckout }) {
 // run through npx so the machine's own Node stays as it is.
 export const EXPLORE_VERSION = "0.23.0"
 export const EXPLORE_NODE = "24.12.0"
-export const STATES = ["signed-out", "needs-intake", "onboarded", "phase-end"]
+export const IOS_DEPLOYMENT_TARGET = "15.1"
+export const STATES =["signed-out", "needs-intake", "onboarded", "phase-end"]
 
 const SECRET_ENV = [
   "CLERK_SECRET_KEY",
@@ -210,6 +211,9 @@ function build() {
       "-sdk", "iphonesimulator",
       "-destination", "generic/platform=iOS Simulator",
       "-derivedDataPath", derivedData,
+      // Xcode 27 rejects pods that still declare iOS 12.4-13.4 (react-native-svg,
+      // lottie). Build every target at the app's own minimum, Expo SDK 54's 15.1.
+      `IPHONEOS_DEPLOYMENT_TARGET=${IOS_DEPLOYMENT_TARGET}`,
       "-quiet",
       "build",
     ],
