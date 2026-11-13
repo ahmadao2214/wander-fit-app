@@ -3,6 +3,8 @@ module.exports = (api) => {
   return {
     presets: [['babel-preset-expo', { jsxRuntime: 'automatic' }]],
     plugins: [
+      // Import each lucide icon from its own file instead of the 1,700-icon barrel (~4.5 MB of bundle).
+      './babel/lucide-direct-imports',
       [
         '@tamagui/babel-plugin',
         {
