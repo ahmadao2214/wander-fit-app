@@ -19,6 +19,7 @@
 import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
+import ts from "typescript"
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 const TEST_FILE = /\.test\.(ts|tsx|js|mjs)$/
@@ -43,7 +44,7 @@ export function convert(source, filePath) {
     .replace(VITEST_ENV, "")
     .replace(VITE_TYPES, "")
     .replace(VI_CALL, "jest.")
-  out = dropExpectMessages(out)
+  out = dropExpectMessages(out, filePath)
 
   if (out.match(CONVEX_GLOB)) {
     out = out.replace(CONVEX_GLOB, "convexModules()")
@@ -62,50 +63,37 @@ export function convert(source, filePath) {
   return out
 }
 
-// Index just past the string, template or bracket group that starts at i.
-function skip(src, i) {
-  const open = src[i]
-  if (open === '"' || open === "'") {
-    for (i++; i < src.length && src[i] !== open; i++) if (src[i] === "\\") i++
-    return i + 1
-  }
-  if (open === "`") {
-    for (i++; i < src.length && src[i] !== "`"; i++) {
-      if (src[i] === "\\") i++
-      else if (src[i] === "$" && src[i + 1] === "{") i = skip(src, i + 1) - 1
+// Uses the TypeScript parser, so strings, regexes, templates and comments that
+// mention expect( or contain commas are left alone.
+export function dropExpectMessages(src, filePath = "file.ts") {
+  const kind = /\.tsx$/.test(filePath)
+    ? ts.ScriptKind.TSX
+    : /\.ts$/.test(filePath)
+      ? ts.ScriptKind.TS
+      : ts.ScriptKind.JS
+  const file = ts.createSourceFile(filePath, src, ts.ScriptTarget.Latest, false, kind)
+  const cuts = []
+  const visit = (node) => {
+    if (
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      node.expression.text === "expect" &&
+      node.arguments.length > 1
+    ) {
+      cuts.push([node.arguments[0].end, node.arguments.at(-1).end])
     }
-    return i + 1
+    ts.forEachChild(node, visit)
   }
-  const close = { "(": ")", "[": "]", "{": "}" }[open]
-  for (i++; i < src.length && src[i] !== close; ) {
-    if (`"'\`([{`.includes(src[i])) i = skip(src, i)
-    else i++
+  visit(file)
+  // Cut from the end so earlier offsets stay valid; skip cuts inside a larger one.
+  let out = src
+  let floor = Infinity
+  for (const [from, to] of cuts.sort((x, y) => y[0] - x[0])) {
+    if (to > floor) continue
+    out = out.slice(0, from) + out.slice(to)
+    floor = from
   }
-  return i + 1
-}
-
-export function dropExpectMessages(src) {
-  let out = ""
-  let last = 0
-  for (const m of src.matchAll(/(?<![\w$.])expect\(/g)) {
-    const open = m.index + m[0].length - 1
-    if (open < last) continue
-    const end = skip(src, open) - 1
-    // Find a comma at the top level of the argument list.
-    let comma = -1
-    for (let i = open + 1; i < end; ) {
-      if (src[i] === ",") {
-        comma = i
-        break
-      }
-      if (`"'\`([{`.includes(src[i])) i = skip(src, i)
-      else i++
-    }
-    if (comma === -1 || src.slice(comma + 1, end).trim() === "") continue
-    out += src.slice(last, comma)
-    last = end
-  }
-  return out + src.slice(last)
+  return out
 }
 
 function walk(dir, files = []) {

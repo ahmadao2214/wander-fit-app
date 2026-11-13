@@ -67,6 +67,23 @@ describe("x", () => {
     )
   })
 
+  it("leaves regexes, strings and comments alone", () => {
+    const src = [
+      'expect(/a,b/.test("a,b"), "matches").toBe(true)',
+      'expect(fmt("expect(a, b)")).toBe("expect(a, b)") // expect(c, d)',
+      "expect(`${a}, (`, `m`).toBe(1)",
+      "",
+    ].join("\n")
+    expect(dropExpectMessages(src)).toBe(
+      [
+        'expect(/a,b/.test("a,b")).toBe(true)',
+        'expect(fmt("expect(a, b)")).toBe("expect(a, b)") // expect(c, d)',
+        "expect(`${a}, (`).toBe(1)",
+        "",
+      ].join("\n"),
+    )
+  })
+
   it("refuses an import.meta.glob pattern it does not know", () => {
     expect(() => convert('const m = import.meta.glob("./*.ts")\n', convexTest)).toThrow(
       "import.meta.glob",
