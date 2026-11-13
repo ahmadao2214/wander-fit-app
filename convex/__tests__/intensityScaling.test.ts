@@ -1,4 +1,3 @@
-import { describe, it, expect } from "vitest";
 import {
   INTENSITY_CONFIG,
   BODYWEIGHT_INTENSITY_CONFIG,

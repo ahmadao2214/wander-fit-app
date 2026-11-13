@@ -11,7 +11,7 @@
  * These tests ensure that users with different profiles receive different workouts.
  */
 
-import { describe, it, expect } from "vitest";
+export {};
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CONFIGURATION (mirrors generateTemplates.ts)

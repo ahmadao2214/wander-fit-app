@@ -1,4 +1,3 @@
-import { describe, it, expect } from "vitest";
 import { getExperienceSliderColor, getSportInitials, getSportSlug } from "../intakeUI";
 import { SPORTS } from "../../convex/seedData";
 

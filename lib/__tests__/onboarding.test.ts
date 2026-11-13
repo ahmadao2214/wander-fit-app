@@ -1,4 +1,3 @@
-import { describe, it, expect } from "vitest";
 import {
   ONBOARDING_SCREENS,
   TOTAL_ONBOARDING_SCREENS,

@@ -1,4 +1,3 @@
-import { describe, it, expect } from "vitest";
 import { EXERCISES, ALL_VALID_TAGS, TAGS_GLOSSARY } from "../seedData";
 
 /**

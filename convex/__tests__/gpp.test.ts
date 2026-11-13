@@ -3,18 +3,9 @@
  * 
  * Tests for the core GPP logic and data structures.
  * These are pure TypeScript tests that can run without a Convex backend.
- * 
- * To run: Add testing dependencies to package.json then run `yarn test`
- * 
- * Required packages (add to devDependencies):
- *   "vitest": "^1.0.0",
- *   "convex-test": "^0.0.25"
- * 
- * Add to package.json scripts:
- *   "test:unit": "vitest run convex/__tests__"
+ * Run with `bun run test convex/__tests__/gpp`.
  */
 
-import { describe, it, expect } from "vitest";
 import {
   GPP_CATEGORIES,
   SPORTS,

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+export {};
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // INTAKE PROGRESS DOTS TESTS

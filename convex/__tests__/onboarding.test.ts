@@ -1,4 +1,3 @@
-import { describe, it, expect } from "vitest";
 import { TOTAL_ONBOARDING_SCREENS } from "../onboarding";
 
 // ═══════════════════════════════════════════════════════════════════════════════
