@@ -27,7 +27,7 @@ Preconditions: `node scripts/verify/run.mjs doctor` passed. The e2e URL is set. 
 
 - The inputs carry `testID` and `nativeID` (`sign-up-name`, `sign-up-email`, `sign-up-password`). Maestro web types into `document.activeElement`, and without a unique DOM id the text lands in the wrong field. The button has `testID="sign-up-submit"`.
 - The sign-up form scrolls inside the page, and the password field and button start below the 625px viewport. Maestro web's `scroll` moves only `window` and omits off-screen elements, so the journey swipes up once. See `.maestro/flow-layout.md`.
-- The code is six boxes. Only the first has an id (`sign-up-code`). Maestro web sends each key of `424242` to that box, which shows one digit after every key, so each key after the first arrives as two characters. `VerificationCodeInput` puts the new digit in the next empty box. A paste into an empty box still fills from the start.
+- The code is six boxes. Only the first has an id (`sign-up-code`). Maestro web sends each key of `424242` to that box, which shows one digit after every key, so each key after the first arrives as two characters. On web, that key goes into the next empty box. A paste, including two digits dropped onto a filled box, still fills from the start.
 - `COMPLETE SETUP` is the screen for a Clerk user with no Convex user. If `createUser` fails after verification, the app can land there. The flow must fail in that case. Do not weaken this assertion or the sport assertion.
 - If Clerk bot protection shows a captcha or a bot error instead of `VERIFY EMAIL`, stop and report the screen. Do not add a test-only screen or skip the code.
 - Delete works for an account that was only partly made (Clerk user, no Convex row) and for an address that was never created.
