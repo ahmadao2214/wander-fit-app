@@ -52,3 +52,6 @@ yarn.lock
 dist-verify/
 e2e-artifacts/
 .env.e2e
+
+# EAS Simulator session credentials, written by eas-cli. Never commit.
+.env.eas-simulator
