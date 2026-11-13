@@ -735,7 +735,7 @@ export function previewDeployArgs(name) {
   ]
 }
 
-// Pull request runs: push this checkout's convex/ functions to the branch's
+// Pull request runs: push this checkout's convex/ functions to the PR's
 // own preview deployment in wander-fit-e2e and seed it. The preview key can
 // reach only that project's previews, never the app deployments.
 function deployPreview(key) {

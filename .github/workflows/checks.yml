@@ -49,13 +49,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # Pull request runs each get their own Convex preview deployment, named
-    # after the branch, so PRs run side by side. A newer push to the same PR
+    # pr-<number>, so PRs run side by side. A newer push to the same PR
     # cancels the older run through the workflow-level group. Every other run
     # (main) shares the one wander-fit-e2e dev deployment and waits its turn.
     # `queue: max` keeps up to 100 waiting runs in order; without it GitHub
     # keeps one pending run and cancels it when a newer one arrives.
     concurrency:
-      group: ${{ github.event_name == 'pull_request' && format('e2e-preview-{0}', github.head_ref) || 'e2e-backend' }}
+      group: ${{ github.event_name == 'pull_request' && format('e2e-preview-pr-{0}', github.event.pull_request.number) || 'e2e-backend' }}
       cancel-in-progress: false
       queue: max
     permissions:
@@ -64,7 +64,7 @@ jobs:
     env:
       EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY }}
       # Set on pull requests only. It selects the preview deployment.
-      CONVEX_PREVIEW_NAME_E2E: ${{ github.event_name == 'pull_request' && github.head_ref || '' }}
+      CONVEX_PREVIEW_NAME_E2E: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4

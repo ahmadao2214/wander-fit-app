@@ -77,7 +77,7 @@ export function convexInvocation() {
       url: e2eUrl(),
       devKey: process.env.CONVEX_DEPLOY_KEY_E2E || "",
       previewKey: process.env.CONVEX_PREVIEW_DEPLOY_KEY_E2E || "",
-      previewBranch: process.env.CONVEX_PREVIEW_NAME_E2E || "",
+      previewLabel: process.env.CONVEX_PREVIEW_NAME_E2E || "",
       envFileDeployment: readDotenv(envFile).CONVEX_DEPLOYMENT || "",
     })
   } catch (error) {

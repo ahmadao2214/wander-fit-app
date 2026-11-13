@@ -20,7 +20,7 @@ describe("app deployment guard", () => {
     const refused = []
     for (const url of appUrls) {
       for (const keys of [
-        { previewKey, previewBranch: "t3/feature" },
+        { previewKey, previewLabel: "pr-1" },
         { devKey: `dev:${new URL(url).host.split(".")[0]}|token` },
         { envFileDeployment: `dev:${new URL(url).host.split(".")[0]}` },
       ]) {
@@ -43,12 +43,12 @@ describe("app deployment guard", () => {
 })
 
 describe("preview deployments (pull requests)", () => {
-  it("accepts this branch's preview with a wander-fit-e2e preview key", () => {
-    expect(resolveConvexTarget({ url: previewUrl, previewKey, previewBranch: "t3/e2e-preview-backends" })).toEqual({
+  it("accepts this PR's preview with a wander-fit-e2e preview key", () => {
+    expect(resolveConvexTarget({ url: previewUrl, previewKey, previewLabel: "pr-101" })).toEqual({
       mode: "preview",
       host: "jovial-bat-501.convex.cloud",
       env: { CONVEX_DEPLOY_KEY: previewKey },
-      args: ["--preview-name", "t3-e2e-preview-backends"],
+      args: ["--preview-name", "pr-101"],
     })
   })
 
@@ -66,13 +66,14 @@ describe("preview deployments (pull requests)", () => {
   })
 
   it("needs the branch name and refuses both keys at once", () => {
-    expect(() => resolveConvexTarget({ url: previewUrl, previewKey, previewBranch: "" })).toThrow(
+    expect(() => resolveConvexTarget({ url: previewUrl, previewKey, previewLabel: "" })).toThrow(
       /CONVEX_PREVIEW_NAME_E2E/
     )
-    expect(() => resolveConvexTarget({ url: previewUrl, previewKey, devKey, previewBranch: "x" })).toThrow(/not both/)
+    expect(() => resolveConvexTarget({ url: previewUrl, previewKey, devKey, previewLabel: "x" })).toThrow(/not both/)
   })
 
-  it("names the preview after the branch", () => {
+  it("keeps CI's pr-<number> name and cleans up anything else", () => {
+    expect(previewName("pr-101")).toBe("pr-101")
     expect(previewName("t3/e2e-preview-backends")).toBe("t3-e2e-preview-backends")
     expect(previewName("Claude/Fix_Thing--2")).toBe("claude-fix-thing-2")
     expect(previewName("a".repeat(30) + "/" + "b".repeat(30))).toBe("a".repeat(30) + "-" + "b".repeat(9))

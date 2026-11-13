@@ -238,11 +238,11 @@ describe("web E2E job", () => {
     expect(job.needs).toBe("unit")
     expect(job.concurrency).toEqual({
       group:
-        "${{ github.event_name == 'pull_request' && format('e2e-preview-{0}', github.head_ref) || 'e2e-backend' }}",
+        "${{ github.event_name == 'pull_request' && format('e2e-preview-pr-{0}', github.event.pull_request.number) || 'e2e-backend' }}",
       "cancel-in-progress": false,
       queue: "max",
     })
-    expect(job.env.CONVEX_PREVIEW_NAME_E2E).toBe("${{ github.event_name == 'pull_request' && github.head_ref || '' }}")
+    expect(job.env.CONVEX_PREVIEW_NAME_E2E).toBe("${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || '' }}")
   })
 
   it("gives pull requests only the preview key and main only the dev key", () => {

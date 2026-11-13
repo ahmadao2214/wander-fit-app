@@ -54,25 +54,26 @@ export function assertPreviewKey(key) {
   return project
 }
 
-// One preview deployment per branch. Deploying the same name again replaces
-// that branch's deployment, so a new push starts from a fresh, seeded backend.
-export function previewName(branch) {
-  const name = String(branch || "")
+// One preview deployment per pull request: CI names it pr-<number>, which no
+// other PR shares. Deploying the same name again replaces that deployment, so
+// a new push starts from a fresh, seeded backend.
+export function previewName(label) {
+  const name = String(label || "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 40)
     .replace(/-+$/, "")
-  if (!name) throw new Error("CONVEX_PREVIEW_NAME_E2E must name the pull request branch.")
+  if (!name) throw new Error("CONVEX_PREVIEW_NAME_E2E must name the preview deployment (pr-<number> in CI).")
   return name
 }
 
 // Picks the wander-fit-e2e deployment for persona and seed calls.
-// - preview: a preview key plus the branch's preview name and URL (PR runs)
+// - preview: a preview key plus the PR's preview name and URL (PR runs)
 // - dev: a dev deploy key whose deployment matches the URL (main)
 // - local: no key; .env.e2e selects the dev deployment with your Convex login
 // Every mode refuses the app deployments.
-export function resolveConvexTarget({ url, devKey, previewKey, previewBranch, envFileDeployment }) {
+export function resolveConvexTarget({ url, devKey, previewKey, previewLabel, envFileDeployment }) {
   if (!url) {
     throw new Error(
       "persona is locked. Set EXPO_PUBLIC_CONVEX_URL_E2E or write it to .env.e2e before create, inspect, delete, or sweep."
@@ -84,7 +85,7 @@ export function resolveConvexTarget({ url, devKey, previewKey, previewBranch, en
   }
   if (previewKey) {
     assertPreviewKey(previewKey)
-    return { mode: "preview", host, env: { CONVEX_DEPLOY_KEY: previewKey }, args: ["--preview-name", previewName(previewBranch)] }
+    return { mode: "preview", host, env: { CONVEX_DEPLOY_KEY: previewKey }, args: ["--preview-name", previewName(previewLabel)] }
   }
   if (devKey) {
     const keyHost = devKeyHost(devKey)
