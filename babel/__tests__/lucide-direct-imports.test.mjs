@@ -1,7 +1,4 @@
-import { createRequire } from 'node:module'
-import { describe, it, expect } from 'vitest'
 
-const require = createRequire(import.meta.url)
 const { transformSync } = require('@babel/core')
 const lucideDirectImports = require('../lucide-direct-imports.js')
 

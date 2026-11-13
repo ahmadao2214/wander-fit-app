@@ -12,6 +12,8 @@
 //   A TypeScript file left with no import or export gets `export {}`, so tsc
 //   keeps treating it as a module rather than a global script.
 // - maps `vi.*` to `jest.*`
+// - removes `const require = createRequire(import.meta.url)`: Jest runs tests as
+//   CommonJS, which has its own `require`, and the two clash
 // - drops the message from `expect(value, "message")`: Jest's expect takes one
 //   argument and throws "Expect takes at most one argument" otherwise
 // - replaces `import.meta.glob("../**/*.ts")`, which only Vite provides, with
@@ -29,6 +31,8 @@ const SKIP_DIRS = new Set(["node_modules", ".git", ".claude", ".expo", "dist", "
 const VITEST_IMPORT = /^import\s+(?:type\s+)?\{[^}]*\}\s+from\s+["']vitest["'];?[ \t]*\r?\n/gm
 const VITEST_ENV = /^\/\/\s*@vitest-environment\b.*\r?\n/gm
 const VITE_TYPES = /^\/\/\/\s*<reference types=["']vite\/client["']\s*\/>[ \t]*\r?\n/gm
+const CREATE_REQUIRE = /^const require = createRequire\(import\.meta\.url\);?[ \t]*\r?\n/m
+const CREATE_REQUIRE_IMPORT = /^import \{ createRequire \} from ["'](?:node:)?module["'];?[ \t]*\r?\n/m
 const VI_CALL = /(?<![\w$.])vi\./g
 const CONVEX_GLOB = /import\.meta\.glob\(\s*["']\.\.\/\*\*\/\*\.ts["']\s*\)/g
 const ANY_GLOB = /import\.meta\.glob\(/
@@ -44,6 +48,8 @@ export function convert(source, filePath) {
     .replace(VITEST_ENV, "")
     .replace(VITE_TYPES, "")
     .replace(VI_CALL, "jest.")
+    .replace(CREATE_REQUIRE, "")
+  if (!/\bcreateRequire\(/.test(out)) out = out.replace(CREATE_REQUIRE_IMPORT, "")
   out = dropExpectMessages(out, filePath)
 
   if (out.match(CONVEX_GLOB)) {

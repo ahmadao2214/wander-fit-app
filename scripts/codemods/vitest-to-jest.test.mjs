@@ -60,6 +60,11 @@ describe("x", () => {
     )
   })
 
+  it("drops createRequire, since Jest's CommonJS has require", () => {
+    const src = "import { createRequire } from 'node:module'\nimport { it } from 'vitest'\n\nconst require = createRequire(import.meta.url)\nconst x = require('./x')\n"
+    expect(convert(src, path.join(root, "babel/__tests__/x.test.mjs"))).toBe("\nconst x = require('./x')\n")
+  })
+
   it("keeps commas inside the one argument", () => {
     const src = 'expect(fn(a, b)).toBe(1); expect([1, 2], "m").toEqual([1, 2]); expect({ a, b }).toBeTruthy()'
     expect(dropExpectMessages(src)).toBe(
