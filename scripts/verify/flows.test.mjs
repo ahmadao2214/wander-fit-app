@@ -234,9 +234,9 @@ describe("web flows", () => {
 })
 
 describe("web E2E job", () => {
-  it("runs after the unit job and shares the e2e-backend group", () => {
+  it("runs after the unit job and queues in the e2e-backend group", () => {
     expect(job.needs).toBe("unit")
-    expect(job.concurrency).toEqual({ group: "e2e-backend", "cancel-in-progress": false })
+    expect(job.concurrency).toEqual({ group: "e2e-backend", "cancel-in-progress": false, queue: "max" })
   })
 
   it("is skipped on fork pull requests", () => {
