@@ -59,3 +59,19 @@ export function getSportInitials(name: string): string {
     .slice(0, 2)
     .toUpperCase();
 }
+
+/**
+ * Stable slug for a sport name, used in the sport tile testID
+ * (`sport-tile-<slug>`). Lowercase, with every run of other characters
+ * collapsed to one hyphen.
+ *
+ * @example
+ * getSportSlug("Basketball") // "basketball"
+ * getSportSlug("Track (Sprints/Jumps)") // "track-sprints-jumps"
+ */
+export function getSportSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}

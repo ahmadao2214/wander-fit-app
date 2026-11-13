@@ -313,10 +313,10 @@ function maskPassword(password) {
   if (process.env.GITHUB_ACTIONS === "true") console.log(`::add-mask::${password}`)
 }
 
-function createPersona() {
+function createPersona(state) {
   const result = spawnSync(
     process.execPath,
-    ["scripts/verify/persona.mjs", "create", "--state", "onboarded", "--json"],
+    ["scripts/verify/persona.mjs", "create", "--state", state, "--json"],
     { cwd: root, encoding: "utf8" }
   )
   if (result.stderr) process.stderr.write(result.stderr)
@@ -371,7 +371,50 @@ export function assertSignedUp(output, email) {
   return parsed
 }
 
-function inspectPersona(persona) {
+// Activation must leave the program the commitment screen creates: GPP week 1
+// day 1, with intake and onboarding both marked complete.
+export function assertActivated(output, email) {
+  let parsed = null
+  try {
+    parsed = parseRunResult(output)
+  } catch {
+    parsed = null
+  }
+  const expected = {
+    found: true,
+    intakeCompleted: true,
+    onboardingCompleted: true,
+    hasProgram: true,
+    phase: "GPP",
+    week: 1,
+    day: 1,
+  }
+  const actual = parsed
+    ? Object.fromEntries(Object.keys(expected).map((key) => [key, parsed[key] ?? null]))
+    : null
+  const mismatched = actual
+    ? Object.keys(expected).filter((key) => actual[key] !== expected[key])
+    : Object.keys(expected)
+  if (mismatched.length) {
+    const detail = actual ? JSON.stringify(actual) : "no inspect output"
+    throw new Error(`activation left ${email} short of GPP week 1 day 1 (${mismatched.join(", ")}): ${detail}`)
+  }
+  return parsed
+}
+
+const inspectChecks = {
+  signup: assertSignedUp,
+  "needs-intake": assertActivated,
+}
+
+// Modes with no entry are not inspected after Maestro passes.
+export function needsInspect(mode) {
+  return Object.hasOwn(inspectChecks, mode)
+}
+
+function inspectPersona(persona, mode) {
+  const check = inspectChecks[mode]
+  if (!check) throw new Error(`No inspect check for persona mode "${mode}".`)
   const result = spawnSync(
     process.execPath,
     ["scripts/verify/persona.mjs", "inspect", persona.email, "--json"],
@@ -379,7 +422,7 @@ function inspectPersona(persona) {
   )
   if (result.stderr) process.stderr.write(result.stderr)
   if (result.status !== 0) throw new Error(`persona inspect exited ${result.status ?? 1}`)
-  const inspected = assertSignedUp(result.stdout, persona.email)
+  const inspected = check(result.stdout, persona.email)
   console.log(`inspect: ${JSON.stringify(inspected)}`)
   return inspected
 }
@@ -579,7 +622,7 @@ function redactFlow(flow, persona) {
 }
 
 const webIo = {
-  createOnboardedPersona: createPersona,
+  createSeededPersona: createPersona,
   createSignupPersona: () => createSignupPersona(),
   inspectPersona,
   runMaestro: (flow, url, persona) => runMaestro(webFlowFile(flow), evidenceDirFor(flow), url, persona),
@@ -591,19 +634,22 @@ const webIo = {
 }
 
 // Each flow's persona mode picks how it is created and whether the account
-// is inspected after Maestro passes. Cleanup is the same for both.
+// is inspected after Maestro passes. Cleanup is the same for every mode.
+// Seeded modes (onboarded, needs-intake) go through persona create.
 export function webSuiteSteps(url, io = webIo) {
   return {
     createPersona: (flow) => {
       console.log(`\n== ${flow} (web) ==`)
-      return personaMode(flow) === "signup" ? io.createSignupPersona() : io.createOnboardedPersona()
+      const mode = personaMode(flow)
+      return mode === "signup" ? io.createSignupPersona() : io.createSeededPersona(mode)
     },
     drive: (flow, persona) => {
       console.log(`driving ${flow} for ${persona.email}`)
       io.runMaestro(flow, url, persona)
     },
     verify: (flow, persona) => {
-      if (personaMode(flow) === "signup") io.inspectPersona(persona)
+      const mode = personaMode(flow)
+      if (needsInspect(mode)) io.inspectPersona(persona, mode)
     },
     redact: io.redact,
     deletePersona: io.deletePersona,

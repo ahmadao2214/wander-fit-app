@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { getExperienceSliderColor, getSportInitials } from "../intakeUI";
+import { getExperienceSliderColor, getSportInitials, getSportSlug } from "../intakeUI";
+import { SPORTS } from "../../convex/seedData";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // EXPERIENCE SLIDER COLOR TESTS
@@ -195,5 +196,26 @@ describe("getSportInitials", () => {
     it("handles 'Swimming (Men/Women)'", () => {
       expect(getSportInitials("Swimming (Men/Women)")).toBe("SM");
     });
+  });
+});
+
+describe("getSportSlug", () => {
+  it("lowercases a single word", () => {
+    expect(getSportSlug("Basketball")).toBe("basketball");
+  });
+
+  it("joins words with one hyphen", () => {
+    expect(getSportSlug("Ultimate Frisbee")).toBe("ultimate-frisbee");
+  });
+
+  it("collapses punctuation and trims the ends", () => {
+    expect(getSportSlug("Track (Sprints/Jumps)")).toBe("track-sprints-jumps");
+    expect(getSportSlug("  Track (Distance) ")).toBe("track-distance");
+  });
+
+  it("gives every seeded sport a distinct slug", () => {
+    const slugs = SPORTS.map((sport) => getSportSlug(sport.name));
+    expect(new Set(slugs).size).toBe(slugs.length);
+    for (const slug of slugs) expect(slug).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
   });
 });

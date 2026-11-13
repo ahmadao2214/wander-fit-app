@@ -1,22 +1,21 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { Id } from 'convex/_generated/dataModel'
-import { YStack, XStack, Text, Spinner, ScrollView, Button, H2 } from 'tamagui'
+import { YStack, XStack, Text, Spinner, ScrollView, Button } from 'tamagui'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { CommitmentButton } from '../../components/onboarding'
 import { useOnboardingAnalytics, ONBOARDING_SCREEN_NAMES } from '../../hooks/useOnboardingAnalytics'
 import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT, COMBINED_FLOW_ROUTES } from '../../components/IntakeProgressDots'
 import { analytics } from '../../lib/analytics'
-import { CheckCircle, ChevronLeft, Dumbbell } from '@tamagui/lucide-icons'
+import { CheckCircle, ChevronLeft, ChevronRight } from '@tamagui/lucide-icons'
 import type { AgeGroup } from '../../types'
 
 /**
  * Screen 10 (Combined Flow): Commitment
  *
- * Final step - YAZIO-style commitment screen with hold-to-confirm button.
- * User commits to their training journey and program is created.
+ * Final step - the athlete taps "I Commit", the program is created, and the
+ * app goes straight to Today. There is no hold and no timed celebration.
  */
 export default function CommitmentScreen() {
   const router = useRouter()
@@ -31,7 +30,6 @@ export default function CommitmentScreen() {
   }>()
   const [hasCommitted, setHasCommitted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isSuccess, setIsSuccess] = useState(false)
 
   // Get onboarding state
   const onboardingState = useQuery(api.onboarding.getOnboardingState)
@@ -61,16 +59,6 @@ export default function CommitmentScreen() {
     ? selectedTrainingDaysParam.split(',').map(d => parseInt(d, 10))
     : undefined
 
-  // Navigate to athlete dashboard after success
-  useEffect(() => {
-    if (isSuccess) {
-      const timeout = setTimeout(() => {
-        router.replace('/(athlete)')
-      }, 3500)
-      return () => clearTimeout(timeout)
-    }
-  }, [isSuccess, router])
-
   // Loading state
   if (onboardingState === undefined || onboardingData === undefined || existingProgram === undefined) {
     return (
@@ -81,6 +69,7 @@ export default function CommitmentScreen() {
   }
 
   const handleCommit = async () => {
+    if (isSubmitting) return
     analytics.trackCommitmentCompleted()
     setHasCommitted(true)
     setIsSubmitting(true)
@@ -102,7 +91,8 @@ export default function CommitmentScreen() {
       await completeOnboarding()
       trackScreenComplete()
       analytics.trackOnboardingCompleted(false)
-      setIsSuccess(true)
+      // The onboarding guard also redirects once onboarding is complete.
+      router.replace('/(athlete)')
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
       console.error('Failed to complete intake:', errorMessage)
@@ -246,41 +236,8 @@ export default function CommitmentScreen() {
             ))}
           </YStack>
 
-          {/* Commitment button */}
-          {!hasCommitted ? (
-            <YStack items="center" gap="$4" py="$4">
-              <CommitmentButton
-                onCommit={handleCommit}
-                holdDuration={2000}
-                size={140}
-                label="I Commit"
-                instruction="Hold for 2 seconds to commit"
-                disabled={isSubmitting}
-              />
-            </YStack>
-          ) : isSuccess ? (
-            <YStack
-              bg="$color3"
-              rounded="$4"
-              p="$6"
-              items="center"
-              gap="$3"
-              borderWidth={2}
-              borderColor="$primary"
-            >
-              <Dumbbell size={48} color="$primary" />
-              <Text fontSize="$6" fontWeight="bold" color="$primary">
-                Let's Go!
-              </Text>
-              <Text fontSize="$4" color="$color11" text="center">
-                Your personalized program is ready.
-              </Text>
-              <Spinner size="small" color="$primary" />
-              <Text fontSize="$3" color="$color10">
-                Taking you to your dashboard...
-              </Text>
-            </YStack>
-          ) : (
+          {/* Shown while the program is being created */}
+          {hasCommitted && (
             <YStack
               bg="$color3"
               rounded="$4"
@@ -307,15 +264,17 @@ export default function CommitmentScreen() {
 
       {/* Bottom Actions - Only show before commitment */}
       {!hasCommitted && (
-        <YStack
+        <XStack
           px="$4"
           py="$4"
           pb={insets.bottom + 16}
+          gap="$3"
           borderTopWidth={1}
           borderTopColor="$borderColor"
           bg="$surface"
         >
           <Button
+            flex={1}
             size="$5"
             bg="$color4"
             color="$color11"
@@ -328,7 +287,23 @@ export default function CommitmentScreen() {
           >
             Back
           </Button>
-        </YStack>
+          <Button
+            testID="commitment-button"
+            flex={2}
+            size="$5"
+            bg="$primary"
+            color="white"
+            onPress={handleCommit}
+            disabled={isSubmitting}
+            iconAfter={ChevronRight}
+            fontFamily="$body"
+            fontWeight="700"
+            rounded="$4"
+            pressStyle={{ opacity: 0.9, scale: 0.98 }}
+          >
+            I Commit
+          </Button>
+        </XStack>
       )}
     </YStack>
   )

@@ -83,6 +83,7 @@ interface DaySlotProps {
 const DaySlot = ({ day, isSelected, onToggle }: DaySlotProps) => {
   return (
     <CalendarCell
+      testID={`training-day-${day.index}`}
       selected={isSelected}
       onPress={onToggle}
       cursor="pointer"

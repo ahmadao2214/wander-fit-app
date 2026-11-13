@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
 import { isGeneratedEmail } from "./persona.mjs"
 import {
+  assertActivated,
   assertSignedUp,
   cleanupPending,
   createSignupPersona,
@@ -17,6 +18,7 @@ import {
   runSuite,
   settlePersona,
   snapshotFiles,
+  needsInspect,
   webSuiteSteps,
   writePending,
 } from "./run.mjs"
@@ -273,17 +275,17 @@ describe("persona modes", () => {
     const calls = []
     let pending = []
     const io = {
-      createOnboardedPersona: () => {
-        calls.push("create onboarded")
-        return { email: "e2e.1+clerk_test@example.com", password: "pw-in" }
+      createSeededPersona: (state) => {
+        calls.push(`create ${state}`)
+        return { email: `e2e.${state === "onboarded" ? 1 : 3}+clerk_test@example.com`, password: "pw-in" }
       },
       createSignupPersona: () => {
         calls.push("create signup")
         return { email: "e2e-2-signup+clerk_test@example.com", password: "pw-up" }
       },
-      inspectPersona: (persona) => {
-        calls.push(`inspect ${persona.email}`)
-        if (!inspectFound) throw new Error(`sign-up left no Convex user for ${persona.email}`)
+      inspectPersona: (persona, mode) => {
+        calls.push(`inspect ${mode} ${persona.email}`)
+        if (!inspectFound) throw new Error(`inspect failed for ${persona.email}`)
         return { found: true }
       },
       runMaestro: (flow) => {
@@ -311,7 +313,7 @@ describe("persona modes", () => {
       "delete e2e.1+clerk_test@example.com",
       "create signup",
       "maestro sign-up",
-      "inspect e2e-2-signup+clerk_test@example.com",
+      "inspect signup e2e-2-signup+clerk_test@example.com",
       "redact sign-up",
       "delete e2e-2-signup+clerk_test@example.com",
     ])
@@ -322,7 +324,7 @@ describe("persona modes", () => {
     const { calls, io, pending } = webIo({ inspectFound: false })
     const [result] = runSuite(["sign-up"], webSuiteSteps("http://127.0.0.1:1", io), () => 0)
     expect(result.status).toBe("failed")
-    expect(result.error).toContain("no Convex user")
+    expect(result.error).toContain("inspect failed")
     expect(calls.slice(-2)).toEqual(["redact sign-up", "delete e2e-2-signup+clerk_test@example.com"])
     expect(pending()).toEqual([])
   })
@@ -355,6 +357,58 @@ describe("persona modes", () => {
     } finally {
       fs.rmSync(dir, { recursive: true, force: true })
     }
+  })
+
+  it("activates a needs-intake persona and inspects it before delete", () => {
+    const { calls, io } = webIo()
+    const [result] = runSuite(["activation"], webSuiteSteps("http://127.0.0.1:1", io), () => 0)
+    expect(result.status).toBe("passed")
+    expect(calls).toEqual([
+      "create needs-intake",
+      "maestro activation",
+      "inspect needs-intake e2e.3+clerk_test@example.com",
+      "redact activation",
+      "delete e2e.3+clerk_test@example.com",
+    ])
+  })
+
+  it("fails activation and still deletes when inspect does not match", () => {
+    const { calls, io, pending } = webIo({ inspectFound: false })
+    const [result] = runSuite(["activation"], webSuiteSteps("http://127.0.0.1:1", io), () => 0)
+    expect(result.status).toBe("failed")
+    expect(calls.slice(-2)).toEqual(["redact activation", "delete e2e.3+clerk_test@example.com"])
+    expect(pending()).toEqual([])
+  })
+
+  it("does not inspect an onboarded persona", () => {
+    expect(needsInspect("onboarded")).toBe(false)
+    expect(needsInspect("signup")).toBe(true)
+    expect(needsInspect("needs-intake")).toBe(true)
+  })
+
+  it("requires GPP week 1 day 1 with intake and onboarding done after activation", () => {
+    const email = "e2e.3+clerk_test@example.com"
+    const done = {
+      found: true,
+      email,
+      intakeCompleted: true,
+      onboardingCompleted: true,
+      hasProgram: true,
+      phase: "GPP",
+      week: 1,
+      day: 1,
+    }
+    const pretty = JSON.stringify(done, null, 2)
+    expect(assertActivated(`noise\n${pretty}\n`, email)).toMatchObject({ phase: "GPP", week: 1, day: 1 })
+    expect(() => assertActivated(JSON.stringify({ ...done, week: 2 }), email)).toThrow(/\(week\)/)
+    expect(() => assertActivated(JSON.stringify({ ...done, onboardingCompleted: false }), email)).toThrow(
+      /onboardingCompleted/
+    )
+    expect(() =>
+      assertActivated(JSON.stringify({ ...done, hasProgram: false, phase: null, week: null, day: null }), email)
+    ).toThrow(/hasProgram, phase, week, day/)
+    expect(() => assertActivated(JSON.stringify({ found: false, email }), email)).toThrow(/found/)
+    expect(() => assertActivated("", email)).toThrow(/no inspect output/)
   })
 
   it("requires found true from persona inspect", () => {

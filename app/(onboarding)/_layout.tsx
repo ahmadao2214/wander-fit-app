@@ -9,7 +9,7 @@ import { FlowErrorBoundary } from '../../components/FlowErrorBoundary'
  * - Why It Works (periodization education)
  * - Phases Overview (GPP/SPP/SSP)
  * - Personal Timeline (12-week journey)
- * - Commitment (hold-to-confirm)
+ * - Commitment (tap "I Commit")
  *
  * Note: Some legacy screens are kept for revisit mode but
  * not used in the main combined flow.

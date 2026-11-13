@@ -35,10 +35,14 @@ export function artifactName(flow, platform = "web") {
   return `e2e-${platform}-${flow}`
 }
 
-// Sign-up makes its own account through the UI. Every other flow signs in as
-// an onboarded persona created before Maestro runs.
-const signupFlows = new Set(["sign-up"])
+// Sign-up makes its own account through the UI. Activation signs in as a
+// persona with a user row only and goes through intake. Every other flow
+// signs in as an onboarded persona created before Maestro runs.
+const flowPersonaModes = {
+  "sign-up": "signup",
+  activation: "needs-intake",
+}
 
 export function personaMode(flow) {
-  return signupFlows.has(flow) ? "signup" : "onboarded"
+  return flowPersonaModes[flow] || "onboarded"
 }
