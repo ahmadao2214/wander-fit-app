@@ -30,3 +30,17 @@ Code approval does not satisfy the runtime/production merge gate. Authenticated 
 - Verdict: APPROVE, code review only. S2 resolved; S1 not reopened; no new findings (S3).
 - Confirmed Router's installed document-context contract, asset/attribute/children regression, matching scratch source, static export assets, 56 suites / 2,141 tests and typecheck evidence.
 - Updated-head web CI, final-binary native launch and authenticated athlete/coach/reorder acceptance remain incomplete. Approval does not lift merge/EAS/workflow-change or device-input holds.
+
+## Navigation-state follow-up / round 4 scope
+
+- S4 / should / resolved: advisory CI on `034b019` passes sign-in/sign-up, then activation renders its error boundary after sport selection. `useSwipeNavigation` reads the external React Navigation focus context instead of Router 58's route-state context. Use Router's public `useIsFocused` export, and migrate the root theme exports to the same Router context family.
+- Budget extension: round 4 is permitted by the state/concurrency exception, not a generic visual-polish review. The observed activation crash and failing-before focus-context regression establish a should-fix navigation-state integration defect. Scope is this behavior delta and S4 only; previous findings stay resolved.
+- Regression using Router's actual focus provider/hook fails with the original import (`Couldn't find a navigation object`) and passes with the fix (`tests-navigation-before.log`, focused after run). Full fixed suite: 57 suites / 2,142 tests; typecheck passes (`tests-navigation-full.log`, `typecheck-navigation.log`).
+- Activation's Maestro flow and feature map retain the training-overview checkpoint and explicitly reject the error boundary. Updated-head CI journey acceptance remains pending. Device operations remain stopped; authenticated native journeys and final-config launch remain incomplete. Merge/EAS/workflow changes remain held.
+
+## Round 4
+
+- Reviewer: GPT 6.1 Sol, Codex provider, medium reasoning. Usage not returned.
+- Verdict: APPROVE, code review only. S4 resolved; S1 and S2 remain resolved; no new blocker, should-fix or nit findings.
+- Independently confirmed the installed Router focus/theme exports and the actual-provider regression in scratch, with failing-before evidence. Reviewed 57 suites / 2,142 tests, typecheck and 21 flow guards passing.
+- Updated-head CI activation, final-config native launch and authenticated athlete/coach/reorder acceptance remain incomplete. Approval does not lift merge, EAS, workflow-change or device-operation holds.

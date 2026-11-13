@@ -27,6 +27,8 @@ Preconditions: `node scripts/verify/run.mjs doctor` passed. The e2e URL is set. 
 
 ## Gotchas
 
+- The sport → training overview transition guards the Router 58 navigation-context regression: wait for `Training in 3 Phases` and assert that `Something went wrong` is absent. Route hooks and theme providers must use Expo Router's public exports, not a separate React Navigation context.
+
 - The commitment hold is gone. Maestro web's `longPressOn` did trigger the old 2-second hold, but Maestro's post-tap settle wait ignores `waitToSettleTimeoutMs` on web. With the spinner animating, that wait outlasts the `You're Committed!` state, so the flow cannot assert it. The video and the commitment screen test (`app/__tests__/commitment.test.tsx`) cover it. See `.maestro/flow-layout.md`.
 - Training days and the season date come from `.maestro/scripts/activation-dates.js`, which uses the clock of the machine running the browser. A run that crosses midnight can pick yesterday.
 - The season calendar shows one month at a time. The journey taps `season-next-month` until `season-day-<date>` is visible, up to 4 times.

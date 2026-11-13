@@ -1,7 +1,7 @@
 import { useRef, useEffect } from 'react'
 import { Animated, PanResponder, Dimensions } from 'react-native'
 import { Vibration } from 'react-native'
-import { useIsFocused } from '@react-navigation/native'
+import { useIsFocused } from 'expo-router'
 
 const SCREEN_WIDTH = Dimensions.get('window').width
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.2 // 20% of screen width

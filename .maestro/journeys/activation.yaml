@@ -20,6 +20,7 @@ url: ${VERIFY_URL}
 - extendedWaitUntil:
     visible: "Training in 3 Phases"
     timeout: 30000
+- assertNotVisible: "Something went wrong"
 - takeScreenshot: 04-training-overview
 - tapOn: "Continue"
 - extendedWaitUntil:
