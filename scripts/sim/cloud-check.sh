@@ -32,8 +32,11 @@ ts() { echo "[$(( $(date +%s) - t0 ))s] $*"; }
 # Credentials: the environment, or the gitignored .env.local in the main checkout. Never printed.
 if [[ -z "${TEST_USER_EMAIL:-}" || -z "${TEST_USER_PASSWORD:-}" ]]; then
   ENV_FILE="${SIM_ENV_FILE:-$(git worktree list --porcelain | head -1 | cut -d' ' -f2-)/.env.local}"
-  TEST_USER_EMAIL="$(grep '^TEST_USER_EMAIL=' "$ENV_FILE" | cut -d= -f2-)"
-  TEST_USER_PASSWORD="$(grep '^TEST_USER_PASSWORD=' "$ENV_FILE" | cut -d= -f2-)"
+  # dotenv values may be quoted; drop one surrounding pair.
+  env_value() { local v; v="$(grep -m1 "^$1=" "$ENV_FILE" | cut -d= -f2-)"; v="${v%$'\r'}"
+    [[ ${#v} -ge 2 && ( "$v" == \"*\" || "$v" == \'*\' ) ]] && v="${v:1:${#v}-2}"; printf '%s' "$v"; }
+  TEST_USER_EMAIL="$(env_value TEST_USER_EMAIL)"
+  TEST_USER_PASSWORD="$(env_value TEST_USER_PASSWORD)"
 fi
 [[ -n "$TEST_USER_EMAIL" && -n "$TEST_USER_PASSWORD" ]] || { echo "TEST_USER_EMAIL/TEST_USER_PASSWORD not found" >&2; exit 1; }
 export TEST_USER_EMAIL TEST_USER_PASSWORD
