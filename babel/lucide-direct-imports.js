@@ -45,7 +45,7 @@ module.exports = function lucideDirectImports({ types: t }) {
               direct.push(
                 t.importDeclaration(
                   [t.importSpecifier(t.identifier(specifier.local.name), t.identifier(name))],
-                  // No extension: Metro and Jest pick .native.js on native and .mjs on web.
+                  // No extension: the resolver picks .mjs or .native.js by its extension order; the two are equivalent.
                   t.stringLiteral(`${PACKAGE}/${ICONS_SUBPATH}/${name}`)
                 )
               )

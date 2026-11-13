@@ -14,7 +14,7 @@ module.exports = {
     // Map convex/_generated paths to the actual files
     '^convex/_generated/(.*)$': '<rootDir>/convex/_generated/$1',
     // babel/lucide-direct-imports.js imports each icon's own file, which the package's "exports"
-    // doesn't list; point Jest at the file directly (it picks .native.js like Metro does).
+    // doesn't list; point Jest at the file directly.
     '^@tamagui/lucide-icons/dist/esm/icons/(.*)$': '<rootDir>/node_modules/@tamagui/lucide-icons/dist/esm/icons/$1',
   },
   transformIgnorePatterns: [
