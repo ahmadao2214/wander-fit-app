@@ -1,0 +1,95 @@
+url: ${VERIFY_URL}
+---
+- runFlow: ../subflows/_evidence-start.yaml
+- extendedWaitUntil:
+    visible: "WELCOME BACK"
+    timeout: 90000
+- takeScreenshot: 01-sign-in
+- runFlow: ../subflows/_sign-in.yaml
+# A needs-intake persona has a user row and no intake, so sign-in lands on
+# the sport screen.
+- extendedWaitUntil:
+    visible:
+      id: sport-tile-basketball
+    timeout: 90000
+- assertNotVisible: "COMPLETE SETUP"
+- tapOn:
+    id: sport-tile-basketball
+- takeScreenshot: 03-sport
+- tapOn: "Continue"
+- extendedWaitUntil:
+    visible: "Training in 3 Phases"
+    timeout: 30000
+- takeScreenshot: 04-training-overview
+- tapOn: "Continue"
+- extendedWaitUntil:
+    visible: "YOUR DIVISION"
+    timeout: 30000
+- tapOn: "Performance"
+- takeScreenshot: 05-age-group
+- tapOn: "Continue"
+- extendedWaitUntil:
+    visible: "YOUR EXPERIENCE"
+    timeout: 30000
+# Zero years is the default, which makes a Novice program.
+- takeScreenshot: 06-experience
+- tapOn: "Continue"
+- extendedWaitUntil:
+    visible: "TRAINING DAYS"
+    timeout: 30000
+# Today and two more days, and a season 12 weeks out. See the script.
+- runScript: ../scripts/activation-dates.js
+- tapOn:
+    id: training-day-${output.today}
+- tapOn:
+    id: training-day-${output.day2}
+- tapOn:
+    id: training-day-${output.day4}
+- takeScreenshot: 07-training-days
+- tapOn: "Continue"
+- extendedWaitUntil:
+    visible: "SEASON START"
+    timeout: 30000
+- repeat:
+    times: 4
+    while:
+      notVisible:
+        id: ${output.seasonDay}
+    commands:
+      - tapOn:
+          id: season-next-month
+- tapOn:
+    id: ${output.seasonDay}
+- takeScreenshot: 08-season
+- tapOn: "Continue"
+- extendedWaitUntil:
+    visible: "Know Your Starting Point"
+    timeout: 30000
+- takeScreenshot: 09-maxes
+- tapOn: "I'll set these later"
+- extendedWaitUntil:
+    visible: "Your Program is Ready!"
+    timeout: 30000
+- takeScreenshot: 10-results
+- tapOn: "Continue"
+- extendedWaitUntil:
+    visible:
+      id: commitment-button
+    timeout: 30000
+- assertVisible: "Make Your"
+- takeScreenshot: 11-commitment
+# One tap commits. There is no hold. "You're Committed!" shows only while
+# the program is saved, and Maestro web's settle wait after a tap outlasts it
+# (see .maestro/flow-layout.md), so the video is its evidence.
+- tapOn:
+    id: commitment-button
+- extendedWaitUntil:
+    visible: "Welcome back,.*"
+    timeout: 90000
+- extendedWaitUntil:
+    visible:
+      id: today-workout-card
+    timeout: 90000
+- assertVisible: "Start Workout"
+- takeScreenshot: 12-today
+- runFlow: ../subflows/_evidence-stop.yaml

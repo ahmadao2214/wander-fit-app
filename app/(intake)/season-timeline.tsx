@@ -15,6 +15,7 @@ import {
 import { Vibration } from 'react-native'
 import LottieView from 'lottie-react-native'
 import { getSportInitials } from '../../lib'
+import { formatDateISO } from '../../lib/calendarUtils'
 import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT, COMBINED_FLOW_ROUTES } from '../../components/IntakeProgressDots'
 
 // Sport Lottie mapping (same as sport.tsx)
@@ -166,6 +167,7 @@ const CalendarMonth = ({
               return (
                 <Button
                   key={dayIdx}
+                  testID={isOutsideMonth ? undefined : `season-day-${formatDateISO(date)}`}
                   size="$3"
                   width={36}
                   height={36}
@@ -629,6 +631,7 @@ export default function SeasonTimelineScreen() {
               bg={currentMonthIndex === months.length - 1 ? '$color3' : '$color4'}
               disabled={currentMonthIndex === months.length - 1}
               opacity={currentMonthIndex === months.length - 1 ? 0.4 : 1}
+              testID="season-next-month"
               onPress={handleNextMonth}
               pressStyle={{ scale: 0.95 }}
             >

@@ -1,4 +1,5 @@
-import { internalMutation, internalQuery } from "./_generated/server";
+import { internalMutation, internalQuery, type MutationCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { calculateWeeksPerPhase } from "./weekMapping";
 
@@ -12,6 +13,25 @@ const stateValidator = v.union(
 );
 
 const TRAINING_DAYS = [0, 1, 2, 3, 4, 5, 6];
+
+// The rows intake and commitment write for a user.
+async function clearProgramRows(ctx: MutationCtx, userId: Id<"users">) {
+  const programs = await ctx.db
+    .query("user_programs")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .collect();
+  for (const program of programs) {
+    await ctx.db.delete(program._id);
+  }
+
+  const intakes = await ctx.db
+    .query("intake_responses")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .collect();
+  for (const intake of intakes) {
+    await ctx.db.delete(intake._id);
+  }
+}
 
 export const provision = internalMutation({
   args: {
@@ -41,10 +61,15 @@ export const provision = internalMutation({
       await ctx.db.patch(userId, { email: args.email, name: args.name });
     }
 
+    // Every state starts from the user row alone. needs-intake stops there.
+    await clearProgramRows(ctx, userId);
+
     if (args.state === "new" || args.state === "needs-intake") {
       await ctx.db.patch(userId, {
         intakeCompletedAt: undefined,
         onboardingCompletedAt: undefined,
+        onboardingProgress: undefined,
+        onboardingSkipped: undefined,
       });
       return { email: args.email, state: args.state };
     }
@@ -55,14 +80,6 @@ export const provision = internalMutation({
       .first();
     if (!sport) {
       throw new Error("Basketball sport is missing. Run seed:seedAll on wander-fit-e2e first.");
-    }
-
-    const programs = await ctx.db
-      .query("user_programs")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .collect();
-    for (const program of programs) {
-      await ctx.db.delete(program._id);
     }
 
     const totalProgramWeeks = 12;
@@ -148,22 +165,7 @@ export const remove = internalMutation({
       .first();
     if (!user) return { deleted: false as const, email: args.email };
 
-    const programs = await ctx.db
-      .query("user_programs")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
-    for (const program of programs) {
-      await ctx.db.delete(program._id);
-    }
-
-    const intakes = await ctx.db
-      .query("intake_responses")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
-    for (const intake of intakes) {
-      await ctx.db.delete(intake._id);
-    }
-
+    await clearProgramRows(ctx, user._id);
     await ctx.db.delete(user._id);
     return { deleted: true as const, email: args.email };
   },

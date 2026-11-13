@@ -3,7 +3,7 @@ import os from "node:os"
 import path from "node:path"
 import { describe, expect, it } from "vitest"
 import { parse } from "yaml"
-import { artifactName, evidenceDirFor, listWebFlows, root } from "./flows.mjs"
+import { artifactName, evidenceDirFor, listWebFlows, personaMode, root } from "./flows.mjs"
 import { renderSummary } from "./summary.mjs"
 
 const checks = parse(fs.readFileSync(path.join(root, ".github/workflows/checks.yml"), "utf8"))
@@ -35,9 +35,10 @@ describe("web flows", () => {
     }
   })
 
-  it("includes sign-in and sign-up", () => {
+  it("includes sign-in, sign-up, and activation", () => {
     expect(listWebFlows()).toContain("sign-in")
     expect(listWebFlows()).toContain("sign-up")
+    expect(listWebFlows()).toContain("activation")
   })
 
   it("keeps launch on the web entry and a parseable header on the shared files", () => {
@@ -159,6 +160,66 @@ describe("web flows", () => {
     expect(stop).toBeGreaterThan(shot)
   })
 
+  it("keeps the activation entry thin and its journey launch-free", () => {
+    const entry = fs.readFileSync(path.join(root, ".maestro/web/activation.yaml"), "utf8")
+    expect(entry.startsWith("url: ${VERIFY_URL}\n")).toBe(true)
+    expect(entry).toContain("clearState: true")
+    expect(entry.indexOf("launchApp:")).toBeGreaterThan(-1)
+    expect(entry.indexOf("launchApp:")).toBeLessThan(entry.indexOf("runFlow: ../journeys/activation.yaml"))
+    expect(entry).not.toContain("appId:")
+    const journey = fs.readFileSync(path.join(root, ".maestro/journeys/activation.yaml"), "utf8")
+    expect(journey).toMatch(/^url: \$\{VERIFY_URL\}\n---\n/)
+    expect(journey).not.toMatch(/^appId:/m)
+    expect(journey).not.toContain("launchApp")
+    expect(journey).not.toMatch(/^env:/m)
+  })
+
+  it("records activation from sign-in through intake and commitment to Today", () => {
+    const flow = expandFlow(path.join(root, ".maestro/web/activation.yaml"))
+    const sport = fs.readFileSync(path.join(root, "app/(intake)/sport.tsx"), "utf8")
+    const days = fs.readFileSync(path.join(root, "app/(intake)/training-days.tsx"), "utf8")
+    const season = fs.readFileSync(path.join(root, "app/(intake)/season-timeline.tsx"), "utf8")
+    const commitment = fs.readFileSync(path.join(root, "app/(onboarding)/commitment.tsx"), "utf8")
+    expect(sport).toContain("testID={`sport-tile-${getSportSlug(sport.name)}`}")
+    expect(days).toContain("testID={`training-day-${day.index}`}")
+    expect(season).toContain("`season-day-${formatDateISO(date)}`")
+    expect(season).toContain('testID="season-next-month"')
+    expect(commitment).toContain('testID="commitment-button"')
+    expect(commitment).not.toContain("CommitmentButton")
+    expect(flow).not.toContain("longPressOn")
+    const order = [
+      "startRecording: recording",
+      'visible: "WELCOME BACK"',
+      "inputText: ${PERSONA_PASSWORD}",
+      "id: sport-tile-basketball",
+      'assertNotVisible: "COMPLETE SETUP"',
+      'visible: "Training in 3 Phases"',
+      'tapOn: "Performance"',
+      'visible: "YOUR EXPERIENCE"',
+      "runScript: ../scripts/activation-dates.js",
+      "id: training-day-${output.today}",
+      "notVisible:\n        id: ${output.seasonDay}",
+      "          id: season-next-month\n- tapOn:\n    id: ${output.seasonDay}",
+      "tapOn: \"I'll set these later\"",
+      'visible: "Your Program is Ready!"',
+      "id: commitment-button",
+      'visible: "Welcome back,.*"',
+      "id: today-workout-card",
+      'assertVisible: "Start Workout"',
+      "takeScreenshot: 12-today",
+      "stopRecording",
+    ]
+    const positions = order.map((needle) => {
+      const at = flow.indexOf(needle)
+      expect(at, needle).toBeGreaterThan(-1)
+      return at
+    })
+    for (let i = 1; i < positions.length; i++) {
+      expect(positions[i], `${order[i]} after ${order[i - 1]}`).toBeGreaterThan(positions[i - 1])
+    }
+    expect(flow.indexOf("launchApp")).toBeLessThan(positions[0])
+  })
+
   it("has an upload step in the checks workflow for every web flow", () => {
     const uploads = job.steps
       .filter((step) => String(step.uses || "").startsWith("actions/upload-artifact@"))
@@ -240,5 +301,41 @@ describe("summary", () => {
     expect(markdown).toContain("No flow ran.")
     expect(markdown).toContain("| sign-in | ⚪ not run |")
     expect(markdown).toContain("startRecording/recording.mp4")
+  })
+})
+
+describe("persona modes per flow", () => {
+  it("signs up through the UI, activates from needs-intake, and signs in onboarded otherwise", () => {
+    expect(personaMode("sign-up")).toBe("signup")
+    expect(personaMode("activation")).toBe("needs-intake")
+    expect(personaMode("sign-in")).toBe("onboarded")
+  })
+})
+
+describe("activation dates script", () => {
+  async function runDates(isoNow) {
+    const vm = await import("node:vm")
+    const source = fs.readFileSync(path.join(root, ".maestro/scripts/activation-dates.js"), "utf8")
+    const RealDate = Date
+    class FixedDate extends RealDate {
+      constructor(...args) {
+        super(...(args.length ? args : [isoNow]))
+      }
+    }
+    const output = {}
+    vm.runInNewContext(source, { Date: FixedDate, output })
+    return output
+  }
+
+  it("picks today and two more days, and a season 84 days out", async () => {
+    // Thursday 12 Nov 2026, local time.
+    const output = await runDates("2026-11-12T10:00:00")
+    expect(output).toEqual({ today: 4, day2: 6, day4: 1, seasonDay: "season-day-2027-02-04" })
+  })
+
+  it("wraps the week and pads the date", async () => {
+    // Saturday 1 Mar 2025 + 84 days = Saturday 24 May 2025.
+    const output = await runDates("2025-03-01T23:30:00")
+    expect(output).toEqual({ today: 6, day2: 1, day4: 3, seasonDay: "season-day-2025-05-24" })
   })
 })

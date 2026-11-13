@@ -9,7 +9,7 @@ export { getSkillLevel, getTrainingPhase } from "./calculations";
 export type { TrainingPhase } from "./calculations";
 
 // Intake UI utilities
-export { getExperienceSliderColor, getSportInitials } from "./intakeUI";
+export { getExperienceSliderColor, getSportInitials, getSportSlug } from "./intakeUI";
 export type { IntensityColorToken } from "./intakeUI";
 
 // Workout utilities

@@ -14,7 +14,7 @@ import {
 } from '@tamagui/lucide-icons'
 import { Id } from '../../convex/_generated/dataModel'
 import LottieView from 'lottie-react-native'
-import { getSportInitials } from '../../lib'
+import { getSportInitials, getSportSlug } from '../../lib'
 import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT, COMBINED_FLOW_ROUTES } from '../../components/IntakeProgressDots'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -115,6 +115,7 @@ interface SportTileProps {
 const SportTile = ({ sport, isSelected, onSelect }: SportTileProps) => {
   return (
     <Card
+      testID={`sport-tile-${getSportSlug(sport.name)}`}
       width="100%"
       aspectRatio={1}
       bg={isSelected ? '$brand1' : '$surface'}
