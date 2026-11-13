@@ -8,6 +8,7 @@ import {
   exploreArgs,
   hintsFor,
   outputDirName,
+  quoteBundlePhase,
   replayPath,
   scanBundle,
   STATES,
@@ -134,5 +135,25 @@ describe("explore caches", () => {
       EXPLORE_CACHE_DIR: "/repo/e2e-artifacts/explore/cache/expo-explore",
       XDG_CACHE_HOME: "/repo/e2e-artifacts/explore/cache/xdg",
     })
+  })
+})
+
+describe("explore bundle phase", () => {
+  // As it appears in the generated project.pbxproj: quotes escaped with a backslash.
+  const unquoted =
+    "fi\\n\\n`\\\"$NODE_BINARY\\\" --print \\\"require('path').dirname(require.resolve('react-native/package.json')) + '/scripts/react-native-xcode.sh'\\\"`\\n\\n\";"
+
+  it("quotes the react-native-xcode.sh call so a path with a space survives", () => {
+    const fixed = quoteBundlePhase(unquoted)
+    expect(fixed).not.toContain("`")
+    expect(fixed).toContain(
+      "\\\"$(\\\"$NODE_BINARY\\\" --print \\\"require('path').dirname(require.resolve('react-native/package.json')) + '/scripts/react-native-xcode.sh'\\\")\\\""
+    )
+  })
+
+  it("leaves a project that already quotes it alone", () => {
+    const fixed = quoteBundlePhase(unquoted)
+    expect(quoteBundlePhase(fixed)).toBe(fixed)
+    expect(quoteBundlePhase("no bundle phase")).toBe("no bundle phase")
   })
 })

@@ -174,6 +174,17 @@ export function exploreArgs({ app, output, state, email, replay }) {
   return args
 }
 
+// The template's bundle phase ends with `"$NODE_BINARY" --print "…xcode.sh"`
+// in unquoted backticks, so a checkout path with a space ("OWC Express 1M2")
+// splits and the build fails. Quote it. Returns the text unchanged when the
+// template already does.
+export function quoteBundlePhase(pbxproj) {
+  return pbxproj.replace(
+    /`(\\"\$NODE_BINARY\\" --print \\"require\('path'\)\.dirname\(require\.resolve\('react-native\/package\.json'\)\) \+ '\/scripts\/react-native-xcode\.sh'\\")`/,
+    (_, command) => `\\"$(${command})\\"`
+  )
+}
+
 function findApp() {
   const products = path.join(derivedData, "Build/Products/Release-iphonesimulator")
   if (!fs.existsSync(products)) return ""
@@ -202,6 +213,8 @@ function build() {
   const workspace = fs.readdirSync(path.join(root, "ios")).find((name) => name.endsWith(".xcworkspace"))
   if (!workspace) fail("expo prebuild made no ios/*.xcworkspace.")
   const scheme = workspace.replace(/\.xcworkspace$/, "")
+  const pbxproj = path.join(root, "ios", `${scheme}.xcodeproj`, "project.pbxproj")
+  fs.writeFileSync(pbxproj, quoteBundlePhase(fs.readFileSync(pbxproj, "utf8")))
   run(
     "xcodebuild",
     [
