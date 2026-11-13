@@ -1,4 +1,3 @@
-import { describe, it, expect } from "vitest";
 import { getBodyweightVariant, BODYWEIGHT_VARIANT_MATRIX } from "../intensityScaling";
 import { EXERCISES } from "../seedData";
 

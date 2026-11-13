@@ -1,4 +1,3 @@
-import { describe, it, expect } from "vitest";
 import {
   AGE_INTENSITY_RULES,
   PHASE_INTENSITY_RANGES,

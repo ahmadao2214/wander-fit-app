@@ -170,28 +170,28 @@ const handleAction = async () => {
 
 The flow layout and the Maestro findings for this suite are in `.maestro/flow-layout.md`.
 
-### Two Test Runners: Jest vs Vitest
+### One Test Runner: Jest
 
-The repo uses **two** test runners, split by directory. Each runner only collects its own directories, so never mix them in one folder.
+Every unit and component test runs under **Jest**, in one run with two projects (`jest.config.js`):
 
-| Runner | Directories | File type | Why |
-|--------|-------------|-----------|-----|
-| **Jest** (`jest-expo` preset) | `app/**/__tests__/`, `components/**/__tests__/` | `*.test.tsx` | Renders React Native components; needs the jest-expo preset (RN renderer, native module mocks, Babel). |
-| **Vitest** (node env) | `convex/__tests__/`, `lib/__tests__/`, `hooks/__tests__/` | `*.test.ts` | Pure TypeScript logic (Convex functions, utilities, hook logic); fast, no RN runtime. |
+| Project | Directories | File type | Environment |
+|---------|-------------|-----------|-------------|
+| `node` | `convex/__tests__/`, `lib/__tests__/`, `hooks/__tests__/`, `scripts/**` | `*.test.ts`, `*.test.mjs` | Node, no React Native runtime. TypeScript and ESM go through a plain Babel setup (not `babel.config.js`). |
+| `react-native` | `app/**/__tests__/`, `components/**/__tests__/` | `*.test.tsx` | `jest-expo` preset: RN renderer, native module mocks, `babel-preset-expo`. |
 
-- Config: `jest.config.js` (`testMatch`) and `vitest.config.ts` (`include`). Keep the two lists disjoint.
-- **Jest files** use Jest globals (`describe`, `it`, `expect`, `jest.fn()`, `jest.mock()`) with no import; their types come from `@types/jest` via `"types"` in `tsconfig.json`.
-- **Vitest files** must import the API explicitly: `import { describe, it, expect, vi } from 'vitest'` (Vitest `globals` is off). Use `vi.fn()`, never `jest.fn()`.
-- Why it matters: a Vitest file collected by Jest fails with *"Vitest cannot be imported in a CommonJS module using require()"*, and a Jest file collected by Vitest can't load React Native.
-- Testing a hook that needs React Native rendering (e.g. `renderHook`)? Put that test next to a component/screen under Jest instead of in `hooks/__tests__/`.
-- Agent worktrees under `.claude/worktrees/` are excluded from Jest, Vitest and `tsc`.
+- Use the Jest globals (`describe`, `it`, `expect`, `jest.fn()`, `jest.mock()`) with no import. Their types come from `@types/jest` via `"types"` in `tsconfig.json`.
+- `expect` takes one argument. To say which case failed inside a loop, put the case in the value, e.g. `expect(missing).toEqual([])`.
+- Convex tests that use `convex-test` load the functions with `convexModules()` from `jest/convexModules.ts`, not Vite's `import.meta.glob`.
+- A hook test that needs React Native rendering (e.g. `renderHook`) goes next to a component or screen, not in `hooks/__tests__/`.
+- Agent worktrees under `.claude/worktrees/` are excluded from Jest and `tsc`.
+- A Vitest test from an older branch converts with `node scripts/codemods/vitest-to-jest.mjs <file>`. It is safe to run again, and `--check` lists files that still need it.
 
 ### Test File Locations
-- **Components** (Jest): `components/<component-name>/__tests__/<ComponentName>.test.tsx`
-- **Screens** (Jest): `app/__tests__/<screen-name>.test.tsx`
-- **Lib/Utils** (Vitest): `lib/__tests__/<module-name>.test.ts`
-- **Hook logic** (Vitest): `hooks/__tests__/<hook-name>.test.ts`
-- **Convex functions** (Vitest): `convex/__tests__/<module-name>.test.ts`
+- **Components**: `components/<component-name>/__tests__/<ComponentName>.test.tsx`
+- **Screens**: `app/__tests__/<screen-name>.test.tsx`
+- **Lib/Utils**: `lib/__tests__/<module-name>.test.ts`
+- **Hook logic**: `hooks/__tests__/<hook-name>.test.ts`
+- **Convex functions**: `convex/__tests__/<module-name>.test.ts`
 
 ### Test Setup Pattern (Jest component/screen test)
 
@@ -251,10 +251,9 @@ jest.mock('../../hooks/useAuth', () => ({
 - Loading and error states
 - Data transformations and business logic
 
-### Vitest Setup Pattern (lib / hooks / convex test)
+### Logic Test Pattern (lib / hooks / convex)
 
 ```ts
-import { describe, it, expect } from 'vitest'
 import { calculateSomething } from '../calculations'
 
 describe('calculateSomething', () => {
@@ -266,18 +265,17 @@ describe('calculateSomething', () => {
 
 ### Running Tests
 ```bash
-npm test                     # Jest in watch mode (components + screens)
-npm test -- <pattern>        # Jest, specific files
-npm run test:ci              # Jest once, CI mode (jest --ci)
-npm run test:unit            # Vitest once (convex + lib + hooks)
-npx vitest <pattern>         # Vitest watch mode, specific files
-npm run typecheck            # tsc --noEmit over the whole project, tests included
+bun run test                 # every test once (both projects)
+bun run test -- <pattern>    # specific files
+bun run test:watch           # watch mode
+bun run test:ci              # CI mode (jest --ci); the blocking CI job
+bun run typecheck            # tsc --noEmit over the whole project, tests included
 ```
 
-Before opening a PR, `npm run test:ci`, `npm run test:unit` and `npm run typecheck` should all pass. Dependencies are installed with Bun (`bun install`; the lockfile is `bun.lock`).
+Before opening a PR, `bun run test:ci` and `bun run typecheck` should both pass; CI blocks on both. Bun is the only package manager (`bun install`; the lockfile is `bun.lock`).
 
 **Reference implementations:**
-- Component tests (Jest): `components/__tests__/RadioButton.test.tsx`
-- Screen tests (Jest): `app/__tests__/training-science.test.tsx`
-- Lib tests (Vitest): `lib/__tests__/calculations.test.ts`
-- Convex tests (Vitest): `convex/__tests__/userMaxes.test.ts`
+- Component tests: `components/__tests__/RadioButton.test.tsx`
+- Screen tests: `app/__tests__/training-science.test.tsx`
+- Lib tests: `lib/__tests__/calculations.test.ts`
+- Convex tests: `convex/__tests__/userMaxes.test.ts`, and with `convex-test`: `convex/__tests__/authGuards.test.ts`

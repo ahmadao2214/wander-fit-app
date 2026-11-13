@@ -14,7 +14,6 @@
  * - app/(athlete)/workout/execute/[id].tsx
  */
 
-import { describe, it, expect } from "vitest";
 import { parseReps } from "../workout";
 
 // ═══════════════════════════════════════════════════════════════════════════════

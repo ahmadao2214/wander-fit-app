@@ -2,8 +2,7 @@
   "extends": "./tsconfig.base",
   "compilerOptions": {
     "strict": true,
-    // Jest globals (describe/it/expect/jest) for the React Native tests under
-    // app/ and components/. Vitest tests import their API from 'vitest' explicitly.
+    // Jest globals (describe/it/expect/jest) for every test file.
     "types": ["node", "jest"]
   },
   "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"],

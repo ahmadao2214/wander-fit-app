@@ -1,4 +1,3 @@
-import { describe, it, expect } from "vitest";
 import { CORE_LIFT_SLUGS } from "../userMaxes";
 
 // ═══════════════════════════════════════════════════════════════════════════════

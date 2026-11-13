@@ -10,12 +10,8 @@ expo-env.d.ts
 # but map can be ignored and just published on npm
 **/types/**/*.d.ts.map
 
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/sdks
-!.yarn/versions
+# Bun is the only package manager; keep stray yarn files out.
+.yarn/
 
 .turbo
 

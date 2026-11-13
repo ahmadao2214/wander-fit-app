@@ -11,7 +11,7 @@
  * without needing a Convex backend.
  */
 
-import { describe, it, expect } from "vitest";
+export {};
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // HELPERS (replicate logic from userPrograms.ts for unit testing)

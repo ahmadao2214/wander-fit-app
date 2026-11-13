@@ -1,7 +1,6 @@
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
-import { describe, expect, it } from "vitest"
 import { parse } from "yaml"
 import { artifactName, evidenceDirFor, listWebFlows, personaMode, root } from "./flows.mjs"
 import { renderSummary } from "./summary.mjs"
@@ -56,10 +55,10 @@ describe("web flows", () => {
     ]
     for (const file of shared) {
       const text = fs.readFileSync(path.join(root, file), "utf8")
-      expect(text, file).toMatch(/^url: \$\{VERIFY_URL\}\n---\n/)
-      expect(text, file).not.toMatch(/^appId:/m)
-      expect(text, file).not.toContain("launchApp")
-      expect(text, file).not.toMatch(/^env:/m)
+      expect(text).toMatch(/^url: \$\{VERIFY_URL\}\n---\n/)
+      expect(text).not.toMatch(/^appId:/m)
+      expect(text).not.toContain("launchApp")
+      expect(text).not.toMatch(/^env:/m)
     }
     const notes = fs.readFileSync(path.join(root, ".maestro/flow-layout.md"), "utf8")
     expect(notes).toContain("matches a React Native Web `testID` with `id:`")
@@ -209,14 +208,11 @@ describe("web flows", () => {
       "takeScreenshot: 12-today",
       "stopRecording",
     ]
-    const positions = order.map((needle) => {
-      const at = flow.indexOf(needle)
-      expect(at, needle).toBeGreaterThan(-1)
-      return at
-    })
-    for (let i = 1; i < positions.length; i++) {
-      expect(positions[i], `${order[i]} after ${order[i - 1]}`).toBeGreaterThan(positions[i - 1])
-    }
+    // Jest's expect takes no message, so failures name the steps in the diff.
+    expect(order.filter((needle) => !flow.includes(needle))).toEqual([])
+    const positions = order.map((needle) => flow.indexOf(needle))
+    const outOfOrder = order.filter((needle, i) => i > 0 && positions[i] <= positions[i - 1])
+    expect(outOfOrder).toEqual([])
     expect(flow.indexOf("launchApp")).toBeLessThan(positions[0])
   })
 
@@ -231,14 +227,15 @@ describe("web flows", () => {
         path: evidence,
         if: `always() && hashFiles('${evidence}.scrubbed') != ''`,
       }
-      expect(uploads, `add an upload step for .maestro/web/${flow}.yaml`).toContainEqual(expected)
+      // A missing step shows up as this flow's expected entry in the diff.
+      expect(uploads).toContainEqual(expected)
     }
   })
 })
 
 describe("web E2E job", () => {
   it("runs after the unit job and shares the e2e-backend group", () => {
-    expect(job.needs).toBe("vitest")
+    expect(job.needs).toBe("unit")
     expect(job.concurrency).toEqual({ group: "e2e-backend", "cancel-in-progress": false })
   })
 

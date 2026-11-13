@@ -78,7 +78,7 @@ Teardown is for an interrupted run. It stops the server, redacts the password of
 
 ## CI
 
-The `Web E2E (advisory)` job in `.github/workflows/checks.yml` runs on every same-repo PR, on pushes to `main`, and on manual dispatch. It runs after the Vitest job: deploy, `all`, teardown, one artifact per flow (`e2e-web-<flow>`), then `scripts/verify/summary.mjs` writes the pass/fail table to the job summary. Every E2E job shares the `e2e-backend` concurrency group. Fork PRs skip it. It is not a required check.
+The `Web E2E (advisory)` job in `.github/workflows/checks.yml` runs on every same-repo PR, on pushes to `main`, and on manual dispatch. It runs after the unit test job: deploy, `all`, teardown, one artifact per flow (`e2e-web-<flow>`), then `scripts/verify/summary.mjs` writes the pass/fail table to the job summary. Every E2E job shares the `e2e-backend` concurrency group. Fork PRs skip it. It is not a required check.
 
 A new flow under `.maestro/web/` needs its own upload step in that job. `scripts/verify/flows.test.mjs` fails until it has one.
 

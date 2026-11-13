@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import {
   SIGN_OUT_HASH,
   centerInScroller,
