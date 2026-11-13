@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
-import { convert, dropExpectMessages } from "./vitest-to-jest.mjs"
+import { convert, dropExpectMessages, renameVi } from "./vitest-to-jest.mjs"
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 const convexTest = path.join(root, "convex/__tests__/example.test.ts")
@@ -86,6 +86,13 @@ describe("x", () => {
         "expect(`${a}, (`).toBe(1)",
         "",
       ].join("\n"),
+    )
+  })
+
+  it("renames vi only where it is code", () => {
+    const src = 'vi.mock("./x"); expect(src).toContain("vi.mock("); expect(/vi\\.fn/.test(s)).toBe(true) // vi.fn\n'
+    expect(renameVi(src)).toBe(
+      'jest.mock("./x"); expect(src).toContain("vi.mock("); expect(/vi\\.fn/.test(s)).toBe(true) // vi.fn\n',
     )
   })
 

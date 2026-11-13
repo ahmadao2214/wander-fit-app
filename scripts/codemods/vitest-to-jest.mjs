@@ -33,7 +33,6 @@ const VITEST_ENV = /^\/\/\s*@vitest-environment\b.*\r?\n/gm
 const VITE_TYPES = /^\/\/\/\s*<reference types=["']vite\/client["']\s*\/>[ \t]*\r?\n/gm
 const CREATE_REQUIRE = /^const require = createRequire\(import\.meta\.url\);?[ \t]*\r?\n/m
 const CREATE_REQUIRE_IMPORT = /^import \{ createRequire \} from ["'](?:node:)?module["'];?[ \t]*\r?\n/m
-const VI_CALL = /(?<![\w$.])vi\./g
 const CONVEX_GLOB = /import\.meta\.glob\(\s*["']\.\.\/\*\*\/\*\.ts["']\s*\)/g
 const ANY_GLOB = /import\.meta\.glob\(/
 const HELPER = path.join(root, "jest/convexModules")
@@ -47,9 +46,9 @@ export function convert(source, filePath) {
     .replace(VITEST_IMPORT, keepModule ? "export {};\n" : "")
     .replace(VITEST_ENV, "")
     .replace(VITE_TYPES, "")
-    .replace(VI_CALL, "jest.")
     .replace(CREATE_REQUIRE, "")
   if (!/\bcreateRequire\(/.test(out)) out = out.replace(CREATE_REQUIRE_IMPORT, "")
+  out = renameVi(out, filePath)
   out = dropExpectMessages(out, filePath)
 
   if (out.match(CONVEX_GLOB)) {
@@ -69,37 +68,54 @@ export function convert(source, filePath) {
   return out
 }
 
-// Uses the TypeScript parser, so strings, regexes, templates and comments that
-// mention expect( or contain commas are left alone.
-export function dropExpectMessages(src, filePath = "file.ts") {
+// Parses src with TypeScript and applies the [from, to, text] edits that
+// collect(node, file) returns, so strings, regexes, templates and comments are
+// never mistaken for code. Edits inside a larger edit are skipped.
+function editCode(src, filePath, collect) {
   const kind = /\.tsx$/.test(filePath)
     ? ts.ScriptKind.TSX
     : /\.ts$/.test(filePath)
       ? ts.ScriptKind.TS
       : ts.ScriptKind.JS
   const file = ts.createSourceFile(filePath, src, ts.ScriptTarget.Latest, false, kind)
-  const cuts = []
+  const edits = []
   const visit = (node) => {
-    if (
-      ts.isCallExpression(node) &&
-      ts.isIdentifier(node.expression) &&
-      node.expression.text === "expect" &&
-      node.arguments.length > 1
-    ) {
-      cuts.push([node.arguments[0].end, node.arguments.at(-1).end])
-    }
+    const edit = collect(node, file)
+    if (edit) edits.push(edit)
     ts.forEachChild(node, visit)
   }
   visit(file)
-  // Cut from the end so earlier offsets stay valid; skip cuts inside a larger one.
   let out = src
   let floor = Infinity
-  for (const [from, to] of cuts.sort((x, y) => y[0] - x[0])) {
+  for (const [from, to, text] of edits.sort((x, y) => y[0] - x[0])) {
     if (to > floor) continue
-    out = out.slice(0, from) + out.slice(to)
+    out = out.slice(0, from) + text + out.slice(to)
     floor = from
   }
   return out
+}
+
+// vi.fn() -> jest.fn(), for real member access on `vi` only.
+export function renameVi(src, filePath = "file.ts") {
+  return editCode(src, filePath, (node, file) =>
+    ts.isPropertyAccessExpression(node) &&
+    ts.isIdentifier(node.expression) &&
+    node.expression.text === "vi"
+      ? [node.expression.getStart(file), node.expression.end, "jest"]
+      : null,
+  )
+}
+
+// expect(value, "message") -> expect(value)
+export function dropExpectMessages(src, filePath = "file.ts") {
+  return editCode(src, filePath, (node) =>
+    ts.isCallExpression(node) &&
+    ts.isIdentifier(node.expression) &&
+    node.expression.text === "expect" &&
+    node.arguments.length > 1
+      ? [node.arguments[0].end, node.arguments.at(-1).end, ""]
+      : null,
+  )
 }
 
 function walk(dir, files = []) {
