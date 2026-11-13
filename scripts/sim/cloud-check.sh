@@ -54,6 +54,8 @@ fi
 AD="$AD_DIR/node_modules/.bin/agent-device"
 
 cleanup() {
+  # Interrupted before start returned its JSON: the session id is still in eas-cli's session file.
+  [[ -n "$SID" ]] || SID="$(sed -n 's/^EAS_SIMULATOR_SESSION_ID=//p' .env.eas-simulator 2>/dev/null | tr -d "\"'")"
   [[ -n "$SID" ]] || return
   "${EAS[@]}" simulator:exec "$AD" clipboard write cleared --platform ios >/dev/null 2>&1
   "${EAS[@]}" simulator:stop --id "$SID" --non-interactive 2>&1 | grep -v DEP0040 | tail -1
@@ -65,7 +67,9 @@ cleanup() {
   OWNER_SLUG="$(node -p 'const e=require("./app.json").expo; e.owner+"/projects/"+e.slug')"
   echo "Recording (Expo sign-in required): https://expo.dev/accounts/$OWNER_SLUG/simulator-sessions/$SID"
 }
-trap cleanup EXIT INT TERM
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 printf '# managed by eas-cli\n' > .env.eas-simulator
 ts "starting session (capped at $MAX_MINUTES minutes)"
