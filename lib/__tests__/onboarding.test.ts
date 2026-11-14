@@ -35,7 +35,7 @@ describe("Onboarding Constants", () => {
     });
 
     it("has all screens in correct order", () => {
-      // Screen IDs must match actual route file names in app/(onboarding)/
+      // Positions are stored as onboardingProgress, so the order must not change
       expect(ONBOARDING_SCREENS).toEqual([
         "welcome",
         "why-it-works",

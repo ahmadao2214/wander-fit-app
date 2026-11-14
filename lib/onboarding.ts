@@ -13,7 +13,9 @@ import type { OnboardingScreenId, OnboardingSectionId } from "../types";
 
 /**
  * Ordered list of onboarding screens
- * These IDs must match the actual route file names in app/(onboarding)/
+ * A screen's position is stored as users.onboardingProgress and sent with
+ * analytics events, so keep the order even though only why-it-works and
+ * commitment still have routes in app/(onboarding)/.
  */
 export const ONBOARDING_SCREENS: OnboardingScreenId[] = [
   "welcome",
