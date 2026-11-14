@@ -735,6 +735,13 @@ export function previewDeployArgs(name) {
   ]
 }
 
+// seed:seedAll adds categories, sports and exercises. The program templates
+// are a second, idempotent seed; the with-history persona completes one.
+export function templateSeedArgs(previewName) {
+  const target = previewName ? ["--preview-name", previewName] : []
+  return ["run", ...target, "seed:seedAllSkillLevelTemplates", "{}"]
+}
+
 // Pull request runs: push this checkout's convex/ functions to the PR's
 // own preview deployment in wander-fit-e2e and seed it. The preview key can
 // reach only that project's previews, never the app deployments.
@@ -767,6 +774,8 @@ function deployPreview(key) {
   if (pushed.status !== 0) fail(`convex deploy exited ${pushed.status ?? 1}`)
   const url = fs.existsSync(previewUrlFile) ? fs.readFileSync(previewUrlFile, "utf8").trim() : ""
   if (!url) fail("convex deploy did not report the preview deployment URL.")
+  const templates = convexCli(templateSeedArgs(name), env)
+  if (templates.status !== 0) fail(`seed:seedAllSkillLevelTemplates exited ${templates.status ?? 1}`)
   let host = ""
   try {
     host = assertConvexUrlAllowed(url)
@@ -793,6 +802,8 @@ function deployBackend() {
   console.log(`seeding ${host}`)
   const seeded = convexCli(["run", "seed:seedAll", "{}"], env)
   if (seeded.status !== 0) fail(`seed:seedAll exited ${seeded.status ?? 1}`)
+  const templates = convexCli(templateSeedArgs(), env)
+  if (templates.status !== 0) fail(`seed:seedAllSkillLevelTemplates exited ${templates.status ?? 1}`)
   publishConvexUrl(e2eUrl())
 }
 

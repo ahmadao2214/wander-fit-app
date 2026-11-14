@@ -125,6 +125,12 @@ describe("e2e persona provisioning", () => {
     const history = await asPersona.query(api.gppWorkoutSessions.getHistory, {});
     expect(history.map((s) => [s.status, s.templateSnapshot?.name])).toEqual([["completed", "Lower Body Foundation"]]);
 
+    // Installed builds still call the old endpoint and read the old field names
+    const legacy = await asPersona.query(api.workoutSessions.getHistory, {});
+    expect(legacy.map((s) => [s.totalDuration, s.workout.name, s.templateSnapshot?.name])).toEqual([
+      [45 * 60, "Lower Body Foundation", "Lower Body Foundation"],
+    ]);
+
     await t.mutation(internal.e2e.remove, { email });
     const left = await t.run((ctx) => ctx.db.query("gpp_workout_sessions").collect());
     expect(left).toEqual([]);

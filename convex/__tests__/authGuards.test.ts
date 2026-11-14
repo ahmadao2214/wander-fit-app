@@ -307,12 +307,15 @@ describe("workoutSessions.getHistory (compatibility path for installed builds)",
     return ctx;
   }
 
-  it("serves the caller's GPP sessions, the same as gppWorkoutSessions.getHistory", async () => {
+  it("serves the caller's GPP sessions, plus the field names installed builds read", async () => {
     const { asClient } = await setupCompletedSession();
     const legacy = await asClient.query(api.workoutSessions.getHistory, {});
     const current = await asClient.query(api.gppWorkoutSessions.getHistory, {});
-    expect(legacy.map((s) => s.templateName)).toEqual(["Lower Body Foundation"]);
-    expect(legacy).toEqual(current);
+    // This session has no templateSnapshot, so installed builds show workout.name
+    expect(legacy.map((s) => s.workout.name)).toEqual(["Lower Body Foundation"]);
+    expect(legacy).toEqual(
+      current.map((s) => ({ ...s, totalDuration: s.totalDurationSeconds, workout: { name: s.templateName } }))
+    );
   });
 
   it("returns nothing for other users", async () => {
