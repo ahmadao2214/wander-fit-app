@@ -1,5 +1,6 @@
 import React from 'react'
-import { render } from '@testing-library/react-native'
+import { act, render } from '@testing-library/react-native'
+import { AppState } from 'react-native'
 import { TamaguiProvider } from 'tamagui'
 import config from '../../tamagui.config'
 
@@ -72,5 +73,37 @@ describe('Today card', () => {
     expect(getByTestId('today-workout-meta')).toBeTruthy()
     expect(getByText('GPP W2 D1')).toBeTruthy()
     expect(queryByText(/W4/)).toBeNull()
+  })
+
+  describe('date heading', () => {
+    afterEach(() => {
+      jest.useRealTimers()
+      jest.restoreAllMocks()
+    })
+
+    it('rolls over to the new day at midnight', () => {
+      jest.useFakeTimers({ now: new Date(2026, 10, 14, 23, 59, 50) })
+      const { getByText } = render(<AthleteDashboard />, { wrapper: AllTheProviders })
+      expect(getByText('Saturday, Nov 14')).toBeTruthy()
+      act(() => {
+        jest.advanceTimersByTime(12_000)
+      })
+      expect(getByText('Sunday, Nov 15')).toBeTruthy()
+    })
+
+    it('re-reads the date when the app comes back to the foreground', () => {
+      let onChange: (state: string) => void = () => {}
+      jest.spyOn(AppState, 'addEventListener').mockImplementation(((_type: string, handler: (state: string) => void) => {
+        onChange = handler
+        return { remove: jest.fn() }
+      }) as any)
+      jest.useFakeTimers({ now: new Date(2026, 10, 14, 9, 0, 0) })
+      const { getByText } = render(<AthleteDashboard />, { wrapper: AllTheProviders })
+      expect(getByText('Saturday, Nov 14')).toBeTruthy()
+      // Backgrounded overnight: the clock jumps without timers firing
+      jest.setSystemTime(new Date(2026, 10, 16, 8, 0, 0))
+      act(() => onChange('active'))
+      expect(getByText('Monday, Nov 16')).toBeTruthy()
+    })
   })
 })
