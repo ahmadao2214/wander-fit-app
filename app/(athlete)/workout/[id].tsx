@@ -38,6 +38,11 @@ import { PerformanceReviewItem } from '../../../components/workout/PerformanceRe
 import { WarmupSection, type WarmupExercise } from '../../../components/workout/WarmupSection'
 import { WARMUP_PHASES } from '../../../convex/warmupSequences'
 import { workoutMetaLine } from '../../../lib/workoutMeta'
+import {
+  mainOrderToTemplateOrder,
+  normalizeExerciseOrder,
+  templateOrderToMainOrder,
+} from '../../../lib/executionOrder'
 
 /**
  * Exercise type for the draggable list (with intensity scaling)
@@ -199,22 +204,15 @@ export default function WorkoutDetailScreen() {
   // Check if reordering is allowed (need at least 2 main exercises)
   const canReorder = isPhaseUnlocked && !isCompleted && mainExercises.length > 1
 
-  // Remap template-level exerciseOrder indices to mainExercises-relative indices.
-  // The execution screen saves exerciseOrder with template indices (e.g., [15, 16, 17, 18, 19])
-  // but useDragReorder expects indices relative to mainExercises (e.g., [0, 1, 2, 3, 4]).
+  // exerciseOrder is stored as template indices; the drag list works in
+  // positions among the main exercises. Convert between the two in one place.
   const remappedSavedOrder = useMemo(() => {
     if (!session?.exerciseOrder) return undefined
     const allExercises = (template?.exercises ?? []) as (ExerciseItem & { section?: string })[]
-    const mainIndexMap = new Map<number, number>()
-    let mainIdx = 0
-    for (let i = 0; i < allExercises.length; i++) {
-      if (allExercises[i].section !== 'warmup' && allExercises[i].notes !== 'Warmup') {
-        mainIndexMap.set(i, mainIdx++)
-      }
-    }
-    return (session.exerciseOrder as number[])
-      .map(idx => mainIndexMap.get(idx))
-      .filter((idx): idx is number => idx !== undefined)
+    return templateOrderToMainOrder(
+      normalizeExerciseOrder(session.exerciseOrder as number[], allExercises as any),
+      allExercises as any
+    )
   }, [session?.exerciseOrder, template?.exercises])
 
   // Use shared drag reorder hook (only main exercises)
@@ -259,7 +257,12 @@ export default function WorkoutDetailScreen() {
       // Pass custom exercise order (intensity is now auto-calculated from user profile)
       const result = await startSession({
         templateId: template._id,
-        exerciseOrder: hasCustomOrder ? orderIndices : undefined,
+        // orderIndices are positions among the main exercises; the session
+        // stores template indices (sending positions shifted every exercise
+        // by the warmup count and dropped the last one)
+        exerciseOrder: hasCustomOrder
+          ? mainOrderToTemplateOrder(orderIndices, template.exercises as any)
+          : undefined,
       })
 
       // Navigate to execution screen with the session ID
