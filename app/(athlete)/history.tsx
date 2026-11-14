@@ -225,7 +225,7 @@ function GhostRow({ opacity }: { opacity: number }) {
 function HistoryEmptyState() {
   const router = useRouter()
   return (
-    <YStack testID="history-empty" flex={1} items="center" justify="center" gap="$5" pb="$8">
+    <YStack flex={1} items="center" justify="center" gap="$5" pb="$8">
       <YStack
         width="100%"
         maxW={320}

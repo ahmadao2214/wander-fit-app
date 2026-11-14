@@ -16,6 +16,10 @@ jest.mock('../../convex/_generated/api', () => ({
   },
 }))
 
+jest.mock('expo-router', () => ({
+  useRouter: () => ({ navigate: jest.fn(), push: jest.fn(), back: jest.fn() }),
+}))
+
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 44, bottom: 34, left: 0, right: 0 }),
 }))
@@ -67,8 +71,8 @@ describe('History tab', () => {
 
   it('leaves a session still in progress out of the log', () => {
     mockUseQuery.mockReturnValue([session({ status: 'in_progress' })])
-    const { queryByText, getByTestId } = render(<HistoryPage />, { wrapper: AllTheProviders })
+    const { queryByText, getByText } = render(<HistoryPage />, { wrapper: AllTheProviders })
     expect(queryByText('Lower Body Foundation')).toBeNull()
-    expect(getByTestId('history-empty')).toBeTruthy()
+    expect(getByText(/no workouts yet/i)).toBeTruthy()
   })
 })
