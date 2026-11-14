@@ -611,6 +611,7 @@ export default function WorkoutDetailScreen() {
                 bg={phaseColor}
                 color="white"
                 onPress={startWorkout}
+                testID="workout-start"
                 icon={isStarting ? undefined : Play}
                 fontWeight="600"
                 disabled={isStarting}

@@ -1,0 +1,75 @@
+# Regression: finishing an exercise's last set must not move on by itself.
+# PR #106 removed a 1.5 s auto-advance; the athlete taps Next.
+# Starts on Today with an unlocked, uncompleted workout (see
+# .cursor/skills/verify-wander-fit/features/workout-no-auto-advance.md).
+appId: com.offseason.asrafit
+---
+- assertVisible:
+    id: today-heading
+- tapOn: "Start Workout"
+- tapOn:
+    id: workout-start
+- runFlow:
+    when:
+      visible:
+        id: warmup-skip
+    commands:
+      - tapOn:
+          id: warmup-skip
+- assertVisible:
+    id: execute-exercise-name
+- copyTextFrom:
+    id: execute-exercise-name
+# Complete every set shown for this exercise (one to six).
+- tapOn:
+    id: set-0
+- runFlow:
+    when:
+      visible:
+        id: set-1
+    commands:
+      - tapOn:
+          id: set-1
+- runFlow:
+    when:
+      visible:
+        id: set-2
+    commands:
+      - tapOn:
+          id: set-2
+- runFlow:
+    when:
+      visible:
+        id: set-3
+    commands:
+      - tapOn:
+          id: set-3
+- runFlow:
+    when:
+      visible:
+        id: set-4
+    commands:
+      - tapOn:
+          id: set-4
+- runFlow:
+    when:
+      visible:
+        id: set-5
+    commands:
+      - tapOn:
+          id: set-5
+# Wait 3 s, well past the old 1.5 s delay. The text never appears, so this is a timed wait.
+- extendedWaitUntil:
+    visible: "never-shown-wait-marker"
+    timeout: 3000
+    optional: true
+- assertVisible:
+    id: execute-exercise-name
+    text: ${maestro.copiedText}
+- takeScreenshot: native-no-auto-advance-held
+- tapOn:
+    id: execute-next
+- assertNotVisible:
+    id: execute-exercise-name
+    text: ${maestro.copiedText}
+- takeScreenshot: native-no-auto-advance-next

@@ -181,8 +181,6 @@ export default function WorkoutExecutionScreen() {
   const [showWarmup, setShowWarmup] = useState(true)
   const warmupInitRef = useRef(false)
 
-  // Auto-advance state (1.5s delay when all sets complete)
-
   // Reassessment prompt state
   const [showReassessmentPrompt, setShowReassessmentPrompt] = useState(false)
   const [reassessmentPhase, setReassessmentPhase] = useState<string | null>(null)
@@ -851,7 +849,7 @@ export default function WorkoutExecutionScreen() {
 
               {/* Exercise Name and Prescription */}
               <YStack items="center" gap="$3">
-                <DisplayHeading>
+                <DisplayHeading testID="execute-exercise-name">
                   {exerciseDetails?.name?.toUpperCase() || 'EXERCISE'}
                 </DisplayHeading>
 
@@ -947,6 +945,7 @@ export default function WorkoutExecutionScreen() {
             rounded="$4"
             pressStyle={{ opacity: 0.9, scale: 0.98 }}
             onPress={goToNextExercise}
+            testID="execute-next"
           >
             {isLastExercise ? 'Finish' : 'Next'}
           </Button>

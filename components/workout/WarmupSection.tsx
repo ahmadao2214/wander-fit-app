@@ -269,6 +269,7 @@ function WarmupFlow({ exercises, totalDuration, onComplete, onBack, phaseColor }
               fontWeight="600"
               rounded="$3"
               onPress={onComplete}
+              testID="warmup-skip"
               pressStyle={{ opacity: 0.7 }}
             >
               Skip

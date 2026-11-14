@@ -164,6 +164,7 @@ export function SetTracker({
             return (
               <TouchableOpacity
                 key={index}
+                testID={`set-${index}`}
                 onPress={() => handlePress(index)}
                 onLongPress={() => handleLongPress(index)}
                 delayLongPress={400}

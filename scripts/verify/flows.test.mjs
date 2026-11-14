@@ -364,3 +364,41 @@ describe("activation dates script", () => {
     expect(output).toEqual({ today: 6, day2: 1, day4: 3, seasonDay: "season-day-2025-05-24" })
   })
 })
+
+describe("native no-auto-advance flow", () => {
+  const flowPath = path.join(root, ".maestro/native/workout-no-auto-advance.yaml")
+  const flowText = fs.readFileSync(flowPath, "utf8")
+
+  it("parses with an appId header and does not launch", () => {
+    const [header] = flowText.split(/^---$/m)
+    expect(parse(header).appId).toBe("com.offseason.asrafit")
+    expect(flowText).not.toContain("launchApp")
+  })
+
+  it("only uses testIDs that exist in the screens it drives", () => {
+    const sources = [
+      "app/(athlete)/index.tsx",
+      "app/(athlete)/workout/[id].tsx",
+      "app/(athlete)/workout/execute/[id].tsx",
+      "components/workout/SetTracker.tsx",
+      "components/workout/WarmupSection.tsx",
+    ].map((file) => fs.readFileSync(path.join(root, file), "utf8")).join("\n")
+    const ids = [...new Set([...flowText.matchAll(/id: (\S+)/g)].map((m) => m[1]))]
+    const missing = ids.filter((id) => {
+      if (/^set-\d$/.test(id)) return !sources.includes("testID={`set-${index}`}")
+      return !sources.includes(`testID="${id}"`)
+    })
+    expect(missing).toEqual([])
+  })
+
+  it("waits past the old 1.5 s delay before checking the exercise stayed", () => {
+    const steps = parse(flowText.split(/^---$/m)[1])
+    const wait = steps.find((s) => s.extendedWaitUntil)?.extendedWaitUntil
+    expect(wait.timeout).toBeGreaterThan(1500)
+    expect(wait.optional).toBe(true)
+    const waitIndex = steps.findIndex((s) => s.extendedWaitUntil)
+    const nextIndex = steps.findIndex((s) => s.tapOn?.id === "execute-next")
+    expect(steps[waitIndex + 1].assertVisible.text).toBe("${maestro.copiedText}")
+    expect(nextIndex).toBeGreaterThan(waitIndex)
+  })
+})
