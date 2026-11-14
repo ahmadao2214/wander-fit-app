@@ -42,7 +42,7 @@ describe('SetTracker', () => {
     expect(queryByText(/NEXT/)).toBeNull()
   })
 
-  it('sizes the tiles to fill the measured row, three across', () => {
+  it('sizes each tile to a third of the measured row', () => {
     const { UNSAFE_getAllByProps, getByText } = render(
       <SetTracker sets={sets(['todo', 'todo', 'todo'])} prescribedReps="30s each side" prescribedSets={3} onSetUpdate={jest.fn()} />,
       { wrapper: AllTheProviders }
@@ -51,6 +51,18 @@ describe('SetTracker', () => {
     fireEvent(row, 'layout', { nativeEvent: { layout: { width: 340, height: 100, x: 0, y: 0 } } })
     const tile = getByText('SET 1 · NEXT')
     let node: any = tile
+    while (node && node.props?.accessibilityRole !== 'button') node = node.parent
+    expect(StyleSheet.flatten(node.props.style).width).toBe(108)
+  })
+
+  it('keeps a single set to a third of the row rather than full width', () => {
+    const { UNSAFE_getAllByProps, getByText } = render(
+      <SetTracker sets={sets(['todo'])} prescribedReps="30s each side" prescribedSets={1} onSetUpdate={jest.fn()} />,
+      { wrapper: AllTheProviders }
+    )
+    const row = UNSAFE_getAllByProps({ flexWrap: 'wrap' })[0]
+    fireEvent(row, 'layout', { nativeEvent: { layout: { width: 340, height: 100, x: 0, y: 0 } } })
+    let node: any = getByText('SET 1 · NEXT')
     while (node && node.props?.accessibilityRole !== 'button') node = node.parent
     expect(StyleSheet.flatten(node.props.style).width).toBe(108)
   })

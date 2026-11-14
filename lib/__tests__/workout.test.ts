@@ -329,16 +329,11 @@ describe("nextSetIndex", () => {
 });
 
 describe("setTileLayout", () => {
-  it("makes a single set one full-width tile", () => {
-    expect(setTileLayout(1, 340, 8)).toEqual({ columns: 1, tileWidth: 340 });
-  });
-
-  it("puts up to three tiles in a row and wraps the rest", () => {
-    expect(setTileLayout(3, 340, 8)).toEqual({ columns: 3, tileWidth: 108 });
-    expect(setTileLayout(6, 340, 8).columns).toBe(3);
+  it("makes every tile a third of the row, so a single set isn't full width", () => {
+    expect(setTileLayout(340, 8)).toEqual({ tileWidth: 108 });
   });
 
   it("waits for the row to be measured", () => {
-    expect(setTileLayout(4, 0, 8)).toEqual({ columns: 3, tileWidth: undefined });
+    expect(setTileLayout(0, 8)).toEqual({ tileWidth: undefined });
   });
 });

@@ -76,7 +76,7 @@ export function SetTracker({
   const [editingSetIndex, setEditingSetIndex] = useState<number | null>(null)
   const [rowWidth, setRowWidth] = useState(0)
   const activeIndex = nextSetIndex(sets)
-  const { tileWidth } = setTileLayout(sets.length, rowWidth, TILE_GAP)
+  const { tileWidth } = setTileLayout(rowWidth, TILE_GAP)
 
   // Haptic feedback helper
   const triggerHaptic = () => {
@@ -162,10 +162,11 @@ export function SetTracker({
           )}
         </XStack>
 
-        {/* Tiles fill the row (up to three across) so logging is the main
-            target; the next set to log is the one that stands out. */}
+        {/* Tiles are a third of the row (three across, centered); the next
+            set to log is the one that stands out. */}
         <XStack
           flexWrap="wrap"
+          justify="center"
           gap={TILE_GAP}
           onLayout={(event: LayoutChangeEvent) => setRowWidth(event.nativeEvent.layout.width)}
         >
@@ -185,7 +186,7 @@ export function SetTracker({
                 activeOpacity={0.8}
                 accessibilityRole="button"
                 accessibilityLabel={`Set ${index + 1}, ${displayReps}, ${stateLabel}`}
-                style={{ width: tileWidth, flexGrow: tileWidth === undefined ? 1 : 0 }}
+                style={{ width: tileWidth }}
               >
                 <Card
                   testID={isNext ? 'set-tile-next' : undefined}

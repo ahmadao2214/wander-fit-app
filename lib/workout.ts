@@ -154,17 +154,12 @@ export function nextSetIndex(sets: readonly { completed: boolean; skipped: boole
 }
 
 /**
- * Set tiles fill the row: one column per set up to three, so one set is a
- * full-width target and six sets are two rows of three. Returns the column
- * count and each tile's width for a measured row width (undefined until
- * the row has been measured).
+ * Set tiles are a third of the row each, whatever the set count: three fit
+ * across and the rest wrap. A single set is one tile, not a full-width bar.
+ * Returns each tile's width for a measured row width (undefined until the
+ * row has been measured).
  */
-export function setTileLayout(
-  setCount: number,
-  rowWidth: number,
-  gap: number
-): { columns: number; tileWidth: number | undefined } {
-  const columns = Math.max(1, Math.min(setCount, 3))
-  if (rowWidth <= 0) return { columns, tileWidth: undefined }
-  return { columns, tileWidth: Math.floor((rowWidth - gap * (columns - 1)) / columns) }
+export function setTileLayout(rowWidth: number, gap: number): { tileWidth: number | undefined } {
+  if (rowWidth <= 0) return { tileWidth: undefined }
+  return { tileWidth: Math.floor((rowWidth - gap * 2) / 3) }
 }
