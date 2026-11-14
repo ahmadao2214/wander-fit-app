@@ -6,7 +6,6 @@ import { StatusBar } from 'expo-status-bar'
 import { useFonts } from 'expo-font'
 import { DarkTheme, DefaultTheme, ThemeProvider, SplashScreen, Stack } from 'expo-router'
 import { Provider } from 'components/Provider'
-import { useTheme } from 'tamagui'
 
 // Import Google Fonts
 import {
@@ -72,8 +71,6 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme()
-  const theme = useTheme()
-  
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
@@ -123,42 +120,6 @@ function RootLayoutNav() {
           name="index"
           options={{
             headerShown: false,
-          }}
-        />
-
-        {/* ═══════════════════════════════════════════════════════════════════
-            LEGACY ROUTES (kept for backward compatibility during migration)
-            These will be removed once migration is complete
-            ═══════════════════════════════════════════════════════════════════ */}
-        
-        {/* @deprecated - Use (athlete) instead */}
-        <Stack.Screen
-          name="(client)"
-          options={{
-            headerShown: false,
-          }}
-        />
-        
-        {/* @deprecated - Trainer functionality removed in GPP model */}
-        <Stack.Screen
-          name="(trainer)"
-          options={{
-            headerShown: false,
-          }}
-        />
-
-        {/* @deprecated - Trainer functionality removed */}
-        <Stack.Screen
-          name="add-client"
-          options={{
-            title: 'Add Client',
-            presentation: 'modal',
-            animation: 'slide_from_bottom',
-            gestureEnabled: true,
-            gestureDirection: 'vertical',
-            contentStyle: {
-              backgroundColor: theme.background.val,
-            },
           }}
         />
       </Stack>

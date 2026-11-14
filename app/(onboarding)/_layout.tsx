@@ -29,17 +29,9 @@ export default function OnboardingLayout() {
           }}
         >
           <Stack.Screen name="index" />
-          {/* Used in combined flow */}
+          {/* The two education screens in the combined intake flow */}
           <Stack.Screen name="why-it-works" />
-          <Stack.Screen name="phases-overview" />
-          <Stack.Screen name="personal-timeline" />
           <Stack.Screen name="commitment" />
-          {/* Legacy screens for revisit mode */}
-          <Stack.Screen name="welcome" />
-          <Stack.Screen name="gpp-detail" />
-          <Stack.Screen name="spp-detail" />
-          <Stack.Screen name="ssp-detail" />
-          <Stack.Screen name="progression" />
         </Stack>
       </OnboardingRoute>
     </FlowErrorBoundary>

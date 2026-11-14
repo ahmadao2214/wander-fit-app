@@ -38,6 +38,7 @@ describe("web flows", () => {
     expect(listWebFlows()).toContain("sign-in")
     expect(listWebFlows()).toContain("sign-up")
     expect(listWebFlows()).toContain("activation")
+    expect(listWebFlows()).toContain("history")
   })
 
   it("keeps launch on the web entry and a parseable header on the shared files", () => {
@@ -333,6 +334,7 @@ describe("persona modes per flow", () => {
   it("signs up through the UI, activates from needs-intake, and signs in onboarded otherwise", () => {
     expect(personaMode("sign-up")).toBe("signup")
     expect(personaMode("activation")).toBe("needs-intake")
+    expect(personaMode("history")).toBe("with-history")
     expect(personaMode("sign-in")).toBe("onboarded")
   })
 })

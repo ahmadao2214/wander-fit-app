@@ -1,4 +1,4 @@
-import { previewDeployArgs } from "./run.mjs"
+import { previewDeployArgs, templateSeedArgs } from "./run.mjs"
 import {
   BLOCKED_CONVEX_HOSTS,
   assertConvexUrlAllowed,
@@ -89,6 +89,11 @@ describe("preview deployments (pull requests)", () => {
     expect(value("--preview-run")).toBe("seed:seedAll")
     expect(value("--cmd")).toBe("node scripts/verify/run.mjs record-url")
     expect(value("--cmd-url-env-var-name")).toBe("EXPO_PUBLIC_CONVEX_URL_E2E")
+  })
+
+  it("seeds the program templates on the same preview after the deploy", () => {
+    expect(templateSeedArgs("t3-feature")).toEqual(["run", "--preview-name", "t3-feature", "seed:seedAllSkillLevelTemplates", "{}"])
+    expect(templateSeedArgs()).toEqual(["run", "seed:seedAllSkillLevelTemplates", "{}"])
   })
 })
 

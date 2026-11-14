@@ -20,13 +20,11 @@ import type * as exercises from "../exercises.js";
 import type * as generateTemplates from "../generateTemplates.js";
 import type * as gppWorkoutSessions from "../gppWorkoutSessions.js";
 import type * as intensityScaling from "../intensityScaling.js";
-import type * as invitations from "../invitations.js";
 import type * as migrations_migrateAgeGroups from "../migrations/migrateAgeGroups.js";
 import type * as migrations_migrateTemplates from "../migrations/migrateTemplates.js";
 import type * as migrations from "../migrations.js";
 import type * as onboarding from "../onboarding.js";
 import type * as programTemplates from "../programTemplates.js";
-import type * as sampleData from "../sampleData.js";
 import type * as scheduleOverrides from "../scheduleOverrides.js";
 import type * as seed from "../seed.js";
 import type * as seedData from "../seedData.js";
@@ -38,7 +36,6 @@ import type * as warmupSequences from "../warmupSequences.js";
 import type * as weekMapping from "../weekMapping.js";
 import type * as workoutCalendar from "../workoutCalendar.js";
 import type * as workoutSessions from "../workoutSessions.js";
-import type * as workouts from "../workouts.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -56,13 +53,11 @@ declare const fullApi: ApiFromModules<{
   generateTemplates: typeof generateTemplates;
   gppWorkoutSessions: typeof gppWorkoutSessions;
   intensityScaling: typeof intensityScaling;
-  invitations: typeof invitations;
   "migrations/migrateAgeGroups": typeof migrations_migrateAgeGroups;
   "migrations/migrateTemplates": typeof migrations_migrateTemplates;
   migrations: typeof migrations;
   onboarding: typeof onboarding;
   programTemplates: typeof programTemplates;
-  sampleData: typeof sampleData;
   scheduleOverrides: typeof scheduleOverrides;
   seed: typeof seed;
   seedData: typeof seedData;
@@ -74,7 +69,6 @@ declare const fullApi: ApiFromModules<{
   weekMapping: typeof weekMapping;
   workoutCalendar: typeof workoutCalendar;
   workoutSessions: typeof workoutSessions;
-  workouts: typeof workouts;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

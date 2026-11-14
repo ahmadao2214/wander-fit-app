@@ -1,4 +1,4 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { getCurrentUser } from "./authHelpers";
 import {
@@ -602,49 +602,48 @@ export const getById = query({
 /**
  * Get session history for the current user
  */
+/** The caller's GPP sessions, newest first, with their template's name and position. */
+export async function loadHistory(ctx: QueryCtx, limit = 20) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) {
+    return [];
+  }
+
+  const user = await ctx.db
+    .query("users")
+    .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
+    .first();
+
+  if (!user) {
+    return [];
+  }
+
+  const sessions = await ctx.db
+    .query("gpp_workout_sessions")
+    .withIndex("by_user", (q) => q.eq("userId", user._id))
+    .order("desc")
+    .take(limit);
+
+  // Enrich with template names
+  return Promise.all(
+    sessions.map(async (session) => {
+      const template = await ctx.db.get(session.templateId);
+      return {
+        ...session,
+        templateName: template?.name || "Unknown Workout",
+        phase: template?.phase,
+        week: template?.week,
+        day: template?.day,
+      };
+    })
+  );
+}
+
 export const getHistory = query({
   args: {
     limit: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return [];
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      return [];
-    }
-
-    const limit = args.limit || 20;
-
-    const sessions = await ctx.db
-      .query("gpp_workout_sessions")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .order("desc")
-      .take(limit);
-
-    // Enrich with template names
-    const enriched = await Promise.all(
-      sessions.map(async (session) => {
-        const template = await ctx.db.get(session.templateId);
-        return {
-          ...session,
-          templateName: template?.name || "Unknown Workout",
-          phase: template?.phase,
-          week: template?.week,
-          day: template?.day,
-        };
-      })
-    );
-
-    return enriched;
-  },
+  handler: async (ctx, args) => loadHistory(ctx, args.limit || 20),
 });
 
 /**

@@ -19,7 +19,7 @@ export default function IndexPage() {
   if (isLoading) {
     return (
       <YStack flex={1} items="center" justify="center" gap="$4" bg="$background">
-        <Spinner size="large" color="$green10" />
+        <Spinner size="large" color="$primary" />
         <Text color="$gray11">Loading...</Text>
         <Text fontSize="$2" color="$gray9">Checking authentication...</Text>
       </YStack>

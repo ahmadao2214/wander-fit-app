@@ -21,8 +21,9 @@ url: ${VERIFY_URL}
     visible:
       id: sign-up-submit
     timeout: 30000
-# Role defaults to Athlete. Each input has its own DOM id, so typed text lands
-# in the field that was tapped.
+# Everyone is an athlete: the old role picker must be gone. Each input has its
+# own DOM id, so typed text lands in the field that was tapped.
+- assertNotVisible: "I am a:"
 - tapOn:
     id: sign-up-name
 - inputText: "Verify Athlete"

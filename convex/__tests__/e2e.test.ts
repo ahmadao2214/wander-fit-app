@@ -102,4 +102,37 @@ describe("e2e persona provisioning", () => {
     expect(await rowsFor(t)).toMatchObject({ users: 0, programs: 0, intakes: 0 });
     expect(await t.mutation(internal.e2e.remove, { email })).toEqual({ deleted: false, email });
   });
+
+  it("with-history adds one completed GPP session that History lists, and remove deletes it", async () => {
+    const t = newTest();
+    await seedBasketball(t);
+    await t.run(async (ctx) => {
+      const exerciseId = await ctx.db.insert("exercises", { name: "Goblet Squat", slug: "goblet_squat", tags: [] });
+      await ctx.db.insert("program_templates", {
+        gppCategoryId: 2,
+        phase: "GPP",
+        skillLevel: "Novice",
+        week: 1,
+        day: 1,
+        name: "Lower Body Foundation",
+        estimatedDurationMinutes: 40,
+        exercises: [{ exerciseId, sets: 3, reps: "10", restSeconds: 60, orderIndex: 0 }],
+      });
+    });
+    await t.mutation(internal.e2e.provision, { ...persona, state: "with-history" });
+
+    const asPersona = t.withIdentity({ subject: persona.clerkId, email });
+    const history = await asPersona.query(api.gppWorkoutSessions.getHistory, {});
+    expect(history.map((s) => [s.status, s.templateSnapshot?.name])).toEqual([["completed", "Lower Body Foundation"]]);
+
+    // Installed builds still call the old endpoint and read the old field names
+    const legacy = await asPersona.query(api.workoutSessions.getHistory, {});
+    expect(legacy.map((s) => [s.totalDuration, s.workout.name, s.templateSnapshot?.name])).toEqual([
+      [45 * 60, "Lower Body Foundation", "Lower Body Foundation"],
+    ]);
+
+    await t.mutation(internal.e2e.remove, { email });
+    const left = await t.run((ctx) => ctx.db.query("gpp_workout_sessions").collect());
+    expect(left).toEqual([]);
+  });
 });
