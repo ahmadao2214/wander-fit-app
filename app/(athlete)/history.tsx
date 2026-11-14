@@ -45,9 +45,11 @@ export default function HistoryPage() {
   const insets = useSafeAreaInsets()
 
   const sessions = useQuery(
-    api.workoutSessions.getHistory,
+    api.gppWorkoutSessions.getHistory,
     user ? {} : "skip"
   )
+  // A session still in progress belongs on Today, not in the log
+  const finishedSessions = sessions?.filter((session) => session.status !== 'in_progress')
 
   if (authLoading) {
     return (
@@ -95,9 +97,9 @@ export default function HistoryPage() {
           </YStack>
 
           {/* Sessions List */}
-          {sessions && sessions.length > 0 ? (
+          {finishedSessions && finishedSessions.length > 0 ? (
             <YStack gap="$3">
-              {sessions.map((session: any) => (
+              {finishedSessions.map((session) => (
                 <Card
                   key={session._id}
                   p="$4"
@@ -131,7 +133,7 @@ export default function HistoryPage() {
                         fontFamily="$body" fontWeight="600"
                         color="$color12"
                       >
-                        {session.templateSnapshot?.name || session.workout?.name || 'Workout'}
+                        {session.templateSnapshot?.name || session.templateName}
                       </Text>
                       <XStack gap="$3" flexWrap="wrap">
                         <XStack items="center" gap="$1">
@@ -140,14 +142,14 @@ export default function HistoryPage() {
                             {formatDate(session.startedAt)}
                           </Text>
                         </XStack>
-                        {session.totalDuration && (
+                        {session.totalDurationSeconds ? (
                           <XStack items="center" gap="$1">
                             <Clock size={13} color="$color10" />
                             <Text fontSize={12} color="$color10" fontFamily="$body">
-                              {formatDuration(session.totalDuration)}
+                              {formatDuration(session.totalDurationSeconds)}
                             </Text>
                           </XStack>
-                        )}
+                        ) : null}
                         {session.templateSnapshot?.phase && (
                           <XStack items="center" gap="$1">
                             <Dumbbell size={13} color="$color10" />

@@ -65,7 +65,7 @@ When a soccer player, basketball player, or golfer signs up, they should receive
 ├─────────────────────────────────────────────────────────────────────────┤
 │  Further customized by:                                                 │
 │  • Training Phase: GPP → SPP → SSP                                      │
-│  • Age Group: 10-13, 14-17, 18+                                         │
+│  • Age Group: 14-17, 18-35, 36+                                         │
 │  • Years of Experience: 0-1, 2-5, 6+                                    │
 │  • Exercise Progressions: Easier → Base → Harder                        │
 └─────────────────────────────────────────────────────────────────────────┘
@@ -95,7 +95,7 @@ The automatic intensity calculation system is **fully implemented and active**:
 
 1. Fetch athlete's sport → Get category (1-4)
 2. Fetch current phase → GPP, SPP, or SSP
-3. Fetch age group → 10-13, 14-17, or 18+
+3. Fetch age group → 14-17, 18-35, or 36+
 4. Fetch years of experience → 0-1, 2-5, or 6+
 
 5. For each exercise:

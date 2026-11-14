@@ -4,7 +4,6 @@ import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import * as debug from "../debug";
 import * as seed from "../seed";
-import * as sampleData from "../sampleData";
 import * as migrations from "../migrations";
 import * as generateTemplates from "../generateTemplates";
 import * as exercises from "../exercises";
@@ -36,7 +35,7 @@ function registeredFunctions(mod: Record<string, unknown>): [string, RegisteredF
 }
 
 describe("internal-only modules", () => {
-  const internalModules = { debug, seed, sampleData, migrations, generateTemplates };
+  const internalModules = { debug, seed, migrations, generateTemplates };
 
   for (const [moduleName, mod] of Object.entries(internalModules)) {
     it(`${moduleName}: every function is internal`, () => {
@@ -60,8 +59,6 @@ describe("reference data writes and unused user lookups are internal", () => {
     ["programTemplates.upsert", programTemplates.upsert as RegisteredFn],
     ["programTemplates.remove", programTemplates.remove as RegisteredFn],
     ["users.getUserById", users.getUserById as RegisteredFn],
-    ["users.getTrainers", users.getTrainers as RegisteredFn],
-    ["users.getClientTrainer", users.getClientTrainer as RegisteredFn],
     ["userPrograms.getByUserId", userPrograms.getByUserId as RegisteredFn],
   ];
 
@@ -105,7 +102,6 @@ async function setup() {
       name: "Client",
       clerkId: "clerk_client",
       role: "client",
-      trainerId: trainer,
       createdAt: now,
     });
     const stranger = await ctx.db.insert("users", {
@@ -115,29 +111,7 @@ async function setup() {
       role: "client",
       createdAt: now,
     });
-    await ctx.db.insert("trainerClientRelationships", {
-      trainerId: trainer,
-      clientId: client,
-      status: "active",
-      createdAt: now,
-      updatedAt: now,
-    });
-    const workout = await ctx.db.insert("workouts", {
-      trainerId: trainer,
-      clientId: client,
-      name: "Legacy Workout",
-      exercises: [],
-      createdAt: now,
-      isActive: true,
-    });
-    const workoutSession = await ctx.db.insert("workoutSessions", {
-      workoutId: workout,
-      clientId: client,
-      startedAt: now,
-      status: "in_progress",
-      exercises: [],
-    });
-    return { trainer, otherTrainer, client, stranger, workout, workoutSession };
+    return { trainer, otherTrainer, client, stranger };
   });
 
   return {
@@ -202,72 +176,7 @@ describe("users.getCurrentUser", () => {
   });
 });
 
-describe("users trainer functions", () => {
-  it("getTrainerClients rejects unauthenticated and other trainers", async () => {
-    const { t, asOtherTrainer, asTrainer, ids } = await setup();
-    await expect(
-      t.query(api.users.getTrainerClients, { trainerId: ids.trainer })
-    ).rejects.toThrow("Not authenticated");
-    await expect(
-      asOtherTrainer.query(api.users.getTrainerClients, { trainerId: ids.trainer })
-    ).rejects.toThrow("You can only view your own clients");
-
-    const clients = await asTrainer.query(api.users.getTrainerClients, { trainerId: ids.trainer });
-    expect(clients.map((c) => c._id)).toEqual([ids.client]);
-  });
-
-  it("getUnassignedClients is trainer-only", async () => {
-    const { t, asClient, asTrainer, ids } = await setup();
-    await expect(t.query(api.users.getUnassignedClients, {})).rejects.toThrow("Not authenticated");
-    await expect(asClient.query(api.users.getUnassignedClients, {})).rejects.toThrow(
-      "Only trainers can do this"
-    );
-    const unassigned = await asTrainer.query(api.users.getUnassignedClients, {});
-    expect(unassigned.map((u) => u._id)).toEqual([ids.stranger]);
-  });
-
-  it("connectExistingClient only connects clients to the caller", async () => {
-    const { t, asOtherTrainer, ids } = await setup();
-    const args = { clientId: ids.stranger, trainerId: ids.trainer };
-    await expect(t.mutation(api.users.connectExistingClient, args)).rejects.toThrow(
-      "Not authenticated"
-    );
-    await expect(asOtherTrainer.mutation(api.users.connectExistingClient, args)).rejects.toThrow(
-      "You can only connect clients to yourself"
-    );
-  });
-
-  it("requestTrainerRelationship is only for the caller", async () => {
-    const { asStranger, ids } = await setup();
-    await expect(
-      asStranger.mutation(api.users.requestTrainerRelationship, {
-        clientId: ids.client,
-        trainerId: ids.otherTrainer,
-      })
-    ).rejects.toThrow("You can only request a trainer for yourself");
-  });
-
-  it("approveTrainerRelationship is only for the requested trainer", async () => {
-    const { asStranger, asOtherTrainer, asTrainer, ids } = await setup();
-    const relationshipId = await asStranger.mutation(api.users.requestTrainerRelationship, {
-      clientId: ids.stranger,
-      trainerId: ids.trainer,
-    });
-
-    await expect(
-      asStranger.mutation(api.users.approveTrainerRelationship, { relationshipId, approve: true })
-    ).rejects.toThrow("Only trainers can do this");
-    await expect(
-      asOtherTrainer.mutation(api.users.approveTrainerRelationship, { relationshipId, approve: true })
-    ).rejects.toThrow("You can only approve requests sent to you");
-
-    const approved = await asTrainer.mutation(api.users.approveTrainerRelationship, {
-      relationshipId,
-      approve: true,
-    });
-    expect(approved?.status).toBe("active");
-  });
-
+describe("users.updateUser", () => {
   it("updateUser only updates the caller's profile", async () => {
     const { t, asStranger, ids } = await setup();
     await expect(
@@ -280,242 +189,8 @@ describe("users trainer functions", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// invitations
+// gppWorkoutSessions
 // ─────────────────────────────────────────────────────────────────────────────
-
-describe("invitations", () => {
-  async function setupWithInvitation() {
-    const ctx = await setup();
-    const invitationId = await ctx.asTrainer.mutation(api.invitations.createClientInvitation, {
-      email: "invitee@example.com",
-      name: "Invitee",
-      trainerId: ctx.ids.trainer,
-    });
-    return { ...ctx, invitationId };
-  }
-
-  it("createClientInvitation rejects unauthenticated and impersonated trainers", async () => {
-    const { t, asOtherTrainer, ids } = await setup();
-    const args = { email: "x@example.com", name: "X", trainerId: ids.trainer };
-    await expect(t.mutation(api.invitations.createClientInvitation, args)).rejects.toThrow(
-      "Not authenticated"
-    );
-    await expect(asOtherTrainer.mutation(api.invitations.createClientInvitation, args)).rejects.toThrow(
-      "You can only send invitations as yourself"
-    );
-  });
-
-  it("getTrainerInvitations only lists the caller's invitations", async () => {
-    const { asOtherTrainer, asTrainer, ids, invitationId } = await setupWithInvitation();
-    await expect(
-      asOtherTrainer.query(api.invitations.getTrainerInvitations, { trainerId: ids.trainer })
-    ).rejects.toThrow("You can only view your own invitations");
-    const invitations = await asTrainer.query(api.invitations.getTrainerInvitations, {
-      trainerId: ids.trainer,
-    });
-    expect(invitations.map((i) => i._id)).toEqual([invitationId]);
-  });
-
-  it("getInvitationByEmail only answers for the caller's own email", async () => {
-    const { t, asStranger, invitationId } = await setupWithInvitation();
-    const args = { email: "invitee@example.com" };
-    expect(await t.query(api.invitations.getInvitationByEmail, args)).toBeNull();
-    expect(await asStranger.query(api.invitations.getInvitationByEmail, args)).toBeNull();
-
-    const asInvitee = t.withIdentity({ subject: "clerk_invitee", email: "invitee@example.com" });
-    const invitation = await asInvitee.query(api.invitations.getInvitationByEmail, args);
-    expect(invitation?._id).toBe(invitationId);
-  });
-
-  it("acceptInvitation rejects other users and ignores a spoofed email", async () => {
-    const { t, asStranger, ids } = await setupWithInvitation();
-    await expect(
-      t.mutation(api.invitations.acceptInvitation, { email: "invitee@example.com", clientId: ids.stranger })
-    ).rejects.toThrow("Not authenticated");
-    await expect(
-      asStranger.mutation(api.invitations.acceptInvitation, {
-        email: "invitee@example.com",
-        clientId: ids.client,
-      })
-    ).rejects.toThrow("You can only accept invitations for yourself");
-
-    // The stranger claims the invitee's email: the lookup uses their own email, so nothing matches
-    const result = await asStranger.mutation(api.invitations.acceptInvitation, {
-      email: "invitee@example.com",
-      clientId: ids.stranger,
-    });
-    expect(result).toBeNull();
-    const stranger = await t.run((ctx) => ctx.db.get(ids.stranger));
-    expect(stranger?.trainerId).toBeUndefined();
-  });
-
-  it("acceptInvitation links the invited user", async () => {
-    const { t, ids } = await setupWithInvitation();
-    const asInvitee = t.withIdentity({ subject: "clerk_invitee", email: "invitee@example.com" });
-    const inviteeId = await asInvitee.mutation(api.users.createUser, {
-      email: "invitee@example.com",
-      name: "Invitee",
-      role: "client",
-      clerkId: "clerk_invitee",
-    });
-    const trainerId = await asInvitee.mutation(api.invitations.acceptInvitation, {
-      email: "invitee@example.com",
-      clientId: inviteeId,
-    });
-    expect(trainerId).toBe(ids.trainer);
-  });
-
-  it("never matches on the editable users.email", async () => {
-    const { t, invitationId } = await setupWithInvitation();
-    // No email claim in the token; the caller sets their profile email to the invitee's
-    const asNoClaim = t.withIdentity({ subject: "clerk_no_claim" });
-    const userId = await asNoClaim.mutation(api.users.createUser, {
-      email: "invitee@example.com",
-      name: "Impostor",
-      role: "client",
-      clerkId: "clerk_no_claim",
-    });
-
-    expect(
-      await asNoClaim.query(api.invitations.getInvitationByEmail, { email: "invitee@example.com" })
-    ).toBeNull();
-    expect(
-      await asNoClaim.mutation(api.invitations.acceptInvitation, {
-        email: "invitee@example.com",
-        clientId: userId,
-      })
-    ).toBeNull();
-    const invitation = await t.run((ctx) => ctx.db.get(invitationId));
-    expect(invitation?.status).toBe("pending");
-  });
-
-  it("ignores an email claim marked unverified", async () => {
-    const { t } = await setupWithInvitation();
-    const asUnverified = t.withIdentity({
-      subject: "clerk_unverified",
-      email: "invitee@example.com",
-      emailVerified: false,
-    });
-    expect(
-      await asUnverified.query(api.invitations.getInvitationByEmail, { email: "invitee@example.com" })
-    ).toBeNull();
-  });
-
-  it("stores new invitations with a normalized email", async () => {
-    const { t, asTrainer, ids } = await setup();
-    const invitationId = await asTrainer.mutation(api.invitations.createClientInvitation, {
-      email: "  Alex@Example.com ",
-      name: "Alex",
-      trainerId: ids.trainer,
-    });
-    const invitation = await t.run((ctx) => ctx.db.get(invitationId));
-    expect(invitation?.email).toBe("alex@example.com");
-
-    await expect(
-      asTrainer.mutation(api.invitations.createClientInvitation, {
-        email: "ALEX@example.com",
-        name: "Alex",
-        trainerId: ids.trainer,
-      })
-    ).rejects.toThrow("An invitation has already been sent to this email");
-  });
-
-  it("matches older mixed-case invitations case-insensitively", async () => {
-    const { t, ids } = await setup();
-    const invitationId = await t.run((ctx) =>
-      ctx.db.insert("clientInvitations", {
-        email: "Alex@Example.com",
-        name: "Alex",
-        trainerId: ids.trainer,
-        status: "pending",
-        createdAt: Date.now(),
-        expiresAt: Date.now() + 60_000,
-      })
-    );
-    const asAlex = t.withIdentity({ subject: "clerk_alex", email: "alex@example.com" });
-
-    const found = await asAlex.query(api.invitations.getInvitationByEmail, {
-      email: "Alex@Example.com",
-    });
-    expect(found?._id).toBe(invitationId);
-
-    const alexId = await asAlex.mutation(api.users.createUser, {
-      email: "Alex@Example.com",
-      name: "Alex",
-      role: "client",
-      clerkId: "clerk_alex",
-    });
-    const trainerId = await asAlex.mutation(api.invitations.acceptInvitation, {
-      email: "Alex@Example.com",
-      clientId: alexId,
-    });
-    expect(trainerId).toBe(ids.trainer);
-  });
-
-  it("cancelInvitation is only for the inviting trainer", async () => {
-    const { t, asOtherTrainer, asTrainer, invitationId } = await setupWithInvitation();
-    await expect(t.mutation(api.invitations.cancelInvitation, { invitationId })).rejects.toThrow(
-      "Not authenticated"
-    );
-    await expect(
-      asOtherTrainer.mutation(api.invitations.cancelInvitation, { invitationId })
-    ).rejects.toThrow("You can only cancel your own invitations");
-    await asTrainer.mutation(api.invitations.cancelInvitation, { invitationId });
-  });
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// workouts / workoutSessions (legacy) and gppWorkoutSessions
-// ─────────────────────────────────────────────────────────────────────────────
-
-describe("workouts reads", () => {
-  it("getWorkoutById is limited to the workout's client and trainer", async () => {
-    const { t, asStranger, asClient, asTrainer, ids } = await setup();
-    await expect(t.query(api.workouts.getWorkoutById, { workoutId: ids.workout })).rejects.toThrow(
-      "Not authenticated"
-    );
-    await expect(
-      asStranger.query(api.workouts.getWorkoutById, { workoutId: ids.workout })
-    ).rejects.toThrow("Not authorized to view this workout");
-    expect((await asClient.query(api.workouts.getWorkoutById, { workoutId: ids.workout }))._id).toBe(
-      ids.workout
-    );
-    expect((await asTrainer.query(api.workouts.getWorkoutById, { workoutId: ids.workout }))._id).toBe(
-      ids.workout
-    );
-  });
-
-  it("getClientWorkouts is limited to the client and their trainer", async () => {
-    const { asStranger, asOtherTrainer, asTrainer, ids } = await setup();
-    await expect(
-      asStranger.query(api.workouts.getClientWorkouts, { clientId: ids.client })
-    ).rejects.toThrow("Not authorized");
-    await expect(
-      asOtherTrainer.query(api.workouts.getClientWorkouts, { clientId: ids.client })
-    ).rejects.toThrow("Not authorized");
-    const workouts = await asTrainer.query(api.workouts.getClientWorkouts, { clientId: ids.client });
-    expect(workouts.map((w) => w._id)).toEqual([ids.workout]);
-  });
-});
-
-describe("workoutSessions.getSessionById", () => {
-  it("is limited to the session's client and their trainer", async () => {
-    const { t, asStranger, asClient, asTrainer, ids } = await setup();
-    const args = { sessionId: ids.workoutSession };
-    await expect(t.query(api.workoutSessions.getSessionById, args)).rejects.toThrow(
-      "Not authenticated"
-    );
-    await expect(asStranger.query(api.workoutSessions.getSessionById, args)).rejects.toThrow(
-      "Not authorized to view this session"
-    );
-    expect((await asClient.query(api.workoutSessions.getSessionById, args))._id).toBe(
-      ids.workoutSession
-    );
-    expect((await asTrainer.query(api.workoutSessions.getSessionById, args))._id).toBe(
-      ids.workoutSession
-    );
-  });
-});
 
 describe("gppWorkoutSessions.getById", () => {
   async function setupGppSession() {
@@ -578,5 +253,70 @@ describe("gppWorkoutSessions.getById", () => {
     const { asClient, sessionId } = await setupGppSession();
     const session = await asClient.query(api.gppWorkoutSessions.getById, { sessionId });
     expect(session?._id).toBe(sessionId);
+  });
+});
+
+describe("workoutSessions.getHistory (compatibility path for installed builds)", () => {
+  async function setupCompletedSession() {
+    const ctx = await setup();
+    await ctx.t.run(async (db) => {
+      const now = Date.now();
+      const sportId = await db.db.insert("sports", { name: "Soccer", gppCategoryId: 1 });
+      const intakeResponseId = await db.db.insert("intake_responses", {
+        userId: ctx.ids.client,
+        sportId,
+        yearsOfExperience: 2,
+        preferredTrainingDaysPerWeek: 3,
+        assignedGppCategoryId: 1,
+        assignedSkillLevel: "Moderate",
+        intakeType: "initial",
+        completedAt: now,
+      });
+      const userProgramId = await db.db.insert("user_programs", {
+        userId: ctx.ids.client,
+        intakeResponseId,
+        gppCategoryId: 1,
+        skillLevel: "Moderate",
+        currentPhase: "GPP",
+        currentWeek: 1,
+        currentDay: 2,
+        phaseStartDate: now,
+        createdAt: now,
+        updatedAt: now,
+      });
+      const templateId = await db.db.insert("program_templates", {
+        gppCategoryId: 1,
+        phase: "GPP",
+        skillLevel: "Moderate",
+        week: 1,
+        day: 1,
+        name: "Lower Body Foundation",
+        estimatedDurationMinutes: 45,
+        exercises: [],
+      });
+      await db.db.insert("gpp_workout_sessions", {
+        userId: ctx.ids.client,
+        templateId,
+        userProgramId,
+        startedAt: now,
+        completedAt: now,
+        status: "completed",
+        exercises: [],
+      });
+    });
+    return ctx;
+  }
+
+  it("serves the caller's GPP sessions, the same as gppWorkoutSessions.getHistory", async () => {
+    const { asClient } = await setupCompletedSession();
+    const legacy = await asClient.query(api.workoutSessions.getHistory, {});
+    const current = await asClient.query(api.gppWorkoutSessions.getHistory, {});
+    expect(legacy.map((s) => s.templateName)).toEqual(["Lower Body Foundation"]);
+    expect(legacy).toEqual(current);
+  });
+
+  it("returns nothing for other users", async () => {
+    const { asStranger } = await setupCompletedSession();
+    expect(await asStranger.query(api.workoutSessions.getHistory, {})).toEqual([]);
   });
 });
