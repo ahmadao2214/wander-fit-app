@@ -102,8 +102,9 @@ describe('Workout execution after reordering', () => {
     })
 
     expect(getByText("ROMANIAN DEADLIFT")).toBeTruthy()
+    expect(getByText('3 sets')).toBeTruthy()
     expect(getByText('0/3')).toBeTruthy()
-    expect(getAllByText(/^SET \d$/)).toHaveLength(3)
+    expect(getAllByText(/^SET \d( · NEXT)?$/)).toHaveLength(3)
     expect(queryAllByText('SET 6')).toHaveLength(0)
   })
 
@@ -122,7 +123,7 @@ describe('Workout execution after reordering', () => {
     })
 
     expect(getByText('ROMANIAN DEADLIFT')).toBeTruthy()
-    expect(getAllByText(/^SET \d$/)).toHaveLength(3)
+    expect(getAllByText(/^SET \d( · NEXT)?$/)).toHaveLength(3)
   })
 
   it('logs a set against the exercise on screen and saves it in template order', async () => {
@@ -139,7 +140,7 @@ describe('Workout execution after reordering', () => {
       exerciseOrder: [2, 1],
     })
 
-    fireEvent.press(getAllByText('SET 1')[0])
+    fireEvent.press(getAllByText('SET 1 · NEXT')[0])
     await act(async () => {
       jest.advanceTimersByTime(2500)
     })
@@ -168,11 +169,11 @@ describe('Workout execution after reordering', () => {
 
     // Goblet Squat first, Romanian Deadlift appended rather than dropped
     expect(getAllByText(/GOBLET SQUAT/).length).toBeGreaterThan(0)
-    expect(getAllByText(/^SET \d$/)).toHaveLength(6)
+    expect(getAllByText(/^SET \d( · NEXT)?$/)).toHaveLength(6)
     await act(async () => {
       fireEvent.press(getAllByText('Next')[0])
     })
     expect(getAllByText(/ROMANIAN DEADLIFT/).length).toBeGreaterThan(0)
-    expect(getAllByText(/^SET \d$/)).toHaveLength(3)
+    expect(getAllByText(/^SET \d( · NEXT)?$/)).toHaveLength(3)
   })
 })

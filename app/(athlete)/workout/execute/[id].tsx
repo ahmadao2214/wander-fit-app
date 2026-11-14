@@ -716,6 +716,7 @@ export default function WorkoutExecutionScreen() {
 
   const currentExercise = orderedExercises[currentExerciseIndex]
   const currentCompletion = completionAt(currentExerciseIndex)
+  const currentSetCount = currentExercise ? (currentExercise.scaledSets ?? currentExercise.sets) : 0
 
   // Get previous performance for current exercise (if available)
   const previousSetsForCurrentExercise = useMemo(() => {
@@ -862,7 +863,7 @@ export default function WorkoutExecutionScreen() {
                     fontWeight="700"
                     color="$color12"
                   >
-                    {currentExercise.scaledSets ?? currentExercise.sets} sets
+                    {currentSetCount} {currentSetCount === 1 ? 'set' : 'sets'}
                   </Text>
                   <Text fontSize={16} color="$color9" fontFamily="$body">
                     ×

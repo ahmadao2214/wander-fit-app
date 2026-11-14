@@ -1,4 +1,4 @@
-import { parseReps, normalizeTrackedSets, isCardioExercise, CARDIO_TAGS, mapIntensityToLevel, visibleEquipment } from "../workout";
+import { parseReps, normalizeTrackedSets, isCardioExercise, CARDIO_TAGS, mapIntensityToLevel, visibleEquipment, nextSetIndex, setTileLayout } from "../workout";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PARSE REPS TESTS
@@ -313,5 +313,32 @@ describe("visibleEquipment", () => {
 
   it("handles missing equipment", () => {
     expect(visibleEquipment(undefined)).toEqual([]);
+  });
+});
+
+describe("nextSetIndex", () => {
+  const set = (completed: boolean, skipped = false) => ({ completed, skipped });
+
+  it("is the first set neither completed nor skipped", () => {
+    expect(nextSetIndex([set(true), set(false, true), set(false), set(false)])).toBe(2);
+  });
+
+  it("is -1 when every set is done", () => {
+    expect(nextSetIndex([set(true), set(false, true)])).toBe(-1);
+  });
+});
+
+describe("setTileLayout", () => {
+  it("makes a single set one full-width tile", () => {
+    expect(setTileLayout(1, 340, 8)).toEqual({ columns: 1, tileWidth: 340 });
+  });
+
+  it("puts up to three tiles in a row and wraps the rest", () => {
+    expect(setTileLayout(3, 340, 8)).toEqual({ columns: 3, tileWidth: 108 });
+    expect(setTileLayout(6, 340, 8).columns).toBe(3);
+  });
+
+  it("waits for the row to be measured", () => {
+    expect(setTileLayout(4, 0, 8)).toEqual({ columns: 3, tileWidth: undefined });
   });
 });

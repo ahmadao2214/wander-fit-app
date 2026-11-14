@@ -1,13 +1,16 @@
 import { useState, useMemo } from 'react'
 import { YStack, XStack, Text, Card, styled } from 'tamagui'
 import { Check, SkipForward } from '@tamagui/lucide-icons'
-import { TouchableOpacity, Platform, Vibration } from 'react-native'
+import { TouchableOpacity, Platform, Vibration, type LayoutChangeEvent } from 'react-native'
 import { SetEditSheet } from './SetEditSheet'
 import { parseReps } from '../../lib'
+import { nextSetIndex, setTileLayout } from '../../lib/workout'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
 // ─────────────────────────────────────────────────────────────────────────────
+
+const TILE_GAP = 8
 
 const SectionLabel = styled(Text, {
   fontFamily: '$body',
@@ -71,6 +74,9 @@ export function SetTracker({
   previousSets,
 }: SetTrackerProps) {
   const [editingSetIndex, setEditingSetIndex] = useState<number | null>(null)
+  const [rowWidth, setRowWidth] = useState(0)
+  const activeIndex = nextSetIndex(sets)
+  const { tileWidth } = setTileLayout(sets.length, rowWidth, TILE_GAP)
 
   // Haptic feedback helper
   const triggerHaptic = () => {
@@ -156,10 +162,18 @@ export function SetTracker({
           )}
         </XStack>
 
-        <XStack gap="$2" flexWrap="wrap" justify="center">
+        {/* Tiles fill the row (up to three across) so logging is the main
+            target; the next set to log is the one that stands out. */}
+        <XStack
+          flexWrap="wrap"
+          gap={TILE_GAP}
+          onLayout={(event: LayoutChangeEvent) => setRowWidth(event.nativeEvent.layout.width)}
+        >
           {sets.map((set, index) => {
             const isCompleted = set.completed
             const isSkipped = set.skipped
+            const isNext = index === activeIndex
+            const stateLabel = isCompleted ? 'done' : isSkipped ? 'skipped' : isNext ? 'next, tap when done' : 'to do'
 
             return (
               <TouchableOpacity
@@ -169,70 +183,63 @@ export function SetTracker({
                 onLongPress={() => handleLongPress(index)}
                 delayLongPress={400}
                 activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel={`Set ${index + 1}, ${displayReps}, ${stateLabel}`}
+                style={{ width: tileWidth, flexGrow: tileWidth === undefined ? 1 : 0 }}
               >
                 <Card
-                  p="$2.5"
-                  minW={72}
-                  bg={isCompleted ? (intensityLightColor as any) : isSkipped ? '$color4' : '$background'}
-                  borderColor={isCompleted ? (intensityColor as any) : isSkipped ? '$borderColor' : '$borderColor'}
-                  borderWidth={2}
-                  rounded="$3"
-                  opacity={isSkipped ? 0.6 : 1}
+                  testID={isNext ? 'set-tile-next' : undefined}
+                  px="$3"
+                  py={isNext ? '$3.5' : '$3'}
+                  minH={isNext ? 84 : 72}
+                  justify="center"
+                  bg={isNext ? (intensityLightColor as any) : isCompleted ? '$color3' : isSkipped ? '$color4' : '$background'}
+                  borderColor={isNext ? (intensityColor as any) : '$borderColor'}
+                  borderWidth={isNext ? 2 : 1}
+                  rounded="$4"
                 >
-                  <YStack items="center" gap="$1.5">
-                    <Text 
-                      fontSize={11} 
+                  <YStack items="center" gap="$1">
+                    <Text
+                      fontSize={12}
                       fontFamily="$body" fontWeight="700"
                       letterSpacing={0.5}
-                      color={isCompleted ? (intensityColor as any) : '$color10'}
+                      color={isNext ? '$color12' : '$color11'}
                     >
-                      SET {index + 1}
+                      {isNext ? `SET ${index + 1} · NEXT` : `SET ${index + 1}`}
                     </Text>
-                    
+
                     {isCompleted ? (
                       <XStack items="center" gap="$1">
-                        <Check size={16} color={intensityColor as any} strokeWidth={3} />
+                        <Check size={18} color={intensityColor as any} strokeWidth={3} />
                         {set.repsCompleted && (
-                          <Text 
-                            fontSize={16} 
-                            color={intensityColor as any} 
-                            fontFamily="$body" fontWeight="700"
-                          >
+                          <Text fontSize={18} color="$color12" fontFamily="$body" fontWeight="700">
                             {set.repsCompleted}
                           </Text>
                         )}
                         {set.weight && (
-                          <Text 
-                            fontSize={12} 
-                            color="$color10"
-                            fontFamily="$body"
-                          >
+                          <Text fontSize={13} color="$color11" fontFamily="$body">
                             @{set.weight}lb
                           </Text>
                         )}
                       </XStack>
                     ) : isSkipped ? (
                       <XStack items="center" gap="$1">
-                        <SkipForward size={14} color="$color9" />
-                        <Text 
-                          fontSize={12} 
-                          color="$color9"
-                          fontFamily="$body"
-                        >
+                        <SkipForward size={14} color="$color11" />
+                        <Text fontSize={13} color="$color11" fontFamily="$body">
                           Skipped
                         </Text>
                       </XStack>
                     ) : (
                       <Text
-                        fontSize={16}
-                        color="$color11"
-                        fontFamily="$body" fontWeight="600"
+                        fontSize={isNext ? 22 : 17}
+                        color={isNext ? '$color12' : '$color11'}
+                        fontFamily="$body" fontWeight={isNext ? '700' : '600'}
                         numberOfLines={1}
+                        adjustsFontSizeToFit
                       >
                         {displayReps}
                       </Text>
                     )}
-                    
                   </YStack>
                 </Card>
               </TouchableOpacity>

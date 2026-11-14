@@ -147,3 +147,24 @@ export function visibleEquipment(equipment: string[] | undefined): string[] {
   if (!equipment) return [];
   return equipment.filter((item) => !NO_EQUIPMENT.has(item.trim().toLowerCase()));
 }
+
+/** Index of the set to log next: the first neither completed nor skipped, or -1. */
+export function nextSetIndex(sets: readonly { completed: boolean; skipped: boolean }[]): number {
+  return sets.findIndex((set) => !set.completed && !set.skipped)
+}
+
+/**
+ * Set tiles fill the row: one column per set up to three, so one set is a
+ * full-width target and six sets are two rows of three. Returns the column
+ * count and each tile's width for a measured row width (undefined until
+ * the row has been measured).
+ */
+export function setTileLayout(
+  setCount: number,
+  rowWidth: number,
+  gap: number
+): { columns: number; tileWidth: number | undefined } {
+  const columns = Math.max(1, Math.min(setCount, 3))
+  if (rowWidth <= 0) return { columns, tileWidth: undefined }
+  return { columns, tileWidth: Math.floor((rowWidth - gap * (columns - 1)) / columns) }
+}
