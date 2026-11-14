@@ -242,9 +242,9 @@ export default function SignInPage() {
 
               {/* Error Message */}
               {error ? (
-                <Card bg="$errorLight" p="$3" rounded="$3">
+                <Card bg="$red2" borderWidth={1} borderColor="$red6" p="$3" rounded="$3">
                   <Text 
-                    color="$error" 
+                    color="$red11"
                     text="center" 
                     fontSize={14}
                     fontFamily="$body"

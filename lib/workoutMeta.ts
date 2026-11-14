@@ -46,3 +46,14 @@ export function workoutMetaLine({
   if (intensity) parts.push(intensity)
   return parts.join(' · ')
 }
+
+/**
+ * Text color for a phase name. Same hue as the phase's fill color ($blue9,
+ * $orange9, $green9), one step darker so small text passes WCAG AA (4.5:1):
+ * the fills are 3.0-3.3:1 on white. The phase-to-hue mapping is unchanged.
+ */
+export function phaseTextColor(phase: string | undefined): '$blue11' | '$orange11' | '$green11' {
+  if (phase === 'SPP') return '$orange11'
+  if (phase === 'SSP') return '$green11'
+  return '$blue11'
+}

@@ -126,9 +126,9 @@ export default function HistoryPage() {
                       justify="center"
                     >
                       {session.status === 'completed' ? (
-                        <CheckCircle size={22} color="$success" />
+                        <CheckCircle size={22} color="$green10" />
                       ) : (
-                        <XCircle size={22} color="$accent" />
+                        <XCircle size={22} color="$orange10" />
                       )}
                     </YStack>
 
@@ -178,7 +178,7 @@ export default function HistoryPage() {
                         fontSize={10}
                         fontFamily="$body" fontWeight="700"
                         letterSpacing={0.5}
-                        color={session.status === 'completed' ? '$success' : '$accent'}
+                        color={session.status === 'completed' ? '$green11' : '$orange11'}
                         textTransform="uppercase"
                       >
                         {session.status}

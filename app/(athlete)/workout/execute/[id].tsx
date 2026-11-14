@@ -20,8 +20,6 @@ import {
   ChevronRight,
   Check,
   Trophy,
-  Zap,
-  Flame,
   Timer,
 } from '@tamagui/lucide-icons'
 import { ExerciseTypeIcon } from '../../../../components/workout/ExerciseTypeIcon'
@@ -33,7 +31,7 @@ import { WarmupSection, type WarmupExercise } from '../../../../components/worko
 import { WARMUP_PHASES } from '../../../../convex/warmupSequences'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { PanResponder, Platform, Vibration, Animated, useColorScheme, Pressable } from 'react-native'
-import { mapIntensityToLevel, normalizeTrackedSets, IntensityLevel } from '../../../../lib'
+import { mapIntensityToLevel, normalizeTrackedSets } from '../../../../lib'
 import {
   alignCompletionsToTemplate,
   isWarmupExercise,
@@ -59,78 +57,6 @@ const TimerDisplay = styled(Text, {
   fontSize: 18,
   letterSpacing: 0.5,
 })
-
-// ─────────────────────────────────────────────────────────────────────────────
-// INTENSITY BADGE
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface IntensityBadgeProps {
-  intensity: IntensityLevel
-  size?: 'small' | 'large'
-}
-
-function IntensityBadge({ intensity, size = 'small' }: IntensityBadgeProps) {
-  const configs = {
-    low: { 
-      bg: '$intensityLow6' as const, 
-      label: 'LOW INTENSITY', 
-      icon: Zap,
-      description: 'Recovery session'
-    },
-    medium: { 
-      bg: '$intensityMed6' as const, 
-      label: 'MODERATE', 
-      icon: Zap,
-      description: 'Building effort'
-    },
-    high: { 
-      bg: '$intensityHigh6' as const, 
-      label: 'HIGH INTENSITY', 
-      icon: Flame,
-      description: 'Peak effort'
-    },
-  }
-  const config = configs[intensity]
-
-  if (size === 'large') {
-    return (
-      <XStack 
-        bg={config.bg} 
-        px="$3" 
-        py="$2" 
-        rounded="$3" 
-        items="center" 
-        gap="$2"
-      >
-        <config.icon size={16} color="white" />
-        <YStack>
-          <Text color="white" fontSize={12} fontFamily="$body" fontWeight="700" letterSpacing={0.5}>
-            {config.label}
-          </Text>
-          <Text color="rgba(255,255,255,0.8)" fontSize={10} fontFamily="$body">
-            {config.description}
-          </Text>
-        </YStack>
-      </XStack>
-    )
-  }
-
-  return (
-    <XStack 
-      bg={config.bg} 
-      px="$2" 
-      py="$1" 
-      rounded="$2" 
-      items="center" 
-      gap="$1"
-    >
-      <config.icon size={12} color="white" />
-      <Text color="white" fontSize={10} fontFamily="$body" fontWeight="700" letterSpacing={0.5}>
-        {config.label}
-      </Text>
-    </XStack>
-  )
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -936,6 +862,9 @@ export default function WorkoutExecutionScreen() {
             bg={intensityColors.primary}
             color="white"
             iconAfter={isLastExercise ? Trophy : ChevronRight}
+            // White on the phase fill is 3.0-3.3:1, which AA allows only for
+            // large text (18.66px bold and up)
+            fontSize={19}
             fontFamily="$body" fontWeight="700"
             rounded="$4"
             pressStyle={{ opacity: 0.9, scale: 0.98 }}
@@ -1021,8 +950,8 @@ export default function WorkoutExecutionScreen() {
                 <AlertDialog.Action asChild>
                   <Button 
                     flex={1} 
-                    bg="$error" 
-                    color="white" 
+                    bg="$red11"
+                    color="white"
                     fontFamily="$body" fontWeight="700"
                     rounded="$4"
                     onPress={handleAbandonWorkout}
@@ -1107,7 +1036,7 @@ export default function WorkoutExecutionScreen() {
                   </Text>
                 </YStack>
                 <YStack items="center">
-                  <Text fontFamily="$body" fontWeight="700" fontSize={24} color="$success">
+                  <Text fontFamily="$body" fontWeight="700" fontSize={24} color="$green11">
                     {completedCount}/{orderedExercises.length}
                   </Text>
                   <Text fontSize={12} color="$color10" fontFamily="$body">

@@ -349,8 +349,8 @@ export default function SignUpScreen() {
               </YStack>
 
               {error ? (
-                <Card bg="$errorLight" p="$3" rounded="$3">
-                  <Text color="$error" text="center" fontSize={14} fontFamily="$body">
+                <Card bg="$red2" borderWidth={1} borderColor="$red6" p="$3" rounded="$3">
+                  <Text color="$red11" text="center" fontSize={14} fontFamily="$body">
                     {error}
                   </Text>
                 </Card>
@@ -454,8 +454,8 @@ export default function SignUpScreen() {
               </YStack>
 
               {error ? (
-                <Card bg="$errorLight" p="$3" rounded="$3">
-                  <Text color="$error" text="center" fontSize={14} fontFamily="$body">
+                <Card bg="$red2" borderWidth={1} borderColor="$red6" p="$3" rounded="$3">
+                  <Text color="$red11" text="center" fontSize={14} fontFamily="$body">
                     {error}
                   </Text>
                 </Card>
@@ -561,8 +561,8 @@ export default function SignUpScreen() {
 
               {/* Error Message */}
               {error ? (
-                <Card bg="$errorLight" p="$3" rounded="$3">
-                  <Text color="$error" text="center" fontSize={14} fontFamily="$body">
+                <Card bg="$red2" borderWidth={1} borderColor="$red6" p="$3" rounded="$3">
+                  <Text color="$red11" text="center" fontSize={14} fontFamily="$body">
                     {error}
                   </Text>
                 </Card>
@@ -650,7 +650,7 @@ export default function SignUpScreen() {
                     focusStyle={{ borderColor: emailError ? '$error' : '$primary', borderWidth: 2 }}
                   />
                   {emailError ? (
-                    <Text color="$error" fontSize={12} fontFamily="$body" pl="$1">
+                    <Text color="$red11" fontSize={12} fontFamily="$body" pl="$1">
                       {emailError}
                     </Text>
                   ) : null}
@@ -703,7 +703,7 @@ export default function SignUpScreen() {
                     </XStack>
                   </XStack>
                   {passwordError ? (
-                    <Text color="$error" fontSize={12} fontFamily="$body" pl="$1">
+                    <Text color="$red11" fontSize={12} fontFamily="$body" pl="$1">
                       {passwordError}
                     </Text>
                   ) : null}

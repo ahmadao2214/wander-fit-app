@@ -152,10 +152,10 @@ export default function ProfilePage() {
                 </Text>
                 {programState && (
                   <XStack items="center" gap="$2" pt="$1">
-                    <Trophy size={14} color="$accent" />
+                    <Trophy size={14} color="$orange10" />
                     <Text 
                       fontSize={13} 
-                      color="$accent" 
+                      color="$orange11"
                       fontFamily="$body" fontWeight="600"
                     >
                       {programState.skillLevel} Athlete

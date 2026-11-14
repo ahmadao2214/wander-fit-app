@@ -222,7 +222,7 @@ export function ExerciseQueue({
                 width={28}
                 height={28}
                 rounded="$10"
-                bg={isCompleted ? '$success' : isCurrent ? intensityColor : '$color5'}
+                bg={isCompleted ? '$green10' : isCurrent ? intensityColor : '$color4'}
                 items="center"
                 justify="center"
               >
@@ -232,7 +232,7 @@ export function ExerciseQueue({
                   <Text
                     fontSize={12}
                     fontFamily="$body" fontWeight="700"
-                    color={isCurrent ? 'white' : '$color11'}
+                    color={isCurrent ? '$color12' : '$color11'}
                   >
                     {index + 1}
                   </Text>
@@ -264,7 +264,7 @@ export function ExerciseQueue({
                 <Card bg={intensityColor} px="$2" py="$1" rounded="$2">
                   <Text
                     fontSize={10}
-                    color="white"
+                    color="$color12"
                     fontFamily="$body" fontWeight="700"
                     letterSpacing={0.5}
                   >

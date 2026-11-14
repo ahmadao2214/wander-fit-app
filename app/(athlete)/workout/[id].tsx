@@ -37,7 +37,7 @@ import { ExerciseAccordionItem } from '../../../components/ExerciseAccordionItem
 import { PerformanceReviewItem } from '../../../components/workout/PerformanceReviewItem'
 import { WarmupSection, type WarmupExercise } from '../../../components/workout/WarmupSection'
 import { WARMUP_PHASES } from '../../../convex/warmupSequences'
-import { workoutMetaLine } from '../../../lib/workoutMeta'
+import { workoutMetaLine, phaseTextColor } from '../../../lib/workoutMeta'
 import {
   mainOrderToTemplateOrder,
   normalizeExerciseOrder,
@@ -616,6 +616,8 @@ export default function WorkoutDetailScreen() {
                 onPress={startWorkout}
                 testID="workout-start"
                 icon={isStarting ? undefined : Play}
+                // Large text: white on the phase fill is 3.0-3.3:1
+                fontSize={19}
                 fontWeight="600"
                 disabled={isStarting}
                 pressStyle={{ scale: 0.97, opacity: 0.9 }}
@@ -652,7 +654,7 @@ export default function WorkoutDetailScreen() {
               {template.name}
             </Text>
             <Text testID="workout-meta" fontSize={14} fontFamily="$body" color="$color10">
-              <Text fontSize={14} fontFamily="$body" fontWeight="600" color={phaseColor}>
+              <Text fontSize={14} fontFamily="$body" fontWeight="600" color={phaseTextColor(template.phase)}>
                 {template.phase}
               </Text>
               {' · '}

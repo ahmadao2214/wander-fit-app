@@ -1,4 +1,4 @@
-import { warmupSummary, workoutMetaLine } from '../workoutMeta'
+import { warmupSummary, workoutMetaLine, phaseTextColor } from '../workoutMeta'
 
 describe('warmupSummary', () => {
   it('reads a full warmup as duration, phases and exercises', () => {
@@ -33,5 +33,13 @@ describe('workoutMetaLine', () => {
   it('skips parts that are missing or zero', () => {
     expect(workoutMetaLine({ minutes: 0, exerciseCount: 1 })).toBe('1 exercise')
     expect(workoutMetaLine({ minutes: 35 })).toBe('~35 min')
+  })
+})
+
+describe('phaseTextColor', () => {
+  it('keeps each phase on its own hue, at the text step', () => {
+    expect(phaseTextColor('GPP')).toBe('$blue11')
+    expect(phaseTextColor('SPP')).toBe('$orange11')
+    expect(phaseTextColor('SSP')).toBe('$green11')
   })
 })
