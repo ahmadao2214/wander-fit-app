@@ -16,8 +16,7 @@ interface AuthGuardProps {
 /**
  * AuthGuard - Handles authentication and intake flow routing
  * 
- * NEW GPP MODEL:
- * - No more trainer/client roles - everyone is an athlete
+ * Everyone is an athlete:
  * - After auth, check if intake is completed
  * - If no intake → redirect to intake flow
  * - If intake complete → allow access to athlete dashboard
@@ -34,7 +33,7 @@ export function AuthGuard({
   if (isLoading) {
     return (
       <YStack flex={1} items="center" justify="center" gap="$4" bg="$background">
-        <Spinner size="large" color="$green10" />
+        <Spinner size="large" color="$primary" />
         <Text color="$gray11">Loading...</Text>
       </YStack>
     )
@@ -69,7 +68,7 @@ export function AthleteOnlyRoute({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <YStack flex={1} items="center" justify="center" gap="$4" bg="$background">
-        <Spinner size="large" color="$green10" />
+        <Spinner size="large" color="$primary" />
         <Text color="$gray11">Loading...</Text>
       </YStack>
     )
@@ -114,7 +113,7 @@ export function IntakeOnlyRoute({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <YStack flex={1} items="center" justify="center" gap="$4" bg="$background">
-        <Spinner size="large" color="$green10" />
+        <Spinner size="large" color="$primary" />
         <Text color="$gray11">Loading...</Text>
       </YStack>
     )
@@ -164,7 +163,7 @@ export function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <YStack flex={1} items="center" justify="center" gap="$4" bg="$background">
-        <Spinner size="large" color="$green10" />
+        <Spinner size="large" color="$primary" />
         <Text color="$gray11">Loading...</Text>
       </YStack>
     )
@@ -209,7 +208,7 @@ export function OnboardingRoute({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <YStack flex={1} items="center" justify="center" gap="$4" bg="$background">
-        <Spinner size="large" color="$green10" />
+        <Spinner size="large" color="$primary" />
         <Text color="$gray11">Loading...</Text>
       </YStack>
     )
@@ -241,19 +240,4 @@ export function OnboardingRoute({ children }: { children: React.ReactNode }) {
 
   // Show onboarding flow (interleaved, post-intake, or revisit)
   return <>{children}</>
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// LEGACY EXPORTS (kept for backward compatibility during migration)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/** @deprecated Use AthleteOnlyRoute instead */
-export function ClientOnlyRoute({ children }: { children: React.ReactNode }) {
-  return <AthleteOnlyRoute>{children}</AthleteOnlyRoute>
-}
-
-/** @deprecated Trainer routes removed in GPP model */
-export function TrainerOnlyRoute({ children }: { children: React.ReactNode }) {
-  // Redirect trainers to athlete dashboard (they're now just athletes)
-  return <AthleteOnlyRoute>{children}</AthleteOnlyRoute>
 }
