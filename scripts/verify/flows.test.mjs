@@ -367,6 +367,37 @@ describe("activation dates script", () => {
   })
 })
 
+describe("native reorder flow", () => {
+  const flowText = fs.readFileSync(path.join(root, ".maestro/native/workout-reorder.yaml"), "utf8")
+
+  it("only uses testIDs that exist in the screens it drives", () => {
+    const sources = [
+      "app/(athlete)/index.tsx",
+      "app/(athlete)/workout/[id].tsx",
+      "app/(athlete)/workout/execute/[id].tsx",
+      "components/workout/SetTracker.tsx",
+      "components/workout/WarmupSection.tsx",
+    ].map((file) => fs.readFileSync(path.join(root, file), "utf8")).join("\n")
+    const ids = [...new Set([...flowText.matchAll(/id: (\S+)/g)].map((m) => m[1]))]
+    const missing = ids.filter((id) => {
+      if (/^set-\d$/.test(id)) return !sources.includes("testID={`set-${index}`}")
+      return !sources.includes(`testID="${id}"`)
+    })
+    expect(missing).toEqual([])
+  })
+
+  it("logs a set, restarts, resumes, and checks the set stayed on the first exercise", () => {
+    const steps = parse(flowText.split(/^---$/m)[1])
+    const at = (predicate) => steps.findIndex(predicate)
+    const logged = at((s) => s.tapOn?.id === "set-0")
+    const exit = at((s) => s === "stopApp")
+    const resume = at((s) => s.tapOn === "Resume Workout")
+    const finalCheck = steps.length - 2
+    expect([logged > 0, exit > logged, resume > exit]).toEqual([true, true, true])
+    expect(steps[finalCheck].assertVisible).toBe("Set 1, .*, done")
+  })
+})
+
 describe("native no-auto-advance flow", () => {
   const flowPath = path.join(root, ".maestro/native/workout-no-auto-advance.yaml")
   const flowText = fs.readFileSync(flowPath, "utf8")

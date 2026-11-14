@@ -1,13 +1,76 @@
+# Regression for logging after a reorder (PR #107): sets were logged against
+# the wrong exercise, and a resumed session showed them under another one.
+#
+# Starts on the workout detail screen of an unlocked, uncompleted workout whose
+# rows were already reordered so FIRST_EXERCISE is no longer the template's
+# first main exercise. Maestro can't make that drag: the grip needs a 150 ms
+# long press before moving, and Maestro's swipe moves at once. Drag with
+# agent-device (`gesture pan` slow enough to hold first); see
+# .cursor/skills/verify-wander-fit/features/workout-reorder.md.
+#
+# FIRST_EXERCISE and SECOND_EXERCISE are the first two rows after the reorder,
+# as regexes (e.g. "Goblet Squat.*"); the detail rows add the prescription.
 appId: com.offseason.asrafit
 ---
-- assertVisible: "${MOVED_EXERCISE}"
-- assertVisible: "${TARGET_EXERCISE}"
-- swipe:
-    start: "${DRAG_START}"
-    end: "${DRAG_END}"
-    duration: 2000
 - assertVisible:
-    text: "${MOVED_EXERCISE}"
+    text: "${SECOND_EXERCISE}"
     below:
-      text: "${TARGET_EXERCISE}"
+      text: "${FIRST_EXERCISE}"
 - takeScreenshot: native-workout-reordered
+
+# Start: the reordered first exercise comes first. Log its first set.
+- tapOn:
+    id: workout-start
+- runFlow:
+    when:
+      visible:
+        id: warmup-skip
+    commands:
+      - tapOn:
+          id: warmup-skip
+- assertVisible:
+    id: execute-exercise-name
+    text: "(?i)${FIRST_EXERCISE}"
+- tapOn:
+    id: set-0
+- assertVisible: "Set 1, .*, done"
+
+# The second exercise is next, with nothing logged against it.
+- tapOn:
+    id: execute-next
+- assertVisible:
+    id: execute-exercise-name
+    text: "(?i)${SECOND_EXERCISE}"
+- assertNotVisible: "Set 1, .*, done"
+- takeScreenshot: native-reorder-second-clean
+
+# Restart the app so the session reloads from the server, then resume.
+# (The X button's Exit abandons the session, so Today would offer a new start.)
+- stopApp
+- launchApp
+# A Debug dev client opens its developer menu on launch; Release builds don't.
+- runFlow:
+    when:
+      visible: "This is the developer menu.*"
+    commands:
+      - tapOn: "Close"
+- assertVisible:
+    id: today-heading
+- tapOn: "Resume Workout"
+- assertVisible:
+    id: execute-exercise-name
+# Resume opens the first exercise not finished in the athlete's order. If it
+# opens the second one, that one must still have nothing logged; step back.
+- runFlow:
+    when:
+      visible:
+        id: execute-exercise-name
+        text: "(?i)${SECOND_EXERCISE}"
+    commands:
+      - assertNotVisible: "Set 1, .*, done"
+      - tapOn: "Previous"
+- assertVisible:
+    id: execute-exercise-name
+    text: "(?i)${FIRST_EXERCISE}"
+- assertVisible: "Set 1, .*, done"
+- takeScreenshot: native-reorder-resumed
