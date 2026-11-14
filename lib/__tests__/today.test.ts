@@ -1,4 +1,4 @@
-import { todayHeading, phaseWeekSegments, progressCaption, countMainExercises } from '../today'
+import { todayHeading, phaseWeekSegments, progressCaption, countMainExercises, msUntilNextMidnight } from '../today'
 
 describe('todayHeading', () => {
   it('names the weekday, short month and day', () => {
@@ -51,5 +51,12 @@ describe('countMainExercises', () => {
 
   it('handles a missing list', () => {
     expect(countMainExercises(undefined)).toBe(0)
+  })
+})
+
+describe('msUntilNextMidnight', () => {
+  it('counts to the next local midnight', () => {
+    expect(msUntilNextMidnight(new Date(2026, 10, 14, 23, 59, 0))).toBe(60 * 1000)
+    expect(msUntilNextMidnight(new Date(2026, 10, 14, 0, 0, 0))).toBe(24 * 60 * 60 * 1000)
   })
 })

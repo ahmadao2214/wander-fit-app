@@ -51,3 +51,9 @@ export function countMainExercises(
   if (!exercises) return 0
   return exercises.filter((ex) => ex.section !== 'warmup' && !(!ex.section && ex.notes === 'Warmup')).length
 }
+
+/** Milliseconds from `date` until the next local midnight. */
+export function msUntilNextMidnight(date: Date): number {
+  const next = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1)
+  return next.getTime() - date.getTime()
+}

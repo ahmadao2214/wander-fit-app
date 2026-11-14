@@ -4,6 +4,8 @@ import { api } from 'convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
 import { SignOutButton } from '../../components/SignOutButton'
 import { useRouter } from 'expo-router'
+import { useEffect, useState } from 'react'
+import { AppState } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   Play,
@@ -12,7 +14,7 @@ import {
   RotateCcw,
   Bell,
 } from '@tamagui/lucide-icons'
-import { todayHeading, phaseWeekSegments, progressCaption, countMainExercises } from '../../lib/today'
+import { todayHeading, phaseWeekSegments, progressCaption, countMainExercises, msUntilNextMidnight } from '../../lib/today'
 import { workoutMetaLine } from '../../lib/workoutMeta'
 import { DEFAULT_WEEKS_PER_PHASE } from '../../lib/calendarUtils'
 
@@ -96,6 +98,26 @@ function PhaseProgress({
   )
 }
 
+/**
+ * Today's date, kept current: re-read when the app comes back to the
+ * foreground and at midnight, so a screen left open overnight doesn't show
+ * yesterday.
+ */
+function useCurrentDate(): Date {
+  const [date, setDate] = useState(() => new Date())
+  useEffect(() => {
+    const timer = setTimeout(() => setDate(new Date()), msUntilNextMidnight(date) + 1000)
+    return () => clearTimeout(timer)
+  }, [date])
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') setDate(new Date())
+    })
+    return () => subscription.remove()
+  }, [])
+  return date
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
@@ -113,6 +135,7 @@ export default function AthleteDashboard() {
   const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
   const insets = useSafeAreaInsets()
+  const today = useCurrentDate()
 
   // Get current program state
   const programState = useQuery(
@@ -249,7 +272,7 @@ export default function AthleteDashboard() {
                 {programState.categoryShortName ? ` · ${programState.categoryShortName}` : ''}
               </SectionLabel>
             )}
-            <DisplayHeading>{todayHeading(new Date())}</DisplayHeading>
+            <DisplayHeading>{todayHeading(today)}</DisplayHeading>
           </YStack>
 
           {/* Reassessment Banner */}
@@ -332,7 +355,9 @@ export default function AthleteDashboard() {
                 {todayWorkout && (
                   <Text testID="today-workout-meta" fontSize={14} color="$color10" fontFamily="$body">
                     <Text fontSize={14} fontFamily="$body" fontWeight="600" color={phaseColor}>
-                      {todayWorkout.phase ?? programState.phase} W{todayWorkout.week ?? programState.week} D{todayWorkout.day ?? programState.day}
+                      {/* The athlete's scheduled position. todayWorkout.week is the template's
+                          lookup week, which differs when phases are shorter than 4 weeks. */}
+                      {programState.phase} W{programState.week} D{programState.day}
                     </Text>
                     {' · '}
                     {workoutMetaLine({
