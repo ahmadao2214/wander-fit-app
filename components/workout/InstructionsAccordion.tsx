@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { YStack, XStack, Text, Card } from 'tamagui'
 import { ChevronDown, ChevronUp, Info, Package } from '@tamagui/lucide-icons'
 import { Pressable } from 'react-native'
+import { visibleEquipment } from '../../lib/workout'
 
 /**
  * InstructionsAccordion - Collapsible section showing exercise instructions and equipment
@@ -28,12 +29,14 @@ export function InstructionsAccordion({
     ? notes
     : undefined
 
+  // Bodyweight-only exercises show no equipment row
+  const shownEquipment = visibleEquipment(equipment)
+  const hasEquipment = shownEquipment.length > 0
+
   // Don't render if no content
-  if (!instructions && (!equipment || equipment.length === 0) && !filteredNotes) {
+  if (!instructions && !hasEquipment && !filteredNotes) {
     return null
   }
-
-  const hasEquipment = equipment && equipment.length > 0
 
   return (
     <YStack gap="$2">
@@ -53,7 +56,7 @@ export function InstructionsAccordion({
       {hasEquipment && (
         <XStack gap="$2" items="center" flexWrap="wrap" justify="center">
           <Package size={14} color="$color9" />
-          {equipment.map((item, idx) => (
+          {shownEquipment.map((item, idx) => (
             <Card key={idx} bg="$color3" px="$2" py="$1" rounded="$2">
               <Text fontSize={12} fontFamily="$body" color="$color11" textTransform="capitalize">
                 {item.replace(/_/g, ' ')}

@@ -48,7 +48,7 @@ describe('TrainingSciencePage', () => {
     mockUseQuery.mockReset()
   })
 
-  it('renders the hero section', () => {
+  it('opens with the intro line, without a second title under the header', () => {
     mockUseQuery.mockReturnValue({ gppCategoryId: 2 })
 
     const { getByText } = render(
@@ -56,7 +56,6 @@ describe('TrainingSciencePage', () => {
       { wrapper: AllTheProviders }
     )
 
-    expect(getByText('UNDERSTAND YOUR PROGRAM')).toBeTruthy()
     expect(getByText(/built on sports science principles/i)).toBeTruthy()
   })
 
@@ -87,6 +86,22 @@ describe('TrainingSciencePage', () => {
     expect(getByText('GPP: Building Your Foundation')).toBeTruthy()
     expect(getByText('SPP: Sports Physical Preparedness')).toBeTruthy()
     expect(getByText('SSP: Sports Specific Preparation')).toBeTruthy()
+  })
+
+  it('shows each phase as load, reps or focus, and tempo instead of one dense line', () => {
+    mockUseQuery.mockReturnValue({ gppCategoryId: 2 })
+
+    const { getByText, getAllByText, queryByText } = render(
+      <TrainingSciencePage />,
+      { wrapper: AllTheProviders }
+    )
+
+    expect(getByText('60–75%')).toBeTruthy()
+    expect(getByText('75–85%')).toBeTruthy()
+    expect(getByText('85–90%')).toBeTruthy()
+    expect(getAllByText('Load')).toHaveLength(3)
+    expect(getAllByText('Tempo')).toHaveLength(3)
+    expect(queryByText(/Lighter loads/)).toBeNull()
   })
 
   it('renders sport category section when program state exists', () => {

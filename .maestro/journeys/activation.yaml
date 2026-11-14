@@ -85,7 +85,8 @@ url: ${VERIFY_URL}
 - tapOn:
     id: commitment-button
 - extendedWaitUntil:
-    visible: "Welcome back,.*"
+    visible:
+      id: today-heading
     timeout: 90000
 - extendedWaitUntil:
     visible:

@@ -181,11 +181,6 @@ export default function WorkoutExecutionScreen() {
   const [showWarmup, setShowWarmup] = useState(true)
   const warmupInitRef = useRef(false)
 
-  // Auto-advance state (1.5s delay when all sets complete)
-  const [autoAdvanceCountdown, setAutoAdvanceCountdown] = useState<number | null>(null)
-  const autoAdvanceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
   // Reassessment prompt state
   const [showReassessmentPrompt, setShowReassessmentPrompt] = useState(false)
   const [reassessmentPhase, setReassessmentPhase] = useState<string | null>(null)
@@ -269,19 +264,6 @@ export default function WorkoutExecutionScreen() {
     if (Platform.OS !== 'web') {
       Vibration.vibrate(15)
     }
-  }, [])
-
-  // Cancel any pending auto-advance
-  const cancelAutoAdvance = useCallback(() => {
-    if (autoAdvanceRef.current) {
-      clearTimeout(autoAdvanceRef.current)
-      autoAdvanceRef.current = null
-    }
-    if (countdownIntervalRef.current) {
-      clearInterval(countdownIntervalRef.current)
-      countdownIntervalRef.current = null
-    }
-    setAutoAdvanceCountdown(null)
   }, [])
 
   // Animation for swipe feedback
@@ -546,41 +528,11 @@ export default function WorkoutExecutionScreen() {
       const allSetsCompleted = exercise.sets.every(s => s.completed || s.skipped)
       exercise.completed = allSetsCompleted
 
-      // Trigger auto-advance if all sets complete and not last exercise
-      if (allSetsCompleted && currentExerciseIndex < updated.length - 1) {
-        // Start countdown (1.5 seconds = 1500ms)
-        setAutoAdvanceCountdown(1.5)
-
-        // Update countdown every 100ms for smooth animation
-        countdownIntervalRef.current = setInterval(() => {
-          setAutoAdvanceCountdown(prev => {
-            if (prev === null || prev <= 0.1) {
-              return null
-            }
-            return Math.round((prev - 0.1) * 10) / 10
-          })
-        }, 100)
-
-        // Auto-advance after 1.5 seconds
-        autoAdvanceRef.current = setTimeout(() => {
-          cancelAutoAdvance()
-          triggerHaptic()
-          animateSlide('left')
-          setCurrentExerciseIndex(prevIdx => Math.min(updated.length - 1, prevIdx + 1))
-        }, 1500)
-      }
-
+      // Finishing the last set doesn't move on by itself; the athlete taps Next
       updated[currentExerciseIndex] = exercise
       return updated
     })
   }
-
-  // Clean up auto-advance on exercise change or unmount
-  useEffect(() => {
-    return () => {
-      cancelAutoAdvance()
-    }
-  }, [cancelAutoAdvance])
 
   // Clean up save timeout on unmount
   useEffect(() => {
@@ -591,11 +543,6 @@ export default function WorkoutExecutionScreen() {
       }
     }
   }, [])
-
-  // Cancel auto-advance when manually navigating
-  useEffect(() => {
-    cancelAutoAdvance()
-  }, [currentExerciseIndex, cancelAutoAdvance])
 
   // Navigate to next exercise
   const goToNextExercise = async () => {
@@ -902,7 +849,7 @@ export default function WorkoutExecutionScreen() {
 
               {/* Exercise Name and Prescription */}
               <YStack items="center" gap="$3">
-                <DisplayHeading>
+                <DisplayHeading testID="execute-exercise-name">
                   {exerciseDetails?.name?.toUpperCase() || 'EXERCISE'}
                 </DisplayHeading>
 
@@ -957,50 +904,6 @@ export default function WorkoutExecutionScreen() {
                 />
               )}
 
-              {/* Auto-advance indicator */}
-              {autoAdvanceCountdown !== null && (
-                <XStack
-                  items="center"
-                  justify="center"
-                  gap="$2"
-                  bg={intensityColors.light as any}
-                  px="$4"
-                  py="$3"
-                  rounded="$3"
-                  borderWidth={1}
-                  borderColor={intensityColors.primary as any}
-                >
-                  <YStack
-                    width={20}
-                    height={20}
-                    rounded="$10"
-                    bg={intensityColors.primary}
-                    items="center"
-                    justify="center"
-                  >
-                    <ChevronRight size={14} color="white" />
-                  </YStack>
-                  <Text
-                    fontFamily="$body"
-                    fontWeight="600"
-                    color={intensityColors.text}
-                    fontSize={14}
-                  >
-                    Next exercise in {autoAdvanceCountdown.toFixed(1)}s
-                  </Text>
-                  <Button
-                    size="$2"
-                    bg="transparent"
-                    color={intensityColors.text}
-                    onPress={cancelAutoAdvance}
-                    fontFamily="$body"
-                    px="$2"
-                  >
-                    Cancel
-                  </Button>
-                </XStack>
-              )}
-
               {/* Instructions Accordion */}
               <InstructionsAccordion
                 instructions={exerciseDetails?.instructions}
@@ -1042,6 +945,7 @@ export default function WorkoutExecutionScreen() {
             rounded="$4"
             pressStyle={{ opacity: 0.9, scale: 0.98 }}
             onPress={goToNextExercise}
+            testID="execute-next"
           >
             {isLastExercise ? 'Finish' : 'Next'}
           </Button>

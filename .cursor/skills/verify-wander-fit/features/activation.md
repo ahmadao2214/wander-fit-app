@@ -8,7 +8,7 @@ An athlete who has an account but no intake signs in. They go through intake and
 - `activation-overview`: Training Overview (`Training in 3 Phases`), then Continue.
 - `activation-intake`: age group Performance (18-35), then experience at the default 0 years (Novice). On training days, the athlete taps today and the days 2 and 4 after it. The season date is 84 days from today, which the intake shows as 12 weeks. On maxes, the athlete taps `I'll set these later`. On results (`Your Program is Ready!`), Continue.
 - `activation-commit`: on Make Your Commitment, one tap on `commitment-button` (I Commit). There is no hold. `You're Committed!` shows while the program is saved, and then the app goes to Today.
-- `activation-today`: `Welcome back,` shows, `today-workout-card` shows, and `Start Workout` shows.
+- `activation-today`: the `today-heading` date heading shows, `today-workout-card` shows, and `Start Workout` shows.
 - `activation-program`: after Maestro passes, `persona inspect` must show `found`, `intakeCompleted`, `onboardingCompleted`, and `hasProgram` all true, with `phase: "GPP"`, `week: 1`, and `day: 1`. Otherwise the flow fails.
 
 ## How to get to it (user POV)

@@ -29,6 +29,7 @@ This directory is the maintained source for verifying Wander Fit on the web expo
 
 - [Native launch](./native-launch.md) covers the iOS 27 Release launch/relaunch regression on a dedicated simulator.
 - [Native workout reorder](./workout-reorder.md) covers changed ordered keys in the patched draggable list; authenticated runtime proof remains pending.
+- [Workout no auto-advance](./workout-no-auto-advance.md) covers finishing an exercise's last set without the screen moving on until Next; simulator run pending.
 
 - [Sign in](./sign-in.md) covers the signed-out welcome screen, signing in to Today, and signing out from Profile.
 - [Sign up](./sign-up.md) covers creating an athlete with email, password, and the emailed code, through to the intake sport screen.

@@ -72,12 +72,13 @@ describe("web flows", () => {
     const signOutButton = fs.readFileSync(path.join(root, "components/SignOutButton.tsx"), "utf8")
     const signOutScroll = fs.readFileSync(path.join(root, "lib/signOutScroll.ts"), "utf8")
     expect(screen).toContain('testID="today-workout-card"')
+    expect(screen).toContain('testID="today-heading"')
     expect(signOutButton).toContain('nativeID="sign-out"')
     expect(signOutButton).toContain("hashchange")
     expect(signOutButton).toContain("noteUserScroll")
     expect(signOutScroll).toContain("scrollTop")
     const start = flow.indexOf("startRecording: recording")
-    const welcome = flow.indexOf('visible: "Welcome back,.*"')
+    const welcome = flow.indexOf("id: today-heading")
     const today = flow.indexOf('assertVisible: "Today"')
     const card = flow.indexOf("id: today-workout-card")
     const workout = flow.indexOf('assertVisible: "Start Workout"')
@@ -202,7 +203,7 @@ describe("web flows", () => {
       "tapOn: \"I'll set these later\"",
       'visible: "Your Program is Ready!"',
       "id: commitment-button",
-      'visible: "Welcome back,.*"',
+      "id: today-heading",
       "id: today-workout-card",
       'assertVisible: "Start Workout"',
       "takeScreenshot: 12-today",
@@ -361,5 +362,43 @@ describe("activation dates script", () => {
     // Saturday 1 Mar 2025 + 84 days = Saturday 24 May 2025.
     const output = await runDates("2025-03-01T23:30:00")
     expect(output).toEqual({ today: 6, day2: 1, day4: 3, seasonDay: "season-day-2025-05-24" })
+  })
+})
+
+describe("native no-auto-advance flow", () => {
+  const flowPath = path.join(root, ".maestro/native/workout-no-auto-advance.yaml")
+  const flowText = fs.readFileSync(flowPath, "utf8")
+
+  it("parses with an appId header and does not launch", () => {
+    const [header] = flowText.split(/^---$/m)
+    expect(parse(header).appId).toBe("com.offseason.asrafit")
+    expect(flowText).not.toContain("launchApp")
+  })
+
+  it("only uses testIDs that exist in the screens it drives", () => {
+    const sources = [
+      "app/(athlete)/index.tsx",
+      "app/(athlete)/workout/[id].tsx",
+      "app/(athlete)/workout/execute/[id].tsx",
+      "components/workout/SetTracker.tsx",
+      "components/workout/WarmupSection.tsx",
+    ].map((file) => fs.readFileSync(path.join(root, file), "utf8")).join("\n")
+    const ids = [...new Set([...flowText.matchAll(/id: (\S+)/g)].map((m) => m[1]))]
+    const missing = ids.filter((id) => {
+      if (/^set-\d$/.test(id)) return !sources.includes("testID={`set-${index}`}")
+      return !sources.includes(`testID="${id}"`)
+    })
+    expect(missing).toEqual([])
+  })
+
+  it("waits past the old 1.5 s delay before checking the exercise stayed", () => {
+    const steps = parse(flowText.split(/^---$/m)[1])
+    const wait = steps.find((s) => s.extendedWaitUntil)?.extendedWaitUntil
+    expect(wait.timeout).toBeGreaterThan(1500)
+    expect(wait.optional).toBe(true)
+    const waitIndex = steps.findIndex((s) => s.extendedWaitUntil)
+    const nextIndex = steps.findIndex((s) => s.tapOn?.id === "execute-next")
+    expect(steps[waitIndex + 1].assertVisible.text).toBe("${maestro.copiedText}")
+    expect(nextIndex).toBeGreaterThan(waitIndex)
   })
 })

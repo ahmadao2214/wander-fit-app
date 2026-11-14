@@ -13,19 +13,16 @@ import {
   Users,
   Flame,
   Trophy,
+  Weight,
+  Repeat,
+  Gauge,
 } from '@tamagui/lucide-icons'
+import type { ColorTokens } from 'tamagui'
 import { ScienceSection } from '../../../components/training-science/ScienceSection'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
 // ─────────────────────────────────────────────────────────────────────────────
-
-const DisplayHeading = styled(Text, {
-  fontFamily: '$heading',
-  fontSize: 28,
-  letterSpacing: 0.5,
-  color: '$color12',
-})
 
 const SectionLabel = styled(Text, {
   fontFamily: '$body',
@@ -97,11 +94,93 @@ const CATEGORY_INFO: Record<number, {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// THE THREE PHASES
+// ─────────────────────────────────────────────────────────────────────────────
+
+type PhaseSpec = { icon: typeof Zap; label: string; value: string }
+
+const PHASES: {
+  key: 'GPP' | 'SPP' | 'SSP'
+  title: string
+  body: string
+  icon: typeof Zap
+  bg: ColorTokens
+  accent: ColorTokens
+  text: ColorTokens
+  specs: PhaseSpec[]
+}[] = [
+  {
+    key: 'GPP',
+    title: 'GPP: Building Your Foundation',
+    body: 'General Physical Preparation focuses on movement quality, work capacity, and injury prevention. Think of this as building the engine.',
+    icon: Target,
+    bg: '$blue3',
+    accent: '$blue9',
+    text: '$blue11',
+    specs: [
+      { icon: Weight, label: 'Load', value: '60–75%' },
+      { icon: Repeat, label: 'Reps', value: 'Higher' },
+      { icon: Gauge, label: 'Tempo', value: 'Controlled' },
+    ],
+  },
+  {
+    key: 'SPP',
+    title: 'SPP: Sports Physical Preparedness',
+    body: 'Sports Physical Preparedness builds sport-ready athleticism. Now we develop the physical qualities your sport demands.',
+    icon: Flame,
+    bg: '$orange3',
+    accent: '$accent',
+    text: '$orange11',
+    specs: [
+      { icon: Weight, label: 'Load', value: '75–85%' },
+      { icon: Target, label: 'Focus', value: 'Sport moves' },
+      { icon: Gauge, label: 'Tempo', value: 'Faster' },
+    ],
+  },
+  {
+    key: 'SSP',
+    title: 'SSP: Sports Specific Preparation',
+    body: 'Sports Specific Preparation is about competition readiness. Lower volume, higher intensity, maintaining your gains. Time to race.',
+    icon: Trophy,
+    bg: '$green3',
+    accent: '$green9',
+    text: '$green11',
+    specs: [
+      { icon: Weight, label: 'Load', value: '85–90%' },
+      { icon: Repeat, label: 'Volume', value: 'Lower' },
+      { icon: Gauge, label: 'Tempo', value: 'Explosive' },
+    ],
+  },
+]
+
+/** Load / reps / tempo as three labeled values instead of one dense line. */
+function PhaseSpecs({ specs, accent, text }: { specs: PhaseSpec[]; accent: ColorTokens; text: ColorTokens }) {
+  return (
+    <XStack gap="$2" pt="$1">
+      {specs.map((spec) => (
+        <YStack key={spec.label} flex={1} gap="$1" testID={`phase-spec-${spec.label.toLowerCase()}`}>
+          <XStack items="center" gap="$1">
+            <spec.icon size={12} color={accent} />
+            <Text fontSize={11} fontFamily="$body" fontWeight="600" letterSpacing={0.8} textTransform="uppercase" color={text} opacity={0.75}>
+              {spec.label}
+            </Text>
+          </XStack>
+          <Text fontSize={15} fontFamily="$body" fontWeight="700" color={text}>
+            {spec.value}
+          </Text>
+        </YStack>
+      ))}
+    </XStack>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // MAIN COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function TrainingSciencePage() {
   const { user, isLoading: authLoading } = useAuth()
+  const insets = useSafeAreaInsets()
 
   const programState = useQuery(
     api.userPrograms.getCurrentProgramState,
@@ -123,8 +202,6 @@ export default function TrainingSciencePage() {
     )
   }
 
-  const insets = useSafeAreaInsets()
-  
   return (
     <ScrollView
       flex={1}
@@ -135,21 +212,18 @@ export default function TrainingSciencePage() {
       <YStack
         gap="$4"
         px="$4"
-        pt={insets.top + 16}
+        // The native header already clears the status bar, and
+        // contentInsetAdjustmentBehavior insets below it, so no insets.top here
+        pt="$3"
         pb={insets.bottom + 16}
         maxW={800}
         width="100%"
         self="center"
       >
-          {/* Hero Section */}
-          <Card bg="$brand1" p="$4" rounded="$4">
-            <YStack gap="$2">
-              <DisplayHeading>UNDERSTAND YOUR PROGRAM</DisplayHeading>
-              <BodyText color="$color10">
-                Your training is built on sports science principles, personalized for your sport, age, and experience level.
-              </BodyText>
-            </YStack>
-          </Card>
+          {/* Intro: the header already names the screen, so no second title */}
+          <BodyText color="$color10">
+            Your training is built on sports science principles, personalized for your sport, age, and experience level.
+          </BodyText>
 
           {/* The Three Phases */}
           <ScienceSection
@@ -163,53 +237,25 @@ export default function TrainingSciencePage() {
               Your program follows a proven periodization model with three distinct training phases, each building on the last.
             </BodyText>
 
-            {/* GPP */}
-            <Card bg="$blue3" p="$3" rounded="$3" borderLeftWidth={3} borderLeftColor="$blue9">
-              <YStack gap="$2">
-                <XStack items="center" gap="$2">
-                  <Target size={16} color="$blue9" />
-                  <SubHeading color="$blue11">GPP: Building Your Foundation</SubHeading>
-                </XStack>
-                <BodyText color="$blue11">
-                  General Physical Preparation focuses on movement quality, work capacity, and injury prevention. Think of this as building the engine.
-                </BodyText>
-                <Text fontSize={12} fontFamily="$body" color="$blue10">
-                  Lighter loads (60-75%) • Higher reps • Controlled tempo
-                </Text>
-              </YStack>
-            </Card>
-
-            {/* SPP */}
-            <Card bg="$orange3" p="$3" rounded="$3" borderLeftWidth={3} borderLeftColor="$accent">
-              <YStack gap="$2">
-                <XStack items="center" gap="$2">
-                  <Flame size={16} color="$accent" />
-                  <SubHeading color="$orange11">SPP: Sports Physical Preparedness</SubHeading>
-                </XStack>
-                <BodyText color="$orange11">
-                  Sports Physical Preparedness builds sport-ready athleticism. Now we develop the physical qualities your sport demands.
-                </BodyText>
-                <Text fontSize={12} fontFamily="$body" color="$orange10">
-                  Moderate loads (75-85%) • Sport movements • Faster tempo
-                </Text>
-              </YStack>
-            </Card>
-
-            {/* SSP */}
-            <Card bg="$green3" p="$3" rounded="$3" borderLeftWidth={3} borderLeftColor="$green9">
-              <YStack gap="$2">
-                <XStack items="center" gap="$2">
-                  <Trophy size={16} color="$green9" />
-                  <SubHeading color="$green11">SSP: Sports Specific Preparation</SubHeading>
-                </XStack>
-                <BodyText color="$green11">
-                  Sports Specific Preparation is about competition readiness. Lower volume, higher intensity, maintaining your gains. Time to race.
-                </BodyText>
-                <Text fontSize={12} fontFamily="$body" color="$green10">
-                  Higher loads (85-90%) • Lower volume • Explosive tempo
-                </Text>
-              </YStack>
-            </Card>
+            {PHASES.map((phase) => (
+              <Card
+                key={phase.key}
+                bg={phase.bg}
+                p="$3"
+                rounded="$3"
+                borderLeftWidth={3}
+                borderLeftColor={phase.accent}
+              >
+                <YStack gap="$2">
+                  <XStack items="center" gap="$2">
+                    <phase.icon size={16} color={phase.accent} />
+                    <SubHeading color={phase.text}>{phase.title}</SubHeading>
+                  </XStack>
+                  <BodyText color={phase.text}>{phase.body}</BodyText>
+                  <PhaseSpecs specs={phase.specs} accent={phase.accent} text={phase.text} />
+                </YStack>
+              </Card>
+            ))}
           </ScienceSection>
 
           {/* Understanding Your Numbers */}

@@ -24,6 +24,10 @@ import { getSkillLevel, getTrainingPhase, calculateWeeksPerPhase } from '../../l
 import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT, COMBINED_FLOW_ROUTES } from '../../components/IntakeProgressDots'
 import { TimelineView, createPhaseTimeline } from '../../components/onboarding'
 
+// The category name's size and a line height tall enough for the display face
+const CATEGORY_NAME_SIZE = 44
+const CATEGORY_NAME_LINE_HEIGHT = 50
+
 /**
  * Results Screen
  *
@@ -190,14 +194,17 @@ export default function ResultsScreen() {
                 <Text fontSize="$2" color="white" opacity={0.9} fontWeight="600">
                   Your Training Category
                 </Text>
-                <H2
+                {/* Explicit line height: H2 kept its own smaller one, which clipped the tops of the letters */}
+                <Text
+                  testID="training-category-name"
                   fontFamily="$heading"
-                  fontSize="$10"
+                  fontSize={CATEGORY_NAME_SIZE}
+                  lineHeight={CATEGORY_NAME_LINE_HEIGHT}
                   color="white"
                   letterSpacing={1}
                 >
                   {category.shortName.toUpperCase()}
-                </H2>
+                </Text>
               </YStack>
 
               {/* Category Description - Always Visible */}

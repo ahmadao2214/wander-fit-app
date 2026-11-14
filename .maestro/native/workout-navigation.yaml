@@ -1,6 +1,7 @@
 appId: com.offseason.asrafit
 ---
-- assertVisible: "READY TO TRAIN?"
+- assertVisible:
+    id: today-heading
 - tapOn: "Start Workout"
 - assertVisible: "Start"
 - assertVisible: "Goblet Squat.*"

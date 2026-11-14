@@ -1,4 +1,4 @@
-import { parseReps, normalizeTrackedSets, isCardioExercise, CARDIO_TAGS, mapIntensityToLevel } from "../workout";
+import { parseReps, normalizeTrackedSets, isCardioExercise, CARDIO_TAGS, mapIntensityToLevel, visibleEquipment } from "../workout";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PARSE REPS TESTS
@@ -297,3 +297,21 @@ describe("mapIntensityToLevel", () => {
   });
 });
 
+
+describe("visibleEquipment", () => {
+  it("hides bodyweight, which needs nothing from the athlete", () => {
+    expect(visibleEquipment(["bodyweight"])).toEqual([]);
+  });
+
+  it("keeps real equipment and drops bodyweight beside it", () => {
+    expect(visibleEquipment(["bodyweight", "pull_up_bar"])).toEqual(["pull_up_bar"]);
+  });
+
+  it("ignores case, spacing and 'none'", () => {
+    expect(visibleEquipment([" Bodyweight ", "None", "dumbbell"])).toEqual(["dumbbell"]);
+  });
+
+  it("handles missing equipment", () => {
+    expect(visibleEquipment(undefined)).toEqual([]);
+  });
+});
