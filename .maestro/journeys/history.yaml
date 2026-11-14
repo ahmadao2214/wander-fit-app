@@ -1,0 +1,25 @@
+url: ${VERIFY_URL}
+---
+# Regression for History reading the trainer-era table: a persona with one
+# completed GPP session (persona state with-history) must see it listed.
+- runFlow: ../subflows/_evidence-start.yaml
+- extendedWaitUntil:
+    visible: "WELCOME BACK"
+    timeout: 90000
+- runFlow: ../subflows/_sign-in.yaml
+- extendedWaitUntil:
+    visible:
+      id: today-workout-card
+    timeout: 90000
+- takeScreenshot: 01-today
+- tapOn: "History"
+- extendedWaitUntil:
+    visible: "WORKOUT HISTORY"
+    timeout: 30000
+- extendedWaitUntil:
+    visible: "GPP W1D1"
+    timeout: 30000
+- assertVisible: "(?i)completed"
+- assertNotVisible: "(?i)no workouts yet"
+- takeScreenshot: 02-history
+- runFlow: ../subflows/_evidence-stop.yaml

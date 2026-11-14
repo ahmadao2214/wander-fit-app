@@ -10,12 +10,22 @@ const stateValidator = v.union(
   v.literal("needs-intake"),
   v.literal("onboarded"),
   v.literal("phase-end"),
+  // onboarded, plus one completed GPP W1D1 session for the History flow
+  v.literal("with-history"),
 );
 
 const TRAINING_DAYS = [0, 1, 2, 3, 4, 5, 6];
 
 // The rows intake and commitment write for a user.
 async function clearProgramRows(ctx: MutationCtx, userId: Id<"users">) {
+  const sessions = await ctx.db
+    .query("gpp_workout_sessions")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .collect();
+  for (const session of sessions) {
+    await ctx.db.delete(session._id);
+  }
+
   const programs = await ctx.db
     .query("user_programs")
     .withIndex("by_user", (q) => q.eq("userId", userId))
@@ -102,7 +112,7 @@ export const provision = internalMutation({
       completedAt: now,
     });
 
-    await ctx.db.insert("user_programs", {
+    const userProgramId = await ctx.db.insert("user_programs", {
       userId,
       intakeResponseId,
       gppCategoryId: sport.gppCategoryId,
@@ -123,6 +133,35 @@ export const provision = internalMutation({
       onboardingCompletedAt: now,
       onboardingSkipped: true,
     });
+
+    if (args.state === "with-history") {
+      const template = await ctx.db
+        .query("program_templates")
+        .withIndex("by_assignment", (q) =>
+          q.eq("gppCategoryId", sport.gppCategoryId).eq("phase", "GPP").eq("skillLevel", "Novice").eq("week", 1).eq("day", 1)
+        )
+        .first();
+      if (!template) {
+        throw new Error("No GPP W1D1 Novice template for Basketball. Run seed:seedAll on wander-fit-e2e first.");
+      }
+      const startedAt = now - 45 * 60 * 1000;
+      await ctx.db.insert("gpp_workout_sessions", {
+        userId,
+        templateId: template._id,
+        userProgramId,
+        startedAt,
+        completedAt: now,
+        totalDurationSeconds: 45 * 60,
+        status: "completed",
+        exercises: template.exercises.map((exercise) => ({
+          exerciseId: exercise.exerciseId,
+          completed: true,
+          skipped: false,
+          sets: Array.from({ length: exercise.sets }, () => ({ completed: true, skipped: false })),
+        })),
+        templateSnapshot: { name: template.name, phase: "GPP", week: 1, day: 1, workoutDate: startedAt },
+      });
+    }
 
     return { email: args.email, state: args.state };
   },
