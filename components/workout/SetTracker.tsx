@@ -210,19 +210,29 @@ export function SetTracker({
                     </Text>
 
                     {isCompleted ? (
-                      <XStack items="center" gap="$1">
-                        <Check size={18} color={intensityColor as any} strokeWidth={3} />
-                        {set.repsCompleted && (
-                          <Text fontSize={18} color="$color12" fontFamily="$body" fontWeight="700">
-                            {set.repsCompleted}
+                      // Weight goes on its own line so "12" and "225 lb" fit a third-width tile
+                      <YStack items="center">
+                        <XStack items="center" gap="$1">
+                          <Check size={18} color={intensityColor as any} strokeWidth={3} />
+                          {set.repsCompleted != null && (
+                            <Text fontSize={18} color="$color12" fontFamily="$body" fontWeight="700">
+                              {set.repsCompleted}
+                            </Text>
+                          )}
+                        </XStack>
+                        {set.weight != null && set.weight > 0 && (
+                          <Text
+                            testID={`set-${index}-weight`}
+                            fontSize={13}
+                            color="$color11"
+                            fontFamily="$body"
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
+                          >
+                            {set.weight} lb
                           </Text>
                         )}
-                        {set.weight && (
-                          <Text fontSize={13} color="$color11" fontFamily="$body">
-                            @{set.weight}lb
-                          </Text>
-                        )}
-                      </XStack>
+                      </YStack>
                     ) : isSkipped ? (
                       <XStack items="center" gap="$1">
                         <SkipForward size={14} color="$color11" />

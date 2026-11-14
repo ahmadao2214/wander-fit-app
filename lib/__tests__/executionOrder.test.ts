@@ -73,6 +73,19 @@ describe('main <-> template order', () => {
 })
 
 describe('alignCompletionsToTemplate', () => {
+  it('gives a main-only save to main slots, not a warmup that shares an exerciseId', () => {
+    const withRepeat = [
+      { exerciseId: 'dead_bug', section: 'warmup' },
+      { exerciseId: 'squat', section: 'main' },
+      { exerciseId: 'dead_bug', section: 'main' },
+    ]
+    const saved = [completion('squat', 3), completion('dead_bug', 2)]
+    const aligned = alignCompletionsToTemplate(withRepeat, saved)
+    expect(aligned[0]).toBeUndefined()
+    expect(aligned[1]).toBe(saved[0])
+    expect(aligned[2]).toBe(saved[1])
+  })
+
   it('keeps a correctly aligned full array as is', () => {
     const saved = template.map((ex, i) => completion(ex.exerciseId, i + 1))
     const aligned = alignCompletionsToTemplate(template, saved)

@@ -1,6 +1,8 @@
 import { mutation, query, type QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { getCurrentUser } from "./authHelpers";
+import type { Doc } from "./_generated/dataModel";
+import { alignCompletionsToTemplate, isWarmupExercise } from "../lib/executionOrder";
 import {
   INTENSITY_CONFIG,
   BODYWEIGHT_INTENSITY_CONFIG,
@@ -194,6 +196,41 @@ function buildEmptySetCompletions(count: number) {
     completed: false,
     skipped: false,
   }));
+}
+
+type SessionCompletion = Doc<"gpp_workout_sessions">["exercises"][number];
+
+/**
+ * The saved completions in template order, one per template exercise, each
+ * sized to its own exercise's prescription. Saves from earlier builds can hold
+ * an exercise's sets in another exercise's slot, so they are matched by
+ * exerciseId before any resizing. A main exercise with nothing saved gets
+ * empty sets; a warmup with nothing saved counts as skipped, as the execution
+ * screen treats it.
+ */
+function alignSessionExercises(
+  templateExercises: ReadonlyArray<{ exerciseId: SessionCompletion["exerciseId"]; section?: string; notes?: string }>,
+  saved: SessionCompletion[],
+  prescribedSetsAt: (index: number) => number,
+): SessionCompletion[] {
+  const slots = templateExercises.map((ex) => ({ exerciseId: String(ex.exerciseId), section: ex.section, notes: ex.notes }));
+  const aligned = alignCompletionsToTemplate(slots, saved);
+  return aligned.map((completion, index) => {
+    const prescribedSets = prescribedSetsAt(index);
+    if (completion) {
+      return { ...completion, sets: normalizeSetCompletions(completion.sets, prescribedSets) };
+    }
+    const exerciseId = templateExercises[index].exerciseId;
+    if (isWarmupExercise(slots[index])) {
+      return {
+        exerciseId,
+        completed: true,
+        skipped: true,
+        sets: Array.from({ length: Math.max(1, prescribedSets) }, () => ({ completed: true, skipped: true })),
+      };
+    }
+    return { exerciseId, completed: false, skipped: false, sets: buildEmptySetCompletions(prescribedSets) };
+  });
 }
 
 function normalizeSetCompletions<
@@ -488,14 +525,9 @@ export const getById = query({
         }
       });
 
-      const normalizedSessionExercises = session.exercises.map((exerciseCompletion, index) => {
+      const normalizedSessionExercises = alignSessionExercises(template.exercises, session.exercises, (index) => {
         const scaledExercise = scaledExercises[index];
-        const prescribedSets = scaledExercise?.scaledSets ?? scaledExercise?.sets ?? exerciseCompletion.sets.length;
-
-        return {
-          ...exerciseCompletion,
-          sets: normalizeSetCompletions(exerciseCompletion.sets, prescribedSets),
-        };
+        return scaledExercise?.scaledSets ?? scaledExercise?.sets ?? 1;
       });
 
       return {
@@ -587,14 +619,9 @@ export const getById = query({
       }
     });
 
-    const normalizedSessionExercises = session.exercises.map((exerciseCompletion, index) => {
+    const normalizedSessionExercises = alignSessionExercises(template.exercises, session.exercises, (index) => {
       const scaledExercise = scaledExercises[index];
-      const prescribedSets = scaledExercise?.scaledSets ?? scaledExercise?.sets ?? exerciseCompletion.sets.length;
-
-      return {
-        ...exerciseCompletion,
-        sets: normalizeSetCompletions(exerciseCompletion.sets, prescribedSets),
-      };
+      return scaledExercise?.scaledSets ?? scaledExercise?.sets ?? 1;
     });
 
     return {

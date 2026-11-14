@@ -80,13 +80,34 @@ export function templateOrderToMainOrder(
  * matching by exerciseId. A slot keeps the completion at its own position
  * when the IDs agree; otherwise it takes the first unused completion for its
  * exercise. Earlier builds saved completions in reordered positions, and some
- * saved only the main exercises; both come back aligned. Slots with nothing
- * saved are undefined.
+ * saved only the main exercises (those match main slots only, never a warmup
+ * with the same exerciseId); both come back aligned. Slots with nothing saved
+ * are undefined.
  */
 export function alignCompletionsToTemplate<C extends { exerciseId: string }>(
   exercises: readonly SectionedExercise[],
   saved: readonly C[]
 ): (C | undefined)[] {
+  // A main-only save (one record per main exercise, warmups left out) must not
+  // hand a main exercise's record to a warmup that shares its exerciseId.
+  const main = mainTemplateIndices(exercises)
+  const mainIds = new Set(main.map((index) => String(exercises[index].exerciseId)))
+  if (
+    main.length < exercises.length &&
+    saved.length === main.length &&
+    saved.every((completion) => mainIds.has(String(completion.exerciseId)))
+  ) {
+    const alignedMain = alignCompletionsToTemplate(
+      main.map((index) => exercises[index]),
+      saved
+    )
+    const aligned: (C | undefined)[] = exercises.map(() => undefined)
+    main.forEach((templateIndex, position) => {
+      aligned[templateIndex] = alignedMain[position]
+    })
+    return aligned
+  }
+
   const used = new Set<number>()
   const aligned: (C | undefined)[] = exercises.map((ex, index) => {
     const atPosition = saved[index]

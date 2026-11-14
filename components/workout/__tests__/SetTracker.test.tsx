@@ -66,4 +66,27 @@ describe('SetTracker', () => {
     while (node && node.props?.accessibilityRole !== 'button') node = node.parent
     expect(StyleSheet.flatten(node.props.style).width).toBe(108)
   })
+
+  it('puts a logged weight on its own line under the reps, shrinking to fit', () => {
+    const { getByTestId, getByText } = render(
+      <SetTracker
+        sets={[{ completed: true, skipped: false, repsCompleted: 12, weight: 225 }]}
+        prescribedReps="12"
+        prescribedSets={1}
+        onSetUpdate={jest.fn()}
+      />,
+      { wrapper: AllTheProviders }
+    )
+    const weight = getByTestId('set-0-weight')
+    expect(weight.props.children).toEqual([225, ' lb'])
+    expect(weight.props.numberOfLines).toBe(1)
+    expect(weight.props.adjustsFontSizeToFit).toBe(true)
+    // Not beside the reps: the weight's row is not the row holding "12"
+    const rowOf = (node: any) => {
+      let current = node.parent
+      while (current && typeof current.type !== 'string') current = current.parent
+      return current
+    }
+    expect(rowOf(weight)).not.toBe(rowOf(getByText('12')))
+  })
 })
