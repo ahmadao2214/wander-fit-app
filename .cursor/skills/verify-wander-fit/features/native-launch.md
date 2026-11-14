@@ -8,7 +8,7 @@ Regression for iOS 27's required UIScene lifecycle: the local Release app must s
 - Use only the E2E Convex endpoint `https://modest-kudu-493.convex.cloud` and Clerk test configuration.
 - Run `.maestro/native/native-launch.yaml` on that simulator. This screen-only flow clears its local app state, never submits credentials, and never resets an account.
 - Expect `WELCOME BACK`, the training subtitle, and the email, password, and submit controls after each launch.
-- Preserve `native-launch-sign-in` and `native-relaunch-sign-in` screenshots. Authenticated athlete/coach proof is separate and must use the dedicated device tooling.
+- Preserve `native-launch-sign-in` and `native-relaunch-sign-in` screenshots. Authenticated athlete proof is separate and must use the dedicated device tooling.
 
 ## Failure it catches
 
