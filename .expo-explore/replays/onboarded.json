@@ -1,0 +1,24 @@
+{
+  "steps": [
+    { "capture": "Today", "description": "The adapter relaunches the accepted E2E app with the durable athlete already signed in; account and workout data are preserved." },
+    { "action": "tap", "label": "Program, tab, 2 of 6" },
+    { "capture": "Program" },
+    { "action": "tap", "label": "Lower Body Foundation" },
+    { "capture": "Workout Detail — Lower Body Foundation" },
+    { "action": "tap", "label": "Goblet Squat, 6 × 12" },
+    { "capture": "Exercise Detail — Goblet Squat" },
+    { "action": "tap", "label": "Warmup" },
+    { "action": "tap", "label": "History, tab, 3 of 6" },
+    { "capture": "History" },
+    { "action": "tap", "label": "Profile, tab, 4 of 6" },
+    { "capture": "Profile" },
+    { "action": "scroll", "direction": "down" },
+    { "action": "scroll", "direction": "down" },
+    { "action": "tap", "label": "Training Science" },
+    { "capture": "Training Science" },
+    { "action": "scroll", "direction": "down" },
+    { "action": "tap", "label": "UNDERSTANDING YOUR NUMBERS" },
+    { "action": "scroll", "direction": "down" },
+    { "capture": "Training Science", "state": "Understanding Your Numbers expanded" }
+  ]
+}

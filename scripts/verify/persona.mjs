@@ -10,9 +10,14 @@ import { resolveConvexTarget } from "./targets.mjs"
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 const credentialsFile = path.join(root, "e2e-artifacts/persona-latest.json")
+const reviewCredentialsFile = path.join(root, "e2e-artifacts/review-account.json")
 const envFile = path.join(root, ".env.e2e")
 const command = process.argv[2] || "help"
-const known = new Set(["create", "inspect", "delete", "sweep", "help"])
+const known = new Set(["create", "review", "inspect", "delete", "sweep", "help"])
+
+// The one long-lived account, for screen reviews that compare run to run.
+// It never matches emailPatterns, so delete and sweep refuse it.
+export const REVIEW_EMAIL = "review+clerk_test@example.com"
 const states = new Set(["new", "needs-intake", "onboarded", "phase-end"])
 // Generated addresses only. e2e.<run> is the onboarded persona from create.
 // e2e-<run>-signup is the account the sign-up flow makes through the UI.
@@ -146,8 +151,9 @@ export function generatePassword() {
 
 export function writeCredentials(record, file = credentialsFile) {
   fs.mkdirSync(path.dirname(file), { recursive: true })
-  fs.writeFileSync(file, JSON.stringify(record, null, 2))
-  fs.chmodSync(file, 0o600)
+  const temporary = `${file}.${crypto.randomUUID()}.tmp`
+  fs.writeFileSync(temporary, JSON.stringify(record, null, 2), { mode: 0o600, flag: "wx" })
+  fs.renameSync(temporary, file)
 }
 
 // The Clerk user already exists. Write the cleanup record before Convex
@@ -199,6 +205,73 @@ async function create() {
   })
   console.error(`persona: created ${email} (${state})`)
   printJson({ email, clerkId, state, credentialsFile: "e2e-artifacts/persona-latest.json" })
+}
+
+export function reviewPlan({ clerkId, saved, inspected }) {
+  if (clerkId && !(saved?.clerkId === clerkId && saved?.password)) {
+    throw new Error("Restore the saved review-account credentials. Refusing to reset an existing account password.")
+  }
+  if (clerkId && !(inspected?.found && inspected.onboardingCompleted && inspected.hasProgram)) {
+    throw new Error("Existing review account is not fully onboarded. Refusing to reset or reprovision it.")
+  }
+  if (!clerkId && inspected?.found) {
+    throw new Error("Review account data already exists without its Clerk identity. Refusing to reprovision it.")
+  }
+  return {
+    createUser: !clerkId,
+    provision: !clerkId,
+  }
+}
+
+function readSaved(file) {
+  try {
+    return JSON.parse(fs.readFileSync(file, "utf8"))
+  } catch {
+    return null
+  }
+}
+
+async function review() {
+  convexInvocation()
+  const matches = await clerk(`/users?email_address=${encodeURIComponent(REVIEW_EMAIL)}`)
+  const existingId = Array.isArray(matches) ? matches[0]?.id || "" : ""
+  const saved = readSaved(reviewCredentialsFile)
+  const inspected = parseRunResult(convexRun("e2e:inspect", { email: REVIEW_EMAIL }))
+  const plan = reviewPlan({ clerkId: existingId, saved, inspected })
+
+  let clerkId = existingId
+  let password = saved?.password || ""
+  if (plan.createUser) {
+    password = generatePassword()
+    const created = await clerk("/users", {
+      method: "POST",
+      body: JSON.stringify({
+        email_address: [REVIEW_EMAIL],
+        password,
+        skip_password_checks: true,
+        first_name: "Review",
+        last_name: "Athlete",
+      }),
+    })
+    clerkId = created?.id || ""
+    if (!clerkId) fail("Clerk did not return a user id.")
+  }
+
+  const record = {
+    email: REVIEW_EMAIL,
+    password,
+    clerkId,
+    state: "onboarded",
+    createdAt: saved?.clerkId === clerkId ? saved.createdAt : new Date().toISOString(),
+  }
+  writeCredentials(record, reviewCredentialsFile)
+  if (plan.provision) {
+    convexRun("seed:seedAll", {})
+    convexRun("e2e:provision", { clerkId, email: REVIEW_EMAIL, name: "Review Athlete", state: "onboarded" })
+  }
+  const actions = Object.entries(plan).filter(([, run]) => run).map(([name]) => name)
+  console.error(`persona: review account ${REVIEW_EMAIL} ${actions.length ? `(${actions.join(", ")})` : "unchanged"}`)
+  printJson({ email: REVIEW_EMAIL, clerkId, ...plan, credentialsFile: "e2e-artifacts/review-account.json" })
 }
 
 async function inspect() {
@@ -290,17 +363,18 @@ const invokedDirectly =
 
 if (invokedDirectly) {
   if (!known.has(command)) {
-    fail(`Unknown persona command "${command}". Use create, inspect, delete, or sweep.`)
+    fail(`Unknown persona command "${command}". Use create, review, inspect, delete, or sweep.`)
   }
 
   if (command === "help") {
     console.log(`persona create --state <new|needs-intake|onboarded|phase-end> --json
+persona review --json   (the long-lived ${REVIEW_EMAIL}; created once, never reset)
 persona inspect <email> --json
 persona delete <email>
 persona sweep --older-than 2h`)
     process.exit(0)
   }
 
-  const action = { create, inspect, delete: remove, sweep }[command]
+  const action = { create, review, inspect, delete: remove, sweep }[command]
   action().catch((error) => fail(error?.message || String(error)))
 }

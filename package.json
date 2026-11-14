@@ -20,6 +20,8 @@
     "typecheck": "tsc --noEmit",
     "verify:doctor": "node scripts/verify/run.mjs doctor",
     "verify:web": "node scripts/verify/run.mjs all",
+    "review:build": "node scripts/verify/explore.mjs build",
+    "review:screens": "node scripts/verify/explore.mjs review",
     "sim:tunnel": "NODE_OPTIONS=\"--require ./scripts/sim/no-multipart.cjs\" expo start --tunnel",
     "sim:cloud-check": "bash scripts/sim/cloud-check.sh"
   },
