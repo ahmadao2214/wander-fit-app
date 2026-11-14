@@ -327,17 +327,17 @@ export function CalendarWeekView({
       )
     }
 
-    // Both rows split the space evenly (flex={1} each)
-    // This prevents the disparity where one row takes all space
+    // Rows size to their tallest day. With flex={1} each row took half the
+    // page, so an empty Sun–Wed row pushed Thu–Sat far down the screen.
     return (
-      <YStack width={SCREEN_WIDTH} flex={1} px="$1.5" gap="$2">
-        {/* First row: Sun, Mon, Tue, Wed - always takes half the space */}
-        <XStack gap="$1.5" flex={1}>
+      <YStack width={SCREEN_WIDTH} flex={1} px="$1.5" gap="$3">
+        {/* First row: Sun, Mon, Tue, Wed */}
+        <XStack gap="$1.5">
           {firstRowDays.map(renderDayColumn)}
         </XStack>
 
-        {/* Second row: Thu, Fri, Sat (+ empty spacer for alignment) - always takes half the space */}
-        <XStack gap="$1.5" flex={1}>
+        {/* Second row: Thu, Fri, Sat (+ empty spacer for alignment) */}
+        <XStack gap="$1.5">
           {secondRowDays.map(renderDayColumn)}
           <YStack flex={1} minW={0} />
         </XStack>

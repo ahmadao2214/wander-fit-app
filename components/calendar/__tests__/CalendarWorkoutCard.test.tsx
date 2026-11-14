@@ -4,11 +4,6 @@ import { TamaguiProvider } from 'tamagui'
 import config from '../../../tamagui.config'
 import { CalendarWorkoutCard, CalendarWorkoutCardProps } from '../CalendarWorkoutCard'
 
-// Mock expo-linear-gradient
-jest.mock('expo-linear-gradient', () => ({
-  LinearGradient: ({ children }: { children: React.ReactNode }) => children,
-}))
-
 // Wrapper for Tamagui components
 const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
   return <TamaguiProvider config={config}>{children}</TamaguiProvider>
@@ -48,12 +43,20 @@ describe('CalendarWorkoutCard', () => {
       expect(getByText('Lower Body Foundation')).toBeTruthy()
     })
 
-    it('renders phase badge', () => {
-      const { getByText } = render(
+    it('shows phase by color only, with no phase label on the card', () => {
+      const { queryByText } = render(
         <CalendarWorkoutCard {...defaultProps} />,
         { wrapper: AllTheProviders }
       )
-      expect(getByText('GPP')).toBeTruthy()
+      expect(queryByText('GPP')).toBeNull()
+    })
+
+    it('names the phase, workout and time for screen readers', () => {
+      const { getByLabelText } = render(
+        <CalendarWorkoutCard {...defaultProps} isToday />,
+        { wrapper: AllTheProviders }
+      )
+      expect(getByLabelText('GPP workout, Lower Body Foundation, about 45 minutes, today')).toBeTruthy()
     })
 
     it('renders exercise preview', () => {
@@ -78,20 +81,11 @@ describe('CalendarWorkoutCard', () => {
       expect(getByText('~45m')).toBeTruthy()
     })
 
-    it('renders SPP phase correctly', () => {
-      const { getByText } = render(
-        <CalendarWorkoutCard {...defaultProps} phase="SPP" />,
-        { wrapper: AllTheProviders }
-      )
-      expect(getByText('SPP')).toBeTruthy()
-    })
-
-    it('renders SSP phase correctly', () => {
-      const { getByText } = render(
-        <CalendarWorkoutCard {...defaultProps} phase="SSP" />,
-        { wrapper: AllTheProviders }
-      )
-      expect(getByText('SSP')).toBeTruthy()
+    it('puts SPP and SSP in the accessibility label', () => {
+      const spp = render(<CalendarWorkoutCard {...defaultProps} phase="SPP" />, { wrapper: AllTheProviders })
+      expect(spp.getByLabelText(/^SPP workout/)).toBeTruthy()
+      const ssp = render(<CalendarWorkoutCard {...defaultProps} phase="SSP" isLocked />, { wrapper: AllTheProviders })
+      expect(ssp.getByLabelText(/^SSP workout.*locked$/)).toBeTruthy()
     })
   })
 
@@ -148,15 +142,12 @@ describe('CalendarWorkoutCard', () => {
       expect(getByText('Lower Body Foundation')).toBeTruthy()
     })
 
-    it('renders gradient background for today card (not completed/locked/in-progress)', () => {
-      // When isToday=true and not completed/locked/inProgress, should show gradient
-      const { getByText } = render(
-        <CalendarWorkoutCard {...defaultProps} isToday />,
+    it('labels an in-progress card as in progress', () => {
+      const { getByLabelText } = render(
+        <CalendarWorkoutCard {...defaultProps} isToday isInProgress />,
         { wrapper: AllTheProviders }
       )
-      // Card should still render with gradient (mock just passes through children)
-      expect(getByText('Lower Body Foundation')).toBeTruthy()
-      expect(getByText('GPP')).toBeTruthy()
+      expect(getByLabelText(/in progress$/)).toBeTruthy()
     })
   })
 
@@ -180,7 +171,6 @@ describe('CalendarWorkoutCard', () => {
       )
 
       expect(getByText('Lower Body Foundation')).toBeTruthy()
-      expect(getByText('GPP')).toBeTruthy()
     })
   })
 })

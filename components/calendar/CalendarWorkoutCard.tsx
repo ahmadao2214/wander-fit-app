@@ -1,7 +1,5 @@
-import { View, StyleSheet } from 'react-native'
-import { LinearGradient } from 'expo-linear-gradient'
 import { YStack, XStack, Text, Card, type ColorTokens } from 'tamagui'
-import { CheckCircle, Play, Clock, Lock, Dumbbell } from '@tamagui/lucide-icons'
+import { CheckCircle, Play, Lock } from '@tamagui/lucide-icons'
 import type { Phase } from '../../types'
 
 /**
@@ -10,25 +8,11 @@ import type { Phase } from '../../types'
  * SPP = Orange (sport-specific phase)
  * SSP = Green (competition prep phase)
  */
-const PHASE_COLORS: Record<Phase, { bg: ColorTokens; border: ColorTokens; dot: ColorTokens }> = {
-  GPP: { bg: '$blue2', border: '$blue6', dot: '$blue9' },
-  SPP: { bg: '$orange2', border: '$orange6', dot: '$orange9' },
-  SSP: { bg: '$green2', border: '$green6', dot: '$green9' },
+const PHASE_COLORS: Record<Phase, { dot: ColorTokens }> = {
+  GPP: { dot: '$blue9' },
+  SPP: { dot: '$orange9' },
+  SSP: { dot: '$green9' },
 }
-
-/**
- * Gradient colors for "Today" cards
- * Creates a subtle gradient at 264 degrees based on phase color
- */
-const PHASE_GRADIENTS: Record<Phase, [string, string]> = {
-  GPP: ['#dbeafe', '#93c5fd'], // blue-100 to blue-300
-  SPP: ['#ffedd5', '#fdba74'], // orange-100 to orange-300
-  SSP: ['#dcfce7', '#86efac'], // green-100 to green-300
-}
-
-// 264 degree gradient: from right-bottom toward left-top (slightly angled)
-const GRADIENT_START = { x: 1, y: 0.55 }
-const GRADIENT_END = { x: 0, y: 0.45 }
 
 export interface CalendarWorkoutCardProps {
   templateId: string
@@ -75,56 +59,43 @@ export function CalendarWorkoutCard({
   // Use phase colors for visual distinction
   const colors = PHASE_COLORS[phase]
 
-  // Determine card styling based on state
-  const getBgColor = (): ColorTokens => {
-    if (isLocked) return '$gray2'
-    if (isCompleted) return '$gray2'
-    if (isInProgress) return '$green2'
-    if (isToday) return colors.bg
-    return '$background'
-  }
-
-  const getBorderColor = (): ColorTokens => {
-    if (isLocked) return '$gray4'
-    if (isCompleted) return '$gray5'
-    if (isInProgress) return '$green7'
-    if (isToday) return colors.border
-    return '$gray5'
-  }
+  // One neutral surface for every card. Phase is the left stripe; today is
+  // the border; in progress, done and locked are the icon (and dimming).
+  const isActive = !isLocked && !isCompleted && isToday
+  const getBgColor = (): ColorTokens => (isLocked || isCompleted ? '$gray2' : '$background')
+  const getBorderColor = (): ColorTokens => (isActive ? '$primary' : '$gray5')
 
   // Determine status icon
   const getStatusIcon = () => {
     if (isLocked) return <Lock size={10} color="$gray8" />
     if (isCompleted) return <CheckCircle size={10} color="$gray9" />
-    if (isInProgress) return <Play size={10} color="$green9" />
+    if (isInProgress) return <Play size={10} color="$primary" />
     return null
   }
 
+  const stateLabel = isLocked
+    ? 'locked'
+    : isCompleted
+      ? 'done'
+      : isInProgress
+        ? 'in progress'
+        : isToday
+          ? 'today'
+          : null
+  // Phase is shown by color, so screen readers get it in words
+  const accessibilityLabel = [`${phase} workout`, name, `about ${estimatedDurationMinutes} minutes`, stateLabel]
+    .filter(Boolean)
+    .join(', ')
+
   if (compact) {
-    // Compact mode for month view - shows phase dot, title, and status
-    const showCompactGradient = isToday && !isLocked && !isCompleted && !isInProgress
-
-    const compactContent = (
-      <XStack items="center" gap="$1" px="$1" py="$0.5">
-        <Text
-          fontSize={9}
-          fontWeight="500"
-          color={isLocked || isCompleted ? '$color9' : '$color11'}
-          numberOfLines={1}
-          flex={1}
-        >
-          {name}
-        </Text>
-        {getStatusIcon()}
-      </XStack>
-    )
-
+    // Compact mode for month view - shows title and status, phase as the left stripe
     return (
       <Card
         pressStyle={isLocked ? undefined : { opacity: 0.8, scale: 0.98 }}
         onPress={isLocked ? undefined : onPress}
         onLongPress={isLocked ? undefined : onLongPress}
-        bg={showCompactGradient ? 'transparent' : getBgColor()}
+        accessibilityLabel={accessibilityLabel}
+        bg={getBgColor()}
         borderColor={getBorderColor()}
         borderWidth={1}
         borderLeftWidth={3}
@@ -134,18 +105,18 @@ export function CalendarWorkoutCard({
         overflow="hidden"
         padding={0}
       >
-        {showCompactGradient ? (
-          <LinearGradient
-            colors={PHASE_GRADIENTS[phase]}
-            start={GRADIENT_START}
-            end={GRADIENT_END}
-            style={styles.gradient}
+        <XStack items="center" gap="$1" px="$1" py="$0.5">
+          <Text
+            fontSize={9}
+            fontWeight="500"
+            color={isLocked || isCompleted ? '$color9' : '$color11'}
+            numberOfLines={1}
+            flex={1}
           >
-            {compactContent}
-          </LinearGradient>
-        ) : (
-          compactContent
-        )}
+            {name}
+          </Text>
+          {getStatusIcon()}
+        </XStack>
       </Card>
     )
   }
@@ -153,74 +124,15 @@ export function CalendarWorkoutCard({
   // Calculate remaining exercises for "+N more" text
   const remainingExercises = exerciseCount - exercisePreview.length
 
-  // Card content (shared between gradient and non-gradient versions)
-  const cardContent = (
-    <YStack gap="$1.5" px="$2" py="$1.5">
-      {/* Phase badge and status icon */}
-      <XStack items="center" justify="space-between">
-        <Text
-          fontSize={10}
-          fontWeight="700"
-          color={isLocked ? '$gray8' : colors.dot}
-        >
-          {phase}
-        </Text>
-        {getStatusIcon()}
-      </XStack>
-
-      {/* Workout name */}
-      <Text
-        fontSize={12}
-        fontWeight="600"
-        lineHeight={16}
-        color={isLocked || isCompleted ? '$color10' : '$color12'}
-        numberOfLines={2}
-        // @ts-ignore - Android prop to prevent mid-word breaks
-        textBreakStrategy="simple"
-      >
-        {name}
-      </Text>
-
-      {/* Exercise preview list - no bullets to save space */}
-      {exercisePreview.length > 0 && (
-        <YStack gap="$0.5" pt="$1" borderTopWidth={1} borderTopColor="$gray4">
-          {exercisePreview.map((exerciseName, idx) => (
-            <Text
-              key={idx}
-              fontSize={9}
-              color="$color9"
-              numberOfLines={1}
-            >
-              {exerciseName}
-            </Text>
-          ))}
-          {remainingExercises > 0 && (
-            <Text fontSize={9} color="$color8" fontStyle="italic">
-              +{remainingExercises} more
-            </Text>
-          )}
-        </YStack>
-      )}
-
-      {/* Duration at bottom */}
-      <Text fontSize={10} color="$color9" pt="$0.5">
-        ~{estimatedDurationMinutes}m
-      </Text>
-    </YStack>
-  )
-
-  // Week view card - shows exercise preview with gradient for today
-  // Use gradient background only for today's non-locked, non-completed workouts
-  const showGradient = isToday && !isLocked && !isCompleted && !isInProgress
-
   return (
     <Card
       pressStyle={isLocked ? undefined : { opacity: 0.8, scale: 0.98 }}
       onPress={isLocked ? undefined : onPress}
       onLongPress={isLocked ? undefined : onLongPress}
-      backgroundColor={showGradient ? 'transparent' : getBgColor()}
+      accessibilityLabel={accessibilityLabel}
+      backgroundColor={getBgColor()}
       borderColor={getBorderColor()}
-      borderWidth={isToday || isInProgress ? 2 : 1}
+      borderWidth={isActive ? 2 : 1}
       borderLeftWidth={3}
       borderLeftColor={isLocked ? '$gray6' : colors.dot}
       borderRadius="$3"
@@ -228,24 +140,49 @@ export function CalendarWorkoutCard({
       overflow="hidden"
       padding={0}
     >
-      {showGradient ? (
-        <LinearGradient
-          colors={PHASE_GRADIENTS[phase]}
-          start={GRADIENT_START}
-          end={GRADIENT_END}
-          style={styles.gradient}
+      <YStack gap="$1.5" px="$2" py="$1.5">
+        {/* Duration and status icon */}
+        <XStack items="center" justify="space-between">
+          <Text fontSize={10} fontWeight="600" color="$color10">
+            ~{estimatedDurationMinutes}m
+          </Text>
+          {getStatusIcon()}
+        </XStack>
+
+        {/* Workout name */}
+        <Text
+          fontSize={12}
+          fontWeight="600"
+          lineHeight={16}
+          color={isLocked || isCompleted ? '$color10' : '$color12'}
+          numberOfLines={2}
+          // @ts-ignore - Android prop to prevent mid-word breaks
+          textBreakStrategy="simple"
         >
-          {cardContent}
-        </LinearGradient>
-      ) : (
-        cardContent
-      )}
+          {name}
+        </Text>
+
+        {/* Exercise preview list - no bullets to save space */}
+        {exercisePreview.length > 0 && (
+          <YStack gap="$0.5" pt="$1" borderTopWidth={1} borderTopColor="$gray4">
+            {exercisePreview.map((exerciseName, idx) => (
+              <Text
+                key={idx}
+                fontSize={9}
+                color="$color9"
+                numberOfLines={1}
+              >
+                {exerciseName}
+              </Text>
+            ))}
+            {remainingExercises > 0 && (
+              <Text fontSize={9} color="$color9">
+                +{remainingExercises} more
+              </Text>
+            )}
+          </YStack>
+        )}
+      </YStack>
     </Card>
   )
 }
-
-const styles = StyleSheet.create({
-  gradient: {
-    // No flex - just wrap content naturally
-  },
-})

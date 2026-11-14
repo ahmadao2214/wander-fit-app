@@ -5,6 +5,9 @@ import { CalendarWorkoutCard, CalendarWorkoutCardProps } from './CalendarWorkout
 import { DraggableWorkoutCard } from './DraggableWorkoutCard'
 import type { Phase } from '../../types'
 
+/** Height an empty week-view day keeps while a workout is dragged, so it can take the drop. */
+const WEEK_DROP_MIN_HEIGHT = 96
+
 /**
  * Phase colors for visual distinction
  * GPP = Blue (foundation phase)
@@ -268,9 +271,12 @@ export function CalendarDayCell({
       ref={viewRef}
       onLayout={handleLayout}
       style={{
-        flex: shouldExpand ? 1 : 0,
+        // Grow to the row's height but keep the cards' own height as the basis
+        // (flex: 1 would set the basis to 0 now that rows size to content)
         flexGrow: shouldExpand ? 1 : 0,
         minWidth: 0,
+        // Rows size to content, so an empty day needs height to stay a drop target
+        minHeight: isDragActive ? WEEK_DROP_MIN_HEIGHT : 0,
         backgroundColor: getWeekViewBackground(),
         borderRadius: 8,
         padding: 2,
