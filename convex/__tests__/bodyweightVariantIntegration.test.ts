@@ -217,7 +217,7 @@ describe("Bodyweight Variant Integration", () => {
       expect(result.isSubstituted).toBe(false);
     });
 
-    it("18+ experienced football player in SSP should get harder variants", () => {
+    it("adult (18-35) experienced football player in SSP should get harder variants", () => {
       // Simulating: experienced (6+ years) in SSP phase
       const sideProgressions = getProgressions("side_plank");
       const plankProgressions = getProgressions("plank");

@@ -328,7 +328,7 @@ describe("Bodyweight Variant Integration", () => {
       expect(result.slug).toBe("lying_leg_raise");
     });
 
-    it("18+ experienced athlete in SSP should get harder variants", () => {
+    it("adult (18-35) experienced athlete in SSP should get harder variants", () => {
       const progressions = { easier: "goblet_carry", harder: "trap_bar_carry" };
       const result = getBodyweightVariant("farmers_carry", "SSP", "6+", progressions);
       expect(result.slug).toBe("trap_bar_carry");
