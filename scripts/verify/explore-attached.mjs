@@ -5,7 +5,7 @@ import { spawnSync } from "node:child_process"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { EXPLORE_VERSION, reviewProblems } from "./explore.mjs"
 
-const mutationLabel = /\b(sign[ -]?out|log[ -]?out|delete|remove|reset|start|resume|finish|complete|submit|save|add|edit|change|update|commit|reassess|purchase|pay|send|enable|disable|pause|cancel|skip)\b|^(yes|ok|confirm|done|continue|accept|next|set|mark)\b/i
+const mutationLabel = /\b(sign[ -]?out|log[ -]?out|delete|remove|reset|start|resume|redo|finish|complete|submit|save|add|edit|change|update|commit|reassess|purchase|pay|send|enable|disable|pause|cancel|skip)\b|^(yes|ok|confirm|done|continue|accept|next|set|mark)\b/i
 
 export function attachedActionArgs(action, nodes) {
   if (action.action === "scroll" && ["up", "down", "left", "right", "top", "bottom"].includes(action.direction)) {

@@ -41,6 +41,16 @@ describe("attached Explore navigation", () => {
     expect(() => attachedActionArgs({ action: "back" }, [])).toThrow(/observed tab\/back labels/)
     expect(attachedActionArgs({ action: "scroll", direction: "down" }, [])).toEqual(["scroll", "down", "--settle"])
   })
+  it("refuses Redo workout controls by label or identifier", () => {
+    for (const node of [
+      { label: "Redo", identifier: "workout-action" },
+      { label: "Workout action", identifier: "redo-workout" },
+    ]) {
+      const snapshot = [{ ...node, ref: "e6", hittable: true, kind: "button" }]
+      expect(() => attachedActionArgs({ action: "tap", label: node.label }, snapshot)).toThrow(/refuses/)
+      expect(() => attachedActionArgs({ action: "tap", identifier: node.identifier }, snapshot)).toThrow(/refuses/)
+    }
+  })
 })
 
 describe("attached Explore environment", () => {
