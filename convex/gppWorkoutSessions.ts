@@ -213,7 +213,21 @@ function normalizeSetCompletions<
   }
 
   if (sets.length > targetCount) {
-    return sets.slice(0, targetCount);
+    // Trim only trailing sets that hold nothing. Sessions saved by older
+    // builds can have an exercise's sets in another exercise's slot; the
+    // client re-aligns them by exerciseId, so logged sets must survive here.
+    const hasData = (set: T) =>
+      set.completed ||
+      set.skipped ||
+      set.repsCompleted !== undefined ||
+      set.durationSeconds !== undefined ||
+      set.weight !== undefined ||
+      set.rpe !== undefined;
+    let keep = targetCount;
+    sets.forEach((set, index) => {
+      if (hasData(set)) keep = Math.max(keep, index + 1);
+    });
+    return sets.slice(0, keep);
   }
 
   return [
