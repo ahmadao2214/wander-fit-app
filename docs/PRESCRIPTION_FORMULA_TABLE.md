@@ -147,6 +147,39 @@ Used for category `4`.
 | `2-5` | `4 x 10 @ 65%` | `4 x 8 @ 75%` | `4 x 6 @ 80%` |
 | `6+` | `4 x 10 @ 65%` | `4 x 8 @ 75%` | `4 x 6 @ 80%` |
 
+## Week Dimension (Weekly Wave)
+
+Every value above is the **peak week** prescription. Each phase runs a four-step wave: intro → build → peak → deload. The athlete's week in the phase is mapped to a template week (1-4) by `mapUserWeekToTemplateWeek` (`convex/weekMapping.ts`), so the last week of any phase length (2-8 weeks) is always the deload. The wave follows the **slot**, not the template: `getSlotTemplateWeek` finds the first slot the template occupies, counting swaps in `user_schedule_overrides`, and maps that slot's week. That way a peak workout swapped into the last week is still prescribed as a deload. `startSession` stores the result as `scalingSnapshot.templateWeek`, so a session keeps the week it started in. Sessions started before the wave existed have no `templateWeek` and keep the peak prescription. Runtime scaling applies `WEEKLY_WAVE` on top of the profile formulas above:
+
+| Template Week | Focus | Sets | % of 1RM (strength track) | RPE Target |
+|---------------|-------|------|---------------------------|------------|
+| `1` | Introduction | `× 0.70` | `−5` pts | `−1` |
+| `2` | Build | `× 0.85` | `−2.5` pts | `0` |
+| `3` | Peak | `× 1.00` | `0` | `0` |
+| `4` | Deload | `× 0.60` | `−10` pts | `−2` |
+
+Rules:
+
+1. Sets are `round(peakSets × multiplier)`, never below `1`. The multipliers are the same as the template generator's `WEEK_VOLUME_MULTIPLIERS`.
+2. The %1RM shift applies to every strength-track profile: primary loaded lifts, general strength, unilateral, anti-rotation, upper-body and core accessories. Power/conditioning work keeps its load because it is prescribed for bar speed. Bodyweight work has no load.
+3. RPE targets shift down, never below `1`.
+4. Reps, rest and tempo do not change across the wave.
+5. Mobility and recovery work is not periodized.
+6. The wave only ever lowers a prescription, so every guardrail that holds at peak holds every week. The result is still clamped to the age 1RM ceiling: `85%` for `14-17`, `90%` otherwise.
+7. A missing or out-of-range week falls back to the peak prescription.
+
+### Primary Loaded Lifts By Week
+
+Max-strength sport context (category `4`), `2-5` / `6+` years:
+
+| Phase | Week 1 | Week 2 | Week 3 | Week 4 (Deload) |
+|-------|--------|--------|--------|-----------------|
+| `GPP` | `3 x 10 @ 60%` | `3 x 10 @ 62.5%` | `4 x 10 @ 65%` | `2 x 10 @ 55%` |
+| `SPP` | `3 x 8 @ 70%` | `3 x 8 @ 72.5%` | `4 x 8 @ 75%` | `2 x 8 @ 65%` |
+| `SSP` | `3 x 6 @ 75%` | `3 x 6 @ 77.5%` | `4 x 6 @ 80%` | `2 x 6 @ 70%` |
+
+Novices (`0-1` years, `3` peak sets at `65%`) run `2 x @ 60%`, `3 x @ 62.5%`, `3 x @ 65%`, then `2 x @ 55%`.
+
 ## Key Guardrails
 
 | Rule | Outcome |
@@ -160,6 +193,8 @@ Used for category `4`.
 | Mobility and cooldown work bypass the strength matrix | Prevents stretches from rendering `6 x 13` |
 | Experience increases sets before intensity | Early progression favors capacity before heavier loading |
 | Max-strength sports get the highest loading | Peak endpoint is `4 x 6 @ 80%` |
+| The weekly wave never raises a prescription above peak | Caps above hold in every week of every phase |
+| The last week of every phase is a deload | Sets, strength-track load and RPE all drop below peak |
 
 ## What Still Uses The Existing Matrix
 
@@ -195,6 +230,8 @@ Use this document to review the formula with the team:
 ## Current Implementation References
 
 - `convex/intensityScaling.ts`
+- `convex/weekMapping.ts`
 - `convex/programTemplates.ts`
 - `convex/gppWorkoutSessions.ts`
 - `convex/__tests__/categoryIntensity.test.ts`
+- `convex/__tests__/weeklyWave.test.ts`

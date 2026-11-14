@@ -49,4 +49,11 @@ export {
   // Utility functions
   getAvgOneRepMaxPercent,
   getRpeTarget,
+
+  // Category-specific scaling with the weekly wave
+  type WeeklyWaveStep,
+  type ScaledCategoryParameters,
+  WEEKLY_WAVE,
+  applyWeeklyWave,
+  getCategoryExerciseParameters,
 } from "../convex/intensityScaling";

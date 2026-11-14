@@ -452,6 +452,9 @@ export default defineSchema({
       phase: phaseValidator,  // GPP, SPP, SSP
       ageGroup: ageGroupValidator, // 14-17, 18-35, 36+
       yearsOfExperience: v.number(), // Used to determine experience bucket
+      // Template week (1-4) of the slot the workout was started in; drives the
+      // weekly wave. Absent on sessions started before the wave = peak week.
+      templateWeek: v.optional(v.number()),
     })),
   })
     .index("by_user", ["userId"])
