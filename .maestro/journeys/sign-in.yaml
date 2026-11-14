@@ -19,7 +19,7 @@ url: ${VERIFY_URL}
 - takeScreenshot: 03-today
 - tapOn: "Profile"
 - extendedWaitUntil:
-    visible: "PROGRESS STATS"
+    visible: "TRAINING INFO"
     timeout: 30000
 # The profile list scrolls inside the page. Maestro web only scrolls the window,
 # and it omits text that sits outside the viewport.
