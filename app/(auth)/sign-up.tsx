@@ -13,6 +13,7 @@ import { Zap, UserPlus, Eye, EyeOff } from '@tamagui/lucide-icons'
 import { getVerificationErrorMessage } from '../../lib/signUpErrors'
 import { waitFor } from '../../lib/waitFor'
 import { GoogleIcon } from '../../components/GoogleIcon'
+import { FieldLabel } from '../../components/FieldLabel'
 import { VerificationCodeInput } from '../../components/VerificationCodeInput'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -348,8 +349,8 @@ export default function SignUpScreen() {
               </YStack>
 
               {error ? (
-                <Card bg="$errorLight" p="$3" rounded="$3">
-                  <Text color="$error" text="center" fontSize={14} fontFamily="$body">
+                <Card bg="$red2" borderWidth={1} borderColor="$red6" p="$3" rounded="$3">
+                  <Text color="$red11" text="center" fontSize={14} fontFamily="$body">
                     {error}
                   </Text>
                 </Card>
@@ -453,8 +454,8 @@ export default function SignUpScreen() {
               </YStack>
 
               {error ? (
-                <Card bg="$errorLight" p="$3" rounded="$3">
-                  <Text color="$error" text="center" fontSize={14} fontFamily="$body">
+                <Card bg="$red2" borderWidth={1} borderColor="$red6" p="$3" rounded="$3">
+                  <Text color="$red11" text="center" fontSize={14} fontFamily="$body">
                     {error}
                   </Text>
                 </Card>
@@ -462,21 +463,25 @@ export default function SignUpScreen() {
 
               <YStack gap="$4">
                 {/* Name Input */}
-                <Input
-                  value={name}
-                  placeholder="Full name"
-                  onChangeText={(text) => {
-                    setName(text)
-                    setError('')
-                  }}
-                  size="$5"
-                  bg="$surface"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                  rounded="$4"
-                  fontFamily="$body"
-                  focusStyle={{ borderColor: '$primary', borderWidth: 2 }}
-                />
+                <YStack gap="$1.5">
+                  <FieldLabel htmlFor="setup-name">Full name</FieldLabel>
+                  <Input
+                    id="setup-name"
+                    accessibilityLabel="Full name"
+                    value={name}
+                    onChangeText={(text) => {
+                      setName(text)
+                      setError('')
+                    }}
+                    size="$5"
+                    bg="$surface"
+                    borderWidth={1}
+                    borderColor="$borderColor"
+                    rounded="$4"
+                    fontFamily="$body"
+                    focusStyle={{ borderColor: '$primary', borderWidth: 2 }}
+                  />
+                </YStack>
 
                 {/* Complete Setup Button */}
                 <Button
@@ -556,8 +561,8 @@ export default function SignUpScreen() {
 
               {/* Error Message */}
               {error ? (
-                <Card bg="$errorLight" p="$3" rounded="$3">
-                  <Text color="$error" text="center" fontSize={14} fontFamily="$body">
+                <Card bg="$red2" borderWidth={1} borderColor="$red6" p="$3" rounded="$3">
+                  <Text color="$red11" text="center" fontSize={14} fontFamily="$body">
                     {error}
                   </Text>
                 </Card>
@@ -597,32 +602,40 @@ export default function SignUpScreen() {
 
                 {/* Email/Password Section. testIDs for Maestro web; nativeID gives each
                     input its own DOM id so typed text lands in the focused field. */}
-                <Input
-                  testID="sign-up-name"
-                  nativeID="sign-up-name"
-                  value={name}
-                  placeholder="Full name"
-                  onChangeText={(name) => {
-                    setName(name)
-                    setError('')
-                  }}
-                  size="$5"
-                  bg="$surface"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                  rounded="$4"
-                  fontFamily="$body"
-                  focusStyle={{ borderColor: '$primary', borderWidth: 2 }}
-                />
+                <YStack gap="$1.5">
+                  <FieldLabel htmlFor="sign-up-name">Full name</FieldLabel>
+                  <Input
+                    testID="sign-up-name"
+                    nativeID="sign-up-name"
+                    id="sign-up-name"
+                    accessibilityLabel="Full name"
+                    autoComplete="name"
+                    value={name}
+                    onChangeText={(name) => {
+                      setName(name)
+                      setError('')
+                    }}
+                    size="$5"
+                    bg="$surface"
+                    borderWidth={1}
+                    borderColor="$borderColor"
+                    rounded="$4"
+                    fontFamily="$body"
+                    focusStyle={{ borderColor: '$primary', borderWidth: 2 }}
+                  />
+                </YStack>
 
-                <YStack gap="$1">
+                <YStack gap="$1.5">
+                  <FieldLabel htmlFor="sign-up-email">Email address</FieldLabel>
                   <Input
                     testID="sign-up-email"
                     nativeID="sign-up-email"
+                    id="sign-up-email"
+                    accessibilityLabel="Email address"
+                    autoComplete="email"
                     autoCapitalize="none"
                     keyboardType="email-address"
                     value={emailAddress}
-                    placeholder="Email address"
                     onChangeText={(email) => {
                       setEmailAddress(email)
                       setError('')
@@ -637,19 +650,22 @@ export default function SignUpScreen() {
                     focusStyle={{ borderColor: emailError ? '$error' : '$primary', borderWidth: 2 }}
                   />
                   {emailError ? (
-                    <Text color="$error" fontSize={12} fontFamily="$body" pl="$1">
+                    <Text color="$red11" fontSize={12} fontFamily="$body" pl="$1">
                       {emailError}
                     </Text>
                   ) : null}
                 </YStack>
 
-                <YStack gap="$1">
+                <YStack gap="$1.5">
+                  <FieldLabel htmlFor="sign-up-password">Password</FieldLabel>
                   <XStack position="relative">
                     <Input
                       testID="sign-up-password"
                       nativeID="sign-up-password"
+                      id="sign-up-password"
+                      accessibilityLabel="Password"
+                      autoComplete="new-password"
                       value={password}
-                      placeholder="Password"
                       secureTextEntry={!showPassword}
                       onChangeText={(password) => {
                         setPassword(password)
@@ -674,6 +690,8 @@ export default function SignUpScreen() {
                       items="center"
                       justify="center"
                       onPress={() => setShowPassword(!showPassword)}
+                      accessibilityRole="button"
+                      accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
                       cursor="pointer"
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
@@ -685,7 +703,7 @@ export default function SignUpScreen() {
                     </XStack>
                   </XStack>
                   {passwordError ? (
-                    <Text color="$error" fontSize={12} fontFamily="$body" pl="$1">
+                    <Text color="$red11" fontSize={12} fontFamily="$body" pl="$1">
                       {passwordError}
                     </Text>
                   ) : null}

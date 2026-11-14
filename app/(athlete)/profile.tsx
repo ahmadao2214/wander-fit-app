@@ -22,6 +22,7 @@ import {
   Clock,
 } from '@tamagui/lucide-icons'
 import { PHASE_NAMES } from '../../types'
+import { progressCaption } from '../../lib/today'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
@@ -81,6 +82,10 @@ export default function ProfilePage() {
     api.userPrograms.getIntakeHistory,
     user ? {} : "skip"
   )
+
+  const progressLine = progress
+    ? progressCaption({ workoutsCompleted: progress.daysCompleted, currentStreak: progress.currentStreak })
+    : null
 
   // Core lift exercises with user's maxes
   const coreLiftExercises = useQuery(
@@ -147,10 +152,10 @@ export default function ProfilePage() {
                 </Text>
                 {programState && (
                   <XStack items="center" gap="$2" pt="$1">
-                    <Trophy size={14} color="$accent" />
+                    <Trophy size={14} color="$orange10" />
                     <Text 
                       fontSize={13} 
-                      color="$accent" 
+                      color="$orange11"
                       fontFamily="$body" fontWeight="600"
                     >
                       {programState.skillLevel} Athlete
@@ -161,84 +166,13 @@ export default function ProfilePage() {
             </XStack>
           </Card>
 
-          {/* Progress Stats */}
-          {progress && (
-            <YStack gap="$3">
-              <SectionLabel>PROGRESS STATS</SectionLabel>
-
-              <XStack gap="$3" flexWrap="wrap">
-                <Card
-                  flex={1}
-                  minWidth={100}
-                  p="$4"
-                  bg="$surface"
-                  rounded="$4"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                >
-                  <YStack items="center" gap="$1">
-                    <StatNumber color="$primary">
-                      {progress.daysCompleted}
-                    </StatNumber>
-                    <Text
-                      fontSize={11}
-                      color="$color10"
-                      text="center"
-                      fontFamily="$body" fontWeight="500"
-                    >
-                      Days{'\n'}Completed
-                    </Text>
-                  </YStack>
-                </Card>
-
-                <Card
-                  flex={1}
-                  minWidth={100}
-                  p="$4"
-                  bg="$surface"
-                  rounded="$4"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                >
-                  <YStack items="center" gap="$1">
-                    <StatNumber color="$primary">
-                      {progress.currentStreak}
-                    </StatNumber>
-                    <Text
-                      fontSize={11}
-                      color="$color10"
-                      text="center"
-                      fontFamily="$body" fontWeight="500"
-                    >
-                      Current{'\n'}Streak
-                    </Text>
-                  </YStack>
-                </Card>
-
-                <Card
-                  flex={1}
-                  minWidth={100}
-                  p="$4"
-                  bg="$surface"
-                  rounded="$4"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                >
-                  <YStack items="center" gap="$1">
-                    <StatNumber color="$primary">
-                      {progress.uniqueExercisesPerformed}
-                    </StatNumber>
-                    <Text
-                      fontSize={11}
-                      color="$color10"
-                      text="center"
-                      fontFamily="$body" fontWeight="500"
-                    >
-                      Exercises{'\n'}Tried
-                    </Text>
-                  </YStack>
-                </Card>
-              </XStack>
+          {/* Progress: one line once there is something to count, no 0/0/0 scoreboard */}
+          {progressLine && (
+            <YStack gap="$2" testID="profile-progress">
+              <SectionLabel>PROGRESS</SectionLabel>
+              <Text fontSize={15} fontFamily="$body" color="$color12">
+                {progressLine}
+              </Text>
             </YStack>
           )}
 

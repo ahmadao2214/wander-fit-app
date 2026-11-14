@@ -140,9 +140,9 @@ export function PerformanceReviewItem({
 
           {/* Expand/Collapse Chevron */}
           {isExpanded ? (
-            <ChevronUp size={20} color="$gray8" />
+            <ChevronUp size={20} color="$color10" />
           ) : (
-            <ChevronDown size={20} color="$gray8" />
+            <ChevronDown size={20} color="$color10" />
           )}
         </XStack>
       </TouchableOpacity>
@@ -177,7 +177,7 @@ export function PerformanceReviewItem({
                   justify="center"
                   p={0}
                 >
-                  <Text fontSize="$1" fontWeight="600" color={set.skipped ? "$gray9" : "$color11"}>
+                  <Text fontSize="$1" fontWeight="600" color={set.skipped ? "$color10" : "$color11"}>
                     {set.setNumber}
                   </Text>
                 </Card>

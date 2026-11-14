@@ -161,7 +161,7 @@ function PhaseSpecs({ specs, accent, text }: { specs: PhaseSpec[]; accent: Color
         <YStack key={spec.label} flex={1} gap="$1" testID={`phase-spec-${spec.label.toLowerCase()}`}>
           <XStack items="center" gap="$1">
             <spec.icon size={12} color={accent} />
-            <Text fontSize={11} fontFamily="$body" fontWeight="600" letterSpacing={0.8} textTransform="uppercase" color={text} opacity={0.75}>
+            <Text fontSize={11} fontFamily="$body" fontWeight="600" letterSpacing={0.8} textTransform="uppercase" color={text}>
               {spec.label}
             </Text>
           </XStack>
@@ -339,7 +339,7 @@ export default function TrainingSciencePage() {
             <YStack gap="$2">
               <Card bg="$intensityLow2" p="$3" rounded="$3" borderLeftWidth={3} borderLeftColor="$intensityLow6">
                 <YStack gap="$1">
-                  <SubHeading color="$intensityLow6">Low Intensity</SubHeading>
+                  <SubHeading color="$intensityLow9">Low Intensity</SubHeading>
                   <BodyText>
                     Recovery focus. 60-70% effort with longer rest. You should feel like you have 4-5 reps left after each set.
                   </BodyText>
@@ -348,7 +348,7 @@ export default function TrainingSciencePage() {
 
               <Card bg="$intensityMed2" p="$3" rounded="$3" borderLeftWidth={3} borderLeftColor="$intensityMed6">
                 <YStack gap="$1">
-                  <SubHeading color="$intensityMed6">Moderate Intensity</SubHeading>
+                  <SubHeading color="$intensityMed9">Moderate Intensity</SubHeading>
                   <BodyText>
                     Standard training. 75-80% effort with balanced rest. You should feel like you have 3-4 reps left.
                   </BodyText>
@@ -357,7 +357,7 @@ export default function TrainingSciencePage() {
 
               <Card bg="$intensityHigh2" p="$3" rounded="$3" borderLeftWidth={3} borderLeftColor="$intensityHigh6">
                 <YStack gap="$1">
-                  <SubHeading color="$intensityHigh6">High Intensity</SubHeading>
+                  <SubHeading color="$intensityHigh9">High Intensity</SubHeading>
                   <BodyText>
                     Pushing limits. 85-90% effort with shorter rest. You should feel like you have only 1-2 reps left.
                   </BodyText>

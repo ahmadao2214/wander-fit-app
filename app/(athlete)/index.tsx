@@ -334,11 +334,12 @@ export default function AthleteDashboard() {
             <YStack gap="$4">
               <YStack gap="$1.5">
                 <XStack justify="space-between" items="center">
-                  <SectionLabel>Today's workout</SectionLabel>
+                  {/* $color11: $color10 is 4.4:1 on the card's $brand1 tint, under AA */}
+                  <SectionLabel color="$color11">Today's workout</SectionLabel>
                   {isCompleted && (
                     <XStack items="center" gap="$1">
-                      <CheckCircle size={14} color="$success" />
-                      <Text fontSize={12} color="$success" fontFamily="$body" fontWeight="600">
+                      <CheckCircle size={14} color="$green10" />
+                      <Text fontSize={12} color="$green11" fontFamily="$body" fontWeight="600">
                         Done
                       </Text>
                     </XStack>
@@ -353,8 +354,13 @@ export default function AthleteDashboard() {
                   {todayWorkout?.name || 'Loading…'}
                 </Text>
                 {todayWorkout && (
-                  <Text testID="today-workout-meta" fontSize={14} color="$color10" fontFamily="$body">
-                    <Text fontSize={14} fontFamily="$body" fontWeight="600" color={phaseColor}>
+                  <Text testID="today-workout-meta" fontSize={14} color="$color11" fontFamily="$body">
+                    <Text
+                      fontSize={14}
+                      fontFamily="$body"
+                      fontWeight="600"
+                      color={phaseColor}
+                    >
                       {/* The athlete's scheduled position. todayWorkout.week is the template's
                           lookup week, which differs when phases are shorter than 4 weeks. */}
                       {programState.phase} W{programState.week} D{programState.day}
@@ -393,6 +399,8 @@ export default function AthleteDashboard() {
                   bg={phaseColor}
                   color="white"
                   icon={RotateCcw}
+                  // Large text: white on the phase fill is 3.0-3.3:1
+                  fontSize={19}
                   fontFamily="$body" fontWeight="700"
                   rounded="$4"
                   pressStyle={{ opacity: 0.9, scale: 0.98 }}

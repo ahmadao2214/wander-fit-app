@@ -20,8 +20,6 @@ import {
   ChevronRight,
   Check,
   Trophy,
-  Zap,
-  Flame,
   Timer,
 } from '@tamagui/lucide-icons'
 import { ExerciseTypeIcon } from '../../../../components/workout/ExerciseTypeIcon'
@@ -33,7 +31,13 @@ import { WarmupSection, type WarmupExercise } from '../../../../components/worko
 import { WARMUP_PHASES } from '../../../../convex/warmupSequences'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { PanResponder, Platform, Vibration, Animated, useColorScheme, Pressable } from 'react-native'
-import { mapIntensityToLevel, normalizeTrackedSets, IntensityLevel } from '../../../../lib'
+import { mapIntensityToLevel, normalizeTrackedSets } from '../../../../lib'
+import {
+  alignCompletionsToTemplate,
+  isWarmupExercise,
+  mainTemplateIndices,
+  normalizeExerciseOrder,
+} from '../../../../lib/executionOrder'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
@@ -53,78 +57,6 @@ const TimerDisplay = styled(Text, {
   fontSize: 18,
   letterSpacing: 0.5,
 })
-
-// ─────────────────────────────────────────────────────────────────────────────
-// INTENSITY BADGE
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface IntensityBadgeProps {
-  intensity: IntensityLevel
-  size?: 'small' | 'large'
-}
-
-function IntensityBadge({ intensity, size = 'small' }: IntensityBadgeProps) {
-  const configs = {
-    low: { 
-      bg: '$intensityLow6' as const, 
-      label: 'LOW INTENSITY', 
-      icon: Zap,
-      description: 'Recovery session'
-    },
-    medium: { 
-      bg: '$intensityMed6' as const, 
-      label: 'MODERATE', 
-      icon: Zap,
-      description: 'Building effort'
-    },
-    high: { 
-      bg: '$intensityHigh6' as const, 
-      label: 'HIGH INTENSITY', 
-      icon: Flame,
-      description: 'Peak effort'
-    },
-  }
-  const config = configs[intensity]
-
-  if (size === 'large') {
-    return (
-      <XStack 
-        bg={config.bg} 
-        px="$3" 
-        py="$2" 
-        rounded="$3" 
-        items="center" 
-        gap="$2"
-      >
-        <config.icon size={16} color="white" />
-        <YStack>
-          <Text color="white" fontSize={12} fontFamily="$body" fontWeight="700" letterSpacing={0.5}>
-            {config.label}
-          </Text>
-          <Text color="rgba(255,255,255,0.8)" fontSize={10} fontFamily="$body">
-            {config.description}
-          </Text>
-        </YStack>
-      </XStack>
-    )
-  }
-
-  return (
-    <XStack 
-      bg={config.bg} 
-      px="$2" 
-      py="$1" 
-      rounded="$2" 
-      items="center" 
-      gap="$1"
-    >
-      <config.icon size={12} color="white" />
-      <Text color="white" fontSize={10} fontFamily="$body" fontWeight="700" letterSpacing={0.5}>
-        {config.label}
-      </Text>
-    </XStack>
-  )
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -217,6 +149,22 @@ export default function WorkoutExecutionScreen() {
 
   // Refs for swipe tracking
   const currentIndexRef = useRef(currentExerciseIndex)
+
+  // Position in the athlete's order -> slot in exerciseCompletions (template order).
+  // The shown exercise and its sets must come from the same template index.
+  const mainSlotOfTemplateIndex = useMemo(() => {
+    const templateExs = (session?.template?.exercises ?? []) as any[]
+    return new Map(mainTemplateIndices(templateExs).map((idx, slot) => [idx, slot]))
+  }, [session?.template?.exercises])
+  const completionSlotAt = (position: number): number | undefined => {
+    if (exerciseOrder.length === 0) return position // legacy templates without a section field
+    const templateIdx = exerciseOrder[position]
+    return templateIdx === undefined ? undefined : mainSlotOfTemplateIndex.get(templateIdx)
+  }
+  const completionAt = (position: number): ExerciseCompletion | undefined => {
+    const slot = completionSlotAt(position)
+    return slot === undefined ? undefined : exerciseCompletions[slot]
+  }
   const exerciseCountRef = useRef(0)
 
   // Map backend intensity to frontend IntensityLevel
@@ -315,57 +263,42 @@ export default function WorkoutExecutionScreen() {
   useEffect(() => {
     if (session?.exercises && !isInitialized) {
       if (session.template?.exercises) {
-        const templateExs = session.template.exercises
+        const templateExs = session.template.exercises as any[]
 
-        // Build set of warmup template indices using section field
-        // (not exerciseId, since exercises like dead_bug can appear in both warmup and main)
+        // Completions live in TEMPLATE order; exerciseOrder only says which
+        // template exercise comes next. Saves from earlier builds could be
+        // misaligned (reordered positions, or main exercises only), so match
+        // each saved completion back to its exercise by ID.
+        const aligned = alignCompletionsToTemplate(templateExs, session.exercises as ExerciseCompletion[])
         const warmupIndices = new Set(
-          templateExs
-            .map((ex: any, idx: number) => ({ ex, idx }))
-            .filter(({ ex }: any) => ex.section === 'warmup' || (!ex.section && ex.notes === 'Warmup'))
-            .map(({ idx }: any) => idx)
+          templateExs.map((_, idx) => idx).filter((idx) => isWarmupExercise(templateExs[idx]))
         )
-
-        // Store warmup completions so we can reconstruct the full array when saving
         const warmupCompletions = new Map<number, ExerciseCompletion>()
-        const allCompletions = session.exercises as ExerciseCompletion[]
-        if (allCompletions.length >= templateExs.length) {
-          // Full array — extract warmup entries before filtering
-          for (const idx of warmupIndices) {
-            if (idx < allCompletions.length) {
-              warmupCompletions.set(idx, allCompletions[idx])
-            }
-          }
-        } else {
-          // Already filtered (legacy save) — create placeholder warmup completions
-          for (const idx of warmupIndices) {
-            const tmpl = templateExs[idx] as any
-            if (tmpl) {
-              warmupCompletions.set(idx, {
-                exerciseId: tmpl.exerciseId,
-                completed: true,
-                skipped: true,
-                sets: Array.from({ length: tmpl.sets || 1 }, () => ({
-                  completed: true,
-                  skipped: true,
-                })),
-              })
-            }
-          }
+        for (const idx of warmupIndices) {
+          const tmpl = templateExs[idx]
+          warmupCompletions.set(idx, aligned[idx] ?? {
+            exerciseId: tmpl.exerciseId,
+            completed: true,
+            skipped: true,
+            sets: Array.from({ length: tmpl.sets || 1 }, () => ({
+              completed: true,
+              skipped: true,
+            })),
+          })
         }
         warmupDataRef.current = { indices: warmupIndices, completions: warmupCompletions }
 
-        // Filter completions to non-warmup only using index-based matching.
-        // If session.exercises is shorter than templateExs, it was already saved
-        // as a full array from a previous save — just extract non-warmup entries.
-        const filteredCompletions = allCompletions.length >= templateExs.length
-          ? allCompletions.filter((_: any, idx: number) => !warmupIndices.has(idx))
-          : allCompletions
-        const filteredTemplateExercises = templateExs.filter((_: any, idx: number) => !warmupIndices.has(idx))
-        const normalizedCompletions = filteredCompletions.map((completion, idx) => {
-          const templateExercise = filteredTemplateExercises[idx] as any
-          const prescribedSets = templateExercise?.scaledSets ?? templateExercise?.sets ?? completion.sets.length
-
+        // One completion per main exercise, in template order
+        const mainIndices = mainTemplateIndices(templateExs)
+        const normalizedCompletions = mainIndices.map((idx) => {
+          const tmpl = templateExs[idx]
+          const prescribedSets = tmpl.scaledSets ?? tmpl.sets ?? 1
+          const completion = aligned[idx] ?? {
+            exerciseId: tmpl.exerciseId,
+            completed: false,
+            skipped: false,
+            sets: [],
+          }
           return {
             ...completion,
             sets: normalizeTrackedSets(completion.sets, prescribedSets),
@@ -375,25 +308,16 @@ export default function WorkoutExecutionScreen() {
         setExerciseCompletions(normalizedCompletions)
         exerciseCountRef.current = normalizedCompletions.length
 
-        // Build non-warmup template indices for default order
-        const nonWarmupIndices = templateExs
-          .map((_: any, idx: number) => idx)
-          .filter((idx: number) => !warmupIndices.has(idx))
+        // A complete order of the main exercises (repairs truncated or stale saves)
+        const order = normalizeExerciseOrder(session.exerciseOrder as number[] | undefined, templateExs)
+        setExerciseOrder(order)
 
-        if (session.exerciseOrder && session.exerciseOrder.length > 0) {
-          // Filter saved order to exclude warmup indices
-          const filteredOrder = (session.exerciseOrder as number[]).filter(
-            (idx: number) => !warmupIndices.has(idx)
-          )
-          setExerciseOrder(filteredOrder.length > 0 ? filteredOrder : nonWarmupIndices)
-        } else {
-          setExerciseOrder(nonWarmupIndices)
-        }
-
-        // Find first incomplete non-warmup exercise
-        const firstIncomplete = normalizedCompletions.findIndex(
-          (e) => !e.completed && !e.skipped
-        )
+        // Resume at the first exercise in the athlete's order that isn't done
+        const mainSlotOf = new Map(mainIndices.map((idx, slot) => [idx, slot]))
+        const firstIncomplete = order.findIndex((idx) => {
+          const completion = normalizedCompletions[mainSlotOf.get(idx) ?? -1]
+          return completion && !completion.completed && !completion.skipped
+        })
         if (firstIncomplete !== -1) {
           setCurrentExerciseIndex(firstIncomplete)
         }
@@ -521,7 +445,9 @@ export default function WorkoutExecutionScreen() {
   const handleSetUpdate = (setIndex: number, data: SetData) => {
     setExerciseCompletions((prev) => {
       const updated = [...prev]
-      const exercise = { ...updated[currentExerciseIndex] }
+      const slot = completionSlotAt(currentExerciseIndex)
+      if (slot === undefined || !updated[slot]) return prev
+      const exercise = { ...updated[slot] }
       exercise.sets = [...exercise.sets]
       exercise.sets[setIndex] = data
 
@@ -529,7 +455,7 @@ export default function WorkoutExecutionScreen() {
       exercise.completed = allSetsCompleted
 
       // Finishing the last set doesn't move on by itself; the athlete taps Next
-      updated[currentExerciseIndex] = exercise
+      updated[slot] = exercise
       return updated
     })
   }
@@ -645,16 +571,11 @@ export default function WorkoutExecutionScreen() {
     
     if (fromIndex <= currentExerciseIndex || toIndex <= currentExerciseIndex) return
     if (fromIndex < 0 || toIndex < 0) return
-    if (fromIndex >= exerciseCompletions.length || toIndex >= exerciseCompletions.length) return
+    if (fromIndex >= exerciseOrder.length || toIndex >= exerciseOrder.length) return
 
+    // Only the order moves. Completions stay in template order, so each
+    // exercise keeps its own sets.
     setExerciseOrder(prev => {
-      const updated = [...prev]
-      const [moved] = updated.splice(fromIndex, 1)
-      updated.splice(toIndex, 0, moved)
-      return updated
-    })
-
-    setExerciseCompletions(prev => {
       const updated = [...prev]
       const [moved] = updated.splice(fromIndex, 1)
       updated.splice(toIndex, 0, moved)
@@ -705,10 +626,9 @@ export default function WorkoutExecutionScreen() {
     )
   }, [warmupExs])
 
+  // exerciseOrder is normalized on load: every main exercise once, by template index
   const orderedExercises = exerciseOrder.length > 0
-    ? exerciseOrder.map(idx => templateExercises[idx]).filter((ex: any) =>
-        ex != null && ex?.section !== 'warmup' && !(ex && !ex.section && ex.notes === 'Warmup')
-      )
+    ? exerciseOrder.map(idx => templateExercises[idx]).filter((ex: any) => ex != null && !isWarmupExercise(ex))
     : mainTemplateExercises
 
   // Keep exercise count ref in sync with orderedExercises length so swipe
@@ -721,7 +641,8 @@ export default function WorkoutExecutionScreen() {
   }, [orderedExercises.length])
 
   const currentExercise = orderedExercises[currentExerciseIndex]
-  const currentCompletion = exerciseCompletions[currentExerciseIndex]
+  const currentCompletion = completionAt(currentExerciseIndex)
+  const currentSetCount = currentExercise ? (currentExercise.scaledSets ?? currentExercise.sets) : 0
 
   // Get previous performance for current exercise (if available)
   const previousSetsForCurrentExercise = useMemo(() => {
@@ -800,7 +721,7 @@ export default function WorkoutExecutionScreen() {
           {/* Dot Stepper Progress */}
           <XStack items="center" gap="$1.5">
             {orderedExercises.map((_, idx) => {
-              const isCompleted = exerciseCompletions[idx]?.completed
+              const isCompleted = completionAt(idx)?.completed
               const isCurrent = idx === currentExerciseIndex
               return (
                 <YStack
@@ -868,7 +789,7 @@ export default function WorkoutExecutionScreen() {
                     fontWeight="700"
                     color="$color12"
                   >
-                    {currentExercise.scaledSets ?? currentExercise.sets} sets
+                    {currentSetCount} {currentSetCount === 1 ? 'set' : 'sets'}
                   </Text>
                   <Text fontSize={16} color="$color9" fontFamily="$body">
                     ×
@@ -941,6 +862,9 @@ export default function WorkoutExecutionScreen() {
             bg={intensityColors.primary}
             color="white"
             iconAfter={isLastExercise ? Trophy : ChevronRight}
+            // White on the phase fill is 3.0-3.3:1, which AA allows only for
+            // large text (18.66px bold and up)
+            fontSize={19}
             fontFamily="$body" fontWeight="700"
             rounded="$4"
             pressStyle={{ opacity: 0.9, scale: 0.98 }}
@@ -961,7 +885,7 @@ export default function WorkoutExecutionScreen() {
           reps: ex.reps,
           scaledSets: ex.scaledSets,
           scaledReps: ex.scaledReps,
-          completed: exerciseCompletions[idx]?.completed || false,
+          completed: completionAt(idx)?.completed || false,
         }))}
         currentIndex={currentExerciseIndex}
         onExerciseSelect={handleExerciseSelect}
@@ -1026,8 +950,8 @@ export default function WorkoutExecutionScreen() {
                 <AlertDialog.Action asChild>
                   <Button 
                     flex={1} 
-                    bg="$error" 
-                    color="white" 
+                    bg="$red11"
+                    color="white"
                     fontFamily="$body" fontWeight="700"
                     rounded="$4"
                     onPress={handleAbandonWorkout}
@@ -1112,7 +1036,7 @@ export default function WorkoutExecutionScreen() {
                   </Text>
                 </YStack>
                 <YStack items="center">
-                  <Text fontFamily="$body" fontWeight="700" fontSize={24} color="$success">
+                  <Text fontFamily="$body" fontWeight="700" fontSize={24} color="$green11">
                     {completedCount}/{orderedExercises.length}
                   </Text>
                   <Text fontSize={12} color="$color10" fontFamily="$body">

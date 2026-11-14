@@ -129,7 +129,9 @@ describe("web flows", () => {
     const start = flow.indexOf("startRecording: recording")
     const welcome = flow.indexOf('visible: "WELCOME BACK"')
     const signUpLink = flow.indexOf('tapOn: "Sign up"')
-    const swipe = flow.indexOf("- swipe:")
+    // One swipe brings "Sign up" into the web viewport, the next scrolls the form
+    const linkSwipe = flow.indexOf("- swipe:")
+    const swipe = flow.indexOf("- swipe:", signUpLink)
     const name = flow.indexOf("id: sign-up-name\n- inputText")
     const fullName = flow.indexOf('inputText: "Verify Athlete"')
     const email = flow.indexOf("inputText: ${PERSONA_EMAIL}")
@@ -145,7 +147,8 @@ describe("web flows", () => {
     expect(flow).not.toContain("Trainer")
     expect(start).toBeGreaterThan(launch)
     expect(welcome).toBeGreaterThan(start)
-    expect(signUpLink).toBeGreaterThan(welcome)
+    expect(linkSwipe).toBeGreaterThan(welcome)
+    expect(signUpLink).toBeGreaterThan(linkSwipe)
     expect(swipe).toBeGreaterThan(signUpLink)
     expect(name).toBeGreaterThan(swipe)
     expect(fullName).toBeGreaterThan(name)
@@ -364,6 +367,37 @@ describe("activation dates script", () => {
     // Saturday 1 Mar 2025 + 84 days = Saturday 24 May 2025.
     const output = await runDates("2025-03-01T23:30:00")
     expect(output).toEqual({ today: 6, day2: 1, day4: 3, seasonDay: "season-day-2025-05-24" })
+  })
+})
+
+describe("native reorder flow", () => {
+  const flowText = fs.readFileSync(path.join(root, ".maestro/native/workout-reorder.yaml"), "utf8")
+
+  it("only uses testIDs that exist in the screens it drives", () => {
+    const sources = [
+      "app/(athlete)/index.tsx",
+      "app/(athlete)/workout/[id].tsx",
+      "app/(athlete)/workout/execute/[id].tsx",
+      "components/workout/SetTracker.tsx",
+      "components/workout/WarmupSection.tsx",
+    ].map((file) => fs.readFileSync(path.join(root, file), "utf8")).join("\n")
+    const ids = [...new Set([...flowText.matchAll(/id: (\S+)/g)].map((m) => m[1]))]
+    const missing = ids.filter((id) => {
+      if (/^set-\d$/.test(id)) return !sources.includes("testID={`set-${index}`}")
+      return !sources.includes(`testID="${id}"`)
+    })
+    expect(missing).toEqual([])
+  })
+
+  it("logs a set, restarts, resumes, and checks the set stayed on the first exercise", () => {
+    const steps = parse(flowText.split(/^---$/m)[1])
+    const at = (predicate) => steps.findIndex(predicate)
+    const logged = at((s) => s.tapOn?.id === "set-0")
+    const exit = at((s) => s === "stopApp")
+    const resume = at((s) => s.tapOn === "Resume Workout")
+    const finalCheck = steps.length - 2
+    expect([logged > 0, exit > logged, resume > exit]).toEqual([true, true, true])
+    expect(steps[finalCheck].assertVisible).toBe("Set 1, .*, done")
   })
 })
 

@@ -5,6 +5,15 @@ url: ${VERIFY_URL}
     visible: "WELCOME BACK"
     timeout: 90000
 - takeScreenshot: 01-sign-in
+# The field labels push "Sign up" below the 625px web viewport. Swipe the
+# inner list (see the note below) so Maestro web can see it.
+- swipe:
+    start: 50%, 85%
+    end: 50%, 15%
+    duration: 800
+- extendedWaitUntil:
+    visible: "Sign up"
+    timeout: 10000
 - tapOn: "Sign up"
 - extendedWaitUntil:
     visible:

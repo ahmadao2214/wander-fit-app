@@ -121,7 +121,8 @@ export function ExerciseAccordionItem({
           justify="center"
           p={0}
         >
-          <Text color="white" fontWeight="600" fontSize="$2">
+          {/* Navy, not white: white on the phase fill is 3.0-3.3:1, under AA for small text */}
+          <Text color="$color12" fontWeight="700" fontSize="$2">
             {index + 1}
           </Text>
         </Card>
@@ -145,9 +146,9 @@ export function ExerciseAccordionItem({
 
             {/* Expand/Collapse Chevron */}
             {isExpanded ? (
-              <ChevronUp size={20} color="$gray8" />
+              <ChevronUp size={20} color="$color10" />
             ) : (
-              <ChevronDown size={20} color="$gray8" />
+              <ChevronDown size={20} color="$color10" />
             )}
           </XStack>
         </TouchableOpacity>

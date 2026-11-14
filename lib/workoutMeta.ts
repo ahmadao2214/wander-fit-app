@@ -46,3 +46,4 @@ export function workoutMetaLine({
   if (intensity) parts.push(intensity)
   return parts.join(' · ')
 }
+

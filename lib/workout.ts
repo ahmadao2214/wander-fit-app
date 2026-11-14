@@ -147,3 +147,19 @@ export function visibleEquipment(equipment: string[] | undefined): string[] {
   if (!equipment) return [];
   return equipment.filter((item) => !NO_EQUIPMENT.has(item.trim().toLowerCase()));
 }
+
+/** Index of the set to log next: the first neither completed nor skipped, or -1. */
+export function nextSetIndex(sets: readonly { completed: boolean; skipped: boolean }[]): number {
+  return sets.findIndex((set) => !set.completed && !set.skipped)
+}
+
+/**
+ * Set tiles are a third of the row each, whatever the set count: three fit
+ * across and the rest wrap. A single set is one tile, not a full-width bar.
+ * Returns each tile's width for a measured row width (undefined until the
+ * row has been measured).
+ */
+export function setTileLayout(rowWidth: number, gap: number): { tileWidth: number | undefined } {
+  if (rowWidth <= 0) return { tileWidth: undefined }
+  return { tileWidth: Math.floor((rowWidth - gap * 2) / 3) }
+}

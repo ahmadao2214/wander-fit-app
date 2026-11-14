@@ -134,14 +134,14 @@ function PhaseCard({ phase, exercises, phaseIndex, isCompleted, onToggle, phaseC
             width={28}
             height={28}
             rounded="$10"
-            bg={isCompleted ? "$success" : badgeColor}
+            bg={isCompleted ? "$green10" : badgeColor}
             items="center"
             justify="center"
           >
             {isCompleted ? (
               <Check size={14} color="white" />
             ) : (
-              <Text color="white" fontSize={12} fontWeight="700">
+              <Text color="$color12" fontSize={12} fontWeight="700">
                 {phaseIndex + 1}
               </Text>
             )}
@@ -158,8 +158,8 @@ function PhaseCard({ phase, exercises, phaseIndex, isCompleted, onToggle, phaseC
           {/* Tap affordance (right side) */}
           {isCompleted ? (
             <XStack items="center" gap="$1">
-              <Check size={14} color="$success" />
-              <Text fontSize={12} color="$success" fontWeight="600">Done</Text>
+              <Check size={14} color="$green10" />
+              <Text fontSize={12} color="$green11" fontWeight="600">Done</Text>
             </XStack>
           ) : (
             <YStack
@@ -326,7 +326,7 @@ function WarmupFlow({ exercises, totalDuration, onComplete, onBack, phaseColor }
         >
           <Button
             size="$5"
-            bg={allComplete ? "$success" : "$primary"}
+            bg={allComplete ? "$green11" : "$primary"}
             color="white"
             fontWeight="700"
             onPress={onComplete}
@@ -403,7 +403,7 @@ function WarmupPreview({ exercises, totalDuration, phaseColor }: Pick<WarmupSect
                   items="center"
                   justify="center"
                 >
-                  <Text color="white" fontSize={11} fontWeight="700">
+                  <Text color="$color12" fontSize={11} fontWeight="700">
                     {index + 1}
                   </Text>
                 </YStack>
