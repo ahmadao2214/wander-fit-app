@@ -80,7 +80,7 @@ export default function HistoryPage() {
       <ScrollView
         flex={1}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ flexGrow: 1 }}
+        contentContainerStyle={{ grow: 1 }}
       >
         <YStack
           flex={1}
