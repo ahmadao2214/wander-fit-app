@@ -183,8 +183,7 @@ export default function HistoryPage() {
               ))}
             </YStack>
           ) : (
-            <Card
-              testID="history-empty"
+            <Card 
               p="$6" 
               bg="$surface" 
               rounded="$4"
