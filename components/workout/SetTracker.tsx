@@ -171,7 +171,7 @@ export function SetTracker({
               >
                 <Card
                   p="$2.5"
-                  width={72}
+                  minW={72}
                   bg={isCompleted ? (intensityLightColor as any) : isSkipped ? '$color4' : '$background'}
                   borderColor={isCompleted ? (intensityColor as any) : isSkipped ? '$borderColor' : '$borderColor'}
                   borderWidth={2}
@@ -222,10 +222,11 @@ export function SetTracker({
                         </Text>
                       </XStack>
                     ) : (
-                      <Text 
-                        fontSize={16} 
+                      <Text
+                        fontSize={16}
                         color="$color11"
                         fontFamily="$body" fontWeight="600"
+                        numberOfLines={1}
                       >
                         {displayReps}
                       </Text>

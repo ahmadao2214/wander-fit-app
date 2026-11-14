@@ -135,3 +135,15 @@ export function mapIntensityToLevel(
   return INTENSITY_MAPPING[backendIntensity as BackendIntensity] || "medium";
 }
 
+
+/** Equipment values that mean "nothing to bring". */
+const NO_EQUIPMENT = new Set(["bodyweight", "none"]);
+
+/**
+ * The equipment worth showing for an exercise: everything except
+ * "bodyweight"/"none", which tell the athlete nothing they need to act on.
+ */
+export function visibleEquipment(equipment: string[] | undefined): string[] {
+  if (!equipment) return [];
+  return equipment.filter((item) => !NO_EQUIPMENT.has(item.trim().toLowerCase()));
+}
