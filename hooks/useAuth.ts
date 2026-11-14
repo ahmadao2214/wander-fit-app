@@ -9,20 +9,15 @@ import type { User } from '../types'
  * 
  * Provides authentication state for the WanderFit app.
  * 
- * CURRENT FOCUS: Athlete experience
- * We are optimizing for the athlete's journey first. The trainer/coach role
- * will be implemented once the athlete experience is complete.
- * 
+ * Everyone is an athlete. Accounts created before the trainer screens were
+ * removed may still carry role "trainer"; for them needsIntake and
+ * needsOnboarding stay false (the root index still checks intakeCompletedAt).
+ *
  * Key states:
  * - isLoading: Auth state is being determined
  * - isAuthenticated: User is logged in with Clerk
  * - needsSetup: User exists in Clerk but not in Convex (needs to complete sign-up)
  * - needsIntake: User exists but hasn't completed the intake questionnaire
- * 
- * FUTURE: Trainer/Coach Role
- * - Trainers will have visibility into their athletes' programs
- * - Athletes can be connected to trainers via email
- * - Trainers won't need to go through athlete intake
  */
 export function useAuth() {
   const { isAuthenticated: isClerkAuthenticated, isLoading: isClerkLoading } = useConvexAuth()
@@ -156,8 +151,6 @@ export function useAuth() {
     // Helper functions
     hasCompletedIntake: !!safeAuthState.user?.intakeCompletedAt,
     hasCompletedOnboarding: !!safeAuthState.user?.onboardingCompletedAt,
-    isTrainer: safeAuthState.role === 'trainer',
-    isAthlete: safeAuthState.role === 'client', // 'client' = athlete in our model
   }
 }
 
@@ -175,38 +168,6 @@ export function useHasCompletedIntake() {
 export function useCurrentUser() {
   const { user } = useAuth()
   return user
-}
-
-/**
- * Get user role
- * 
- * FUTURE: This will be used to differentiate between athletes and trainers.
- * Currently everyone defaults to athlete ('client').
- */
-export function useUserRole() {
-  const { role } = useAuth()
-  return role
-}
-
-/**
- * Check if current user is a trainer
- * 
- * FUTURE: Trainers will have:
- * - Visibility into their athletes' programs
- * - Ability to approve pause/freeze requests
- * - Access to analytics across their athletes
- */
-export function useIsTrainer() {
-  const { role } = useAuth()
-  return role === 'trainer'
-}
-
-/**
- * Check if current user is an athlete (client)
- */
-export function useIsAthlete() {
-  const { role } = useAuth()
-  return role === 'client'
 }
 
 /**

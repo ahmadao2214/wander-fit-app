@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Platform, ScrollView, KeyboardAvoidingView, Keyboard, View } from 'react-native'
-import { Text, Input, YStack, XStack, Button, RadioGroup, Label, Card, Spinner, styled } from 'tamagui'
+import { Text, Input, YStack, XStack, Button, Label, Card, Spinner, styled } from 'tamagui'
 import { useSignUp, useSSO, useUser, useClerk } from '@clerk/clerk-expo'
 import { Link, useRouter } from 'expo-router'
 import { useConvexAuth, useMutation } from 'convex/react'
@@ -9,8 +9,7 @@ import * as AuthSession from 'expo-auth-session'
 import { PublicOnlyRoute } from '../../components/AuthGuard'
 import { useAuth } from '../../hooks/useAuth'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Zap, UserPlus, User, Users, Eye, EyeOff } from '@tamagui/lucide-icons'
-import { RadioButton } from '../../components/RadioButton'
+import { Zap, UserPlus, Eye, EyeOff } from '@tamagui/lucide-icons'
 import { getVerificationErrorMessage } from '../../lib/signUpErrors'
 import { waitFor } from '../../lib/waitFor'
 import { GoogleIcon } from '../../components/GoogleIcon'
@@ -36,13 +35,6 @@ const Subtitle = styled(Text, {
   lineHeight: 22,
 })
 
-const SectionLabel = styled(Text, {
-  fontFamily: '$body',
-  fontWeight: '600',
-  fontSize: 14,
-  color: '$color12',
-})
-
 const Divider = styled(YStack, {
   height: 1,
   flex: 1,
@@ -61,7 +53,6 @@ export default function SignUpScreen() {
   const { signOut } = useClerk()
   const router = useRouter()
   const createUser = useMutation(api.users.createUser)
-  const acceptInvitation = useMutation(api.invitations.acceptInvitation)
 
   // Convex functions check the caller's identity, so after setActive we wait
   // for the new Clerk session's token to reach Convex before calling createUser
@@ -77,7 +68,6 @@ export default function SignUpScreen() {
   const [emailAddress, setEmailAddress] = React.useState('')
   const [password, setPassword] = React.useState('')
   const [name, setName] = React.useState('')
-  const [role, setRole] = React.useState<'trainer' | 'client'>('client')
   const [pendingVerification, setPendingVerification] = React.useState(false)
   const [code, setCode] = React.useState('')
   const [isCreatingUser, setIsCreatingUser] = React.useState(false)
@@ -108,25 +98,12 @@ export default function SignUpScreen() {
 
     try {
       await waitForConvexAuth()
-      const userId = await createUser({
+      await createUser({
         email: clerkUser.emailAddresses?.[0]?.emailAddress || emailAddress,
         name: name || `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || 'User',
-        role: role,
+        role: 'client',
         clerkId: clerkUser.id,
       })
-
-      const userEmail = clerkUser.emailAddresses?.[0]?.emailAddress || emailAddress
-      // acceptInvitation is a no-op (returns null) when there is no pending invitation
-      if (role === 'client' && userEmail) {
-        try {
-          await acceptInvitation({
-            email: userEmail,
-            clientId: userId,
-          })
-        } catch (inviteErr) {
-          console.error('Failed to accept invitation:', inviteErr)
-        }
-      }
 
       if (Platform.OS !== 'web') {
         setTimeout(() => {
@@ -191,7 +168,7 @@ export default function SignUpScreen() {
           await createUser({
             email: signUp.emailAddress!,
             name: `${signUp.firstName || ''} ${signUp.lastName || ''}`.trim() || signUp.emailAddress!,
-            role: role,
+            role: 'client',
             clerkId: signUpAttempt.createdUserId!,
           })
           
@@ -207,7 +184,7 @@ export default function SignUpScreen() {
     } catch (err) {
       console.error('OAuth Sign-up Error:', JSON.stringify(err, null, 2))
     }
-  }, [startSSOFlow, router, role, createUser])
+  }, [startSSOFlow, router, createUser])
 
 
   // Handle submission of sign-up form
@@ -308,30 +285,15 @@ export default function SignUpScreen() {
 
         try {
           await waitForConvexAuth()
-          const userId = await createUser({
+          await createUser({
             email: emailAddress,
             name: name,
-            role: role,
+            role: 'client',
             clerkId: signUpAttempt.createdUserId!,
           })
 
-          // acceptInvitation is a no-op (returns null) when there is no pending invitation
-          if (role === 'client') {
-            try {
-              await acceptInvitation({
-                email: emailAddress,
-                clientId: userId,
-              })
-            } catch (inviteErr) {
-              console.error('Failed to accept invitation:', inviteErr)
-            }
-          }
-          
-          if (role === 'trainer') {
-            router.replace('/(trainer)')
-          } else {
-            router.replace('/(client)')
-          }
+          // The root index sends a new athlete on to intake
+          router.replace('/')
         } catch (convexErr) {
           console.error('Failed to create user in Convex:', convexErr)
           router.replace('/')
@@ -499,36 +461,6 @@ export default function SignUpScreen() {
               ) : null}
 
               <YStack gap="$4">
-                {/* Role Selection */}
-                <YStack gap="$2">
-                  <SectionLabel>I am a:</SectionLabel>
-                  <RadioGroup
-                    value={role}
-                    onValueChange={(value) => setRole(value as 'trainer' | 'client')}
-                  >
-                    <XStack gap="$3">
-                      <RadioButton
-                        value="client"
-                        id="client-setup"
-                        label="Athlete"
-                        description="Follow a training program"
-                        checked={role === 'client'}
-                        icon={User}
-                        onPress={() => setRole('client')}
-                      />
-                      <RadioButton
-                        value="trainer"
-                        id="trainer-setup"
-                        label="Trainer"
-                        description="Create programs for athletes"
-                        checked={role === 'trainer'}
-                        icon={Users}
-                        onPress={() => setRole('trainer')}
-                      />
-                    </XStack>
-                  </RadioGroup>
-                </YStack>
-
                 {/* Name Input */}
                 <Input
                   value={name}
@@ -618,7 +550,7 @@ export default function SignUpScreen() {
                 </YStack>
                 <DisplayHeading>CREATE ACCOUNT</DisplayHeading>
                 <Subtitle>
-                  Join as an athlete or trainer
+                  Get a program built for your sport
                 </Subtitle>
               </YStack>
 
@@ -632,36 +564,6 @@ export default function SignUpScreen() {
               ) : null}
 
               <YStack gap="$4">
-                {/* Role Selection */}
-                <YStack gap="$2">
-                  <SectionLabel>I am a:</SectionLabel>
-                  <RadioGroup
-                    value={role}
-                    onValueChange={(value) => setRole(value as 'trainer' | 'client')}
-                  >
-                    <XStack gap="$3">
-                      <RadioButton
-                        value="client"
-                        id="client"
-                        label="Athlete"
-                        description="Follow a training program"
-                        checked={role === 'client'}
-                        icon={User}
-                        onPress={() => setRole('client')}
-                      />
-                      <RadioButton
-                        value="trainer"
-                        id="trainer"
-                        label="Trainer"
-                        description="Create programs for athletes"
-                        checked={role === 'trainer'}
-                        icon={Users}
-                        onPress={() => setRole('trainer')}
-                      />
-                    </XStack>
-                  </RadioGroup>
-                </YStack>
-
                 {/* OAuth Section */}
                 <Button
                   onPress={onOAuthSignUpPress}
