@@ -6,6 +6,7 @@ import { ChevronDown, ChevronUp, ChevronLeft, Check } from '@tamagui/lucide-icon
 import type { WarmupPhase, ExerciseSection } from '../../types'
 import type { Id } from '../../convex/_generated/dataModel'
 import { WARMUP_PHASES } from '../../convex/warmupSequences'
+import { warmupSummary } from '../../lib/workoutMeta'
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -71,6 +72,28 @@ function groupByPhase(exercises: WarmupExercise[]): Map<WarmupPhase, WarmupExerc
     }
   }
   return groups
+}
+
+/** Warmup exercises with no warmupPhase (older templates mark them by notes only). */
+function ungroupedExercises(exercises: WarmupExercise[]): WarmupExercise[] {
+  return exercises.filter((ex) => !ex.warmupPhase)
+}
+
+function ExerciseRows({ exercises, indent }: { exercises: WarmupExercise[]; indent?: boolean }) {
+  return (
+    <>
+      {exercises.map((ex) => (
+        <XStack key={ex.orderIndex} justify="space-between" items="center" pl={indent ? '$6' : 0}>
+          <Text fontSize={14} color="$color" flex={1} numberOfLines={1}>
+            {ex.name}
+          </Text>
+          <Text fontSize={13} color="$colorFocus" ml="$2">
+            {ex.sets > 1 ? `${ex.sets} × ${ex.reps}` : ex.reps}
+          </Text>
+        </XStack>
+      ))}
+    </>
+  )
 }
 
 function getPhaseDuration(phase: WarmupPhase): number {
@@ -150,16 +173,7 @@ function PhaseCard({ phase, exercises, phaseIndex, isCompleted, onToggle, phaseC
           )}
         </XStack>
       </Pressable>
-      {!isCompleted && exercises.map((ex) => (
-        <XStack key={ex.orderIndex} justify="space-between" items="center" pl="$6">
-          <Text fontSize={14} color="$color" flex={1} numberOfLines={1}>
-            {ex.name}
-          </Text>
-          <Text fontSize={13} color="$colorFocus" ml="$2">
-            {ex.sets > 1 ? `${ex.sets} × ${ex.reps}` : ex.reps}
-          </Text>
-        </XStack>
-      ))}
+      {!isCompleted && <ExerciseRows exercises={exercises} indent />}
     </Card>
   )
 }
@@ -172,6 +186,7 @@ function WarmupFlow({ exercises, totalDuration, onComplete, onBack, phaseColor }
   const insets = useSafeAreaInsets()
   const phaseGroups = groupByPhase(exercises)
   const activePhases = PHASE_ORDER.filter((p) => phaseGroups.has(p))
+  const ungrouped = ungroupedExercises(exercises)
 
   // Phase-level checklist state
   const [completedPhases, setCompletedPhases] = useState<Set<WarmupPhase>>(new Set())
@@ -275,6 +290,11 @@ function WarmupFlow({ exercises, totalDuration, onComplete, onBack, phaseColor }
             Tap each phase when complete
           </Text>
         )}
+        {ungrouped.length > 0 && (
+          <Card borderWidth={1} borderColor="$borderColor" bg="$background" rounded="$4" p="$3" gap="$2" mb="$3">
+            <ExerciseRows exercises={ungrouped} />
+          </Card>
+        )}
         {activePhases.map((phase, index) => (
           <YStack
             key={phase}
@@ -327,6 +347,7 @@ function WarmupPreview({ exercises, totalDuration, phaseColor }: Pick<WarmupSect
   const [expanded, setExpanded] = useState(false)
   const phaseGroups = groupByPhase(exercises)
   const activePhases = PHASE_ORDER.filter((p) => phaseGroups.has(p))
+  const ungrouped = ungroupedExercises(exercises)
   const badgeColor = phaseColor ?? "$primary"
 
   return (
@@ -342,7 +363,11 @@ function WarmupPreview({ exercises, totalDuration, phaseColor }: Pick<WarmupSect
         <YStack>
           <H3>Warmup</H3>
           <Text fontSize={13} color="$colorFocus">
-            ~{totalDuration} min · {activePhases.length} phases · {exercises.length} exercises
+            {warmupSummary({
+              durationMin: totalDuration,
+              phaseCount: activePhases.length,
+              exerciseCount: exercises.length,
+            })}
           </Text>
         </YStack>
         {expanded ? (
@@ -355,6 +380,7 @@ function WarmupPreview({ exercises, totalDuration, phaseColor }: Pick<WarmupSect
       {/* Expanded content — compact phase summary rows */}
       {expanded && (
         <YStack px="$3" pb="$3" gap="$2">
+          {ungrouped.length > 0 && <ExerciseRows exercises={ungrouped} />}
           {activePhases.map((phase, index) => {
             const phaseExercises = phaseGroups.get(phase) || []
             const duration = getPhaseDuration(phase)

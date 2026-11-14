@@ -26,9 +26,6 @@ import {
   RotateCcw,
   ListChecks,
   ClipboardList,
-  Info,
-  Zap,
-  Flame,
   Bell,
 } from '@tamagui/lucide-icons'
 import DraggableFlatList, {
@@ -40,6 +37,7 @@ import { ExerciseAccordionItem } from '../../../components/ExerciseAccordionItem
 import { PerformanceReviewItem } from '../../../components/workout/PerformanceReviewItem'
 import { WarmupSection, type WarmupExercise } from '../../../components/workout/WarmupSection'
 import { WARMUP_PHASES } from '../../../convex/warmupSequences'
+import { workoutMetaLine } from '../../../lib/workoutMeta'
 
 /**
  * Exercise type for the draggable list (with intensity scaling)
@@ -277,18 +275,13 @@ export default function WorkoutDetailScreen() {
     }
   }, [isStarting, isCompleted, template, startSession, router, hasCustomOrder, orderIndices, todayWorkout, setTodayFocus])
 
-  // Intensity for the badge (based on session target intensity)
+  // Target intensity, shown in the header meta line ("~40 min · 7 exercises · Moderate intensity")
   const targetIntensity = session?.targetIntensity || 'Moderate'
-  const intensityColor = targetIntensity === 'Low'
-    ? '$intensityLow6'
+  const intensityName = targetIntensity === 'Low'
+    ? 'Low intensity'
     : targetIntensity === 'High'
-      ? '$intensityHigh6'
-      : '$intensityMed6'
-  const intensityLabel = targetIntensity === 'Low'
-    ? 'LOW'
-    : targetIntensity === 'High'
-      ? 'HIGH'
-      : 'MODERATE'
+      ? 'High intensity'
+      : 'Moderate intensity'
 
   // Phase color for UI elements (exercise numbers, Start button)
   // GPP = blue, SPP = orange, SSP = green
@@ -365,45 +358,6 @@ export default function WorkoutDetailScreen() {
     if (!template) return null
     return (
       <YStack gap="$3" pb="$3">
-        {/* Phase and Intensity Badges */}
-        <XStack gap="$2" flexWrap="wrap" items="center">
-          {/* Phase Badge - phase-specific colors (GPP=blue, SPP=orange, SSP=green) */}
-          <Card
-            bg={template.phase === 'GPP' ? '$blue2' : template.phase === 'SPP' ? '$orange2' : '$green2'}
-            px="$3"
-            py="$1"
-            rounded="$10"
-          >
-            <Text
-              fontSize="$2"
-              color={template.phase === 'GPP' ? '$blue9' : template.phase === 'SPP' ? '$orange9' : '$green9'}
-              fontWeight="600"
-            >
-              {template.phase}
-            </Text>
-          </Card>
-          {/* Intensity Badge - traffic light colors */}
-          {isPhaseUnlocked && !isCompleted && (
-            <Card
-              bg={intensityColor === '$intensityHigh6' ? '$intensityHigh2' : intensityColor === '$intensityLow6' ? '$intensityLow2' : '$intensityMed2'}
-              px="$3"
-              py="$1"
-              rounded="$10"
-            >
-              <XStack items="center" gap="$1">
-                {intensityColor === '$intensityHigh6' ? (
-                  <Flame size={12} color={intensityColor} />
-                ) : (
-                  <Zap size={12} color={intensityColor} />
-                )}
-                <Text fontSize="$2" color={intensityColor} fontWeight="600">
-                  {intensityLabel}
-                </Text>
-              </XStack>
-            </Card>
-          )}
-        </XStack>
-
         {/* Reassessment Required Banner */}
         {!isPhaseUnlocked && reassessmentStatus?.reassessmentPending && (
           <Card p="$3" bg="$brand1" borderColor="$brand3">
@@ -568,25 +522,6 @@ export default function WorkoutDetailScreen() {
           </Card>
         )}
 
-        {/* Training Science Info Icon */}
-        {isPhaseUnlocked && !isCompleted && template?.scalingInfo && (
-          <XStack items="center" gap="$2">
-            <Button
-              size="$2"
-              bg="$brand1"
-              rounded="$10"
-              p="$1.5"
-              icon={Info}
-              onPress={() => router.push('/(athlete)/training-science' as any)}
-              pressStyle={{ opacity: 0.7 }}
-              color="$primary"
-            />
-            <Text fontSize="$2" color="$color10">
-              Personalized for your profile
-            </Text>
-          </XStack>
-        )}
-
         {/* Warmup Section Preview (collapsible) */}
         {warmupExercises.length > 0 && !isCompleted && (
           <WarmupSection
@@ -640,7 +575,7 @@ export default function WorkoutDetailScreen() {
   if (template === undefined || unlockedPhases === undefined) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$green10" />
+        <Spinner size="large" color="$primary" />
         <Text>Loading workout...</Text>
       </YStack>
     )
@@ -658,59 +593,73 @@ export default function WorkoutDetailScreen() {
   return (
     <GestureHandlerRootView style={styles.container}>
       <YStack flex={1} bg="$background">
-        {/* Header with Start Button */}
-        <XStack
-          items="center"
-          gap="$3"
-          px="$4"
-          pt={insets.top + 16}
-          pb="$3"
-          bg="$background"
-        >
-          <Pressable onPress={handleBack} hitSlop={8}>
-            <ChevronLeft size={28} color="$color" />
-          </Pressable>
-          <YStack flex={1} overflow="hidden">
+        {/* Header: back + primary action, then the title on its own line */}
+        <YStack px="$4" pt={insets.top + 4} pb="$3" gap="$2" bg="$background">
+          <XStack items="center" justify="space-between" minH={44}>
+            <Pressable
+              onPress={handleBack}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Back"
+              style={styles.backButton}
+            >
+              <ChevronLeft size={28} color="$color" />
+            </Pressable>
+            {isPhaseUnlocked && !isCompleted && (
+              <Button
+                size="$4"
+                bg={phaseColor}
+                color="white"
+                onPress={startWorkout}
+                icon={isStarting ? undefined : Play}
+                fontWeight="600"
+                disabled={isStarting}
+                pressStyle={{ scale: 0.97, opacity: 0.9 }}
+              >
+                {isStarting ? '…' : 'Start'}
+              </Button>
+            )}
+            {isPhaseUnlocked && isCompleted && (
+              <Button
+                size="$4"
+                bg="$color4"
+                borderWidth={2}
+                borderColor="$primary"
+                color="$primary"
+                onPress={startWorkout}
+                icon={isStarting ? undefined : RotateCcw}
+                fontWeight="600"
+                disabled={isStarting}
+              >
+                {isStarting ? '…' : 'Redo'}
+              </Button>
+            )}
+          </XStack>
+          <YStack gap="$1">
             <Text
-              fontSize="$7"
-              fontWeight="700"
+              fontFamily="$heading"
+              fontSize={34}
+              lineHeight={36}
+              letterSpacing={0.5}
+              textTransform="uppercase"
+              color="$color12"
               numberOfLines={2}
             >
               {template.name}
             </Text>
-            <Text color="$color10" fontSize="$2">
-              ~{template.estimatedDurationMinutes} min
+            <Text testID="workout-meta" fontSize={14} fontFamily="$body" color="$color10">
+              <Text fontSize={14} fontFamily="$body" fontWeight="600" color={phaseColor}>
+                {template.phase}
+              </Text>
+              {' · '}
+              {workoutMetaLine({
+                minutes: template.estimatedDurationMinutes,
+                exerciseCount: mainExercises.length,
+                intensity: isPhaseUnlocked && !isCompleted ? intensityName : undefined,
+              })}
             </Text>
           </YStack>
-          {isPhaseUnlocked && !isCompleted && (
-            <Button
-              size="$4"
-              bg={phaseColor}
-              color="white"
-              onPress={startWorkout}
-              icon={isStarting ? undefined : Play}
-              fontWeight="600"
-              disabled={isStarting}
-            >
-              {isStarting ? '...' : 'Start'}
-            </Button>
-          )}
-          {isPhaseUnlocked && isCompleted && (
-            <Button
-              size="$4"
-              bg="$color4"
-              borderWidth={2}
-              borderColor="$primary"
-              color="$primary"
-              onPress={startWorkout}
-              icon={isStarting ? undefined : RotateCcw}
-              fontWeight="600"
-              disabled={isStarting}
-            >
-              {isStarting ? '...' : 'Redo'}
-            </Button>
-          )}
-        </XStack>
+        </YStack>
 
         {/* Exercise/Review List */}
         <View style={styles.listContainer}>
@@ -747,6 +696,12 @@ export default function WorkoutDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  backButton: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    marginLeft: -8,
+  },
   container: {
     flex: 1,
   },
