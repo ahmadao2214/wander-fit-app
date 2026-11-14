@@ -4,7 +4,7 @@
 // wander-fit-e2e only.
 //
 //   node scripts/verify/explore.mjs build
-//   node scripts/verify/explore.mjs review --state onboarded [--replay]
+//   node scripts/verify/explore.mjs review --state onboarded
 import { spawnSync } from "node:child_process"
 import fs from "node:fs"
 import path from "node:path"
@@ -21,12 +21,29 @@ const cacheDir = path.join(exploreDir, "cache")
 const GB = 1024 ** 3
 export const MIN_FREE = { checkout: 15 * GB, home: 3 * GB }
 
+export function assertBuildPath(checkout) {
+  if (/\s/.test(checkout)) {
+    throw new Error("The iOS build needs a real checkout path without whitespace. A symlink does not fix CocoaPods' resolved paths; use a no-space volume or directory.")
+  }
+}
+
+export function assertIosSdkSupported(version, expoVersion) {
+  const major = Number.parseInt(version.trim(), 10)
+  if (!Number.isFinite(major)) throw new Error("Cannot determine the active iOS Simulator SDK version.")
+  const expoMajor = Number.parseInt(expoVersion, 10)
+  if (!Number.isFinite(expoMajor)) throw new Error("Cannot determine the installed Expo SDK version.")
+  if (major >= 27 && expoMajor < 58) {
+    throw new Error("iOS SDK 27+ requires this app's Expo SDK 58 scene lifecycle upgrade.")
+  }
+}
+
 export function cacheEnv(dir = cacheDir) {
   return {
     CP_CACHE_DIR: path.join(dir, "cocoapods"),
     npm_config_cache: path.join(dir, "npm"),
     EXPLORE_CACHE_DIR: path.join(dir, "expo-explore"),
     XDG_CACHE_HOME: path.join(dir, "xdg"),
+    TMPDIR: path.join(dir, "tmp"),
   }
 }
 
@@ -59,13 +76,18 @@ function checkSpace({ needCheckout }) {
 // run through npx so the machine's own Node stays as it is.
 export const EXPLORE_VERSION = "0.23.0"
 export const EXPLORE_NODE = "24.12.0"
-export const IOS_DEPLOYMENT_TARGET = "15.1"
+export const SIMULATOR_SIGNING = ["CODE_SIGNING_ALLOWED=YES", "CODE_SIGN_IDENTITY=-", "CODE_SIGNING_REQUIRED=NO"]
 export const STATES =["signed-out", "needs-intake", "onboarded", "phase-end"]
 
 const SECRET_ENV = [
   "CLERK_SECRET_KEY",
   "CONVEX_DEPLOY_KEY",
   "CONVEX_DEPLOY_KEY_E2E",
+  "CONVEX_PREVIEW_DEPLOY_KEY_E2E",
+  "EXPO_TOKEN",
+  "EXPO_SESSION_SECRET",
+  "OPENAI_API_KEY",
+  "ANTHROPIC_API_KEY",
   "TEST_USER_PASSWORD",
   "APP_TEST_PASSWORD",
 ]
@@ -122,6 +144,13 @@ export function buildEnv(base, { url, key }) {
   return env
 }
 
+export function reviewEnv(base, password) {
+  const env = { ...base, ...cacheEnv() }
+  for (const name of SECRET_ENV) delete env[name]
+  if (password) env.APP_TEST_PASSWORD = password
+  return env
+}
+
 // Problems with a built bundle. Hermes bytecode keeps string literals as
 // plain bytes, so a latin1 read finds hosts and keys.
 export function scanBundle(text, e2eHost) {
@@ -158,6 +187,13 @@ export function outputDirName(state, date = new Date()) {
   return `${stamp}-${state}`
 }
 
+export function reviewProblems(map) {
+  const problems = []
+  if (!Array.isArray(map?.screens) || map.screens.length === 0) problems.push("Explore captured no screens.")
+  if (map?.run?.stopReason === "blocked") problems.push("Explore was blocked; inspect the report's coverage gaps.")
+  return problems
+}
+
 export function exploreArgs({ app, output, state, email, replay }) {
   const args = [
     "-y",
@@ -172,6 +208,10 @@ export function exploreArgs({ app, output, state, email, replay }) {
   if (replay) args.push("--replay", replay)
   else args.push("--hints", hintsFor(state, email), "--max-screens", "60", "--max-duration-minutes", "25")
   return args
+}
+
+export function prebuildArgs(checkout) {
+  return ["-y", "-p", `node@${EXPLORE_NODE}`, "node", path.join(checkout, "node_modules/expo/bin/cli"), "prebuild", "--platform", "ios"]
 }
 
 // The template's bundle phase ends with `"$NODE_BINARY" --print "…xcode.sh"`
@@ -199,9 +239,19 @@ function run(command, args, options = {}) {
 }
 
 function build() {
+  try {
+    assertBuildPath(fs.realpathSync(root))
+    const sdk = spawnSync("xcrun", ["--sdk", "iphonesimulator", "--show-sdk-version"], { encoding: "utf8" })
+    if (sdk.status !== 0) throw new Error("Cannot read the iOS Simulator SDK. Install/select Xcode before building.")
+    const expo = JSON.parse(fs.readFileSync(path.join(root, "node_modules/expo/package.json"), "utf8"))
+    assertIosSdkSupported(sdk.stdout, expo.version)
+  } catch (error) {
+    fail(error.message)
+  }
   const url = e2eUrl()
   if (!url) fail("Set EXPO_PUBLIC_CONVEX_URL_E2E or write it to .env.e2e. The review app only talks to wander-fit-e2e.")
   checkSpace({ needCheckout: true })
+  for (const directory of Object.values(cacheEnv())) fs.mkdirSync(directory, { recursive: true })
   let env
   try {
     env = { ...buildEnv(process.env, { url, key: clerkKey() }), ...cacheEnv() }
@@ -209,7 +259,7 @@ function build() {
     fail(error.message)
   }
   console.log(`building the Release simulator app with Convex host ${convexHost(url)}`)
-  run("npx", ["expo", "prebuild", "--platform", "ios"], { env })
+  run("npx", prebuildArgs(root), { env })
   const workspace = fs.readdirSync(path.join(root, "ios")).find((name) => name.endsWith(".xcworkspace"))
   if (!workspace) fail("expo prebuild made no ios/*.xcworkspace.")
   const scheme = workspace.replace(/\.xcworkspace$/, "")
@@ -224,9 +274,7 @@ function build() {
       "-sdk", "iphonesimulator",
       "-destination", "generic/platform=iOS Simulator",
       "-derivedDataPath", derivedData,
-      // Xcode 27 rejects pods that still declare iOS 12.4-13.4 (react-native-svg,
-      // lottie). Build every target at the app's own minimum, Expo SDK 54's 15.1.
-      `IPHONEOS_DEPLOYMENT_TARGET=${IOS_DEPLOYMENT_TARGET}`,
+      ...SIMULATOR_SIGNING,
       "-quiet",
       "build",
     ],
@@ -274,6 +322,9 @@ function account(state) {
 function review() {
   const state = flag("--state") || "onboarded"
   if (!STATES.includes(state)) fail(`Unknown state "${state}". Use ${STATES.join(", ")}.`)
+  if (state === "onboarded" && process.argv.includes("--replay")) {
+    fail("The onboarded replay requires an already authenticated attached device. Use scripts/verify/explore-attached.mjs --replay .expo-explore/replays/onboarded.json instead.")
+  }
   const app = findApp()
   if (!app) fail("No review app yet. Run: node scripts/verify/explore.mjs build")
   let replay = ""
@@ -282,11 +333,10 @@ function review() {
     if (!fs.existsSync(replay)) fail(`No replay for ${state} at ${path.relative(root, replay)}.`)
   }
   checkSpace({ needCheckout: false })
+  for (const directory of Object.values(cacheEnv())) fs.mkdirSync(directory, { recursive: true })
   const output = path.join(exploreDir, outputDirName(state))
   const user = account(state)
-  const env = { ...process.env, ...cacheEnv() }
-  for (const name of SECRET_ENV) delete env[name]
-  if (user) env.APP_TEST_PASSWORD = user.password
+  const env = reviewEnv(process.env, user?.password)
   console.log(`exploring ${state}${replay ? " from its replay" : ""} into ${path.relative(root, output)}`)
   const result = spawnSync("npx", exploreArgs({ app, output, state, email: user?.email, replay }), {
     cwd: root,
@@ -296,6 +346,12 @@ function review() {
   if (user?.throwaway) persona(["delete", user.email])
   if (result.status !== 0) process.exit(result.status ?? 1)
   console.log(`open it: npx -y -p node@${EXPLORE_NODE} -p @expo/explore@${EXPLORE_VERSION} expo-explore view --dir ${path.relative(root, output)}`)
+  try {
+    const problems = reviewProblems(JSON.parse(fs.readFileSync(path.join(output, "screen-map.json"), "utf8")))
+    if (problems.length) fail(problems.join("\n"))
+  } catch (error) {
+    fail(`Cannot validate Explore's screen map: ${error.message}`)
+  }
 }
 
 const invokedDirectly =
@@ -307,7 +363,8 @@ if (invokedDirectly) {
   else if (command === "review") review()
   else {
     console.log(`explore build                   Release simulator app on wander-fit-e2e
-explore review --state <${STATES.join("|")}> [--replay]`)
+explore review --state <${STATES.join("|")}> [--replay]
+The onboarded replay is attached-device only; use scripts/verify/explore-attached.mjs.`)
     process.exit(command === "help" ? 0 : 2)
   }
 }

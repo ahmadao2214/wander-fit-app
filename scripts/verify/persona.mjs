@@ -151,8 +151,9 @@ export function generatePassword() {
 
 export function writeCredentials(record, file = credentialsFile) {
   fs.mkdirSync(path.dirname(file), { recursive: true })
-  fs.writeFileSync(file, JSON.stringify(record, null, 2))
-  fs.chmodSync(file, 0o600)
+  const temporary = `${file}.${crypto.randomUUID()}.tmp`
+  fs.writeFileSync(temporary, JSON.stringify(record, null, 2), { mode: 0o600, flag: "wx" })
+  fs.renameSync(temporary, file)
 }
 
 // The Clerk user already exists. Write the cleanup record before Convex
@@ -206,14 +207,19 @@ async function create() {
   printJson({ email, clerkId, state, credentialsFile: "e2e-artifacts/persona-latest.json" })
 }
 
-// What `persona review` must do, from what already exists. Its data is kept:
-// provision clears program rows, so it only runs when the account has none.
 export function reviewPlan({ clerkId, saved, inspected }) {
+  if (clerkId && !(saved?.clerkId === clerkId && saved?.password)) {
+    throw new Error("Restore the saved review-account credentials. Refusing to reset an existing account password.")
+  }
+  if (clerkId && !(inspected?.found && inspected.onboardingCompleted && inspected.hasProgram)) {
+    throw new Error("Existing review account is not fully onboarded. Refusing to reset or reprovision it.")
+  }
+  if (!clerkId && inspected?.found) {
+    throw new Error("Review account data already exists without its Clerk identity. Refusing to reprovision it.")
+  }
   return {
     createUser: !clerkId,
-    // A password is only known from the saved record of this same Clerk user.
-    setPassword: Boolean(clerkId) && !(saved?.clerkId === clerkId && saved?.password),
-    provision: !(inspected?.found && inspected.onboardingCompleted && inspected.hasProgram),
+    provision: !clerkId,
   }
 }
 
@@ -230,7 +236,7 @@ async function review() {
   const matches = await clerk(`/users?email_address=${encodeURIComponent(REVIEW_EMAIL)}`)
   const existingId = Array.isArray(matches) ? matches[0]?.id || "" : ""
   const saved = readSaved(reviewCredentialsFile)
-  const inspected = existingId ? parseRunResult(convexRun("e2e:inspect", { email: REVIEW_EMAIL })) : null
+  const inspected = parseRunResult(convexRun("e2e:inspect", { email: REVIEW_EMAIL }))
   const plan = reviewPlan({ clerkId: existingId, saved, inspected })
 
   let clerkId = existingId
@@ -249,12 +255,6 @@ async function review() {
     })
     clerkId = created?.id || ""
     if (!clerkId) fail("Clerk did not return a user id.")
-  } else if (plan.setPassword) {
-    password = generatePassword()
-    await clerk(`/users/${clerkId}`, {
-      method: "PATCH",
-      body: JSON.stringify({ password, skip_password_checks: true }),
-    })
   }
 
   const record = {
