@@ -9,6 +9,7 @@ import { PublicOnlyRoute } from '../../components/AuthGuard'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Zap } from '@tamagui/lucide-icons'
 import { GoogleIcon } from '../../components/GoogleIcon'
+import { FieldLabel } from '../../components/FieldLabel'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
@@ -255,58 +256,64 @@ export default function SignInPage() {
 
               {/* Email/Password Section */}
               <YStack gap="$3">
-                <Input
-                  testID="sign-in-email"
-                  nativeID="sign-in-email"
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                  autoComplete="email"
-                  returnKeyType="next"
-                  value={emailAddress}
-                  placeholder="Email address"
-                  placeholderTextColor="$placeholderColor"
-                  onChangeText={(emailAddress) => {
-                    setEmailAddress(emailAddress)
-                    setError('')
-                  }}
-                  size="$5"
-                  bg="$surface"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                  rounded="$4"
-                  fontFamily="$body"
-                  focusStyle={{
-                    borderColor: '$primary',
-                    borderWidth: 2,
-                  }}
-                />
-                <Input
-                  testID="sign-in-password"
-                  // DOM id. Maestro web types into the xpath of the focused node,
-                  // and without this the password is entered into the email field.
-                  nativeID="sign-in-password"
-                  value={password}
-                  placeholder="Password"
-                  placeholderTextColor="$placeholderColor"
-                  secureTextEntry={true}
-                  autoComplete="password"
-                  returnKeyType="done"
-                  onChangeText={(password) => {
-                    setPassword(password)
-                    setError('')
-                  }}
-                  onSubmitEditing={onSignInPress}
-                  size="$5"
-                  bg="$surface"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                  rounded="$4"
-                  fontFamily="$body"
-                  focusStyle={{
-                    borderColor: '$primary',
-                    borderWidth: 2,
-                  }}
-                />
+                <YStack gap="$1.5">
+                  <FieldLabel htmlFor="sign-in-email">Email address</FieldLabel>
+                  <Input
+                    id="sign-in-email"
+                    accessibilityLabel="Email address"
+                    testID="sign-in-email"
+                    nativeID="sign-in-email"
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    autoComplete="email"
+                    returnKeyType="next"
+                    value={emailAddress}
+                    onChangeText={(emailAddress) => {
+                      setEmailAddress(emailAddress)
+                      setError('')
+                    }}
+                    size="$5"
+                    bg="$surface"
+                    borderWidth={1}
+                    borderColor="$borderColor"
+                    rounded="$4"
+                    fontFamily="$body"
+                    focusStyle={{
+                      borderColor: '$primary',
+                      borderWidth: 2,
+                    }}
+                  />
+                </YStack>
+                <YStack gap="$1.5">
+                  <FieldLabel htmlFor="sign-in-password">Password</FieldLabel>
+                  <Input
+                    id="sign-in-password"
+                    accessibilityLabel="Password"
+                    testID="sign-in-password"
+                    // DOM id. Maestro web types into the xpath of the focused node,
+                    // and without this the password is entered into the email field.
+                    nativeID="sign-in-password"
+                    value={password}
+                    secureTextEntry={true}
+                    autoComplete="password"
+                    returnKeyType="done"
+                    onChangeText={(password) => {
+                      setPassword(password)
+                      setError('')
+                    }}
+                    onSubmitEditing={onSignInPress}
+                    size="$5"
+                    bg="$surface"
+                    borderWidth={1}
+                    borderColor="$borderColor"
+                    rounded="$4"
+                    fontFamily="$body"
+                    focusStyle={{
+                      borderColor: '$primary',
+                      borderWidth: 2,
+                    }}
+                  />
+                </YStack>
                 <Button
                   testID="sign-in-submit"
                   onPress={onSignInPress}
