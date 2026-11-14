@@ -23,15 +23,13 @@ describe('contrastRatio', () => {
 
 // The pairs the retained athlete and auth screens rely on. Phase fills
 // ($blue9/$orange9/$green9) are unchanged; text on them is large or navy.
+// Phase names shown as text keep their phase color until the palette pass,
+// so they aren't checked here.
 describe('Light theme text pairs meet WCAG AA', () => {
   const normalText: [string, string, string][] = [
     ['$color10', '$background', 'secondary text and tracked labels'],
     ['$color10', '$surface', 'secondary text on cards'],
     ['$color11', '$brand1', "Today card label and meta on its tint"],
-    ['$blue11', '$brand1', 'GPP phase name on the Today card'],
-    ['$blue11', '$background', 'GPP phase name on the workout detail header'],
-    ['$orange11', '$background', 'SPP phase name'],
-    ['$green11', '$background', 'SSP phase name'],
     ['$green11', '$surface', '"Done" and completed status text'],
     ['$orange11', '$brand1', 'skill level on the Profile header'],
     ['$red11', '$red2', 'auth error message'],

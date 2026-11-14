@@ -1,4 +1,4 @@
-import { warmupSummary, workoutMetaLine, phaseTextColor } from '../workoutMeta'
+import { warmupSummary, workoutMetaLine } from '../workoutMeta'
 
 describe('warmupSummary', () => {
   it('reads a full warmup as duration, phases and exercises', () => {
@@ -36,10 +36,3 @@ describe('workoutMetaLine', () => {
   })
 })
 
-describe('phaseTextColor', () => {
-  it('keeps each phase on its own hue, at the text step', () => {
-    expect(phaseTextColor('GPP')).toBe('$blue11')
-    expect(phaseTextColor('SPP')).toBe('$orange11')
-    expect(phaseTextColor('SSP')).toBe('$green11')
-  })
-})

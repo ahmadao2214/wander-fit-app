@@ -37,7 +37,7 @@ import { ExerciseAccordionItem } from '../../../components/ExerciseAccordionItem
 import { PerformanceReviewItem } from '../../../components/workout/PerformanceReviewItem'
 import { WarmupSection, type WarmupExercise } from '../../../components/workout/WarmupSection'
 import { WARMUP_PHASES } from '../../../convex/warmupSequences'
-import { workoutMetaLine, phaseTextColor } from '../../../lib/workoutMeta'
+import { workoutMetaLine } from '../../../lib/workoutMeta'
 import {
   mainOrderToTemplateOrder,
   normalizeExerciseOrder,
@@ -654,7 +654,7 @@ export default function WorkoutDetailScreen() {
               {template.name}
             </Text>
             <Text testID="workout-meta" fontSize={14} fontFamily="$body" color="$color10">
-              <Text fontSize={14} fontFamily="$body" fontWeight="600" color={phaseTextColor(template.phase)}>
+              <Text fontSize={14} fontFamily="$body" fontWeight="600" color={phaseColor}>
                 {template.phase}
               </Text>
               {' · '}

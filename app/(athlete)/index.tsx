@@ -15,7 +15,7 @@ import {
   Bell,
 } from '@tamagui/lucide-icons'
 import { todayHeading, phaseWeekSegments, progressCaption, countMainExercises, msUntilNextMidnight } from '../../lib/today'
-import { workoutMetaLine, phaseTextColor } from '../../lib/workoutMeta'
+import { workoutMetaLine } from '../../lib/workoutMeta'
 import { DEFAULT_WEEKS_PER_PHASE } from '../../lib/calendarUtils'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -359,7 +359,7 @@ export default function AthleteDashboard() {
                       fontSize={14}
                       fontFamily="$body"
                       fontWeight="600"
-                      color={phaseTextColor(programState.phase)}
+                      color={phaseColor}
                     >
                       {/* The athlete's scheduled position. todayWorkout.week is the template's
                           lookup week, which differs when phases are shorter than 4 weeks. */}
