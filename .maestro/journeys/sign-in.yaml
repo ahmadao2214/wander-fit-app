@@ -6,7 +6,8 @@ url: ${VERIFY_URL}
     timeout: 90000
 - runFlow: ../subflows/_sign-in.yaml
 - extendedWaitUntil:
-    visible: "Welcome back,.*"
+    visible:
+      id: today-heading
     timeout: 90000
 - assertVisible: "Today"
 # The card is missing while Today still says COMPLETE YOUR SETUP.

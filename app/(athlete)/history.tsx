@@ -1,5 +1,6 @@
-import { YStack, XStack, Text, Card, ScrollView, Spinner, styled } from 'tamagui'
+import { YStack, XStack, Text, Card, Button, ScrollView, Spinner, styled } from 'tamagui'
 import { useQuery } from 'convex/react'
+import { useRouter } from 'expo-router'
 import { api } from 'convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -76,8 +77,13 @@ export default function HistoryPage() {
 
   return (
     <YStack flex={1} bg="$background">
-      <ScrollView flex={1} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        flex={1}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ grow: 1 }}
+      >
         <YStack
+          flex={1}
           gap="$5"
           px="$4"
           pt={insets.top + 16}
@@ -181,39 +187,70 @@ export default function HistoryPage() {
               ))}
             </YStack>
           ) : (
-            <Card 
-              p="$6" 
-              bg="$surface" 
-              rounded="$4"
-              borderWidth={1}
-              borderColor="$borderColor"
-            >
-              <YStack items="center" gap="$4">
-                <YStack bg="$color4" p="$4" rounded="$10">
-                  <Calendar size={40} color="$color9" />
-                </YStack>
-                <YStack items="center" gap="$1">
-                  <Text 
-                    fontSize={16} 
-                    fontFamily="$body" fontWeight="600" 
-                    color="$color11"
-                  >
-                    No Workouts Yet
-                  </Text>
-                  <Text 
-                    color="$color10" 
-                    text="center"
-                    fontFamily="$body"
-                    fontSize={14}
-                  >
-                    Complete your first workout to see it here!
-                  </Text>
-                </YStack>
-              </YStack>
-            </Card>
+            <HistoryEmptyState />
           )}
         </YStack>
       </ScrollView>
+    </YStack>
+  )
+}
+
+/** Faded rows in the shape of a logged workout, so the empty tab shows what it will hold. */
+function GhostRow({ opacity }: { opacity: number }) {
+  return (
+    <XStack
+      width="100%"
+      items="center"
+      gap="$3"
+      p="$3"
+      rounded="$4"
+      borderWidth={1}
+      borderColor="$borderColor"
+      bg="$surface"
+      opacity={opacity}
+    >
+      <YStack width={36} height={36} rounded="$4" bg="$color4" items="center" justify="center">
+        <CheckCircle size={18} color="$color8" />
+      </YStack>
+      <YStack flex={1} gap="$2">
+        <YStack height={10} width="62%" rounded="$2" bg="$color5" />
+        <YStack height={8} width="38%" rounded="$2" bg="$color4" />
+      </YStack>
+    </XStack>
+  )
+}
+
+function HistoryEmptyState() {
+  const router = useRouter()
+  return (
+    <YStack flex={1} items="center" justify="center" gap="$5" pb="$8">
+      <YStack
+        width="100%"
+        maxW={320}
+        gap="$2"
+        pointerEvents="none"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        <GhostRow opacity={0.9} />
+        <GhostRow opacity={0.55} />
+        <GhostRow opacity={0.25} />
+      </YStack>
+      <Text fontSize={17} fontFamily="$body" fontWeight="600" color="$color12">
+        No workouts yet
+      </Text>
+      <Button
+        size="$4"
+        bg="$primary"
+        color="white"
+        fontFamily="$body"
+        fontWeight="600"
+        rounded="$4"
+        pressStyle={{ scale: 0.97, opacity: 0.9 }}
+        onPress={() => router.navigate('/(athlete)')}
+      >
+        Go to today's workout
+      </Button>
     </YStack>
   )
 }

@@ -1,4 +1,4 @@
-import { YStack, XStack, Text, Card, Button, ScrollView, Spinner, styled } from 'tamagui'
+import { YStack, XStack, Text, Card, Button, ScrollView, Spinner, styled, type ColorTokens } from 'tamagui'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
@@ -7,15 +7,14 @@ import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   Play,
-  Dumbbell,
-  Timer,
   Target,
-  Flame,
   CheckCircle,
   RotateCcw,
-  Zap,
   Bell,
 } from '@tamagui/lucide-icons'
+import { todayHeading, phaseWeekSegments, progressCaption, countMainExercises } from '../../lib/today'
+import { workoutMetaLine } from '../../lib/workoutMeta'
+import { DEFAULT_WEEKS_PER_PHASE } from '../../lib/calendarUtils'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
@@ -39,44 +38,61 @@ const SectionLabel = styled(Text, {
   color: '$color10',
 })
 
-// Stat number
-const StatNumber = styled(Text, {
-  fontFamily: '$body',
-  fontWeight: '700',
-  fontSize: 28,
-  color: '$primary',
-})
-
-// ─────────────────────────────────────────────────────────────────────────────
-// INTENSITY BADGE COMPONENT
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface IntensityBadgeProps {
-  intensity?: 'low' | 'medium' | 'high'
+const PHASE_NAMES: Record<string, string> = {
+  GPP: 'General prep',
+  SPP: 'Specific prep',
+  SSP: 'Sport-specific prep',
 }
 
-function IntensityBadge({ intensity = 'medium' }: IntensityBadgeProps) {
-  const configs = {
-    low: { bg: '$intensityLow6' as const, label: 'LOW', icon: Zap },
-    medium: { bg: '$intensityMed6' as const, label: 'MODERATE', icon: Zap },
-    high: { bg: '$intensityHigh6' as const, label: 'HIGH', icon: Flame },
-  }
-  const config = configs[intensity]
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE PROGRESS
+// ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * One segment per week of the current phase. Replaces the 0/0/0 stat grid:
+ * it says where the athlete is before they've logged anything, and the
+ * counts appear only once there is something to count.
+ */
+function PhaseProgress({
+  phase,
+  week,
+  weeksPerPhase,
+  phaseColor,
+  caption,
+}: {
+  phase: string
+  week: number
+  weeksPerPhase: number
+  phaseColor: ColorTokens
+  caption: string | null
+}) {
+  const segments = phaseWeekSegments(week, weeksPerPhase)
   return (
-    <XStack 
-      bg={config.bg} 
-      px="$2" 
-      py="$1" 
-      rounded="$2" 
-      items="center" 
-      gap="$1"
-    >
-      <config.icon size={12} color="white" />
-      <Text color="white" fontSize={10} fontFamily="$body" fontWeight="700" letterSpacing={0.5}>
-        {config.label}
-      </Text>
-    </XStack>
+    <YStack gap="$2.5" testID="phase-progress">
+      <XStack justify="space-between" items="baseline">
+        <SectionLabel>{PHASE_NAMES[phase] ?? phase}</SectionLabel>
+        <Text fontSize={13} fontFamily="$body" fontWeight="600" color="$color11">
+          Week {Math.min(week, segments.length)} of {segments.length}
+        </Text>
+      </XStack>
+      <XStack gap="$1.5" accessibilityLabel={`Week ${week} of ${segments.length}`}>
+        {segments.map((segment, index) => (
+          <YStack
+            key={index}
+            flex={1}
+            height={6}
+            rounded="$10"
+            bg={segment === 'upcoming' ? '$color4' : phaseColor}
+            opacity={segment === 'current' ? 0.45 : 1}
+          />
+        ))}
+      </XStack>
+      {caption && (
+        <Text fontSize={13} fontFamily="$body" color="$color10">
+          {caption}
+        </Text>
+      )}
+    </YStack>
   )
 }
 
@@ -92,7 +108,6 @@ function IntensityBadge({ intensity = 'medium' }: IntensityBadgeProps) {
  * - Quick access to start the workout
  * - Progress summary at a glance
  * 
- * Design: Strava-inspired with Electric Blue primary and Flame Orange accents
  */
 export default function AthleteDashboard() {
   const { user, isLoading: authLoading } = useAuth()
@@ -139,7 +154,7 @@ export default function AthleteDashboard() {
   const startSession = useMutation(api.gppWorkoutSessions.startSession)
 
   // Phase color (GPP=blue, SPP=orange, SSP=green)
-  const phaseColor = programState?.phase === 'GPP'
+  const phaseColor: ColorTokens = programState?.phase === 'GPP'
     ? '$blue9'
     : programState?.phase === 'SPP'
       ? '$orange9'
@@ -226,29 +241,15 @@ export default function AthleteDashboard() {
           width="100%"
           self="center"
         >
-          {/* Header */}
-          <YStack gap="$1">
-            <Text
-              color="$color10"
-              fontSize={14}
-              fontFamily="$body"
-            >
-              Welcome back, {user.name?.split(' ')[0] || 'Athlete'}
-            </Text>
-            <DisplayHeading>READY TO TRAIN?</DisplayHeading>
-            {/* Sport and Training Focus */}
+          {/* Header: the date, with the athlete's sport and category as a quiet label */}
+          <YStack gap="$1" testID="today-heading">
             {programState.sportName && (
-              <XStack items="center" gap="$2" pt="$1">
-                <Text
-                  fontSize={13}
-                  color="$color10"
-                  fontFamily="$body"
-                >
-                  {programState.sportName}
-                  {programState.categoryShortName && ` • ${programState.categoryShortName}`}
-                </Text>
-              </XStack>
+              <SectionLabel>
+                {programState.sportName}
+                {programState.categoryShortName ? ` · ${programState.categoryShortName}` : ''}
+              </SectionLabel>
             )}
+            <DisplayHeading>{todayHeading(new Date())}</DisplayHeading>
           </YStack>
 
           {/* Reassessment Banner */}
@@ -308,79 +309,39 @@ export default function AthleteDashboard() {
             shadowRadius={20}
           >
             <YStack gap="$4">
-              {/* Top row: Phase badge + Duration */}
-              <XStack justify="space-between" items="center">
-                <XStack items="center" gap="$2">
-                  <Card 
-                    bg={isCompleted ? '$color6' : '$primary'} 
-                    px="$3" 
-                    py="$1.5" 
-                    rounded="$3"
-                  >
-                    <Text 
-                      color="white" 
-                      fontSize={11} 
-                      fontFamily="$body" fontWeight="700"
-                      letterSpacing={0.5}
-                    >
-                      {programState.phase} W{programState.week}D{programState.day}
-                    </Text>
-                  </Card>
+              <YStack gap="$1.5">
+                <XStack justify="space-between" items="center">
+                  <SectionLabel>Today's workout</SectionLabel>
                   {isCompleted && (
                     <XStack items="center" gap="$1">
-                      <CheckCircle size={16} color="$success" />
+                      <CheckCircle size={14} color="$success" />
                       <Text fontSize={12} color="$success" fontFamily="$body" fontWeight="600">
                         Done
                       </Text>
                     </XStack>
                   )}
                 </XStack>
-                {todayWorkout && !isCompleted && (
-                  <XStack items="center" gap="$1.5" opacity={0.7}>
-                    <Timer size={14} color="$color10" />
-                    <Text fontSize={13} color="$color10" fontFamily="$body">
-                      ~{todayWorkout.estimatedDurationMinutes} min
-                    </Text>
-                  </XStack>
-                )}
-              </XStack>
-
-              {/* Workout Title */}
-              <YStack gap="$1">
-                <SectionLabel>TODAY'S WORKOUT</SectionLabel>
-                <Text 
-                  fontSize={22} 
-                  fontFamily="$body" fontWeight="700" 
+                <Text
+                  fontSize={24}
+                  fontFamily="$body" fontWeight="700"
                   color="$color12"
-                  lineHeight={28}
+                  lineHeight={30}
                 >
-                  {todayWorkout?.name || 'Loading...'}
+                  {todayWorkout?.name || 'Loading…'}
                 </Text>
-                {todayWorkout?.description && (
-                  <Text 
-                    color="$color10" 
-                    fontSize={14} 
-                    fontFamily="$body"
-                    lineHeight={20}
-                  >
-                    {todayWorkout.description}
+                {todayWorkout && (
+                  <Text testID="today-workout-meta" fontSize={14} color="$color10" fontFamily="$body">
+                    <Text fontSize={14} fontFamily="$body" fontWeight="600" color={phaseColor}>
+                      {todayWorkout.phase ?? programState.phase} W{todayWorkout.week ?? programState.week} D{todayWorkout.day ?? programState.day}
+                    </Text>
+                    {' · '}
+                    {workoutMetaLine({
+                      minutes: todayWorkout.estimatedDurationMinutes,
+                      exerciseCount: countMainExercises(todayWorkout.exercises),
+                    })}
                   </Text>
                 )}
               </YStack>
-
-              {/* Workout Stats Row */}
-              {todayWorkout && (
-                <XStack gap="$4" flexWrap="wrap">
-                  <XStack items="center" gap="$2">
-                    <Dumbbell size={16} color="$primary" />
-                    <Text fontSize={14} color="$color11" fontFamily="$body" fontWeight="500">
-                      {todayWorkout.exercises.length} exercises
-                    </Text>
-                  </XStack>
-                  {/* Intensity badge - default to medium for now */}
-                  <IntensityBadge intensity="medium" />
-                </XStack>
-              )}
 
               {/* Action Button */}
               {isCompleted ? (
@@ -441,89 +402,21 @@ export default function AthleteDashboard() {
             </YStack>
           </Card>
 
-          {/* Progress Summary */}
-          {progress && (
-            <YStack gap="$3">
-              <SectionLabel>YOUR PROGRESS</SectionLabel>
-              
-              <XStack gap="$3" flexWrap="wrap">
-                {/* Days Completed */}
-                <Card
-                  flex={1}
-                  minWidth={100}
-                  p="$4"
-                  bg="$surface"
-                  rounded="$4"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                >
-                  <YStack items="center" gap="$1">
-                    <StatNumber color="$primary">
-                      {progress.daysCompleted}
-                    </StatNumber>
-                    <Text
-                      fontSize={11}
-                      color="$color10"
-                      text="center"
-                      fontFamily="$body" fontWeight="500"
-                    >
-                      Days{'\n'}Completed
-                    </Text>
-                  </YStack>
-                </Card>
-
-                {/* Current Streak */}
-                <Card
-                  flex={1}
-                  minWidth={100}
-                  p="$4"
-                  bg="$surface"
-                  rounded="$4"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                >
-                  <YStack items="center" gap="$1">
-                    <StatNumber color="$primary">
-                      {progress.currentStreak}
-                    </StatNumber>
-                    <Text
-                      fontSize={11}
-                      color="$color10"
-                      text="center"
-                      fontFamily="$body" fontWeight="500"
-                    >
-                      Day{'\n'}Streak
-                    </Text>
-                  </YStack>
-                </Card>
-
-                {/* Exercises Tried */}
-                <Card
-                  flex={1}
-                  minWidth={100}
-                  p="$4"
-                  bg="$surface"
-                  rounded="$4"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                >
-                  <YStack items="center" gap="$1">
-                    <StatNumber color="$primary">
-                      {progress.uniqueExercisesPerformed}
-                    </StatNumber>
-                    <Text
-                      fontSize={11}
-                      color="$color10"
-                      text="center"
-                      fontFamily="$body" fontWeight="500"
-                    >
-                      Exercises{'\n'}Tried
-                    </Text>
-                  </YStack>
-                </Card>
-              </XStack>
-            </YStack>
-          )}
+          {/* Where the athlete is in the current phase */}
+          <PhaseProgress
+            phase={programState.phase}
+            week={programState.week}
+            weeksPerPhase={programState.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE}
+            phaseColor={phaseColor}
+            caption={
+              progress
+                ? progressCaption({
+                    workoutsCompleted: progress.daysCompleted,
+                    currentStreak: progress.currentStreak,
+                  })
+                : null
+            }
+          />
 
         </YStack>
       </ScrollView>

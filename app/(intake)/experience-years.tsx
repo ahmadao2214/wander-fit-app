@@ -94,25 +94,9 @@ interface TrophyCaseProps {
 }
 
 const TrophyCase = ({ years }: TrophyCaseProps) => {
-  // Empty state
+  // Nothing to show until there's at least one year
   if (years === 0) {
-    return (
-      <YStack
-        height={100}
-        width="100%"
-        items="center"
-        justify="center"
-        bg="$color2"
-        rounded="$4"
-        borderWidth={2}
-        borderColor="$color4"
-        borderStyle="dashed"
-      >
-        <Text color="$color8" fontFamily="$body" fontSize={14}>
-          Your trophy case awaits
-        </Text>
-      </YStack>
-    )
+    return null
   }
 
   // Generate one trophy per year
@@ -120,6 +104,7 @@ const TrophyCase = ({ years }: TrophyCaseProps) => {
 
   return (
     <YStack
+      testID="trophy-case"
       width="100%"
       bg="$color2"
       rounded="$4"
@@ -337,6 +322,7 @@ export default function ExperienceYearsScreen() {
               bg={years <= MIN_YEARS ? '$color4' : '$color6'}
               disabled={years <= MIN_YEARS}
               onPress={handleDecrement}
+              accessibilityLabel="Fewer years"
               pressStyle={{ scale: 0.95 }}
             >
               <Minus
@@ -351,6 +337,7 @@ export default function ExperienceYearsScreen() {
               bg={years >= MAX_YEARS ? '$color4' : '$primary'}
               disabled={years >= MAX_YEARS}
               onPress={handleIncrement}
+              accessibilityLabel="More years"
               pressStyle={{ scale: 0.95 }}
             >
               <Plus

@@ -72,12 +72,13 @@ describe("web flows", () => {
     const signOutButton = fs.readFileSync(path.join(root, "components/SignOutButton.tsx"), "utf8")
     const signOutScroll = fs.readFileSync(path.join(root, "lib/signOutScroll.ts"), "utf8")
     expect(screen).toContain('testID="today-workout-card"')
+    expect(screen).toContain('testID="today-heading"')
     expect(signOutButton).toContain('nativeID="sign-out"')
     expect(signOutButton).toContain("hashchange")
     expect(signOutButton).toContain("noteUserScroll")
     expect(signOutScroll).toContain("scrollTop")
     const start = flow.indexOf("startRecording: recording")
-    const welcome = flow.indexOf('visible: "Welcome back,.*"')
+    const welcome = flow.indexOf("id: today-heading")
     const today = flow.indexOf('assertVisible: "Today"')
     const card = flow.indexOf("id: today-workout-card")
     const workout = flow.indexOf('assertVisible: "Start Workout"')
@@ -202,7 +203,7 @@ describe("web flows", () => {
       "tapOn: \"I'll set these later\"",
       'visible: "Your Program is Ready!"',
       "id: commitment-button",
-      'visible: "Welcome back,.*"',
+      "id: today-heading",
       "id: today-workout-card",
       'assertVisible: "Start Workout"',
       "takeScreenshot: 12-today",

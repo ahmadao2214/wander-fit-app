@@ -570,4 +570,46 @@ describe('WarmupSection', () => {
     fireEvent.press(getByText("Let's Go!"))
     expect(mockOnComplete).toHaveBeenCalledTimes(1)
   })
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // WARMUP EXERCISES WITH NO PHASE (older templates mark them by notes only)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  const legacyWarmup: WarmupExercise[] = [
+    {
+      exerciseId: 'cat-cow' as any,
+      name: 'Cat-Cow',
+      sets: 1,
+      reps: '10',
+      restSeconds: 0,
+      orderIndex: 0,
+    },
+  ]
+
+  it('preview summarizes a phase-less warmup without zero counts', () => {
+    const { getByText, queryByText } = render(
+      <WarmupSection exercises={legacyWarmup} totalDuration={0} onComplete={mockOnComplete} mode="preview" />,
+      { wrapper: AllTheProviders }
+    )
+    expect(getByText('1 exercise')).toBeTruthy()
+    expect(queryByText(/0 phases|~0 min/)).toBeNull()
+  })
+
+  it('preview lists phase-less exercises when expanded', () => {
+    const { getByText } = render(
+      <WarmupSection exercises={legacyWarmup} totalDuration={0} onComplete={mockOnComplete} mode="preview" />,
+      { wrapper: AllTheProviders }
+    )
+    fireEvent.press(getByText('Warmup'))
+    expect(getByText('Cat-Cow')).toBeTruthy()
+  })
+
+  it('flow shows phase-less exercises instead of an empty screen', () => {
+    const { getByText } = render(
+      <WarmupSection exercises={legacyWarmup} totalDuration={0} onComplete={mockOnComplete} mode="flow" />,
+      { wrapper: AllTheProviders }
+    )
+    expect(getByText('Cat-Cow')).toBeTruthy()
+    expect(getByText('10')).toBeTruthy()
+  })
 })
