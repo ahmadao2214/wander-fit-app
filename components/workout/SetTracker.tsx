@@ -175,6 +175,9 @@ export function SetTracker({
             const isSkipped = set.skipped
             const isNext = index === activeIndex
             const stateLabel = isCompleted ? 'done' : isSkipped ? 'skipped' : isNext ? 'next, tap when done' : 'to do'
+            // A logged set announces what was logged; others announce the prescription
+            const loggedWeight = set.weight != null && set.weight > 0 ? ` at ${set.weight} lb` : ''
+            const valueLabel = isCompleted ? `${set.repsCompleted ?? displayReps}${loggedWeight}` : displayReps
 
             return (
               <TouchableOpacity
@@ -185,7 +188,7 @@ export function SetTracker({
                 delayLongPress={400}
                 activeOpacity={0.8}
                 accessibilityRole="button"
-                accessibilityLabel={`Set ${index + 1}, ${displayReps}, ${stateLabel}`}
+                accessibilityLabel={`Set ${index + 1}, ${valueLabel}, ${stateLabel}`}
                 style={{ width: tileWidth }}
               >
                 <Card

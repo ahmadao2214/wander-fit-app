@@ -89,4 +89,21 @@ describe('SetTracker', () => {
     }
     expect(rowOf(weight)).not.toBe(rowOf(getByText('12')))
   })
+
+  it('announces the logged reps and weight for a completed set, and the prescription otherwise', () => {
+    const { getByLabelText } = render(
+      <SetTracker
+        sets={[
+          { completed: true, skipped: false, repsCompleted: 8, weight: 225 },
+          { completed: false, skipped: false },
+        ]}
+        prescribedReps="12"
+        prescribedSets={2}
+        onSetUpdate={jest.fn()}
+      />,
+      { wrapper: AllTheProviders }
+    )
+    expect(getByLabelText('Set 1, 8 at 225 lb, done')).toBeTruthy()
+    expect(getByLabelText('Set 2, 12, next, tap when done')).toBeTruthy()
+  })
 })
