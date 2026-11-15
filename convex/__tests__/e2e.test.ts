@@ -162,5 +162,22 @@ describe("e2e template seed", () => {
 
     const count = await t.run(async (ctx) => (await ctx.db.query("program_templates").collect()).length);
     expect(count).toBe(4 * 3 * 3 * 4 * 7);
+
+    // A second seed (every deploy) keeps template IDs, so saved sessions
+    // still open their workout.
+    await t.mutation(internal.generateTemplates.regenerateCategoryTemplates, {
+      categoryId: 2,
+      failOnErrors: true,
+    });
+    const again = await t.query(api.programTemplates.getWorkout, {
+      gppCategoryId: 2,
+      phase: "GPP",
+      skillLevel: "Novice",
+      week: 1,
+      day: 1,
+    });
+    expect(again?._id).toBe(day1?._id);
+    const recount = await t.run(async (ctx) => (await ctx.db.query("program_templates").collect()).length);
+    expect(recount).toBe(count);
   }, 60_000);
 });

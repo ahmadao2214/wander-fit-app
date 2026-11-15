@@ -134,6 +134,8 @@ export function createDraftStore(storage: DraftStorage, now: () => number = Date
           await storage.removeItem(DRAFT_KEY)
         } catch (error) {
           console.warn('First Run draft not cleared:', error)
+          // Don't let a later load bring the cleared answers back.
+          await write({ answers: {}, lastStep: 'promise', firstLaunchAt: now() })
         }
       }),
   }

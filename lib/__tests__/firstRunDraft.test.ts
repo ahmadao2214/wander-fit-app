@@ -87,6 +87,23 @@ describe('createDraftStore', () => {
     expect(data.has(DRAFT_KEY)).toBe(false)
   })
 
+  it('keeps cleared answers gone when the delete fails', async () => {
+    const { storage } = memoryStorage()
+    const store = createDraftStore(
+      {
+        ...storage,
+        removeItem: async () => {
+          throw new Error('keychain busy')
+        },
+      },
+      () => 1000
+    )
+    await store.save({ answers: { sportId: 's1' }, lastStep: 'reveal' })
+    await store.clear()
+    expect(await store.load()).toMatchObject({ answers: {}, lastStep: 'promise' })
+    expect((await createDraftStore(storage).load()).answers).toEqual({})
+  })
+
   it('loads corrupt data as an empty draft', async () => {
     const { storage } = memoryStorage({ [DRAFT_KEY]: '{not json' })
     const draft = await createDraftStore(storage, () => 2000).load()
