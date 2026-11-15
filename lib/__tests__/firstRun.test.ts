@@ -7,6 +7,8 @@ import {
   normalizeTrainingDays,
   revealProgram,
   seasonWeeksArg,
+  seasonStartForWeeks,
+  formatSeasonDate,
   weeksUntilSeason,
   yearsForChoice,
   type CompleteFirstRunAnswers,
@@ -157,5 +159,17 @@ describe('intakeArgs', () => {
 
   it('leaves weeksUntilSeason out with no set season', () => {
     expect(intakeArgs(complete, NOW).weeksUntilSeason).toBeUndefined()
+  })
+})
+
+describe('seasonStartForWeeks', () => {
+  it('round-trips with weeksUntilSeason for every slider position', () => {
+    const off: number[] = []
+    for (let w = 1; w <= 52; w++) if (weeksUntilSeason(seasonStartForWeeks(w, NOW), NOW) !== w) off.push(w)
+    expect(off).toEqual([])
+  })
+
+  it('formats the date for display', () => {
+    expect(formatSeasonDate('2027-03-06')).toBe('Sat, Mar 6')
   })
 })

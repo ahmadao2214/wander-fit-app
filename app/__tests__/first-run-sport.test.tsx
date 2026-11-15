@@ -1,43 +1,19 @@
 import React from 'react'
 import { act, fireEvent, render, screen } from '@testing-library/react-native'
-import { TamaguiProvider } from 'tamagui'
-import config from '../../tamagui.config'
-import { createDraftStore, type DraftStorage } from '../../lib/firstRunDraft'
+import { SPORTS, testDraft, Wrapper as wrapper } from '../../jest/firstRunTestUtils'
 
-const memory = new Map<string, string>()
-const storage: DraftStorage = {
-  getItem: async (k) => memory.get(k) ?? null,
-  setItem: async (k, v) => {
-    memory.set(k, v)
-  },
-  removeItem: async (k) => {
-    memory.delete(k)
-  },
-}
-let mockStore = createDraftStore(storage, () => 1000)
 jest.mock('../../lib/firstRunStorage', () => ({
   get firstRunDraft() {
-    return mockStore
+    return jest.requireActual('../../jest/firstRunTestUtils').testDraft.current
   },
 }))
 
-const SPORTS = [
-  { _id: 'basketball', name: 'Basketball', gppCategoryId: 2 },
-  { _id: 'baseball', name: 'Baseball', gppCategoryId: 3 },
-  { _id: 'soccer', name: 'Soccer', gppCategoryId: 1 },
-  { _id: 'fitness', name: 'General Fitness', gppCategoryId: 4 },
-]
-const CATEGORIES = [
-  { categoryId: 1, shortName: 'Endurance' },
-  { categoryId: 2, shortName: 'Power' },
-  { categoryId: 3, shortName: 'Rotation' },
-  { categoryId: 4, shortName: 'Strength' },
-]
 jest.mock('convex/react', () => ({
   useQuery: (fn: unknown) => {
     const name = jest.requireActual('convex/server').getFunctionName(fn)
-    if (name === 'sports:list') return SPORTS
-    if (name === 'sports:getCategories') return CATEGORIES
+    const utils = jest.requireActual('../../jest/firstRunTestUtils')
+    if (name === 'sports:list') return utils.SPORTS
+    if (name === 'sports:getCategories') return utils.CATEGORIES
     return undefined
   },
 }))
@@ -59,18 +35,13 @@ jest.mock('../../components/sport-icon/SportIcon', () => ({
 // eslint-disable-next-line import/first
 import FirstRunSport, { matchesSearch } from '../(first-run)/sport'
 
-const wrapper = ({ children }: { children: React.ReactNode }) => (
-  <TamaguiProvider config={config}>{children}</TamaguiProvider>
-)
-
 async function renderSport() {
   render(<FirstRunSport />, { wrapper })
   await act(async () => {})
 }
 
 beforeEach(() => {
-  memory.clear()
-  mockStore = createDraftStore(storage, () => 1000)
+  testDraft.reset()
   mockPush.mockClear()
 })
 
@@ -105,7 +76,7 @@ describe('First Run sport', () => {
     })
     expect(screen.getByTestId('program-bar-text').props.children).toBe('Basketball · Power')
     expect(screen.getByTestId('sport-Basketball').props.accessibilityState.selected).toBe(true)
-    expect((await createDraftStore(storage).load()).answers.sportId).toBe('basketball')
+    expect((await testDraft.reopen()).answers.sportId).toBe('basketball')
 
     fireEvent.press(screen.getByTestId('first-run-continue'))
     expect(mockPush).toHaveBeenCalledWith('/(first-run)/season')
@@ -113,7 +84,7 @@ describe('First Run sport', () => {
 
   it('records the step so a relaunch resumes on it', async () => {
     await renderSport()
-    expect((await createDraftStore(storage).load()).lastStep).toBe('sport')
+    expect((await testDraft.reopen()).lastStep).toBe('sport')
   })
 })
 
