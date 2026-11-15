@@ -2,6 +2,7 @@ import { AlertDialog, YStack, XStack, Text, Card, Button, ScrollView, Spinner, s
 import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
+import { getLocalDayArgs } from '../../lib/streaks'
 import { SignOutButton } from '../../components/SignOutButton'
 import { useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
@@ -228,7 +229,7 @@ export default function AthleteDashboard() {
   // Get progress summary
   const progress = useQuery(
     api.userPrograms.getProgressSummary,
-    user ? {} : "skip"
+    user ? getLocalDayArgs() : "skip"
   )
 
   // Get today's workout (with override support)
