@@ -158,20 +158,33 @@ describe('createDraftStore', () => {
     expect(JSON.parse(data.get(DRAFT_KEY)!).answers).toEqual({ sportId: 's1' })
   })
 
-  it('does not write a step over storage it still cannot read', async () => {
+  it('does not write over storage it still cannot read, then merges once it can', async () => {
     const { storage, data } = memoryStorage()
-    await createDraftStore(storage, () => 1000).save({ answers: { sportId: 's1' }, lastStep: 'days' })
+    await createDraftStore(storage, () => 1000).save({
+      answers: { sportId: 's1', seasonStart: null, trainingDays: [1, 3, 5] },
+      lastStep: 'about',
+    })
     const saved = data.get(DRAFT_KEY)
-    const locked: DraftStorage = {
+    let failures = 3
+    const flaky: DraftStorage = {
       ...storage,
-      getItem: async () => {
-        throw new Error('keychain locked')
+      getItem: async (key) => {
+        if (failures-- > 0) throw new Error('keychain locked')
+        return storage.getItem(key)
       },
     }
-    const store = createDraftStore(locked, () => 5000)
+    const store = createDraftStore(flaky, () => 5000)
     await store.load()
     await store.save({ lastStep: 'promise' })
+    await store.save({ answers: { sportId: 's2' } })
     expect(data.get(DRAFT_KEY)).toBe(saved)
+
+    await store.save({ answers: { ageGroup: '18-35' } })
+    expect(JSON.parse(data.get(DRAFT_KEY)!)).toEqual({
+      answers: { sportId: 's2', seasonStart: null, trainingDays: [1, 3, 5], ageGroup: '18-35' },
+      lastStep: 'about',
+      firstLaunchAt: 1000,
+    })
   })
 
   it('falls back to an empty draft when storage fails', async () => {

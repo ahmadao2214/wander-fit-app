@@ -161,9 +161,9 @@ export function createDraftStore(storage: DraftStorage, now: () => number = Date
           lastStep: patch.lastStep ?? current.lastStep,
           firstLaunchAt: current.firstLaunchAt,
         }
-        // A step reached on screen isn't worth writing over answers that
-        // storage couldn't read.
-        if (unread && !patch.answers) cached = next
+        // Never write over answers storage couldn't read. The next save
+        // that reads storage again merges these answers and writes them.
+        if (unread) cached = next
         else await write(next)
         notify()
         return next
