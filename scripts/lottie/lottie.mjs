@@ -66,7 +66,7 @@ export const fill = (hex, opacity = 100) => ({ ty: 'fl', c: fixed(rgb(hex)), o: 
 
 export const stroke = (hex, width) => ({ ty: 'st', c: fixed(rgb(hex)), o: fixed(100), w: fixed(width), lc: 2, lj: 2 })
 
-export const group = (nm, items, offset = [0, 0]) => ({
+export const group = (nm, items, offset = [0, 0], rotation = 0) => ({
   ty: 'gr',
   nm,
   it: [
@@ -76,7 +76,7 @@ export const group = (nm, items, offset = [0, 0]) => ({
       p: fixed(offset.map((n) => round(n))),
       a: fixed([0, 0]),
       s: fixed([100, 100]),
-      r: fixed(0),
+      r: fixed(rotation),
       o: fixed(100),
       sk: fixed(0),
       sa: fixed(0),

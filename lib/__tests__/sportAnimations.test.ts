@@ -38,21 +38,20 @@ describe('getSportAnimation', () => {
     for (const slug of Object.keys(SPORT_ANIMATIONS)) expect(sportSlugs).toContain(slug)
   })
 
-  it('resolves every seeded sport to an animation or to the fallback', () => {
+  it('has an animation for every seeded sport', () => {
     expect(SPORTS).toHaveLength(27)
-    for (const sport of SPORTS) {
-      const source = getSportAnimation(sport.name)
-      const expected = SPORT_ANIMATIONS[getSportSlug(sport.name)]
-      expect(source).toBe(expected)
-    }
+    for (const sport of SPORTS) expect(getSportAnimation(sport.name)).toBeDefined()
   })
 
   it('finds Soccer by its display name', () => {
     expect(getSportAnimation('Soccer')).toBeDefined()
   })
 
-  it('returns undefined for a sport without an animation yet', () => {
-    expect(getSportAnimation('Track (Sprints/Jumps)')).toBeUndefined()
+  it('finds names with punctuation by slug', () => {
+    expect(getSportAnimation('Track (Sprints/Jumps)')).toBe(SPORT_ANIMATIONS['track-sprints-jumps'])
+  })
+
+  it('returns undefined for a name it does not know', () => {
     expect(getSportAnimation('Not A Sport')).toBeUndefined()
   })
 })

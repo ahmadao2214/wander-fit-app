@@ -100,16 +100,16 @@ describe('SportIcon', () => {
     expect(lastLottie().autoPlay).toBe(false)
   })
 
-  describe('a sport without an animation', () => {
+  describe('a sport without an animation (not seeded)', () => {
     it('shows the static icon instead of a Lottie', () => {
-      render(<SportIcon name="Wrestling" testID="icon" />, { wrapper: Providers })
+      render(<SportIcon name="Pickleball" testID="icon" />, { wrapper: Providers })
       expect(screen.queryByTestId('lottie', { includeHiddenElements: true })).toBeNull()
       expect(screen.getByTestId('icon', { includeHiddenElements: true })).toBeTruthy()
     })
 
     it('finishes a once play right away so the flow continues', async () => {
       const onFinish = jest.fn()
-      render(<SportIcon name="Wrestling" mode="once" onFinish={onFinish} />, { wrapper: Providers })
+      render(<SportIcon name="Pickleball" mode="once" onFinish={onFinish} />, { wrapper: Providers })
       await waitFor(() => expect(onFinish).toHaveBeenCalledTimes(1))
     })
   })
