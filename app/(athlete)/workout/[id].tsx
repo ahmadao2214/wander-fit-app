@@ -38,6 +38,7 @@ import { PerformanceReviewItem } from '../../../components/workout/PerformanceRe
 import { WarmupSection, type WarmupExercise } from '../../../components/workout/WarmupSection'
 import { WARMUP_PHASES } from '../../../convex/warmupSequences'
 import { workoutMetaLine } from '../../../lib/workoutMeta'
+import { PAUSED_SESSION_MESSAGE } from '../../../lib/sessionTiming'
 import {
   mainOrderToTemplateOrder,
   normalizeExerciseOrder,
@@ -157,6 +158,15 @@ export default function WorkoutDetailScreen() {
   )
 
   const isCompleted = session?.status === 'completed'
+  // Exit pauses a session, so this workout may be waiting to be resumed
+  const isPaused = session?.status === 'in_progress'
+
+  // A workout paused elsewhere has to be resumed or discarded first
+  const currentSession = useQuery(
+    api.gppWorkoutSessions.getCurrentSession,
+    user ? {} : "skip"
+  )
+  const pausedElsewhere = !!currentSession && !!template && currentSession.templateId !== template._id
 
   // Check if this workout's phase is unlocked
   const isPhaseUnlocked = (unlockedPhases?.phases as readonly ("GPP" | "SPP" | "SSP")[] | undefined)?.includes(
@@ -244,6 +254,10 @@ export default function WorkoutDetailScreen() {
   // Start workout handler
   const startWorkout = useCallback(async () => {
     if (isStarting || !template) return
+    if (pausedElsewhere) {
+      alert(PAUSED_SESSION_MESSAGE)
+      return
+    }
 
     setIsStarting(true)
     try {
@@ -272,11 +286,15 @@ export default function WorkoutDetailScreen() {
       })
     } catch (error) {
       console.error('Failed to start workout:', error)
-      alert('Failed to start workout. Please try again.')
+      alert(
+        String(error).includes(PAUSED_SESSION_MESSAGE)
+          ? PAUSED_SESSION_MESSAGE
+          : 'Failed to start workout. Please try again.'
+      )
     } finally {
       setIsStarting(false)
     }
-  }, [isStarting, isCompleted, template, startSession, router, hasCustomOrder, orderIndices, todayWorkout, setTodayFocus])
+  }, [isStarting, isCompleted, pausedElsewhere, template, startSession, router, hasCustomOrder, orderIndices, todayWorkout, setTodayFocus])
 
   // Target intensity, shown in the header meta line ("~40 min · 7 exercises · Moderate intensity")
   const targetIntensity = session?.targetIntensity || 'Moderate'
@@ -622,7 +640,7 @@ export default function WorkoutDetailScreen() {
                 disabled={isStarting}
                 pressStyle={{ scale: 0.97, opacity: 0.9 }}
               >
-                {isStarting ? '…' : 'Start'}
+                {isStarting ? '…' : isPaused ? 'Resume' : 'Start'}
               </Button>
             )}
             {isPhaseUnlocked && isCompleted && (

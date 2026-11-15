@@ -1,8 +1,9 @@
-import { mutation, query, type QueryCtx } from "./_generated/server";
+import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { getCurrentUser } from "./authHelpers";
-import type { Doc } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import { alignCompletionsToTemplate, isWarmupExercise } from "../lib/executionOrder";
+import { activeSeconds, PAUSED_SESSION_MESSAGE, pausedSecondsAfterResume } from "../lib/sessionTiming";
 import {
   INTENSITY_CONFIG,
   BODYWEIGHT_INTENSITY_CONFIG,
@@ -868,7 +869,12 @@ export const startSession = mutation({
       .first();
 
     if (existingSession) {
-      // Return existing session instead of creating new one
+      // A paused workout isn't dropped to start another: the athlete resumes
+      // or discards it from Today first
+      if (existingSession.templateId !== args.templateId) {
+        throw new Error(PAUSED_SESSION_MESSAGE);
+      }
+      // Same workout: resume it instead of starting over
       return {
         sessionId: existingSession._id,
         isExisting: true,
@@ -1274,19 +1280,21 @@ export const completeSession = mutation({
     }
 
     const now = Date.now();
-    const totalDurationSeconds = Math.round((now - session.startedAt) / 1000);
+    const totalDurationSeconds = activeSeconds(session, now);
 
     const updates: {
       exercises: typeof args.exercises;
       completedAt: number;
       totalDurationSeconds: number;
       status: "completed";
+      pausedAt: undefined;
       exerciseOrder?: number[];
     } = {
       exercises: args.exercises,
       completedAt: now,
       totalDurationSeconds,
       status: "completed",
+      pausedAt: undefined,
     };
 
     if (args.exerciseOrder) {
@@ -1318,8 +1326,72 @@ export const completeSession = mutation({
   },
 });
 
+/** The signed-in athlete's in-progress session, or an error saying why not. */
+async function getOwnInProgressSession(
+  ctx: MutationCtx,
+  sessionId: Id<"gpp_workout_sessions">
+): Promise<Doc<"gpp_workout_sessions">> {
+  const user = await getCurrentUser(ctx);
+  if (!user) {
+    throw new Error("Not authenticated");
+  }
+  const session = await ctx.db.get(sessionId);
+  if (!session) {
+    throw new Error("Session not found");
+  }
+  if (session.userId !== user._id) {
+    throw new Error("Not authorized to change this session");
+  }
+  if (session.status !== "in_progress") {
+    throw new Error("Session is not in progress");
+  }
+  return session;
+}
+
 /**
- * Abandon the workout session
+ * Pause the workout session: what X → Exit does. Saves the logged sets and
+ * keeps the session in progress, so Today offers Resume.
+ */
+export const pauseSession = mutation({
+  args: {
+    sessionId: v.id("gpp_workout_sessions"),
+    exercises: v.optional(v.array(exerciseCompletionValidator)),
+    exerciseOrder: v.optional(v.array(v.number())),
+  },
+  handler: async (ctx, args) => {
+    const session = await getOwnInProgressSession(ctx, args.sessionId);
+    await ctx.db.patch(args.sessionId, {
+      // A second pause keeps the first pausedAt
+      pausedAt: session.pausedAt ?? Date.now(),
+      ...(args.exercises ? { exercises: args.exercises } : {}),
+      ...(args.exerciseOrder ? { exerciseOrder: args.exerciseOrder } : {}),
+    });
+    return { success: true };
+  },
+});
+
+/**
+ * End a pause when the athlete opens the session again. The paused time is
+ * added to pausedSeconds so the timer and duration leave it out.
+ */
+export const resumeSession = mutation({
+  args: { sessionId: v.id("gpp_workout_sessions") },
+  handler: async (ctx, args) => {
+    const session = await getOwnInProgressSession(ctx, args.sessionId);
+    if (session.pausedAt === undefined) {
+      return { success: true };
+    }
+    await ctx.db.patch(args.sessionId, {
+      pausedSeconds: pausedSecondsAfterResume(session, Date.now()),
+      pausedAt: undefined,
+    });
+    return { success: true };
+  },
+});
+
+/**
+ * Abandon the workout session: the athlete's explicit Discard on Today.
+ * The record and its sets stay; it just can't be resumed.
  */
 export const abandonSession = mutation({
   args: {

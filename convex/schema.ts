@@ -402,6 +402,11 @@ export default defineSchema({
     // Session state
     status: sessionStatusValidator,
 
+    // Pausing: Exit keeps the session in_progress and sets pausedAt; opening
+    // it again adds the pause to pausedSeconds, which the duration leaves out
+    pausedAt: v.optional(v.number()),
+    pausedSeconds: v.optional(v.number()),
+
     // Target intensity for this session (affects all prescription variables)
     // Defaults to "Moderate" if not specified
     targetIntensity: v.optional(intensityValidator),

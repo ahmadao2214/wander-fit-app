@@ -32,6 +32,7 @@ import { WARMUP_PHASES } from '../../../../convex/warmupSequences'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { PanResponder, Platform, Vibration, Animated, useColorScheme, Pressable } from 'react-native'
 import { mapIntensityToLevel, normalizeTrackedSets } from '../../../../lib'
+import { activeSeconds } from '../../../../lib/sessionTiming'
 import {
   alignCompletionsToTemplate,
   isWarmupExercise,
@@ -144,7 +145,8 @@ export default function WorkoutExecutionScreen() {
   // Mutations
   const updateProgress = useMutation(api.gppWorkoutSessions.updateProgress)
   const completeSession = useMutation(api.gppWorkoutSessions.completeSession)
-  const abandonSession = useMutation(api.gppWorkoutSessions.abandonSession)
+  const pauseSession = useMutation(api.gppWorkoutSessions.pauseSession)
+  const resumeSession = useMutation(api.gppWorkoutSessions.resumeSession)
   const advanceToNextDay = useMutation(api.userPrograms.advanceToNextDay)
 
   // Refs for swipe tracking
@@ -347,15 +349,27 @@ export default function WorkoutExecutionScreen() {
     }
   }, [session, isInitialized])
 
-  // Elapsed time counter
+  // Opening a paused session ends the pause, so its clock runs again
+  const resumeRequestedRef = useRef(false)
   useEffect(() => {
-    if (session?.startedAt) {
-      const interval = setInterval(() => {
-        setElapsedTime(Math.floor((Date.now() - session.startedAt) / 1000))
-      }, 1000)
-      return () => clearInterval(interval)
-    }
-  }, [session?.startedAt])
+    if (!session?._id || session.pausedAt === undefined || resumeRequestedRef.current) return
+    resumeRequestedRef.current = true
+    resumeSession({ sessionId: session._id }).catch((error) => {
+      console.error('Failed to resume workout:', error)
+    })
+  }, [session?._id, session?.pausedAt, resumeSession])
+
+  // Elapsed time counter. Time spent paused doesn't count.
+  const startedAt = session?.startedAt
+  const pausedAt = session?.pausedAt
+  const pausedSeconds = session?.pausedSeconds
+  useEffect(() => {
+    if (!startedAt) return
+    const tick = () => setElapsedTime(activeSeconds({ startedAt, pausedAt, pausedSeconds }, Date.now()))
+    tick()
+    const interval = setInterval(tick, 1000)
+    return () => clearInterval(interval)
+  }, [startedAt, pausedAt, pausedSeconds])
 
   // Reconstruct the full exercises array (warmup + main) for saving.
   // This preserves positional alignment with the template and keeps
@@ -536,8 +550,8 @@ export default function WorkoutExecutionScreen() {
     }
   }
 
-  // Abandon the workout
-  const handleAbandonWorkout = async () => {
+  // Exit: pause the workout. The logged sets are saved and Today offers Resume.
+  const handlePauseWorkout = async () => {
     // Mark session as ended to prevent further auto-saves
     sessionEndedRef.current = true
     // Clear any pending save timeout
@@ -547,7 +561,7 @@ export default function WorkoutExecutionScreen() {
     }
 
     try {
-      await abandonSession({
+      await pauseSession({
         sessionId: sessionId as Id<"gpp_workout_sessions">,
         exercises: buildFullExercises(exerciseCompletions),
         exerciseOrder: exerciseOrder.length > 0 ? exerciseOrder : undefined,
@@ -555,7 +569,7 @@ export default function WorkoutExecutionScreen() {
       setShowExitDialog(false)
       router.replace('/(athlete)')
     } catch (error) {
-      console.error('Failed to abandon workout:', error)
+      console.error('Failed to pause workout:', error)
       router.replace('/(athlete)')
     }
   }
@@ -714,7 +728,13 @@ export default function WorkoutExecutionScreen() {
           justify="space-between"
           bg="$surface"
         >
-          <Pressable onPress={() => setShowExitDialog(true)} hitSlop={8}>
+          <Pressable
+            onPress={() => setShowExitDialog(true)}
+            hitSlop={8}
+            testID="execute-exit"
+            accessibilityRole="button"
+            accessibilityLabel="Exit workout"
+          >
             <X size={28} color="$color" />
           </Pressable>
 
@@ -927,10 +947,10 @@ export default function WorkoutExecutionScreen() {
           >
             <YStack gap="$3">
               <AlertDialog.Title fontFamily="$body" fontWeight="700" fontSize={20}>
-                Exit Workout?
+                Pause this workout?
               </AlertDialog.Title>
               <AlertDialog.Description fontFamily="$body" color="$color10">
-                Your progress will be saved. You can resume this workout later.
+                Your logged sets are saved. Pick up where you left off from Today.
               </AlertDialog.Description>
               
               <XStack gap="$3" pt="$2">
@@ -944,19 +964,21 @@ export default function WorkoutExecutionScreen() {
                     color="$color11"
                     rounded="$4"
                   >
-                    Continue
+                    Keep going
                   </Button>
                 </AlertDialog.Cancel>
                 <AlertDialog.Action asChild>
+                  {/* Not red: pausing keeps everything, so it isn't destructive */}
                   <Button 
                     flex={1} 
-                    bg="$red11"
+                    bg="$primary"
                     color="white"
                     fontFamily="$body" fontWeight="700"
                     rounded="$4"
-                    onPress={handleAbandonWorkout}
+                    onPress={handlePauseWorkout}
+                    testID="exit-pause"
                   >
-                    Exit
+                    Pause and exit
                   </Button>
                 </AlertDialog.Action>
               </XStack>
