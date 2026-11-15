@@ -55,7 +55,7 @@ export default function HistoryPage() {
   if (authLoading) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$primary" />
+        <Spinner size="large" color="$primaryText" />
         <Text color="$color10" fontFamily="$body">
           Loading history...
         </Text>
@@ -124,6 +124,11 @@ export default function HistoryPage() {
                       bg={session.status === 'completed' ? '$intensityLow2' : '$accent1'}
                       items="center"
                       justify="center"
+                      // Completed rows have no chip, so the check carries the spoken
+                      // status; unfinished rows say it in their chip
+                      accessible={session.status === 'completed'}
+                      accessibilityLabel={session.status === 'completed' ? 'Completed' : undefined}
+                      testID={session.status === 'completed' ? 'history-completed' : undefined}
                     >
                       {session.status === 'completed' ? (
                         <CheckCircle size={22} color="$green10" />
@@ -167,23 +172,15 @@ export default function HistoryPage() {
                       </XStack>
                     </YStack>
 
-                    {/* Status Badge */}
-                    <Card
-                      bg={session.status === 'completed' ? '$intensityLow2' : '$accent1'}
-                      px="$2"
-                      py="$1"
-                      rounded="$2"
-                    >
-                      <Text
-                        fontSize={10}
-                        fontFamily="$body" fontWeight="700"
-                        letterSpacing={0.5}
-                        color={session.status === 'completed' ? '$green11' : '$orange11'}
-                        textTransform="uppercase"
-                      >
-                        {session.status}
-                      </Text>
-                    </Card>
+                    {/* Completed is the normal case: the green check says it, no chip.
+                        An unfinished session gets a plain-language chip. */}
+                    {session.status !== 'completed' && (
+                      <Card bg="$orange2" px="$2" py="$1" rounded="$2" testID="history-not-finished">
+                        <Text fontSize={12} fontFamily="$body" fontWeight="600" color="$orange11">
+                          Not finished
+                        </Text>
+                      </Card>
+                    )}
                   </XStack>
                 </Card>
               ))}
@@ -248,7 +245,7 @@ function HistoryEmptyState() {
         fontFamily="$body"
         fontWeight="600"
         rounded="$4"
-        pressStyle={{ scale: 0.97, opacity: 0.9 }}
+        pressStyle={{ scale: 0.97, bg: '$primaryPress' }}
         onPress={() => router.navigate('/(athlete)')}
       >
         Go to today's workout

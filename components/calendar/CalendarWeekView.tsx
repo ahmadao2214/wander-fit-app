@@ -282,7 +282,7 @@ export function CalendarWeekView({
             <Text
               fontSize={11}
               fontWeight="500"
-              color={isDateToday ? '$primary' : '$color9'}
+              color={isDateToday ? '$primaryText' : '$color9'}
             >
               {DAY_NAMES[date.getDay()]}
             </Text>
@@ -373,7 +373,7 @@ export function CalendarWeekView({
               size="$2"
               chromeless
               onPress={handleGoToToday}
-              color="$primary"
+              color="$primaryText"
             >
               Today
             </Button>

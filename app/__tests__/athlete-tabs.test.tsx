@@ -12,7 +12,12 @@ jest.mock('../../components/AuthGuard', () => ({
   AthleteOnlyRoute: ({ children }: { children: React.ReactNode }) => children,
 }))
 
-jest.mock('../../tamagui.config', () => ({ brandPrimary: '#2563eb' }))
+jest.mock('../../tamagui.config', () => ({
+  tabTints: {
+    light: { active: '#2563EB', inactive: '#64748B' },
+    dark: { active: '#3B82F6', inactive: '#94A3B8' },
+  },
+}))
 
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),

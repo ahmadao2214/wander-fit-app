@@ -160,7 +160,7 @@ export default function MaxesScreen() {
   if (coreLiftExercises === undefined) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$primary" />
+        <Spinner size="large" color="$primaryText" />
         <Text color="$gray11">Loading...</Text>
       </YStack>
     )
@@ -199,7 +199,7 @@ export default function MaxesScreen() {
 
           {/* Header */}
           <YStack gap="$2" items="center">
-            <Dumbbell size={48} color="$primary" />
+            <Dumbbell size={48} color="$primaryText" />
             <H2 text="center">Know Your Starting Point</H2>
             <Text color="$color11" fontSize="$4" text="center">
               If you know your max lifts, enter them below. This helps us calculate the right weight for every workout.

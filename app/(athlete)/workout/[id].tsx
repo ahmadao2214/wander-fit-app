@@ -379,7 +379,7 @@ export default function WorkoutDetailScreen() {
         {!isPhaseUnlocked && reassessmentStatus?.reassessmentPending && (
           <Card p="$3" bg="$brand1" borderColor="$brand3">
             <XStack items="center" gap="$2">
-              <Bell size={18} color="$primary" />
+              <Bell size={18} color="$primaryText" />
               <Text fontSize="$3" color="$brand9" flex={1}>
                 Complete your reassessment to unlock {template.phase} workouts
               </Text>
@@ -598,7 +598,7 @@ export default function WorkoutDetailScreen() {
   if (template === undefined || unlockedPhases === undefined) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$primary" />
+        <Spinner size="large" color="$primaryText" />
         <Text>Loading workout...</Text>
       </YStack>
     )
@@ -636,11 +636,10 @@ export default function WorkoutDetailScreen() {
                 onPress={startWorkout}
                 testID="workout-start"
                 icon={isStarting ? undefined : Play}
-                // Large bold text: white on the dark-theme $primary is 3.68:1
                 fontSize={19}
                 fontWeight="700"
                 disabled={isStarting}
-                pressStyle={{ scale: 0.97, opacity: 0.9 }}
+                pressStyle={{ scale: 0.97, bg: '$primaryPress' }}
               >
                 {isStarting ? '…' : isPaused ? 'Resume' : 'Start'}
               </Button>
@@ -651,7 +650,7 @@ export default function WorkoutDetailScreen() {
                 bg="$color4"
                 borderWidth={2}
                 borderColor="$primary"
-                color="$primary"
+                color="$primaryText"
                 onPress={startWorkout}
                 icon={isStarting ? undefined : RotateCcw}
                 fontWeight="600"

@@ -48,7 +48,7 @@ export default function MaxesScreen() {
   if (coreLifts === undefined) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$primary" />
+        <Spinner size="large" color="$primaryText" />
         <Text fontFamily="$body" color="$color10">Loading...</Text>
       </YStack>
     )
@@ -247,7 +247,7 @@ export default function MaxesScreen() {
                 fontFamily="$body"
                 fontWeight="700"
                 rounded="$4"
-                pressStyle={{ opacity: 0.9, scale: 0.98 }}
+                pressStyle={{ bg: '$primaryPress', scale: 0.98 }}
                 disabled={hasErrors || isSaving}
                 opacity={hasErrors ? 0.5 : 1}
                 onPress={handleSave}

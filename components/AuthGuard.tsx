@@ -33,7 +33,7 @@ export function AuthGuard({
   if (isLoading) {
     return (
       <YStack flex={1} items="center" justify="center" gap="$4" bg="$background">
-        <Spinner size="large" color="$primary" />
+        <Spinner size="large" color="$primaryText" />
         <Text color="$gray11">Loading...</Text>
       </YStack>
     )
@@ -68,7 +68,7 @@ export function AthleteOnlyRoute({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <YStack flex={1} items="center" justify="center" gap="$4" bg="$background">
-        <Spinner size="large" color="$primary" />
+        <Spinner size="large" color="$primaryText" />
         <Text color="$gray11">Loading...</Text>
       </YStack>
     )
@@ -113,7 +113,7 @@ export function IntakeOnlyRoute({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <YStack flex={1} items="center" justify="center" gap="$4" bg="$background">
-        <Spinner size="large" color="$primary" />
+        <Spinner size="large" color="$primaryText" />
         <Text color="$gray11">Loading...</Text>
       </YStack>
     )
@@ -163,7 +163,7 @@ export function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <YStack flex={1} items="center" justify="center" gap="$4" bg="$background">
-        <Spinner size="large" color="$primary" />
+        <Spinner size="large" color="$primaryText" />
         <Text color="$gray11">Loading...</Text>
       </YStack>
     )
@@ -208,7 +208,7 @@ export function OnboardingRoute({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <YStack flex={1} items="center" justify="center" gap="$4" bg="$background">
-        <Spinner size="large" color="$primary" />
+        <Spinner size="large" color="$primaryText" />
         <Text color="$gray11">Loading...</Text>
       </YStack>
     )

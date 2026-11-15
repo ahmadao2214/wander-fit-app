@@ -385,7 +385,7 @@ export default function SignUpScreen() {
                 <Text
                   fontSize={13}
                   fontFamily="$body" fontWeight="600"
-                  color="$primary"
+                  color="$primaryText"
                   onPress={onResendCode}
                   cursor="pointer"
                   hoverStyle={{ opacity: 0.8 }}
@@ -404,7 +404,7 @@ export default function SignUpScreen() {
   if (isAuthLoading) {
     return (
       <YStack flex={1} items="center" justify="center" gap="$4" bg="$background">
-        <Spinner size="large" color="$primary" />
+        <Spinner size="large" color="$primaryText" />
         <Text color="$color10" fontFamily="$body">Loading...</Text>
       </YStack>
     )
@@ -438,7 +438,7 @@ export default function SignUpScreen() {
             >
               <YStack gap="$3" items="center">
                 <YStack bg="$brand2" p="$4" rounded="$10">
-                  <UserPlus size={40} color="$primary" />
+                  <UserPlus size={40} color="$primaryText" />
                 </YStack>
                 <DisplayHeading>COMPLETE SETUP</DisplayHeading>
                 <Subtitle>
@@ -508,7 +508,7 @@ export default function SignUpScreen() {
                 <Text
                   fontSize={13}
                   fontFamily="$body" fontWeight="600"
-                  color="$primary"
+                  color="$primaryText"
                   onPress={onSignOutPress}
                   cursor="pointer"
                   hoverStyle={{ opacity: 0.8 }}
@@ -551,7 +551,7 @@ export default function SignUpScreen() {
               {/* Header */}
               <YStack gap="$3" items="center">
                 <YStack bg="$brand2" p="$4" rounded="$10">
-                  <Zap size={40} color="$primary" />
+                  <Zap size={40} color="$primaryText" />
                 </YStack>
                 <DisplayHeading>CREATE ACCOUNT</DisplayHeading>
                 <Subtitle>
@@ -734,7 +734,7 @@ export default function SignUpScreen() {
                   Already have an account?
                 </Text>
                 <Link href="/sign-in">
-                  <Text fontFamily="$body" fontWeight="600" color="$primary" cursor="pointer" hoverStyle={{ opacity: 0.8 }}>
+                  <Text fontFamily="$body" fontWeight="600" color="$primaryText" cursor="pointer" hoverStyle={{ opacity: 0.8 }}>
                     Sign in
                   </Text>
                 </Link>

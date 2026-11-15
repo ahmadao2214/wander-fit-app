@@ -71,7 +71,7 @@ export default function ResultsScreen() {
   if (reassessmentStatus === undefined) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$primary" />
+        <Spinner size="large" color="$primaryText" />
         <Text fontFamily="$body" color="$color10">Loading...</Text>
       </YStack>
     )
@@ -164,7 +164,7 @@ export default function ResultsScreen() {
               fontFamily="$body"
               fontWeight="700"
               rounded="$4"
-              pressStyle={{ opacity: 0.9, scale: 0.98 }}
+              pressStyle={{ bg: '$primaryPress', scale: 0.98 }}
               onPress={() => {
                 if (redirectTimerRef.current) {
                   clearTimeout(redirectTimerRef.current)
@@ -283,7 +283,7 @@ export default function ResultsScreen() {
                 rounded="$4"
               >
                 <XStack items="center" gap="$3">
-                  <Dumbbell size={24} color="$primary" />
+                  <Dumbbell size={24} color="$primaryText" />
                   <YStack flex={1}>
                     <Text fontFamily="$body" fontWeight="600" color="$color12">
                       1RM Maxes
@@ -333,8 +333,8 @@ export default function ResultsScreen() {
                 items="center"
                 gap="$3"
               >
-                <TrendingUp size={32} color="$primary" />
-                <Text fontFamily="$heading" fontSize={24} letterSpacing={0.5} color="$primary">
+                <TrendingUp size={32} color="$primaryText" />
+                <Text fontFamily="$heading" fontSize={24} letterSpacing={0.5} color="$primaryText">
                   SKILL UPGRADE
                 </Text>
                 <Text fontFamily="$body" fontWeight="700" fontSize={18} color="$color12">
@@ -355,7 +355,7 @@ export default function ResultsScreen() {
             rounded="$4"
           >
             <XStack items="center" gap="$3">
-              <ArrowRight size={24} color="$primary" />
+              <ArrowRight size={24} color="$primaryText" />
               <YStack flex={1}>
                 <Text fontFamily="$body" fontWeight="700" color="$brand9">
                   Next up: {reassessmentStatus?.nextPhase}
@@ -378,7 +378,7 @@ export default function ResultsScreen() {
             fontFamily="$body"
             fontWeight="700"
             rounded="$4"
-            pressStyle={{ opacity: 0.9, scale: 0.98 }}
+            pressStyle={{ bg: '$primaryPress', scale: 0.98 }}
             disabled={isSubmitting}
             onPress={handleComplete}
           >

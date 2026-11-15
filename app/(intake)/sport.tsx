@@ -82,7 +82,7 @@ const SportTile = ({ sport, isSelected, onSelect }: SportTileProps) => {
           fontFamily="$body" fontWeight="600"
           text="center" 
           numberOfLines={2}
-          color={isSelected ? '$primary' : '$color12'}
+          color={isSelected ? '$primaryText' : '$color12'}
         >
           {sport.name}
         </Text>
@@ -132,7 +132,7 @@ export default function SportSelectionScreen() {
   if (!sports) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$primary" />
+        <Spinner size="large" color="$primaryText" />
         <Text color="$color10" fontFamily="$body">
           Loading sports...
         </Text>
@@ -211,7 +211,7 @@ export default function SportSelectionScreen() {
           {/* Header */}
           <YStack gap="$3" items="center">
             <YStack bg="$brand2" p="$4" rounded="$10">
-              <Target size={40} color="$primary" />
+              <Target size={40} color="$primaryText" />
             </YStack>
             <DisplayHeading>WHAT'S YOUR SPORT?</DisplayHeading>
             <Subtitle>

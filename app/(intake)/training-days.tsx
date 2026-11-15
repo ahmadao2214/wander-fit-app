@@ -271,7 +271,7 @@ export default function TrainingDaysScreen() {
                 fontSize={72}
                 fontFamily="$heading"
                 fontWeight="800"
-                color={isInRecommendedRange ? '$primary' : '$color12'}
+                color={isInRecommendedRange ? '$primaryText' : '$color12'}
                 lineHeight={72}
               >
                 {count}
@@ -296,7 +296,7 @@ export default function TrainingDaysScreen() {
                 <Circle size={8} bg={isInRecommendedRange ? '$primary' : '$orange10'} />
                 <Text
                   fontSize={14}
-                  color={isInRecommendedRange ? '$primary' : '$orange11'}
+                  color={isInRecommendedRange ? '$primaryText' : '$orange11'}
                   fontFamily="$body"
                   fontWeight="500"
                 >

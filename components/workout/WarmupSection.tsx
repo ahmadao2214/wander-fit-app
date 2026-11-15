@@ -331,7 +331,6 @@ function WarmupFlow({ exercises, totalDuration, onComplete, onBack, trainingPhas
             size="$5"
             bg="$primary"
             color="white"
-            // Large bold text: white on the dark-theme $primary is 3.68:1
             fontSize={19}
             fontWeight="700"
             onPress={onComplete}

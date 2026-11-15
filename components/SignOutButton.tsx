@@ -94,14 +94,12 @@ export const SignOutButton = () => {
       nativeID="sign-out"
       size="$4"
       bg="$color4"
-      color="$color11"
-      borderWidth={1}
-      borderColor="$borderColor"
+      color="$color12"
       icon={LogOut}
       fontFamily="$body"
       fontWeight="600"
       rounded="$4"
-      pressStyle={{ opacity: 0.8, bg: '$color5' }}
+      pressStyle={{ bg: '$color5' }}
       onPress={handleSignOut}
     >
       Sign Out

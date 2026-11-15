@@ -202,7 +202,7 @@ const CalendarMonth = ({
                       isSelected || isInRange
                         ? 'white'
                         : isToday
-                          ? '$primary'
+                          ? '$primaryText'
                           : isPast
                             ? '$color8'
                             : '$color12'
@@ -301,7 +301,7 @@ const WeeksDisplay = ({ weeks, sportName }: WeeksDisplayProps) => {
       <XStack items="center" height={56}>
         {/* Today Circle */}
         <Circle size={44} bg="$color5" borderWidth={2} borderColor="$primary">
-          <Calendar size={22} color="$primary" />
+          <Calendar size={22} color="$primaryText" />
         </Circle>
 
         {/* Connected Line with Sport Icon moving along it */}
@@ -377,7 +377,7 @@ const WeeksDisplay = ({ weeks, sportName }: WeeksDisplayProps) => {
                 fontSize={28}
                 fontFamily="$heading"
                 fontWeight="800"
-                color="$primary"
+                color="$primaryText"
                 animation="quick"
               >
                 {displayWeeks}

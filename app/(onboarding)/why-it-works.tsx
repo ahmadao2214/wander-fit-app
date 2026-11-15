@@ -100,7 +100,7 @@ export default function TrainingOverviewScreen() {
     return (
       <Animated.View style={{ flex: 1, transform: [{ translateX }] }}>
         <YStack flex={1} bg="$background" items="center" justify="center">
-          <Spinner size="large" color="$primary" />
+          <Spinner size="large" color="$primaryText" />
         </YStack>
       </Animated.View>
     )
@@ -182,7 +182,7 @@ export default function TrainingOverviewScreen() {
             <Text fontSize="$7" fontWeight="bold" color="$color12" text="center">
               Science-Backed
             </Text>
-            <Text fontSize="$7" fontWeight="bold" color="$primary" text="center">
+            <Text fontSize="$7" fontWeight="bold" color="$primaryText" text="center">
               Training in 3 Phases
             </Text>
           </YStack>

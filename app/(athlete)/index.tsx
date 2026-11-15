@@ -261,7 +261,7 @@ export default function AthleteDashboard() {
   if (authLoading || programState === undefined) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$primary" />
+        <Spinner size="large" color="$primaryText" />
         <Text color="$color10" fontFamily="$body">
           Loading your program...
         </Text>
@@ -290,7 +290,7 @@ export default function AthleteDashboard() {
           items="center" 
           justify="center"
         >
-          <Target size={48} color="$primary" />
+          <Target size={48} color="$primaryText" />
         </YStack>
         <YStack items="center" gap="$2">
           <DisplayHeading>COMPLETE YOUR SETUP</DisplayHeading>
@@ -308,7 +308,7 @@ export default function AthleteDashboard() {
           bg="$primary"
           color="white"
           fontFamily="$body" fontWeight="700"
-          pressStyle={{ opacity: 0.9, scale: 0.98 }}
+          pressStyle={{ bg: '$primaryPress', scale: 0.98 }}
           onPress={() => router.push('/(intake)/sport')}
         >
           Get Started
@@ -384,7 +384,7 @@ export default function AthleteDashboard() {
                   color="white"
                   fontFamily="$body" fontWeight="700"
                   rounded="$3"
-                  pressStyle={{ opacity: 0.9 }}
+                  pressStyle={{ bg: '$primaryPress' }}
                   onPress={() => {
                     router.push('/(reassessment)/celebration' as any)
                   }}
@@ -487,7 +487,7 @@ export default function AthleteDashboard() {
                     fontSize={19}
                     fontFamily="$body" fontWeight="700"
                     rounded="$4"
-                    pressStyle={{ opacity: 0.9, scale: 0.98 }}
+                    pressStyle={{ bg: '$primaryPress', scale: 0.98 }}
                     onPress={() => {
                       router.push({
                         pathname: '/(athlete)/workout/execute/[id]',
@@ -511,7 +511,7 @@ export default function AthleteDashboard() {
                   icon={Play}
                   fontFamily="$body" fontWeight="700"
                   rounded="$4"
-                  pressStyle={{ opacity: 0.9, scale: 0.98 }}
+                  pressStyle={{ bg: '$primaryPress', scale: 0.98 }}
                   onPress={() => {
                     if (todayWorkout) {
                       router.push(`/(athlete)/workout/${todayWorkout._id}`)

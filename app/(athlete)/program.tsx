@@ -38,7 +38,7 @@ export default function ProgramPage() {
   if (authLoading) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$primary" />
+        <Spinner size="large" color="$primaryText" />
         <Text color="$color10">Loading...</Text>
       </YStack>
     )

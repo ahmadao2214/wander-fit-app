@@ -22,7 +22,7 @@ interface ScienceSectionProps {
 export function ScienceSection({
   title,
   icon: Icon,
-  iconColor = '$primary',
+  iconColor = '$primaryText',
   iconBgColor = '$brand2',
   defaultExpanded = false,
   children,
