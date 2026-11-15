@@ -12,7 +12,7 @@ import {
   Separator,
   ScrollView,
 } from 'tamagui'
-import { Supporting, Caption } from '../Typography'
+import { Supporting, Caption, numeric } from '../Typography'
 import { X, Check, Minus, Plus } from '@tamagui/lucide-icons'
 import { parseReps } from '../../lib'
 
@@ -157,7 +157,7 @@ export function SetEditSheet({
                 onPress={() => setReps(Math.max(0, reps - 1))}
               />
               <YStack width={50} items="center">
-                <Text fontSize={32} fontFamily="$body" fontWeight="700" color="$color12">
+                <Text fontSize={32} fontFamily="$body" fontWeight="700" color="$color12" style={numeric}>
                   {reps}
                 </Text>
               </YStack>
@@ -200,7 +200,7 @@ export function SetEditSheet({
               <Supporting fontWeight="600" color="$color11">
                 RPE
               </Supporting>
-              <Text fontSize={18} fontFamily="$body" fontWeight="700" color="$primaryText">
+              <Text fontSize={18} fontFamily="$body" fontWeight="700" color="$primaryText" style={numeric}>
                 {rpe}/10
               </Text>
             </XStack>

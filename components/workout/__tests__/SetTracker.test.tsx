@@ -106,4 +106,18 @@ describe('SetTracker', () => {
     expect(getByLabelText('Set 1, 8 at 225 lb, done')).toBeTruthy()
     expect(getByLabelText('Set 2, 12, next, tap when done')).toBeTruthy()
   })
+
+  it('never shrinks a long prescription below the 12pt floor', () => {
+    const { getAllByText } = render(
+      <SetTracker sets={sets(['todo', 'todo'])} prescribedReps="10 each side" prescribedSets={2} onSetUpdate={jest.fn()} />,
+      { wrapper: AllTheProviders }
+    )
+    const tiles = getAllByText('10 each side')
+    expect(tiles.length).toBe(2)
+    for (const node of tiles) {
+      const { fontSize } = StyleSheet.flatten(node.props.style)
+      expect(fontSize * node.props.minimumFontScale).toBeGreaterThanOrEqual(12)
+    }
+  })
+
 })

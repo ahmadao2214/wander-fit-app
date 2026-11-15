@@ -7,7 +7,7 @@ import { parseReps } from '../../lib'
 import { nextSetIndex, setTileLayout } from '../../lib/workout'
 import { phaseTokens } from '../../lib/phase'
 import type { Phase } from '../../types'
-import { Supporting, Caption, numeric } from '../Typography'
+import { Supporting, Caption, numeric, MIN_FONT_SIZE, TYPE_SCALE } from '../Typography'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
@@ -168,6 +168,7 @@ export function SetTracker({
             const isCompleted = set.completed
             const isSkipped = set.skipped
             const isNext = index === activeIndex
+            const repsSize = isNext ? 24 : 18
             const stateLabel = isCompleted ? 'done' : isSkipped ? 'skipped' : isNext ? 'next, tap when done' : 'to do'
             // A logged set announces what was logged; others announce the prescription
             const loggedWeight = set.weight != null && set.weight > 0 ? ` at ${set.weight} lb` : ''
@@ -215,10 +216,12 @@ export function SetTracker({
                         {set.weight != null && set.weight > 0 && (
                           <Supporting
                             testID={`set-${index}-weight`}
-                            lineHeight={20}
                             color="$color11"
                             numberOfLines={1}
                             adjustsFontSizeToFit
+                            // Shrinks to fit the tile, but never under the 12pt floor
+                            minimumFontScale={MIN_FONT_SIZE / TYPE_SCALE.supporting.size}
+                            style={numeric}
                           >
                             {set.weight} lb
                           </Supporting>
@@ -231,11 +234,13 @@ export function SetTracker({
                       </XStack>
                     ) : (
                       <Text
-                        fontSize={isNext ? 24 : 18}
+                        fontSize={repsSize}
                         color={isNext ? '$color12' : '$color11'}
                         fontFamily="$body" fontWeight={isNext ? '700' : '600'}
                         numberOfLines={1}
                         adjustsFontSizeToFit
+                        minimumFontScale={MIN_FONT_SIZE / repsSize}
+                        style={numeric}
                       >
                         {displayReps}
                       </Text>
