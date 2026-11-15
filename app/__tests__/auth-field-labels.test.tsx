@@ -41,7 +41,6 @@ jest.mock('../../hooks/useAuth', () => ({
 }))
 
 import SignInScreen from '../(auth)/sign-in'
-import SignUpScreen from '../(auth)/sign-up'
 
 const AllTheProviders = ({ children }: { children: React.ReactNode }) => (
   <TamaguiProvider config={config}>{children}</TamaguiProvider>
@@ -62,11 +61,4 @@ describe('Auth field labels', () => {
     expectLabeledField(screen, 'sign-in-password', 'Password')
   })
 
-  it('sign-up labels name, email and password, and the show-password control', () => {
-    const screen = render(<SignUpScreen />, { wrapper: AllTheProviders })
-    expectLabeledField(screen, 'sign-up-name', 'Full name')
-    expectLabeledField(screen, 'sign-up-email', 'Email address')
-    expectLabeledField(screen, 'sign-up-password', 'Password')
-    expect(screen.getByLabelText('Show password')).toBeTruthy()
-  })
 })

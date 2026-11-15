@@ -133,6 +133,19 @@ describe('Save your plan', () => {
     expect((await testDraft.reopen()).answers.sportId).toBe('basketball')
   })
 
+  it('labels name, email and password, with a show-password control', async () => {
+    await show()
+    await press('save-plan-email')
+    expect(screen.getByTestId('save-plan-name').props.accessibilityLabel).toBe('First name')
+    expect(screen.getByTestId('save-plan-email-input').props.accessibilityLabel).toBe('Email')
+    expect(screen.getByTestId('save-plan-password').props.accessibilityLabel).toBe('Password')
+    expect(screen.getByTestId('save-plan-password').props.secureTextEntry).toBe(true)
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText('Show password'))
+    })
+    expect(screen.getByTestId('save-plan-password').props.secureTextEntry).toBe(false)
+  })
+
   it('shows field errors next to the fields', async () => {
     await show()
     await press('save-plan-email')

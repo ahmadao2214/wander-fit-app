@@ -1,0 +1,110 @@
+url: ${VERIFY_URL}
+---
+# The First Run, signed out: five questions, the reveal, Save your plan with
+# a new account, then Start Day 1 into the warm-up. See
+# .cursor/skills/verify-wander-fit/features/first-run.md.
+- runFlow: ../subflows/_evidence-start.yaml
+- extendedWaitUntil:
+    visible: "Let's build your plan for this season."
+    timeout: 90000
+- assertNotVisible: "WELCOME BACK"
+- takeScreenshot: 01-promise
+- tapOn:
+    id: first-run-start
+# Maestro web reports a pressable's accessibility label as its id, so labeled
+# tiles and rows are matched by that label. Inputs keep their testID
+# (see .maestro/flow-layout.md).
+- extendedWaitUntil:
+    visible:
+      id: "Basketball"
+    timeout: 30000
+- tapOn:
+    id: "Basketball"
+- extendedWaitUntil:
+    visible: "Basketball · Power"
+    timeout: 10000
+- takeScreenshot: 02-sport
+- tapOn:
+    id: first-run-continue
+# No set season keeps the plan at the 12-week default whatever the date.
+- extendedWaitUntil:
+    visible: "No set season"
+    timeout: 30000
+- tapOn: "No set season"
+- takeScreenshot: 03-season
+- tapOn:
+    id: first-run-continue
+# Mon, Wed and Fri come preselected.
+- extendedWaitUntil:
+    visible: "3 days a week"
+    timeout: 30000
+- takeScreenshot: 04-days
+- tapOn:
+    id: first-run-continue
+- extendedWaitUntil:
+    visible: "Performance"
+    timeout: 30000
+- tapOn: "Performance"
+# The years choices start below the 625px web viewport, under the fixed
+# button. A touch swipe scrolls the inner list (see .maestro/flow-layout.md).
+- swipe:
+    start: 50%, 80%
+    end: 50%, 20%
+    duration: 800
+- extendedWaitUntil:
+    visible: "New to training"
+    timeout: 10000
+- tapOn: "New to training"
+- takeScreenshot: 05-about
+- tapOn:
+    id: first-run-see-plan
+# The reveal reads the real GPP week 1 day 1 template for Basketball Novice.
+- extendedWaitUntil:
+    visible: "Lower Body A - Foundation"
+    timeout: 60000
+- assertVisible: "36 sessions over 12 weeks"
+- assertVisible: "Basketball trains for Power."
+- takeScreenshot: 06-reveal
+- tapOn:
+    id: first-run-save
+- extendedWaitUntil:
+    visible:
+      id: save-plan-email
+    timeout: 30000
+- assertNotVisible: "Skip"
+- takeScreenshot: 07-save-plan
+- tapOn:
+    id: save-plan-email
+- extendedWaitUntil:
+    visible:
+      id: save-plan-name
+    timeout: 10000
+- tapOn:
+    id: save-plan-name
+- inputText: "Verify Athlete"
+- tapOn:
+    id: save-plan-email-input
+- inputText: ${PERSONA_EMAIL}
+- tapOn:
+    id: save-plan-password
+- inputText: ${PERSONA_PASSWORD}
+- tapOn:
+    id: save-plan-create
+- extendedWaitUntil:
+    visible: "Check your email"
+    timeout: 90000
+# Clerk's fixed code for +clerk_test addresses; the sheet submits at six digits.
+- tapOn:
+    id: save-plan-code
+- inputText: "424242"
+- extendedWaitUntil:
+    visible: "You're set."
+    timeout: 90000
+- takeScreenshot: 08-ready
+- tapOn:
+    id: ready-start
+- extendedWaitUntil:
+    visible: "WARMUP"
+    timeout: 90000
+- takeScreenshot: 09-warmup
+- runFlow: ../subflows/_evidence-stop.yaml

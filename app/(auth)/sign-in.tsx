@@ -101,7 +101,8 @@ export default function SignInPage() {
         })
       } else {
         if (signUp) {
-          router.push('/(auth)/sign-up')
+          // A new Google account has no program yet: the First Run saves one.
+          router.replace('/')
         }
       }
     } catch (err) {
@@ -336,7 +337,7 @@ export default function SignInPage() {
                 <Text fontFamily="$body" color="$color10">
                   Don't have an account?
                 </Text>
-                <Link href="/sign-up">
+                <Link href="/(first-run)">
                   <Text fontFamily="$body" fontWeight="600" color="$primaryText" cursor="pointer" hoverStyle={{ opacity: 0.8 }}>
                     Sign up
                   </Text>

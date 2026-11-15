@@ -10,7 +10,6 @@ export default function AuthRoutesLayout() {
       }}
     >
       <Stack.Screen name="sign-in" options={{ headerShown: false }} />
-      <Stack.Screen name="sign-up" options={{ headerShown: false }} />
     </Stack>
   )
 }

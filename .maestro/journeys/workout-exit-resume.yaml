@@ -4,9 +4,7 @@ url: ${VERIFY_URL}
 # and the logged sets were lost. Exit now pauses: Today shows Resume, and the
 # logged set is still there. An onboarded persona with no sessions.
 - runFlow: ../subflows/_evidence-start.yaml
-- extendedWaitUntil:
-    visible: "WELCOME BACK"
-    timeout: 90000
+- runFlow: ../subflows/_open-sign-in.yaml
 - runFlow: ../subflows/_sign-in.yaml
 - extendedWaitUntil:
     visible:

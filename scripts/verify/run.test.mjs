@@ -6,8 +6,7 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { isGeneratedEmail } from "./persona.mjs"
 import {
-  assertActivated,
-  assertSignedUp,
+  assertFirstRun,
   cleanupPending,
   createSignupPersona,
   ownServerReady,
@@ -302,40 +301,40 @@ describe("persona modes", () => {
     return { calls, io, pending: () => pending }
   }
 
-  it("signs in as an onboarded persona and signs up without provisioning one", () => {
+  it("signs in as an onboarded persona and runs the First Run without provisioning one", () => {
     const { calls, io } = webIo()
-    const results = runSuite(["sign-in", "sign-up"], webSuiteSteps("http://127.0.0.1:1", io), () => 0)
+    const results = runSuite(["sign-in", "first-run"], webSuiteSteps("http://127.0.0.1:1", io), () => 0)
     expect(calls).toEqual([
       "create onboarded",
       "maestro sign-in",
       "redact sign-in",
       "delete e2e.1+clerk_test@example.com",
       "create signup",
-      "maestro sign-up",
-      "inspect signup e2e-2-signup+clerk_test@example.com",
-      "redact sign-up",
+      "maestro first-run",
+      "inspect first-run e2e-2-signup+clerk_test@example.com",
+      "redact first-run",
       "delete e2e-2-signup+clerk_test@example.com",
     ])
     expect(results.map((result) => result.status)).toEqual(["passed", "passed"])
   })
 
-  it("fails sign-up and still deletes when inspect finds no Convex user", () => {
+  it("fails the First Run and still deletes when inspect does not match", () => {
     const { calls, io, pending } = webIo({ inspectFound: false })
-    const [result] = runSuite(["sign-up"], webSuiteSteps("http://127.0.0.1:1", io), () => 0)
+    const [result] = runSuite(["first-run"], webSuiteSteps("http://127.0.0.1:1", io), () => 0)
     expect(result.status).toBe("failed")
     expect(result.error).toContain("inspect failed")
-    expect(calls.slice(-2)).toEqual(["redact sign-up", "delete e2e-2-signup+clerk_test@example.com"])
+    expect(calls.slice(-2)).toEqual(["redact first-run", "delete e2e-2-signup+clerk_test@example.com"])
     expect(pending()).toEqual([])
   })
 
-  it("deletes the signup email when Maestro fails, without inspecting", () => {
-    const { calls, io } = webIo({ failMaestro: ["sign-up"] })
-    const [result] = runSuite(["sign-up"], webSuiteSteps("http://127.0.0.1:1", io), () => 0)
+  it("deletes the First Run address when Maestro fails, without inspecting", () => {
+    const { calls, io } = webIo({ failMaestro: ["first-run"] })
+    const [result] = runSuite(["first-run"], webSuiteSteps("http://127.0.0.1:1", io), () => 0)
     expect(result).toMatchObject({ status: "failed", error: "Maestro exited 1" })
     expect(calls).toEqual([
       "create signup",
-      "maestro sign-up",
-      "redact sign-up",
+      "maestro first-run",
+      "redact first-run",
       "delete e2e-2-signup+clerk_test@example.com",
     ])
   })
@@ -358,66 +357,36 @@ describe("persona modes", () => {
     }
   })
 
-  it("activates a needs-intake persona and inspects it before delete", () => {
-    const { calls, io } = webIo()
-    const [result] = runSuite(["activation"], webSuiteSteps("http://127.0.0.1:1", io), () => 0)
-    expect(result.status).toBe("passed")
-    expect(calls).toEqual([
-      "create needs-intake",
-      "maestro activation",
-      "inspect needs-intake e2e.3+clerk_test@example.com",
-      "redact activation",
-      "delete e2e.3+clerk_test@example.com",
-    ])
-  })
-
-  it("fails activation and still deletes when inspect does not match", () => {
-    const { calls, io, pending } = webIo({ inspectFound: false })
-    const [result] = runSuite(["activation"], webSuiteSteps("http://127.0.0.1:1", io), () => 0)
-    expect(result.status).toBe("failed")
-    expect(calls.slice(-2)).toEqual(["redact activation", "delete e2e.3+clerk_test@example.com"])
-    expect(pending()).toEqual([])
-  })
-
   it("does not inspect an onboarded persona", () => {
     expect(needsInspect("onboarded")).toBe(false)
-    expect(needsInspect("signup")).toBe(true)
-    expect(needsInspect("needs-intake")).toBe(true)
+    expect(needsInspect("with-history")).toBe(false)
+    expect(needsInspect("first-run")).toBe(true)
   })
 
-  it("requires GPP week 1 day 1 with intake and onboarding done after activation", () => {
-    const email = "e2e.3+clerk_test@example.com"
+  it("requires a saved GPP week 1 day 1 program and the first launch after the First Run", () => {
+    const email = "e2e-2-signup+clerk_test@example.com"
     const done = {
       found: true,
       email,
       intakeCompleted: true,
-      onboardingCompleted: true,
+      onboardingCompleted: false,
       hasProgram: true,
       phase: "GPP",
       week: 1,
       day: 1,
+      firstLaunchRecorded: true,
     }
     const pretty = JSON.stringify(done, null, 2)
-    expect(assertActivated(`noise\n${pretty}\n`, email)).toMatchObject({ phase: "GPP", week: 1, day: 1 })
-    expect(() => assertActivated(JSON.stringify({ ...done, week: 2 }), email)).toThrow(/\(week\)/)
-    expect(() => assertActivated(JSON.stringify({ ...done, onboardingCompleted: false }), email)).toThrow(
-      /onboardingCompleted/
+    expect(assertFirstRun(`noise\n${pretty}\n`, email)).toMatchObject({ phase: "GPP", week: 1, day: 1 })
+    expect(() => assertFirstRun(JSON.stringify({ ...done, week: 2 }), email)).toThrow(/\(week\)/)
+    expect(() => assertFirstRun(JSON.stringify({ ...done, firstLaunchRecorded: false }), email)).toThrow(
+      /firstLaunchRecorded/
     )
     expect(() =>
-      assertActivated(JSON.stringify({ ...done, hasProgram: false, phase: null, week: null, day: null }), email)
+      assertFirstRun(JSON.stringify({ ...done, hasProgram: false, phase: null, week: null, day: null }), email)
     ).toThrow(/hasProgram, phase, week, day/)
-    expect(() => assertActivated(JSON.stringify({ found: false, email }), email)).toThrow(/found/)
-    expect(() => assertActivated("", email)).toThrow(/no inspect output/)
-  })
-
-  it("requires found true from persona inspect", () => {
-    const email = "e2e-2-signup+clerk_test@example.com"
-    expect(assertSignedUp(`noise\n{"found":true,"email":"${email}"}\n`, email)).toMatchObject({ found: true })
-    const pretty = `{\n  "email": "${email}",\n  "found": true\n}\n`
-    expect(assertSignedUp(pretty, email)).toMatchObject({ found: true })
-    expect(() => assertSignedUp(`{"found":false,"email":"${email}"}`, email)).toThrow(/no Convex user/)
-    expect(() => assertSignedUp("", email)).toThrow(/no inspect output/)
-    expect(() => assertSignedUp("not json", email)).toThrow(/no Convex user/)
+    expect(() => assertFirstRun(JSON.stringify({ found: false, email }), email)).toThrow(/found/)
+    expect(() => assertFirstRun("", email)).toThrow(/no inspect output/)
   })
 })
 
@@ -475,7 +444,7 @@ describe("pending personas", () => {
       {
         email: "e2e.2+clerk_test@example.com",
         password: "pw-2",
-        flows: ["sign-up"],
+        flows: ["first-run"],
         scrubbed: false,
         deleted: true,
       },

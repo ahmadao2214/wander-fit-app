@@ -3,9 +3,7 @@ url: ${VERIFY_URL}
 # Regression for History reading the trainer-era table: a persona with one
 # completed GPP session (persona state with-history) must see it listed.
 - runFlow: ../subflows/_evidence-start.yaml
-- extendedWaitUntil:
-    visible: "WELCOME BACK"
-    timeout: 90000
+- runFlow: ../subflows/_open-sign-in.yaml
 - runFlow: ../subflows/_sign-in.yaml
 - extendedWaitUntil:
     visible:

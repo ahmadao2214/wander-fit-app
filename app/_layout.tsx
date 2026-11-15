@@ -91,22 +91,6 @@ function RootLayoutNav() {
           }}
         />
         
-        {/* Intake flow (sport selection, experience, results) */}
-        <Stack.Screen
-          name="(intake)"
-          options={{
-            headerShown: false,
-          }}
-        />
-        
-        {/* Onboarding flow (educational screens) */}
-        <Stack.Screen
-          name="(onboarding)"
-          options={{
-            headerShown: false,
-          }}
-        />
-        
         {/* Reassessment flow (phase completion check-in) */}
         <Stack.Screen
           name="(reassessment)"

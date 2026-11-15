@@ -7,7 +7,6 @@ import { calculateWeeksPerPhase } from "./weekMapping";
 
 const stateValidator = v.union(
   v.literal("new"),
-  v.literal("needs-intake"),
   v.literal("onboarded"),
   v.literal("phase-end"),
   // onboarded, plus one completed GPP W1D1 session for the History flow
@@ -71,10 +70,10 @@ export const provision = internalMutation({
       await ctx.db.patch(userId, { email: args.email, name: args.name });
     }
 
-    // Every state starts from the user row alone. needs-intake stops there.
+    // Every state starts from the user row alone. new stops there.
     await clearProgramRows(ctx, userId);
 
-    if (args.state === "new" || args.state === "needs-intake") {
+    if (args.state === "new") {
       await ctx.db.patch(userId, {
         intakeCompletedAt: undefined,
         onboardingCompletedAt: undefined,
@@ -186,6 +185,7 @@ export const inspect = internalQuery({
       email: user.email,
       name: user.name,
       intakeCompleted: user.intakeCompletedAt !== undefined,
+      firstLaunchRecorded: user.firstLaunchAt !== undefined,
       onboardingCompleted: user.onboardingCompletedAt !== undefined,
       hasProgram: program !== null,
       phase: program?.currentPhase ?? null,

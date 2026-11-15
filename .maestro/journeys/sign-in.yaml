@@ -1,9 +1,7 @@
 url: ${VERIFY_URL}
 ---
 - runFlow: ../subflows/_evidence-start.yaml
-- extendedWaitUntil:
-    visible: "WELCOME BACK"
-    timeout: 90000
+- runFlow: ../subflows/_open-sign-in.yaml
 - runFlow: ../subflows/_sign-in.yaml
 - extendedWaitUntil:
     visible:
@@ -31,8 +29,11 @@ url: ${VERIFY_URL}
 - takeScreenshot: 04-profile
 - tapOn:
     id: sign-out
+# Signed out means the First Run, with "I have an account" one tap away.
 - extendedWaitUntil:
-    visible: "WELCOME BACK"
+    visible: "Let's build your plan for this season."
     timeout: 90000
+- assertVisible:
+    id: first-run-sign-in
 - takeScreenshot: 05-signed-out
 - runFlow: ../subflows/_evidence-stop.yaml

@@ -18,9 +18,9 @@ const known = new Set(["create", "review", "inspect", "delete", "sweep", "help"]
 // The one long-lived account, for screen reviews that compare run to run.
 // It never matches emailPatterns, so delete and sweep refuse it.
 export const REVIEW_EMAIL = "review+clerk_test@example.com"
-const states = new Set(["new", "needs-intake", "onboarded", "phase-end", "with-history"])
+const states = new Set(["new", "onboarded", "phase-end", "with-history"])
 // Generated addresses only. e2e.<run> is the onboarded persona from create.
-// e2e-<run>-signup is the account the sign-up flow makes through the UI.
+// e2e-<run>-signup is the account the First Run flow makes through the UI.
 const emailPatterns = [
   /^e2e\.\d+\+clerk_test@example\.com$/,
   /^e2e-\d+-signup\+clerk_test@example\.com$/,
@@ -367,7 +367,7 @@ if (invokedDirectly) {
   }
 
   if (command === "help") {
-    console.log(`persona create --state <new|needs-intake|onboarded|phase-end|with-history> --json
+    console.log(`persona create --state <new|onboarded|phase-end|with-history> --json
 persona review --json   (the long-lived ${REVIEW_EMAIL}; created once, never reset)
 persona inspect <email> --json
 persona delete <email>

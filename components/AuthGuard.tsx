@@ -41,9 +41,9 @@ export function AuthGuard({
     return <Redirect href={fallbackRoute} />
   }
 
-  // If user needs to complete Convex user setup
+  // A Clerk account with no Convex user saves it from the First Run
   if (requireAuth && needsSetup) {
-    return <Redirect href="/(auth)/sign-up" />
+    return <Redirect href="/" />
   }
 
   // If intake is required but not completed → the First Run, via the root
@@ -80,49 +80,6 @@ export function AthleteOnlyRoute({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * IntakeOnlyRoute - For authenticated users in the intake/onboarding flow
- * Used by the intake flow screens
- *
- * INTERLEAVED FLOW SUPPORT:
- * The intake and onboarding flows are interleaved, meaning users navigate
- * between /(intake)/ and /(onboarding)/ routes during the combined flow.
- * We allow access to intake screens as long as onboarding is not complete.
- */
-export function IntakeOnlyRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading, user, needsSetup } = useAuth()
-
-  if (isLoading) {
-    return (
-      <YStack flex={1} items="center" justify="center" gap="$4" bg="$background">
-        <Spinner size="large" color="$primaryText" />
-        <Text color="$gray11">Loading...</Text>
-      </YStack>
-    )
-  }
-
-  // Not authenticated → go to sign in
-  if (!isAuthenticated) {
-    return <Redirect href="/(auth)/sign-in" />
-  }
-
-  // Needs Convex user setup → go to sign up
-  if (needsSetup) {
-    return <Redirect href="/(auth)/sign-up" />
-  }
-
-  // If both intake AND onboarding are complete → go to dashboard
-  // This prevents users from accessing intake after fully completing the flow
-  if (user?.intakeCompletedAt && user?.onboardingCompletedAt) {
-    return <Redirect href="/(athlete)" />
-  }
-
-  // Allow access during:
-  // 1. Initial intake (no intakeCompletedAt)
-  // 2. Interleaved flow (intakeCompletedAt set, but onboardingCompletedAt not set)
-  return <>{children}</>
-}
-
-/**
  * ProtectedRoute - Just requires authentication, no intake check
  * Useful for settings, profile pages, etc.
  */
@@ -137,11 +94,11 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 /**
  * PublicOnlyRoute - For signed-out screens (sign in, sign up). A signed-in
  * athlete with a program goes to the tabs; one without a program goes back
- * to the First Run through the root. An account that exists in Clerk but
- * not yet in Convex stays, so sign-up can finish creating it.
+ * to the First Run through the root, and so does an account that exists in
+ * Clerk but not yet in Convex: the save sheet creates the Convex user.
  */
 export function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading, user, needsSetup } = useAuth()
+  const { isAuthenticated, isLoading, user } = useAuth()
 
   if (isLoading) {
     return (
@@ -150,10 +107,6 @@ export function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
         <Text color="$gray11">Loading...</Text>
       </YStack>
     )
-  }
-
-  if (isAuthenticated && needsSetup) {
-    return <>{children}</>
   }
 
   if (isAuthenticated && user?.intakeCompletedAt) {
@@ -164,54 +117,5 @@ export function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
     return <Redirect href="/" />
   }
 
-  return <>{children}</>
-}
-
-/**
- * OnboardingRoute - For authenticated users accessing onboarding screens
- * Used by the onboarding flow (educational screens interleaved with intake)
- *
- * Supports three modes:
- * 1. Interleaved mode: User is in the middle of intake, navigating to onboarding screens
- * 2. Post-intake mode: User completed intake but not onboarding
- * 3. Revisit mode: User completed onboarding but progress is reset to 0
- */
-export function OnboardingRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading, user, needsSetup, needsOnboarding } = useAuth()
-
-  if (isLoading) {
-    return (
-      <YStack flex={1} items="center" justify="center" gap="$4" bg="$background">
-        <Spinner size="large" color="$primaryText" />
-        <Text color="$gray11">Loading...</Text>
-      </YStack>
-    )
-  }
-
-  // Not authenticated → go to sign in
-  if (!isAuthenticated) {
-    return <Redirect href="/(auth)/sign-in" />
-  }
-
-  // Needs Convex user setup → go to sign up
-  if (needsSetup) {
-    return <Redirect href="/(auth)/sign-up" />
-  }
-
-  // REMOVED: Intake completion check
-  // The interleaved flow navigates to onboarding screens DURING intake,
-  // so we can't require intake to be complete here.
-  // Navigation back to intake is handled by the screens themselves.
-
-  // Allow revisit mode: completed onboarding but progress is reset to 0
-  const isRevisitMode = user?.onboardingCompletedAt != null &&
-    (user?.onboardingProgress === 0 || user?.onboardingProgress === undefined)
-
-  // Already completed both intake and onboarding and not in revisit mode → go to dashboard
-  if (user?.intakeCompletedAt && !needsOnboarding && !isRevisitMode) {
-    return <Redirect href="/(athlete)" />
-  }
-
-  // Show onboarding flow (interleaved, post-intake, or revisit)
   return <>{children}</>
 }

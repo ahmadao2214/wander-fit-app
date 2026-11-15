@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router'
 import { useSignUp, useSSO, useUser } from '@clerk/clerk-expo'
 import * as AuthSession from 'expo-auth-session'
 import { Button, Input, Sheet, Spinner, Text, XStack, YStack } from 'tamagui'
+import { Eye, EyeOff } from '@tamagui/lucide-icons'
 import { FieldLabel } from '../FieldLabel'
 import { VerificationCodeInput } from '../VerificationCodeInput'
 import { useFirstRunDraft } from '../../hooks/useFirstRunDraft'
@@ -77,6 +78,7 @@ export function SavePlanSheet({ open, onOpenChange }: { open: boolean; onOpenCha
   const [accountExists, setAccountExists] = useState(false)
   const [busy, setBusy] = useState(false)
   const [keyboard, setKeyboard] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   useEffect(() => {
     if (Platform.OS === 'web') return
@@ -278,7 +280,9 @@ export function SavePlanSheet({ open, onOpenChange }: { open: boolean; onOpenCha
                   <FieldLabel htmlFor="save-plan-name">First name</FieldLabel>
                   <Input
                     id="save-plan-name"
+                    nativeID="save-plan-name"
                     testID="save-plan-name"
+                    accessibilityLabel="First name"
                     value={name}
                     onChangeText={setName}
                     autoComplete="given-name"
@@ -294,7 +298,9 @@ export function SavePlanSheet({ open, onOpenChange }: { open: boolean; onOpenCha
                   <FieldLabel htmlFor="save-plan-email-input">Email</FieldLabel>
                   <Input
                     id="save-plan-email-input"
+                    nativeID="save-plan-email-input"
                     testID="save-plan-email-input"
+                    accessibilityLabel="Email"
                     value={email}
                     onChangeText={setEmail}
                     autoCapitalize="none"
@@ -327,19 +333,40 @@ export function SavePlanSheet({ open, onOpenChange }: { open: boolean; onOpenCha
                 </YStack>
                 <YStack gap="$1.5">
                   <FieldLabel htmlFor="save-plan-password">Password</FieldLabel>
-                  <Input
-                    id="save-plan-password"
-                    testID="save-plan-password"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                    autoComplete="new-password"
-                    textContentType="newPassword"
-                    size="$5"
-                    fontFamily="$body"
-                    fontSize={16}
-                    borderColor={errors.password ? '$red8' : '$borderColor'}
-                  />
+                  <XStack position="relative">
+                    <Input
+                      id="save-plan-password"
+                      nativeID="save-plan-password"
+                      testID="save-plan-password"
+                      accessibilityLabel="Password"
+                      value={password}
+                      onChangeText={setPassword}
+                      secureTextEntry={!showPassword}
+                      autoComplete="new-password"
+                      textContentType="newPassword"
+                      size="$5"
+                      fontFamily="$body"
+                      fontSize={16}
+                      flex={1}
+                      pr="$10"
+                      borderColor={errors.password ? '$red8' : '$borderColor'}
+                    />
+                    <XStack
+                      position="absolute"
+                      r="$2"
+                      t={0}
+                      b={0}
+                      width={44}
+                      items="center"
+                      justify="center"
+                      onPress={() => setShowPassword(!showPassword)}
+                      accessibilityRole="button"
+                      accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                      cursor="pointer"
+                    >
+                      {showPassword ? <EyeOff size={20} color="$color10" /> : <Eye size={20} color="$color10" />}
+                    </XStack>
+                  </XStack>
                   <ErrorText>{errors.password}</ErrorText>
                 </YStack>
                 <PrimaryButton onPress={onCreate} disabled={busy} testID="save-plan-create">
