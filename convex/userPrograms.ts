@@ -1,6 +1,7 @@
 import { query, mutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
-import { calculateWeeksPerPhase, DEFAULT_WEEKS_PER_PHASE } from "./weekMapping";
+import { DEFAULT_WEEKS_PER_PHASE } from "./weekMapping";
+import { programShape } from "./programShape";
 
 /**
  * User Programs - Active State Management
@@ -404,6 +405,8 @@ export const completeIntake = mutation({
     weeksUntilSeason: v.optional(v.number()),
     ageGroup: v.union(v.literal("14-17"), v.literal("18-35"), v.literal("36+")),
     intakeType: v.optional(intakeTypeValidator), // Defaults to "initial"
+    // First Run: when the app first opened on this device (ms since epoch).
+    firstLaunchAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -426,18 +429,33 @@ export const completeIntake = mutation({
       throw new Error("Invalid sport");
     }
 
-    // Calculate skill level based on training experience
-    let skillLevel: "Novice" | "Moderate" | "Advanced";
-    if (args.yearsOfExperience < 1) {
-      skillLevel = "Novice";
-    } else if (args.yearsOfExperience < 3) {
-      skillLevel = "Moderate";
-    } else {
-      skillLevel = "Advanced";
-    }
-
     const now = Date.now();
     const intakeType = args.intakeType ?? "initial";
+    const shape = programShape({
+      yearsOfExperience: args.yearsOfExperience,
+      weeksUntilSeason: args.weeksUntilSeason,
+      trainingDaysPerWeek: args.preferredTrainingDaysPerWeek,
+    });
+    const skillLevel = shape.skillLevel;
+
+    const existingProgram = await ctx.db
+      .query("user_programs")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .first();
+
+    // First Run: an athlete who signs in to an account that already has a
+    // program keeps it. Replacing it would overwrite real training history,
+    // so the new answers are dropped and the client shows a short notice.
+    if (existingProgram && intakeType === "initial") {
+      return {
+        programId: existingProgram._id,
+        intakeResponseId: existingProgram.intakeResponseId,
+        gppCategoryId: existingProgram.gppCategoryId,
+        skillLevel: existingProgram.skillLevel,
+        keptExistingProgram: true,
+        message: "Kept the existing program",
+      };
+    }
 
     // Generate default training days if not provided (based on count)
     // Common patterns: 3 days = Mon/Wed/Fri, 4 days = Mon/Tue/Thu/Fri, etc.
@@ -459,15 +477,9 @@ export const completeIntake = mutation({
       completedAt: now,
     });
 
-    // 2. Check if user already has a program
-    const existingProgram = await ctx.db
-      .query("user_programs")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .first();
-
     let programId;
 
-    if (existingProgram && intakeType === "reassessment") {
+    if (existingProgram) {
       // Re-assessment: Update existing program with new skill level
       await ctx.db.patch(existingProgram._id, {
         intakeResponseId,
@@ -475,21 +487,17 @@ export const completeIntake = mutation({
         updatedAt: now,
       });
       programId = existingProgram._id;
-    } else if (!existingProgram) {
-      // Calculate dynamic weeks per phase from intake
-      // Uses weeksUntilSeason if provided, otherwise defaults to 12 weeks (standard 4 weeks per phase)
-      const totalProgramWeeks = args.weeksUntilSeason ?? 12;
-      const weeksPerPhase = calculateWeeksPerPhase(totalProgramWeeks);
-
-      // Initial intake: Create new program
+    } else {
+      // Initial intake: Create new program. Uses weeksUntilSeason if
+      // provided, otherwise 12 weeks (4 per phase); see programShape.
       programId = await ctx.db.insert("user_programs", {
         userId: user._id,
         intakeResponseId,
         gppCategoryId: sport.gppCategoryId,
         skillLevel,
         ageGroup: args.ageGroup,
-        totalProgramWeeks,
-        weeksPerPhase,
+        totalProgramWeeks: shape.totalProgramWeeks,
+        weeksPerPhase: shape.weeksPerPhase,
         currentPhase: "GPP",
         currentWeek: 1,
         currentDay: 1,
@@ -498,12 +506,14 @@ export const completeIntake = mutation({
         updatedAt: now,
       });
 
-      // Update user to mark intake as complete
+      // Mark intake complete, and keep the first launch time the first
+      // time it arrives. A time in the future is clamped to now.
       await ctx.db.patch(user._id, {
         intakeCompletedAt: now,
+        ...(args.firstLaunchAt !== undefined && user.firstLaunchAt === undefined
+          ? { firstLaunchAt: Math.min(args.firstLaunchAt, now) }
+          : {}),
       });
-    } else {
-      throw new Error("User already has a program. Use reassessment for updates.");
     }
 
     return {
@@ -511,6 +521,7 @@ export const completeIntake = mutation({
       intakeResponseId,
       gppCategoryId: sport.gppCategoryId,
       skillLevel,
+      keptExistingProgram: false,
       message: intakeType === "initial" 
         ? "Program created successfully" 
         : "Skill level updated via re-assessment",

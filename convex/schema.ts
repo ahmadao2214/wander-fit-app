@@ -259,6 +259,9 @@ export default defineSchema({
 
     // GPP intake tracking
     intakeCompletedAt: v.optional(v.number()), // null = needs intake flow
+    // First Run: when the app first opened on the athlete's device, sent with
+    // the intake so time from first launch to Day 1 can be measured.
+    firstLaunchAt: v.optional(v.number()),
 
 // Onboarding flow tracking (educational screens after intake)
     onboardingCompletedAt: v.optional(v.number()), // null = needs onboarding
