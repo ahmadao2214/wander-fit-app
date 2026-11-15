@@ -87,6 +87,40 @@ async function renderAll(json) {
 // ── contact sheet ───────────────────────────────────────────────────────────
 const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16))
 
+// Paints one rendered frame into a tile circle on a sheet.
+function paintTile(sheet, W, img, tile, ox, oy, cell) {
+  const circle = hex(tile.circle)
+  const card = hex(tile.card)
+  for (let y = 0; y < cell; y++) {
+    for (let x = 0; x < cell; x++) {
+      const dx = x + 0.5 - cell / 2
+      const dy = y + 0.5 - cell / 2
+      let px = card
+      if (dx * dx + dy * dy <= (cell / 2) ** 2) {
+        const si = (Math.floor((y / cell) * img.height) * img.width + Math.floor((x / cell) * img.width)) * 4
+        const a = img.data[si + 3] / 255
+        px = circle.map((v, k) => Math.round(img.data[si + k] * a + v * (1 - a)))
+      }
+      sheet.data.set([...px, 255], ((oy + y) * W + ox + x) * 4)
+    }
+  }
+}
+
+/** Every checked sport side by side: rest pose on each tile, then the top of the first hop. */
+function gallery(entries, cell = 110, pad = 10) {
+  const rows = [...TILES.map((tile) => ({ tile, pose: 'rest' })), { tile: TILES[0], pose: 'hop' }]
+  const W = pad + entries.length * (cell + pad)
+  const H = pad + rows.length * (cell + pad)
+  const sheet = new PNG({ width: W, height: H })
+  sheet.data.fill(128)
+  entries.forEach((entry, c) => {
+    rows.forEach(({ tile, pose }, r) => {
+      paintTile(sheet, W, entry[pose], tile, pad + c * (cell + pad), pad + r * (cell + pad), cell)
+    })
+  })
+  return PNG.sync.write(sheet)
+}
+
 function contactSheet(frames, cell = 160, pad = 12) {
   const picks = KEY_FRAMES.filter((f) => f < frames.length)
   const W = pad + picks.length * (cell + pad)
@@ -124,9 +158,12 @@ const slugs = wanted.length ? wanted : readdirSync(assetsDir).filter((f) => f.en
 mkdirSync(outDir, { recursive: true })
 
 let failures = 0
+const rendered = []
 for (const slug of slugs) {
   const frames = await renderAll(readFileSync(path.join(assetsDir, `${slug}.json`), 'utf8'))
   const { problems, worst, loopDiff } = checkFrames(frames)
+  // Frame 27 is the top of the first hop (motion.mjs BEATS).
+  rendered.push({ slug, rest: frames[0], hop: frames[27] })
   const sheetPath = path.join(outDir, `${slug}-sheet.png`)
   writeFileSync(sheetPath, contactSheet(frames))
 
@@ -140,4 +177,7 @@ for (const slug of slugs) {
   }
   console.log(`  contact sheet: ${path.relative(root, sheetPath)}`)
 }
+const galleryPath = path.join(outDir, 'gallery.png')
+writeFileSync(galleryPath, gallery(rendered))
+console.log(`gallery (${rendered.map((r) => r.slug).join(', ')}): ${path.relative(root, galleryPath)}`)
 process.exit(failures ? 1 : 0)

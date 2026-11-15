@@ -36,23 +36,27 @@ export const BEATS = {
 }
 
 /** Bottom-contact y position: hops that get lower, then a long rest. */
-export function hopY({ groundY } = STAGE) {
+export function hopY({ groundY = STAGE.groundY, height = 1 } = {}) {
   const keys = [
     { t: 0, v: groundY },
     { t: BEATS.takeoff, v: groundY, ease: EASE.rise },
   ]
   BEATS.hops.forEach((hop, index) => {
     if (index > 0) keys.push({ t: hop.up, v: groundY, ease: EASE.rise })
-    keys.push({ t: hop.peak, v: groundY - hop.height, ease: EASE.fall })
+    keys.push({ t: hop.peak, v: groundY - hop.height * height, ease: EASE.fall })
     keys.push({ t: hop.land, v: groundY })
   })
   keys.push({ t: LOOP_FRAMES, v: groundY })
   return animated(dedupe(keys))
 }
 
-/** Squash before takeoff and on the first two landings, around the bottom edge. */
-export function squashScale(base) {
-  const s = (x, y) => [base * x, base * y, 100]
+/**
+ * Squash before takeoff and on the first two landings, around the bottom
+ * edge. `amount` scales how far it squashes: 1 for a ball, less for rigid
+ * objects.
+ */
+export function squashScale(base, amount = 1) {
+  const s = (x, y) => [base * (1 + (x - 1) * amount), base * (1 + (y - 1) * amount), 100]
   const keys = [
     { t: 0, v: s(1, 1) },
     { t: BEATS.restUntil, v: s(1, 1), ease: EASE.inOut },
@@ -71,7 +75,7 @@ export function squashScale(base) {
   return animated(dedupe(keys))
 }
 
-/** One full turn across the hops, slowing into the rest. */
+/** One full turn across the hops, slowing into the rest. Balls spin their markings. */
 export function spin(turnDegrees = -360) {
   return animated([
     { t: 0, v: 0 },
@@ -81,17 +85,69 @@ export function spin(turnDegrees = -360) {
   ])
 }
 
+/** Oval balls flip end over end once, during the first two hops. */
+export function tumble(turnDegrees = -360) {
+  const [first, second] = BEATS.hops
+  return animated([
+    { t: 0, v: 0 },
+    { t: BEATS.takeoff, v: 0, ease: EASE.settle },
+    { t: second.land, v: turnDegrees },
+    { t: LOOP_FRAMES, v: turnDegrees },
+  ])
+}
+
+/** Rigid objects lean back on the way up and rock level on landing. */
+export function tilt(degrees = 8) {
+  const [first, second, third] = BEATS.hops
+  return animated([
+    { t: 0, v: 0 },
+    { t: BEATS.takeoff, v: 0, ease: EASE.inOut },
+    { t: first.peak, v: -degrees, ease: EASE.inOut },
+    { t: first.leave, v: degrees * 0.6, ease: EASE.inOut },
+    { t: second.peak, v: -degrees * 0.35, ease: EASE.inOut },
+    { t: third.up, v: degrees * 0.2, ease: EASE.inOut },
+    { t: BEATS.settled, v: 0 },
+    { t: LOOP_FRAMES, v: 0 },
+  ])
+}
+
+/** Hanging objects swing from their pivot and settle, on the same beats. */
+export function swing(degrees = 14) {
+  const keys = [{ t: 0, v: 0 }, { t: BEATS.restUntil, v: 0, ease: EASE.inOut }]
+  const swings = [1, -0.7, 0.45, -0.25, 0.1]
+  swings.forEach((share, index) => {
+    keys.push({ t: BEATS.squashAt + 4 + index * 14, v: degrees * share, ease: EASE.inOut })
+  })
+  keys.push({ t: BEATS.squashAt + 4 + swings.length * 14, v: 0 })
+  keys.push({ t: LOOP_FRAMES, v: 0 })
+  return animated(keys)
+}
+
+// The object's centre rests here, a little below the canvas centre to leave
+// room for the hop.
+export const REST_CENTER_Y = STAGE.groundY - STAGE.objectRadius
+
 /**
  * Transform for the null that carries the object. Children draw in art
  * units centred on the object; the anchor is the object's bottom edge, so
  * squash keeps it on the ground.
+ *
+ * - `artRadius`: the art's bounding circle, which is drawn at STAGE.objectRadius.
+ * - `bottom`: how far below the centre the object's lowest point is
+ *   (defaults to the full radius, for a ball).
+ * - `height` and `squash`: scale the hops and squash for heavier or rigid objects.
+ * - `still`: no hop at all (for objects that only swing).
  */
-export function rigTransform({ artRadius }) {
+export function rigTransform({ artRadius, bottom = artRadius, height = 1, squash = 1, still = false }) {
   const scale = (STAGE.objectRadius / artRadius) * 100
+  const groundY = REST_CENTER_Y + (bottom * scale) / 100
+  if (still) {
+    return transform({ p: [STAGE.centerX, groundY, 0], a: [0, bottom, 0], s: [scale, scale, 100] })
+  }
   return transform({
-    p: splitPosition(STAGE.centerX, hopY()),
-    a: [0, artRadius, 0],
-    s: squashScale(scale),
+    p: splitPosition(STAGE.centerX, hopY({ groundY, height })),
+    a: [0, bottom, 0],
+    s: squashScale(scale, squash),
   })
 }
 

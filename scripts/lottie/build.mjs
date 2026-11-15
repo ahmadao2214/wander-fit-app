@@ -4,14 +4,12 @@
 //   node scripts/lottie/build.mjs soccer    # just these slugs
 //
 // The checks that gate these files live in lib/sportAnimationChecks.ts and
-// run in Vitest (lib/__tests__/sportAnimations.test.ts).
+// run in Jest (lib/__tests__/sportAnimations.test.ts).
 
 import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import soccer from './sports/soccer.mjs'
-
-const SPORTS = { soccer }
+import { SPORTS } from './sports/index.mjs'
 
 const SOFT_LIMIT = 15 * 1024
 const HARD_LIMIT = 20 * 1024
