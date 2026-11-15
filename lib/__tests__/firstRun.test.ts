@@ -9,6 +9,8 @@ import {
   seasonWeeksArg,
   seasonStartForWeeks,
   formatSeasonDate,
+  firstTrainingDate,
+  dayLabel,
   weeksUntilSeason,
   yearsForChoice,
   type CompleteFirstRunAnswers,
@@ -171,5 +173,17 @@ describe('seasonStartForWeeks', () => {
 
   it('formats the date for display', () => {
     expect(formatSeasonDate('2027-03-06')).toBe('Sat, Mar 6')
+  })
+})
+
+describe('first training day', () => {
+  // NOW is Sunday 15 Nov 2026.
+  it('is today when today is a training day', () => {
+    expect(dayLabel(firstTrainingDate([0, 3], NOW), NOW)).toBe('Today')
+  })
+
+  it('is the next training day otherwise', () => {
+    expect(dayLabel(firstTrainingDate([1, 3, 5], NOW), NOW)).toBe('Tomorrow')
+    expect(dayLabel(firstTrainingDate([3], NOW), NOW)).toBe('Wed, Nov 18')
   })
 })

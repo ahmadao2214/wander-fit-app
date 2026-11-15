@@ -31,3 +31,42 @@ export function getVerificationErrorMessage(err: unknown): string {
       return first.longMessage || first.message || VERIFICATION_FALLBACK_MESSAGE
   }
 }
+
+export interface SignUpFormErrors {
+  email?: string
+  password?: string
+  /** Shown above the form; empty when only field errors apply. */
+  general: string
+  /** The email already has an account, so offer sign-in instead. */
+  accountExists: boolean
+}
+
+/** Maps Clerk errors from creating a sign-up to field and form messages. */
+export function getSignUpFormErrors(err: unknown): SignUpFormErrors {
+  const clerkErrors: ClerkErrorLike[] | undefined = (err as { errors?: ClerkErrorLike[] })?.errors
+  const result: SignUpFormErrors = { general: '', accountExists: false }
+  if (!clerkErrors?.length) return { ...result, general: 'Sign up failed. Please try again.' }
+
+  const general: string[] = []
+  for (const e of clerkErrors) {
+    switch (e.code) {
+      case 'form_identifier_exists':
+        result.email = 'This email already has an account.'
+        result.accountExists = true
+        break
+      case 'form_password_pwned':
+        result.password = 'This password was found in a data breach. Use a different one.'
+        break
+      case 'form_password_length_too_short':
+        result.password = 'Use at least 8 characters.'
+        break
+      case 'form_param_format_invalid':
+        result.email = 'Enter a valid email address, like name@example.com.'
+        break
+      default:
+        general.push(e.longMessage || e.message || 'Sign up failed.')
+    }
+  }
+  result.general = [...new Set(general)].join(' ')
+  return result
+}

@@ -1,4 +1,5 @@
 import {
+  getSignUpFormErrors,
   getVerificationErrorMessage,
   VERIFICATION_FALLBACK_MESSAGE,
 } from "../signUpErrors";
@@ -50,3 +51,26 @@ describe("getVerificationErrorMessage", () => {
     expect(getVerificationErrorMessage({ errors: [] })).toBe(VERIFICATION_FALLBACK_MESSAGE);
   });
 });
+
+describe('getSignUpFormErrors', () => {
+  const clerk = (...codes: string[]) => ({ errors: codes.map((code) => ({ code, message: `msg ${code}` })) })
+
+  it('puts field problems next to the field', () => {
+    expect(getSignUpFormErrors(clerk('form_password_length_too_short'))).toEqual({
+      password: 'Use at least 8 characters.',
+      general: '',
+      accountExists: false,
+    })
+  })
+
+  it('flags an existing account so the sheet can offer sign-in', () => {
+    const r = getSignUpFormErrors(clerk('form_identifier_exists'))
+    expect(r.accountExists).toBe(true)
+    expect(r.email).toBe('This email already has an account.')
+  })
+
+  it('keeps unknown messages, once each', () => {
+    expect(getSignUpFormErrors(clerk('x', 'x')).general).toBe('msg x')
+    expect(getSignUpFormErrors(new Error('boom')).general).toBe('Sign up failed. Please try again.')
+  })
+})

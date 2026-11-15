@@ -118,6 +118,25 @@ export function formatSeasonDate(seasonStart: string): string {
   })
 }
 
+/** The first training day on or after today. */
+export function firstTrainingDate(trainingDays: readonly number[] | undefined, now: Date): Date {
+  const days = normalizeTrainingDays(trainingDays)
+  const today = startOfLocalDay(now)
+  for (let offset = 0; offset < 7; offset++) {
+    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + offset)
+    if (days.includes(d.getDay())) return d
+  }
+  return today
+}
+
+/** "Today", "Tomorrow" or "Wed, Nov 18". */
+export function dayLabel(date: Date, now: Date): string {
+  const diff = Math.round((startOfLocalDay(date).getTime() - startOfLocalDay(now).getTime()) / MS_PER_DAY)
+  if (diff === 0) return 'Today'
+  if (diff === 1) return 'Tomorrow'
+  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+}
+
 /** Default slider position: the existing 12-week program. */
 export const DEFAULT_SEASON_WEEKS = 12
 
