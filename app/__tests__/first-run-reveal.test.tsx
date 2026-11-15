@@ -130,9 +130,9 @@ describe('First Run reveal', () => {
 
   it('names each phase as text, and tapping one shows its full name', async () => {
     await show()
-    expect(screen.getByTestId('phase-name').props.children.join('')).toBe('GPP: General Physical Preparedness')
+    expect(screen.getByTestId('phase-name')).toHaveTextContent('GPP: General Physical Preparedness')
     fireEvent.press(screen.getByTestId('phase-SSP'))
-    expect(screen.getByTestId('phase-name').props.children.join('')).toBe('SSP: Sport-Specific Preparedness')
+    expect(screen.getByTestId('phase-name')).toHaveTextContent('SSP: Sport-Specific Preparedness')
   })
 
   it('renders with no animation when Reduce Motion is on', async () => {

@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Pressable } from 'react-native'
 import { Text, XStack, YStack } from 'tamagui'
-import { PHASES, PHASE_NAMES, phaseFill, type Phase } from './phaseStyle'
+import { PHASES, PHASE_NAMES, phaseTitle, phaseTokens } from '../../lib/phase'
+import type { Phase } from '../../types'
 
 /**
  * The three phases as one bar, each segment as wide as its weeks and always
@@ -15,7 +16,7 @@ export function PhaseBar({ weeksPerPhase }: { weeksPerPhase: number }) {
     <YStack gap="$2" testID="phase-bar">
       <XStack gap="$1" height={48}>
         {PHASES.map((phase, i) => {
-          const { fill, onFill } = phaseFill(phase)
+          const { fill, onFill } = phaseTokens(phase)
           const selected = open === phase
           return (
             <Pressable
@@ -51,7 +52,7 @@ export function PhaseBar({ weeksPerPhase }: { weeksPerPhase: number }) {
         })}
       </XStack>
       <Text fontFamily="$body" fontSize={14} color="$color11" testID="phase-name">
-        {open}: {PHASE_NAMES[open]}
+        {phaseTitle(open)}
       </Text>
     </YStack>
   )
