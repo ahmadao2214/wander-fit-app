@@ -309,7 +309,7 @@ export default function AthleteDashboard() {
           color="white"
           fontFamily="$body" fontWeight="700"
           pressStyle={{ bg: '$primaryPress', scale: 0.98 }}
-          onPress={() => router.push('/(intake)/sport')}
+          onPress={() => router.replace('/')}
         >
           Get Started
         </Button>

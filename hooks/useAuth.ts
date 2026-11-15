@@ -10,8 +10,9 @@ import type { User } from '../types'
  * Provides authentication state for the WanderFit app.
  * 
  * Everyone is an athlete. Accounts created before the trainer screens were
- * removed may still carry role "trainer"; for them needsIntake and
- * needsOnboarding stay false (the root index still checks intakeCompletedAt).
+ * removed may still carry role "trainer"; for them needsIntake stays false
+ * (the root index checks intakeCompletedAt). A new athlete's account and
+ * program are saved together at the end of the First Run.
  *
  * Key states:
  * - isLoading: Auth state is being determined
@@ -56,7 +57,6 @@ export function useAuth() {
     role: null as string | null,
     needsSetup: false,
     needsIntake: false,
-    needsOnboarding: false,
   }
 
   const authState = useMemo(() => {
@@ -69,7 +69,6 @@ export function useAuth() {
         role: null,
         needsSetup: false,
         needsIntake: false,
-        needsOnboarding: false,
       }
     }
 
@@ -82,7 +81,6 @@ export function useAuth() {
         role: null,
         needsSetup: false,
         needsIntake: false,
-        needsOnboarding: false,
       }
     }
 
@@ -95,7 +93,6 @@ export function useAuth() {
         role: null,
         needsSetup: false,
         needsIntake: false,
-        needsOnboarding: false,
       }
     }
 
@@ -108,7 +105,6 @@ export function useAuth() {
         role: null,
         needsSetup: true,
         needsIntake: false,
-        needsOnboarding: false,
       }
     }
 
@@ -118,11 +114,6 @@ export function useAuth() {
     // Check if intake is needed (only for athletes/clients)
     const needsIntake = role === 'client' && !convexUser.intakeCompletedAt
 
-    // Check if onboarding education is needed (after intake, before main app)
-    const needsOnboarding = role === 'client'
-      && convexUser.intakeCompletedAt
-      && !convexUser.onboardingCompletedAt
-
     // If we have both Clerk user and Convex user, we're authenticated
     return {
       isLoading: false,
@@ -131,7 +122,6 @@ export function useAuth() {
       role,
       needsSetup: false,
       needsIntake,
-      needsOnboarding,
     }
   }, [isClerkLoading, clerkUser?.id, convexUser])
 
@@ -146,11 +136,9 @@ export function useAuth() {
     role: safeAuthState.role,
     needsSetup: safeAuthState.needsSetup,
     needsIntake: safeAuthState.needsIntake,
-    needsOnboarding: safeAuthState.needsOnboarding,
     clerkUser,
     // Helper functions
     hasCompletedIntake: !!safeAuthState.user?.intakeCompletedAt,
-    hasCompletedOnboarding: !!safeAuthState.user?.onboardingCompletedAt,
   }
 }
 
@@ -168,21 +156,4 @@ export function useHasCompletedIntake() {
 export function useCurrentUser() {
   const { user } = useAuth()
   return user
-}
-
-/**
- * Check if user has completed onboarding
- */
-export function useHasCompletedOnboarding() {
-  const { user } = useAuth()
-  return !!user?.onboardingCompletedAt
-}
-
-/**
- * Check if user needs to see onboarding
- * Returns true if intake is complete but onboarding is not
- */
-export function useNeedsOnboarding() {
-  const { needsOnboarding } = useAuth()
-  return needsOnboarding
 }

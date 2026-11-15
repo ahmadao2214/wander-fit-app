@@ -7,6 +7,10 @@ import {
   normalizeTrainingDays,
   revealProgram,
   seasonWeeksArg,
+  seasonStartForWeeks,
+  formatSeasonDate,
+  firstTrainingDate,
+  dayLabel,
   weeksUntilSeason,
   yearsForChoice,
   type CompleteFirstRunAnswers,
@@ -157,5 +161,29 @@ describe('intakeArgs', () => {
 
   it('leaves weeksUntilSeason out with no set season', () => {
     expect(intakeArgs(complete, NOW).weeksUntilSeason).toBeUndefined()
+  })
+})
+
+describe('seasonStartForWeeks', () => {
+  it('round-trips with weeksUntilSeason for every slider position', () => {
+    const off: number[] = []
+    for (let w = 1; w <= 52; w++) if (weeksUntilSeason(seasonStartForWeeks(w, NOW), NOW) !== w) off.push(w)
+    expect(off).toEqual([])
+  })
+
+  it('formats the date for display', () => {
+    expect(formatSeasonDate('2027-03-06')).toBe('Sat, Mar 6')
+  })
+})
+
+describe('first training day', () => {
+  // NOW is Sunday 15 Nov 2026.
+  it('is today when today is a training day', () => {
+    expect(dayLabel(firstTrainingDate([0, 3], NOW), NOW)).toBe('Today')
+  })
+
+  it('is the next training day otherwise', () => {
+    expect(dayLabel(firstTrainingDate([1, 3, 5], NOW), NOW)).toBe('Tomorrow')
+    expect(dayLabel(firstTrainingDate([3], NOW), NOW)).toBe('Wed, Nov 18')
   })
 })

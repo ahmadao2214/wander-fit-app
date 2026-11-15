@@ -77,7 +77,7 @@ function checkSpace({ needCheckout }) {
 export const EXPLORE_VERSION = "0.23.0"
 export const EXPLORE_NODE = "24.12.0"
 export const SIMULATOR_SIGNING = ["CODE_SIGNING_ALLOWED=YES", "CODE_SIGN_IDENTITY=-", "CODE_SIGNING_REQUIRED=NO"]
-export const STATES =["signed-out", "needs-intake", "onboarded", "phase-end"]
+export const STATES = ["signed-out", "onboarded", "phase-end"]
 
 const SECRET_ENV = [
   "CLERK_SECRET_KEY",
@@ -167,11 +167,10 @@ export function hintsFor(state, email) {
   const avoid =
     "Never tap Continue with Google, never create an account, and never finish or delete a workout or change program settings."
   if (state === "signed-out") {
-    return `Stay signed out. Capture the sign-in screen and the sign-up screen, including their error states if a tap shows one without submitting real data. ${avoid}`
+    return `Stay signed out. The app opens on the First Run: capture the promise, each question screen in order (pick the first option on each so you can move on), and the reveal, then open Save my plan and close it without creating an account. Go back to the start, tap I have an account, and capture the sign-in screen, including its error states if a tap shows one without submitting real data. ${avoid}`
   }
   const signIn = `On the sign-in screen, type ${email} into the email field and {{secret:APP_TEST_PASSWORD}} into the password field, then tap Sign In. If iOS offers to save the password, tap Not Now.`
   const focus = {
-    "needs-intake": "After sign-in the app starts intake. Capture each intake screen in order; pick the first option on each so you can move on.",
     onboarded: "After sign-in you land on Today. Capture every tab (Today, Program, History, Profile) and the screens each one opens, such as a workout's detail and the training science pages. Open a workout but do not start it.",
     "phase-end": "After sign-in the program is at the end of a phase. Capture Today and the reassessment screens it leads to, then the other tabs.",
   }[state]

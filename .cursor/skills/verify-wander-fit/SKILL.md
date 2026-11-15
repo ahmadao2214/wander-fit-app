@@ -15,7 +15,7 @@ From the repo root:
 node scripts/verify/run.mjs all
 ```
 
-`all` requires `EXPO_PUBLIC_CONVEX_URL_E2E` in the environment or in `.env.e2e`. It runs doctor, exports web, and serves it on `127.0.0.1:4173`. Then it runs every flow under `.maestro/web/`, one at a time. Each flow gets a fresh persona, which is deleted after the flow whether it passed or not. Sign-in gets an onboarded persona made through `persona create`. Sign-up gets only a new address and password, and makes the account through the UI; after Maestro passes, the runner fails the flow unless `persona inspect` finds a Convex user for it. It then stops the server and writes `e2e-artifacts/web-results.json`. A missing URL is a failed check, not a signed-out pass. Name flows to run only those: `node scripts/verify/run.mjs all sign-in`.
+`all` requires `EXPO_PUBLIC_CONVEX_URL_E2E` in the environment or in `.env.e2e`. It runs doctor, exports web, and serves it on `127.0.0.1:4173`. Then it runs every flow under `.maestro/web/`, one at a time. Each flow gets a fresh persona, which is deleted after the flow whether it passed or not. Sign-in gets an onboarded persona made through `persona create`. The First Run gets only a new address and password, and makes the account through the UI; after Maestro passes, the runner fails the flow unless `persona inspect` shows the saved GPP week 1 day 1 program and the first launch time. It then stops the server and writes `e2e-artifacts/web-results.json`. A missing URL is a failed check, not a signed-out pass. Name flows to run only those: `node scripts/verify/run.mjs all sign-in`.
 
 `all` does not deploy. To push this checkout's `convex/` functions to wander-fit-e2e and seed it first:
 
@@ -23,7 +23,7 @@ node scripts/verify/run.mjs all
 node scripts/verify/run.mjs deploy
 ```
 
-`deploy` runs `npx convex dev --once` against the wander-fit-e2e dev deployment only, through `CONVEX_DEPLOY_KEY_E2E` or `.env.e2e`. It never passes `--env-file`, and it restores `.env`, `.env.local` and `.gitignore` if the Convex CLI rewrites them. Then it runs `seed:seedAll`, which skips rows that already exist.
+`deploy` runs `npx convex dev --once` against the wander-fit-e2e dev deployment only, through `CONVEX_DEPLOY_KEY_E2E` or `.env.e2e`. It never passes `--env-file`, and it restores `.env`, `.env.local` and `.gitignore` if the Convex CLI rewrites them. Then it runs `seed:seedAll`, which skips rows that already exist, and regenerates the program templates per category.
 
 With `CONVEX_PREVIEW_DEPLOY_KEY_E2E` and `CONVEX_PREVIEW_NAME_E2E` (`pr-<number>` in CI) set instead, `deploy` runs `npx convex deploy --preview-create <name> --preview-run seed:seedAll`. That deploys to the PR's own preview deployment in wander-fit-e2e and seeds it. The name is lowercased, with every other character turned into `-` and a 40-character cap. Deploying the same name again replaces that preview deployment with a new, empty one. `deploy` prints the new URL (`convex url: ...`) and writes it as the `convex_url` step output in CI. Later commands need it in `EXPO_PUBLIC_CONVEX_URL_E2E`, plus the same two preview variables. The key must be a preview key for wander-fit-e2e (`preview:<team>:wander-fit-e2e|...`). Setting both keys is refused. The project's default env vars for previews supply `CLERK_JWT_ISSUER_DOMAIN` (`npx convex@latest env default list --type preview --project wander-fit-e2e`). Without it, sign-in fails on a preview. On the Free plan, previews are deleted after 5 days and count toward the team's 40 deployments.
 
@@ -33,7 +33,7 @@ The signed-out screen is a separate command. It does not create a persona or sub
 node scripts/verify/run.mjs screen
 ```
 
-With no e2e URL, `screen` bakes `https://wander-fit-e2e.invalid`. Ready on that path means Maestro can see `WELCOME BACK`.
+With no e2e URL, `screen` bakes `https://wander-fit-e2e.invalid`. Ready on that path means Maestro sees the First Run, taps `I have an account`, and sees `WELCOME BACK`.
 
 The export sets `EXPO_NO_DOTENV=1`. It refuses to serve a bundle that contains `fleet-mallard-22.convex.cloud`, `accomplished-tapir-54.convex.cloud`, or a real Clerk secret (`sk_test_` or `sk_live_` followed by a token).
 

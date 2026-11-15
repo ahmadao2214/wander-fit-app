@@ -96,6 +96,50 @@ export function weeksUntilSeason(seasonStart: string, now: Date): number {
   return Math.min(MAX_SEASON_WEEKS, Math.max(1, Math.ceil(days / 7)))
 }
 
+/** Local `YYYY-MM-DD` for a date. */
+export function toIsoDate(date: Date): string {
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const dd = String(date.getDate()).padStart(2, '0')
+  return `${date.getFullYear()}-${mm}-${dd}`
+}
+
+/** The first-game date `weeks` whole weeks from today. */
+export function seasonStartForWeeks(weeks: number, now: Date): string {
+  const w = Math.min(MAX_SEASON_WEEKS, Math.max(1, Math.round(weeks)))
+  return toIsoDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() + w * 7))
+}
+
+/** "Sat, Mar 6" for a stored season date. */
+export function formatSeasonDate(seasonStart: string): string {
+  return parseLocalDate(seasonStart).toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  })
+}
+
+/** The first training day on or after today. */
+export function firstTrainingDate(trainingDays: readonly number[] | undefined, now: Date): Date {
+  const days = normalizeTrainingDays(trainingDays)
+  const today = startOfLocalDay(now)
+  for (let offset = 0; offset < 7; offset++) {
+    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + offset)
+    if (days.includes(d.getDay())) return d
+  }
+  return today
+}
+
+/** "Today", "Tomorrow" or "Wed, Nov 18". */
+export function dayLabel(date: Date, now: Date): string {
+  const diff = Math.round((startOfLocalDay(date).getTime() - startOfLocalDay(now).getTime()) / MS_PER_DAY)
+  if (diff === 0) return 'Today'
+  if (diff === 1) return 'Tomorrow'
+  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+}
+
+/** Default slider position: the existing 12-week program. */
+export const DEFAULT_SEASON_WEEKS = 12
+
 /** `weeksUntilSeason` as `completeIntake` takes it: undefined for no season. */
 export function seasonWeeksArg(seasonStart: string | null, now: Date): number | undefined {
   return seasonStart === null ? undefined : weeksUntilSeason(seasonStart, now)

@@ -78,9 +78,9 @@ export const SignOutButton = () => {
     try {
       console.log('Signing out...')
       await signOut()
-      console.log('Sign out successful, navigating to sign-in')
-      // Navigate directly to sign-in to avoid index page loops
-      router.replace('/(auth)/sign-in')
+      // Signed out means the First Run, where "I have an account" leads back
+      // to sign-in. Going straight there skips the root's loading state.
+      router.replace('/(first-run)')
     } catch (err) {
       // See https://clerk.com/docs/custom-flows/error-handling
       // for more info on error handling

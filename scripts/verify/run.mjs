@@ -259,11 +259,10 @@ export function ownServerReady(readyText, pid) {
   return Number(pid) > 0 && String(readyText).trim() === String(pid)
 }
 
+// Flows open the root, as an athlete does: a signed-out launch shows the First
+// Run, and "I have an account" leads to sign-in.
 function verifyUrl() {
-  const signIn = path.join(distDir, "sign-in.html")
-  return fs.existsSync(signIn)
-    ? `http://127.0.0.1:${port}/sign-in`
-    : `http://127.0.0.1:${port}/`
+  return `http://127.0.0.1:${port}/`
 }
 
 function launch() {
@@ -341,7 +340,7 @@ function createPersona(state) {
   return persona
 }
 
-// The sign-up flow creates the Clerk user and the Convex row through the UI.
+// The First Run creates the Clerk user and the Convex row through the UI.
 // Write the cleanup record first, so a run that fails partway still deletes
 // whatever the app made. No Clerk or Convex call happens here.
 export function createSignupPersona({ file = personaFile, now = Date.now, mask = maskPassword } = {}) {
@@ -359,23 +358,10 @@ export function createSignupPersona({ file = personaFile, now = Date.now, mask =
 
 // persona inspect prints the Convex object. convex run pretty-prints it, so the
 // last line is often "}" and is not the result.
-export function assertSignedUp(output, email) {
-  let parsed = null
-  try {
-    parsed = parseRunResult(output)
-  } catch {
-    parsed = null
-  }
-  if (parsed?.found !== true) {
-    const detail = parsed ? JSON.stringify({ found: parsed.found, email: parsed.email }) : "no inspect output"
-    throw new Error(`sign-up left no Convex user for ${email}: ${detail}`)
-  }
-  return parsed
-}
-
-// Activation must leave the program the commitment screen creates: GPP week 1
-// day 1, with intake and onboarding both marked complete.
-export function assertActivated(output, email) {
+//
+// The First Run must leave the account and program it saves together: intake
+// done, GPP week 1 day 1, and the first launch time sent with the intake.
+export function assertFirstRun(output, email) {
   let parsed = null
   try {
     parsed = parseRunResult(output)
@@ -385,11 +371,11 @@ export function assertActivated(output, email) {
   const expected = {
     found: true,
     intakeCompleted: true,
-    onboardingCompleted: true,
     hasProgram: true,
     phase: "GPP",
     week: 1,
     day: 1,
+    firstLaunchRecorded: true,
   }
   const actual = parsed
     ? Object.fromEntries(Object.keys(expected).map((key) => [key, parsed[key] ?? null]))
@@ -399,14 +385,13 @@ export function assertActivated(output, email) {
     : Object.keys(expected)
   if (mismatched.length) {
     const detail = actual ? JSON.stringify(actual) : "no inspect output"
-    throw new Error(`activation left ${email} short of GPP week 1 day 1 (${mismatched.join(", ")}): ${detail}`)
+    throw new Error(`the First Run left ${email} short of a saved GPP week 1 day 1 program (${mismatched.join(", ")}): ${detail}`)
   }
   return parsed
 }
 
 const inspectChecks = {
-  signup: assertSignedUp,
-  "needs-intake": assertActivated,
+  "first-run": assertFirstRun,
 }
 
 // Modes with no entry are not inspected after Maestro passes.
@@ -637,13 +622,13 @@ const webIo = {
 
 // Each flow's persona mode picks how it is created and whether the account
 // is inspected after Maestro passes. Cleanup is the same for every mode.
-// Seeded modes (onboarded, needs-intake) go through persona create.
+// Seeded modes (onboarded, with-history) go through persona create.
 export function webSuiteSteps(url, io = webIo) {
   return {
     createPersona: (flow) => {
       console.log(`\n== ${flow} (web) ==`)
       const mode = personaMode(flow)
-      return mode === "signup" ? io.createSignupPersona() : io.createSeededPersona(mode)
+      return mode === "first-run" ? io.createSignupPersona() : io.createSeededPersona(mode)
     },
     drive: (flow, persona) => {
       console.log(`driving ${flow} for ${persona.email}`)

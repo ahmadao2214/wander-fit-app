@@ -40,8 +40,13 @@ export function VerificationCodeInput({
 
   // Create styles using theme values
   const styles = React.useMemo(() => StyleSheet.create({
+    // Boxes share the row and cap at 56pt, so six fit a narrow sheet.
     input: {
-      width: 56,
+      flexGrow: 1,
+      flexShrink: 1,
+      flexBasis: 0,
+      maxWidth: 56,
+      minWidth: 0,
       height: 64,
       borderRadius: 12,
       borderWidth: 2,
@@ -178,7 +183,7 @@ export function VerificationCodeInput({
   }
 
   return (
-    <XStack gap="$3" justify="center">
+    <XStack gap="$2" justify="center" width="100%">
       {digits.map((digit, index) => (
         <TextInput
           key={index}

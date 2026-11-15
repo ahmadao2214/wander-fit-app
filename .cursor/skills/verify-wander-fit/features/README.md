@@ -13,7 +13,7 @@ This directory is the maintained source for verifying Wander Fit on the web expo
 
 ## Driving conventions
 
-- Start from the signed-out screen unless a feature file says otherwise.
+- A signed-out launch opens the First Run. Flows that sign in tap `I have an account` first (`.maestro/subflows/_open-sign-in.yaml`).
 - Prefer visible text (`WELCOME BACK`, `Sign In`) over coordinates.
 - Treat the commands in each feature file as literal.
 - Web entries are thin. The journey and the shared subflows are the steps. The findings on `id:` and subflow headers are in `.maestro/flow-layout.md`.
@@ -33,6 +33,5 @@ This directory is the maintained source for verifying Wander Fit on the web expo
 - [Workout exit and resume](./workout-exit-resume.md) covers X → Exit pausing the session so Today offers Resume with the logged sets intact, and Discard as its own confirmed choice.
 
 - [Sign in](./sign-in.md) covers the signed-out welcome screen, signing in to Today, and signing out from Profile.
-- [Sign up](./sign-up.md) covers creating an athlete with email, password, and the emailed code, through to the intake sport screen.
-- [Activation](./activation.md) covers a needs-intake athlete going through intake, onboarding, and the one-tap commitment to the Today workout card, checked with `persona inspect`.
+- [First Run](./first-run.md) covers a signed-out athlete answering the intake, seeing the reveal, creating the account with the program, and starting Day 1's warm-up, checked with `persona inspect`.
 - [History](./history.md) covers a persona with one completed GPP session seeing it listed on the History tab.

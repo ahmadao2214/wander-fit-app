@@ -1,11 +1,21 @@
 appId: com.offseason.asrafit
 ---
+# A signed-out launch opens the First Run, and a relaunch comes back to it.
 - launchApp:
     clearState: true
 - extendedWaitUntil:
-    visible: "WELCOME BACK"
+    visible: "Let's build your plan for this season."
     timeout: 90000
-- assertVisible: "Sign in to continue your training journey"
+- assertVisible:
+    id: first-run-start
+- assertVisible:
+    id: first-run-sign-in
+- takeScreenshot: native-launch-first-run
+- tapOn:
+    id: first-run-sign-in
+- extendedWaitUntil:
+    visible: "WELCOME BACK"
+    timeout: 30000
 - assertVisible:
     id: sign-in-email
 - assertVisible:
@@ -16,6 +26,6 @@ appId: com.offseason.asrafit
 - stopApp
 - launchApp
 - extendedWaitUntil:
-    visible: "WELCOME BACK"
+    visible: "Let's build your plan for this season."
     timeout: 30000
-- takeScreenshot: native-relaunch-sign-in
+- takeScreenshot: native-relaunch-first-run

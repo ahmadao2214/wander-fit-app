@@ -35,13 +35,12 @@ export function artifactName(flow, platform = "web") {
   return `e2e-${platform}-${flow}`
 }
 
-// Sign-up makes its own account through the UI. Activation signs in as a
-// persona with a user row only and goes through intake. History signs in as
-// a persona with one completed GPP session. Every other flow
-// signs in as an onboarded persona created before Maestro runs.
+// The First Run makes its own account through the UI, at the end of the
+// intake. History signs in as a persona with one completed GPP session.
+// Every other flow signs in as an onboarded persona created before Maestro
+// runs.
 const flowPersonaModes = {
-  "sign-up": "signup",
-  activation: "needs-intake",
+  "first-run": "first-run",
   history: "with-history",
 }
 

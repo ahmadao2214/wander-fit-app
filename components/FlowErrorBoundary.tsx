@@ -134,12 +134,12 @@ function ErrorFallback({
 /**
  * FlowErrorBoundary
  *
- * A custom error boundary for intake and onboarding flows.
+ * A custom error boundary for multi-step flows (the First Run, reassessment).
  * Provides a friendly UI when errors occur and allows users
  * to retry or navigate away.
  *
  * @example
- * <FlowErrorBoundary fallbackRoute="/(intake)/sport">
+ * <FlowErrorBoundary fallbackRoute="/(first-run)">
  *   <MyScreen />
  * </FlowErrorBoundary>
  */

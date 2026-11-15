@@ -75,10 +75,16 @@ export interface DraftStore {
   save(patch: { answers?: Partial<FirstRunAnswers>; lastStep?: FirstRunStep }): Promise<FirstRunDraft>
   /** Removes the draft, after the program is saved. */
   clear(): Promise<void>
+  /** The draft as last loaded or saved, or null before the first load. */
+  current(): FirstRunDraft | null
+  /** Called after every load, save and clear. Returns an unsubscribe. */
+  subscribe(listener: () => void): () => void
 }
 
 export function createDraftStore(storage: DraftStorage, now: () => number = Date.now): DraftStore {
   let cached: FirstRunDraft | null = null
+  const listeners = new Set<() => void>()
+  const notify = () => listeners.forEach((listener) => listener())
   // Writes run one at a time so quick taps can't overwrite each other.
   let queue: Promise<unknown> = Promise.resolve()
   const enqueue = <T>(task: () => Promise<T>): Promise<T> => {
@@ -97,13 +103,32 @@ export function createDraftStore(storage: DraftStorage, now: () => number = Date
     }
   }
 
+  // True while storage has failed to read: the cached draft is a stand-in,
+  // and the next read tries storage again before anything is written.
+  let unread = false
+
   async function read(): Promise<FirstRunDraft> {
-    if (cached) return cached
+    if (cached && !unread) return cached
     let stored: FirstRunDraft | null = null
     try {
       stored = parseDraft(await storage.getItem(DRAFT_KEY))
     } catch (error) {
       console.warn('First Run draft not loaded:', error)
+      // Storage that failed to read may still hold the athlete's answers, so
+      // don't write over it.
+      unread = true
+      cached ??= { answers: {}, lastStep: 'promise', firstLaunchAt: now() }
+      return cached
+    }
+    if (unread && cached) {
+      // Storage is back: keep what it holds, plus anything answered meanwhile.
+      unread = false
+      const standIn = cached
+      cached = stored
+        ? { ...stored, answers: { ...stored.answers, ...standIn.answers } }
+        : standIn
+      if (!stored) await write(cached)
+      return cached
     }
     if (stored) {
       cached = stored
@@ -115,7 +140,19 @@ export function createDraftStore(storage: DraftStorage, now: () => number = Date
   }
 
   return {
-    load: () => enqueue(read),
+    current: () => cached,
+    subscribe: (listener) => {
+      listeners.add(listener)
+      return () => {
+        listeners.delete(listener)
+      }
+    },
+    load: () =>
+      enqueue(async () => {
+        const draft = await read()
+        notify()
+        return draft
+      }),
     save: (patch) =>
       enqueue(async () => {
         const current = await read()
@@ -124,7 +161,13 @@ export function createDraftStore(storage: DraftStorage, now: () => number = Date
           lastStep: patch.lastStep ?? current.lastStep,
           firstLaunchAt: current.firstLaunchAt,
         }
-        await write(next)
+        // Show the answer now; storage can be slow, and the next tap
+        // builds on what's on screen.
+        cached = next
+        notify()
+        // Never write over answers storage couldn't read. The next save
+        // that reads storage again merges these answers and writes them.
+        if (!unread) await write(next)
         return next
       }),
     clear: () =>
@@ -137,6 +180,7 @@ export function createDraftStore(storage: DraftStorage, now: () => number = Date
           // Don't let a later load bring the cleared answers back.
           await write({ answers: {}, lastStep: 'promise', firstLaunchAt: now() })
         }
+        notify()
       }),
   }
 }

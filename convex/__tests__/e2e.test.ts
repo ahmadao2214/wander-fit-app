@@ -34,10 +34,10 @@ async function rowsFor(t: TestConvex) {
 }
 
 describe("e2e persona provisioning", () => {
-  it("needs-intake writes a user row only", async () => {
+  it("new writes a user row only", async () => {
     const t = newTest();
     await seedBasketball(t);
-    await t.mutation(internal.e2e.provision, { ...persona, state: "needs-intake" });
+    await t.mutation(internal.e2e.provision, { ...persona, state: "new" });
 
     const rows = await rowsFor(t);
     expect(rows).toMatchObject({ users: 1, programs: 0, intakes: 0 });
@@ -54,22 +54,23 @@ describe("e2e persona provisioning", () => {
     });
   });
 
-  it("needs-intake resets a user that already had a program", async () => {
+  it("new resets a user that already had a program", async () => {
     const t = newTest();
     await seedBasketball(t);
     await t.mutation(internal.e2e.provision, { ...persona, state: "onboarded" });
     expect(await rowsFor(t)).toMatchObject({ programs: 1, intakes: 1 });
 
-    await t.mutation(internal.e2e.provision, { ...persona, state: "needs-intake" });
+    await t.mutation(internal.e2e.provision, { ...persona, state: "new" });
     const rows = await rowsFor(t);
     expect(rows).toMatchObject({ users: 1, programs: 0, intakes: 0 });
     expect(rows.user?.onboardingSkipped).toBeUndefined();
   });
 
-  it("inspect shows GPP week 1 day 1 after intake and onboarding through the app", async () => {
+  it("inspect shows GPP week 1 day 1 and the first launch after the First Run saves", async () => {
     const t = newTest();
     const sportId = await seedBasketball(t);
-    await t.mutation(internal.e2e.provision, { ...persona, state: "needs-intake" });
+    await t.mutation(internal.e2e.provision, { ...persona, state: "new" });
+    expect(await t.query(internal.e2e.inspect, { email })).toMatchObject({ firstLaunchRecorded: false });
 
     const athlete = t.withIdentity({ subject: persona.clerkId });
     await athlete.mutation(api.userPrograms.completeIntake, {
@@ -77,19 +78,18 @@ describe("e2e persona provisioning", () => {
       yearsOfExperience: 0,
       preferredTrainingDaysPerWeek: 3,
       selectedTrainingDays: [1, 3, 5],
-      weeksUntilSeason: 12,
       ageGroup: "18-35",
+      firstLaunchAt: Date.now() - 60_000,
     });
-    await athlete.mutation(api.onboarding.completeOnboarding, {});
 
     expect(await t.query(internal.e2e.inspect, { email })).toMatchObject({
       found: true,
       intakeCompleted: true,
-      onboardingCompleted: true,
       hasProgram: true,
       phase: "GPP",
       week: 1,
       day: 1,
+      firstLaunchRecorded: true,
     });
   });
 

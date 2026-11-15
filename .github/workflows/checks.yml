@@ -120,20 +120,12 @@ jobs:
           path: e2e-artifacts/sign-in/web/
           if-no-files-found: warn
           retention-days: 14
-      - name: Upload sign-up evidence
-        if: always() && hashFiles('e2e-artifacts/sign-up/web/.scrubbed') != ''
+      - name: Upload first-run evidence
+        if: always() && hashFiles('e2e-artifacts/first-run/web/.scrubbed') != ''
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-web-sign-up
-          path: e2e-artifacts/sign-up/web/
-          if-no-files-found: warn
-          retention-days: 14
-      - name: Upload activation evidence
-        if: always() && hashFiles('e2e-artifacts/activation/web/.scrubbed') != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: e2e-web-activation
-          path: e2e-artifacts/activation/web/
+          name: e2e-web-first-run
+          path: e2e-artifacts/first-run/web/
           if-no-files-found: warn
           retention-days: 14
       - name: Upload history evidence

@@ -1,0 +1,12 @@
+url: ${VERIFY_URL}
+---
+# A signed-out launch opens the First Run. Returning athletes tap
+# "I have an account" to reach sign-in.
+- extendedWaitUntil:
+    visible: "Let's build your plan for this season."
+    timeout: 90000
+- tapOn:
+    id: first-run-sign-in
+- extendedWaitUntil:
+    visible: "WELCOME BACK"
+    timeout: 30000

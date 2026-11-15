@@ -24,7 +24,7 @@ Removed from the First Run: maxes (Profile already edits them; workouts run on R
 - **The reveal reads public data only:** `sports.list` and `programTemplates.getWorkout` for GPP week 1 day 1 at the athlete's category and skill level. Phase lengths and the session count come from the same functions `completeIntake` uses (`convex/weekMapping.ts`, `lib/calculations.ts`), so the reveal can't promise a different program than the one that gets saved.
 - **`completeIntake` takes `firstLaunchAt`** (new optional field). If the account already has a program, the existing program stays and the client shows a one-line notice. Verify the current `existingProgram` branch does exactly this before relying on it.
 - **Years become three choices,** mapped to 0, 1 and 3 years so `getSkillLevel` keeps working unchanged.
-- **Phase tints are placeholders behind one token set:** one hue in three tints deepening GPP → SPP → SSP, always with the name as text. The design-system pass replaces the values.
+- **Phase colors come from `lib/phase.ts`** (PR #110): one hue in three tints deepening GPP → SPP → SSP, always with the name as text.
 - **Motion:** Reanimated for the reveal only. `SportIcon` (built in the sport animation chat) does still and play-once rendering and reduced motion. Web gets a fade. No timed redirects anywhere.
 - **Replace outright.** No flag. The old screens are deleted in the same release.
 

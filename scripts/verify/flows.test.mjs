@@ -34,10 +34,11 @@ describe("web flows", () => {
     }
   })
 
-  it("includes sign-in, sign-up, and activation", () => {
+  it("includes sign-in and the First Run, and no longer sign-up or activation", () => {
     expect(listWebFlows()).toContain("sign-in")
-    expect(listWebFlows()).toContain("sign-up")
-    expect(listWebFlows()).toContain("activation")
+    expect(listWebFlows()).toContain("first-run")
+    expect(listWebFlows()).not.toContain("sign-up")
+    expect(listWebFlows()).not.toContain("activation")
     expect(listWebFlows()).toContain("history")
     expect(listWebFlows()).toContain("workout-exit-resume")
   })
@@ -88,7 +89,7 @@ describe("web flows", () => {
     const signOut = flow.indexOf("profile#sign-out")
     const signOutLabel = flow.indexOf('visible: "Sign Out"')
     const profileShot = flow.indexOf("takeScreenshot: 04-profile")
-    const signedOut = flow.lastIndexOf('visible: "WELCOME BACK"')
+    const signedOut = flow.lastIndexOf(`visible: "Let's build your plan for this season."`)
     const stop = flow.lastIndexOf("stopRecording")
     expect(start).toBeGreaterThan(flow.indexOf("launchApp"))
     expect(today).toBeGreaterThan(welcome)
@@ -102,116 +103,66 @@ describe("web flows", () => {
     expect(stop).toBeGreaterThan(flow.indexOf("takeScreenshot: 05-signed-out"))
   })
 
-  it("keeps the sign-up entry thin and its journey launch-free", () => {
-    const entry = fs.readFileSync(path.join(root, ".maestro/web/sign-up.yaml"), "utf8")
+  it("keeps the First Run entry thin and its journey launch-free", () => {
+    const entry = fs.readFileSync(path.join(root, ".maestro/web/first-run.yaml"), "utf8")
     expect(entry.startsWith("url: ${VERIFY_URL}\n")).toBe(true)
     expect(entry).toContain("clearState: true")
     expect(entry.indexOf("launchApp:")).toBeGreaterThan(-1)
-    expect(entry.indexOf("launchApp:")).toBeLessThan(entry.indexOf("runFlow: ../journeys/sign-up.yaml"))
+    expect(entry.indexOf("launchApp:")).toBeLessThan(entry.indexOf("runFlow: ../journeys/first-run.yaml"))
     expect(entry).not.toContain("appId:")
     expect(entry).not.toContain("inputText:")
-    const journey = fs.readFileSync(path.join(root, ".maestro/journeys/sign-up.yaml"), "utf8")
+    const journey = fs.readFileSync(path.join(root, ".maestro/journeys/first-run.yaml"), "utf8")
     expect(journey).toMatch(/^url: \$\{VERIFY_URL\}\n---\n/)
     expect(journey).not.toMatch(/^appId:/m)
     expect(journey).not.toContain("launchApp")
     expect(journey).not.toMatch(/^env:/m)
   })
 
-  it("records sign-up through the code screen to the intake sport screen", () => {
-    const flow = expandFlow(path.join(root, ".maestro/web/sign-up.yaml"))
-    const screen = fs.readFileSync(path.join(root, "app/(auth)/sign-up.tsx"), "utf8")
-    for (const id of ["sign-up-name", "sign-up-email", "sign-up-password"]) {
-      expect(screen).toContain(`testID="${id}"`)
-      expect(screen).toContain(`nativeID="${id}"`)
-    }
-    expect(screen).toContain('testID="sign-up-submit"')
-    expect(screen).toContain('firstInputId="sign-up-code"')
-    const launch = flow.indexOf("launchApp")
-    const start = flow.indexOf("startRecording: recording")
-    const welcome = flow.indexOf('visible: "WELCOME BACK"')
-    const signUpLink = flow.indexOf('tapOn: "Sign up"')
-    // One swipe brings "Sign up" into the web viewport, the next scrolls the form
-    const linkSwipe = flow.indexOf("- swipe:")
-    const swipe = flow.indexOf("- swipe:", signUpLink)
-    const name = flow.indexOf("id: sign-up-name\n- inputText")
-    const fullName = flow.indexOf('inputText: "Verify Athlete"')
-    const email = flow.indexOf("inputText: ${PERSONA_EMAIL}")
-    const password = flow.indexOf("inputText: ${PERSONA_PASSWORD}")
-    const submit = flow.indexOf("id: sign-up-submit\n- extendedWaitUntil")
-    const verify = flow.indexOf('visible: "VERIFY EMAIL"')
-    const codeBox = flow.indexOf("id: sign-up-code")
-    const code = flow.indexOf('inputText: "424242"')
-    const sport = flow.indexOf('visible: "Search sports..."')
-    const noSetup = flow.indexOf('assertNotVisible: "COMPLETE SETUP"')
-    const shot = flow.indexOf("takeScreenshot: 04-sport")
-    const stop = flow.lastIndexOf("stopRecording")
-    expect(flow).not.toContain("Trainer")
-    expect(start).toBeGreaterThan(launch)
-    expect(welcome).toBeGreaterThan(start)
-    expect(linkSwipe).toBeGreaterThan(welcome)
-    expect(signUpLink).toBeGreaterThan(linkSwipe)
-    expect(swipe).toBeGreaterThan(signUpLink)
-    expect(name).toBeGreaterThan(swipe)
-    expect(fullName).toBeGreaterThan(name)
-    expect(email).toBeGreaterThan(fullName)
-    expect(password).toBeGreaterThan(email)
-    expect(submit).toBeGreaterThan(password)
-    expect(verify).toBeGreaterThan(submit)
-    expect(codeBox).toBeGreaterThan(verify)
-    expect(code).toBeGreaterThan(codeBox)
-    expect(sport).toBeGreaterThan(code)
-    expect(noSetup).toBeGreaterThan(sport)
-    expect(shot).toBeGreaterThan(noSetup)
-    expect(stop).toBeGreaterThan(shot)
-  })
-
-  it("keeps the activation entry thin and its journey launch-free", () => {
-    const entry = fs.readFileSync(path.join(root, ".maestro/web/activation.yaml"), "utf8")
-    expect(entry.startsWith("url: ${VERIFY_URL}\n")).toBe(true)
-    expect(entry).toContain("clearState: true")
-    expect(entry.indexOf("launchApp:")).toBeGreaterThan(-1)
-    expect(entry.indexOf("launchApp:")).toBeLessThan(entry.indexOf("runFlow: ../journeys/activation.yaml"))
-    expect(entry).not.toContain("appId:")
-    const journey = fs.readFileSync(path.join(root, ".maestro/journeys/activation.yaml"), "utf8")
-    expect(journey).toMatch(/^url: \$\{VERIFY_URL\}\n---\n/)
-    expect(journey).not.toMatch(/^appId:/m)
-    expect(journey).not.toContain("launchApp")
-    expect(journey).not.toMatch(/^env:/m)
-  })
-
-  it("records activation from sign-in through intake and commitment to Today", () => {
-    const flow = expandFlow(path.join(root, ".maestro/web/activation.yaml"))
-    const sport = fs.readFileSync(path.join(root, "app/(intake)/sport.tsx"), "utf8")
-    const days = fs.readFileSync(path.join(root, "app/(intake)/training-days.tsx"), "utf8")
-    const season = fs.readFileSync(path.join(root, "app/(intake)/season-timeline.tsx"), "utf8")
-    const commitment = fs.readFileSync(path.join(root, "app/(onboarding)/commitment.tsx"), "utf8")
-    expect(sport).toContain("testID={`sport-tile-${getSportSlug(sport.name)}`}")
-    expect(days).toContain("testID={`training-day-${day.index}`}")
-    expect(season).toContain("`season-day-${formatDateISO(date)}`")
-    expect(season).toContain('testID="season-next-month"')
-    expect(commitment).toContain('testID="commitment-button"')
-    expect(commitment).not.toContain("CommitmentButton")
-    expect(flow).not.toContain("longPressOn")
+  it("records the First Run from the promise through sign-up to the Day 1 warm-up", () => {
+    const flow = expandFlow(path.join(root, ".maestro/web/first-run.yaml"))
+    const read = (file) => fs.readFileSync(path.join(root, file), "utf8")
+    const screens = [
+      read("app/(first-run)/index.tsx"),
+      read("app/(first-run)/sport.tsx"),
+      read("app/(first-run)/season.tsx"),
+      read("app/(first-run)/days.tsx"),
+      read("app/(first-run)/about.tsx"),
+      read("app/(first-run)/reveal.tsx"),
+      read("components/first-run/FirstRunScreen.tsx"),
+      read("components/first-run/SavePlanSheet.tsx"),
+      read("app/ready.tsx"),
+    ].join("\n")
+    // Every testID the journey taps exists in the screens. (Quoted ids are
+    // accessibility labels, which Maestro web reports as the id.)
+    const ids = [...flow.matchAll(/id: ([a-z0-9-]+)$/gim)].map((m) => m[1])
+    const missing = [...new Set(ids)].filter((id) => !screens.includes(id))
+    expect(missing).toEqual([])
     const order = [
       "startRecording: recording",
-      'visible: "WELCOME BACK"',
-      "inputText: ${PERSONA_PASSWORD}",
-      "id: sport-tile-basketball",
-      'assertNotVisible: "COMPLETE SETUP"',
-      'visible: "Training in 3 Phases"',
+      `visible: "Let's build your plan for this season."`,
+      'assertNotVisible: "WELCOME BACK"',
+      'id: "Basketball"',
+      'visible: "Basketball · Power"',
+      'tapOn: "No set season"',
+      'visible: "3 days a week"',
       'tapOn: "Performance"',
-      'visible: "YOUR EXPERIENCE"',
-      "runScript: ../scripts/activation-dates.js",
-      "id: training-day-${output.today}",
-      "notVisible:\n        id: ${output.seasonDay}",
-      "          id: season-next-month\n- tapOn:\n    id: ${output.seasonDay}",
-      "tapOn: \"I'll set these later\"",
-      'visible: "Your Program is Ready!"',
-      "id: commitment-button",
-      "id: today-heading",
-      "id: today-workout-card",
-      'assertVisible: "Start Workout"',
-      "takeScreenshot: 12-today",
+      'tapOn: "New to training"',
+      "id: first-run-see-plan",
+      'visible: "Lower Body A - Foundation"',
+      'assertVisible: "36 sessions over 12 weeks"',
+      "id: first-run-save",
+      "id: save-plan-email",
+      'assertNotVisible: "Skip"',
+      'inputText: "Verify Athlete"',
+      "inputText: ${PERSONA_EMAIL}",
+      "inputText: ${PERSONA_PASSWORD}",
+      "id: save-plan-create",
+      'visible: "Check your email"',
+      'inputText: "424242"',
+      `visible: "You're set."`,
+      "id: ready-start",
+      'visible: "WARMUP"',
+      "takeScreenshot: 09-warmup",
       "stopRecording",
     ]
     // Jest's expect takes no message, so failures name the steps in the diff.
@@ -335,39 +286,10 @@ describe("summary", () => {
 })
 
 describe("persona modes per flow", () => {
-  it("signs up through the UI, activates from needs-intake, and signs in onboarded otherwise", () => {
-    expect(personaMode("sign-up")).toBe("signup")
-    expect(personaMode("activation")).toBe("needs-intake")
+  it("makes the First Run account through the UI and signs in onboarded otherwise", () => {
+    expect(personaMode("first-run")).toBe("first-run")
     expect(personaMode("history")).toBe("with-history")
     expect(personaMode("sign-in")).toBe("onboarded")
-  })
-})
-
-describe("activation dates script", () => {
-  async function runDates(isoNow) {
-    const vm = await import("node:vm")
-    const source = fs.readFileSync(path.join(root, ".maestro/scripts/activation-dates.js"), "utf8")
-    const RealDate = Date
-    class FixedDate extends RealDate {
-      constructor(...args) {
-        super(...(args.length ? args : [isoNow]))
-      }
-    }
-    const output = {}
-    vm.runInNewContext(source, { Date: FixedDate, output })
-    return output
-  }
-
-  it("picks today and two more days, and a season 84 days out", async () => {
-    // Thursday 12 Nov 2026, local time.
-    const output = await runDates("2026-11-12T10:00:00")
-    expect(output).toEqual({ today: 4, day2: 6, day4: 1, seasonDay: "season-day-2027-02-04" })
-  })
-
-  it("wraps the week and pads the date", async () => {
-    // Saturday 1 Mar 2025 + 84 days = Saturday 24 May 2025.
-    const output = await runDates("2025-03-01T23:30:00")
-    expect(output).toEqual({ today: 6, day2: 1, day4: 3, seasonDay: "season-day-2025-05-24" })
   })
 })
 

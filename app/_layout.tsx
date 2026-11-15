@@ -75,25 +75,17 @@ function RootLayoutNav() {
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
       <Stack>
+        {/* First Run: intake, reveal and save, before any account */}
+        <Stack.Screen
+          name="(first-run)"
+          options={{
+            headerShown: false,
+          }}
+        />
+
         {/* Auth routes (sign in, sign up) */}
         <Stack.Screen
           name="(auth)"
-          options={{
-            headerShown: false,
-          }}
-        />
-        
-        {/* Intake flow (sport selection, experience, results) */}
-        <Stack.Screen
-          name="(intake)"
-          options={{
-            headerShown: false,
-          }}
-        />
-        
-        {/* Onboarding flow (educational screens) */}
-        <Stack.Screen
-          name="(onboarding)"
           options={{
             headerShown: false,
           }}
@@ -112,6 +104,15 @@ function RootLayoutNav() {
           name="(athlete)"
           options={{
             headerShown: false,
+          }}
+        />
+
+        {/* After the First Run saves: Start Day 1 or Not now */}
+        <Stack.Screen
+          name="ready"
+          options={{
+            headerShown: false,
+            gestureEnabled: false,
           }}
         />
 
