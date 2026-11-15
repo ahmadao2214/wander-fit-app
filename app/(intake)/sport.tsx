@@ -13,8 +13,8 @@ import {
   LogOut,
 } from '@tamagui/lucide-icons'
 import { Id } from '../../convex/_generated/dataModel'
-import LottieView from 'lottie-react-native'
-import { getSportInitials, getSportSlug } from '../../lib'
+import { getSportSlug } from '../../lib'
+import { SportIcon } from '../../components/sport-icon/SportIcon'
 import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT, COMBINED_FLOW_ROUTES } from '../../components/IntakeProgressDots'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -36,67 +36,6 @@ const Subtitle = styled(Text, {
   text: 'center',
   lineHeight: 22,
 })
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Sport Icon Lottie Mapping
-// ─────────────────────────────────────────────────────────────────────────────
-
-const SPORT_LOTTIE: Record<string, any> = {
-  'Soccer': require('../../assets/lottie/sports/soccer.json'),
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// SportIcon Component
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface SportIconProps {
-  name: string
-  size?: number
-  isSelected?: boolean
-}
-
-const SportIcon = ({ name, size = 56, isSelected = false }: SportIconProps) => {
-  const lottieSource = SPORT_LOTTIE[name]
-  
-  if (lottieSource) {
-    return (
-      <Circle 
-        size={size} 
-        bg={isSelected ? '$brand3' : '$color4'}
-        overflow="hidden"
-        items="center"
-        justify="center"
-      >
-        <LottieView
-          key={isSelected ? 'playing' : 'paused'}
-          source={lottieSource}
-          autoPlay={isSelected}
-          loop={isSelected}
-          speed={0.8}
-          style={{ width: size * 1.4, height: size * 1.4 }}
-        />
-      </Circle>
-    )
-  }
-
-  // Fallback: Extract initials using shared utility
-  const initials = getSportInitials(name)
-
-  return (
-    <Circle 
-      size={size} 
-      bg={isSelected ? '$brand3' : '$color4'}
-    >
-      <Text 
-        fontSize={size / 2.5} 
-        fontFamily="$body" fontWeight="700"
-        color={isSelected ? '$primary' : '$color10'}
-      >
-        {initials}
-      </Text>
-    </Circle>
-  )
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SportTile Component
@@ -133,10 +72,10 @@ const SportTile = ({ sport, isSelected, onSelect }: SportTileProps) => {
         gap="$2" 
         p="$2"
       >
-        <SportIcon 
-          name={sport.name} 
+        <SportIcon
+          name={sport.name}
           size={44}
-          isSelected={isSelected} 
+          bg={isSelected ? '$brand3' : '$color4'}
         />
         <Text 
           fontSize={12} 
