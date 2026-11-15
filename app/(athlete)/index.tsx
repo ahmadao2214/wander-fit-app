@@ -67,9 +67,10 @@ function PhaseProgress({
   const segments = phaseWeekSegments(week, weeksPerPhase)
   return (
     <YStack gap="$2.5" testID="phase-progress">
-      <XStack justify="space-between" items="baseline">
-        <SectionLabel>{PHASE_NAMES[phase]}</SectionLabel>
-        <Text fontSize={13} fontFamily="$body" fontWeight="600" color="$color11">
+      {/* The full name wraps on narrow phones or large text; the week count keeps its width */}
+      <XStack justify="space-between" items="flex-end" gap="$3">
+        <SectionLabel style={{ flex: 1 }}>{PHASE_NAMES[phase]}</SectionLabel>
+        <Text fontSize={13} fontFamily="$body" fontWeight="600" color="$color11" style={{ flexShrink: 0 }}>
           Week {Math.min(week, segments.length)} of {segments.length}
         </Text>
       </XStack>

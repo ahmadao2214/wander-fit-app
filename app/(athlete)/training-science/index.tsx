@@ -246,7 +246,7 @@ export default function TrainingSciencePage() {
                 <YStack gap="$2">
                   <XStack items="center" gap="$2">
                     <phase.icon size={16} color={phase.accent} />
-                    <SubHeading color={phase.text}>{phase.title}</SubHeading>
+                    <SubHeading flex={1} color={phase.text}>{phase.title}</SubHeading>
                   </XStack>
                   <BodyText color={phase.text}>{phase.body}</BodyText>
                   <PhaseSpecs specs={phase.specs} accent={phase.accent} text={phase.text} />

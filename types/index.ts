@@ -35,14 +35,8 @@ export type GppCategoryId = 1 | 2 | 3 | 4;
  */
 export type Phase = "GPP" | "SPP" | "SSP";
 
-/**
- * Full phase names for display purposes
- */
-export const PHASE_NAMES: Record<Phase, string> = {
-  GPP: "General Physical Preparedness",
-  SPP: "Specific Physical Preparedness",
-  SSP: "Sport-Specific Preparedness",
-};
+/** Full phase names for display; defined once in lib/phase.ts */
+export { PHASE_NAMES } from "../lib/phase";
 
 // Skill levels
 export type SkillLevel = "Novice" | "Moderate" | "Advanced";
