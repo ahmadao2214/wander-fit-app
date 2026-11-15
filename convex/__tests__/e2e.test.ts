@@ -136,3 +136,48 @@ describe("e2e persona provisioning", () => {
     expect(left).toEqual([]);
   });
 });
+
+describe("e2e template seed", () => {
+  // Mirrors scripts/verify/run.mjs: seed:seedAll, then the generator per category.
+  it("gives the e2e database the generated Day 1 that production serves", async () => {
+    const t = newTest();
+    await t.mutation(internal.seed.seedAll, {});
+    // An older hand-written seed row must be replaced, not kept.
+    await t.mutation(internal.seed.seedAllSkillLevelTemplates, {});
+    for (const categoryId of [1, 2, 3, 4]) {
+      await t.mutation(internal.generateTemplates.regenerateCategoryTemplates, {
+        categoryId,
+        failOnErrors: true,
+      });
+    }
+
+    const day1 = await t.query(api.programTemplates.getWorkout, {
+      gppCategoryId: 2,
+      phase: "GPP",
+      skillLevel: "Novice",
+      week: 1,
+      day: 1,
+    });
+    expect(day1?.name).toBe("Lower Body A - Foundation");
+
+    const count = await t.run(async (ctx) => (await ctx.db.query("program_templates").collect()).length);
+    expect(count).toBe(4 * 3 * 3 * 4 * 7);
+
+    // A second seed (every deploy) keeps template IDs, so saved sessions
+    // still open their workout.
+    await t.mutation(internal.generateTemplates.regenerateCategoryTemplates, {
+      categoryId: 2,
+      failOnErrors: true,
+    });
+    const again = await t.query(api.programTemplates.getWorkout, {
+      gppCategoryId: 2,
+      phase: "GPP",
+      skillLevel: "Novice",
+      week: 1,
+      day: 1,
+    });
+    expect(again?._id).toBe(day1?._id);
+    const recount = await t.run(async (ctx) => (await ctx.db.query("program_templates").collect()).length);
+    expect(recount).toBe(count);
+  }, 60_000);
+});

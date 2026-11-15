@@ -736,10 +736,29 @@ export function previewDeployArgs(name) {
 }
 
 // seed:seedAll adds categories, sports and exercises. The program templates
-// are a second, idempotent seed; the with-history persona completes one.
-export function templateSeedArgs(previewName) {
+// come from the same generator production uses, one category per run to stay
+// inside Convex's mutation limits, so the First Run reveal and Today show the
+// real Day 1. Regenerating replaces any older hand-written seed templates.
+// The with-history persona completes one of them.
+export const TEMPLATE_CATEGORIES = [1, 2, 3, 4]
+
+export function templateSeedArgs(categoryId, previewName) {
   const target = previewName ? ["--preview-name", previewName] : []
-  return ["run", ...target, "seed:seedAllSkillLevelTemplates", "{}"]
+  return [
+    "run",
+    ...target,
+    "generateTemplates:regenerateCategoryTemplates",
+    JSON.stringify({ categoryId, failOnErrors: true }),
+  ]
+}
+
+function seedTemplates(env, previewName) {
+  for (const categoryId of TEMPLATE_CATEGORIES) {
+    const seeded = convexCli(templateSeedArgs(categoryId, previewName), env)
+    if (seeded.status !== 0) {
+      fail(`generateTemplates:regenerateCategoryTemplates for category ${categoryId} exited ${seeded.status ?? 1}`)
+    }
+  }
 }
 
 // Pull request runs: push this checkout's convex/ functions to the PR's
@@ -774,8 +793,7 @@ function deployPreview(key) {
   if (pushed.status !== 0) fail(`convex deploy exited ${pushed.status ?? 1}`)
   const url = fs.existsSync(previewUrlFile) ? fs.readFileSync(previewUrlFile, "utf8").trim() : ""
   if (!url) fail("convex deploy did not report the preview deployment URL.")
-  const templates = convexCli(templateSeedArgs(name), env)
-  if (templates.status !== 0) fail(`seed:seedAllSkillLevelTemplates exited ${templates.status ?? 1}`)
+  seedTemplates(env, name)
   let host = ""
   try {
     host = assertConvexUrlAllowed(url)
@@ -802,8 +820,7 @@ function deployBackend() {
   console.log(`seeding ${host}`)
   const seeded = convexCli(["run", "seed:seedAll", "{}"], env)
   if (seeded.status !== 0) fail(`seed:seedAll exited ${seeded.status ?? 1}`)
-  const templates = convexCli(templateSeedArgs(), env)
-  if (templates.status !== 0) fail(`seed:seedAllSkillLevelTemplates exited ${templates.status ?? 1}`)
+  seedTemplates(env)
   publishConvexUrl(e2eUrl())
 }
 

@@ -24,6 +24,7 @@ import type * as migrations_migrateAgeGroups from "../migrations/migrateAgeGroup
 import type * as migrations_migrateTemplates from "../migrations/migrateTemplates.js";
 import type * as migrations from "../migrations.js";
 import type * as onboarding from "../onboarding.js";
+import type * as programShape from "../programShape.js";
 import type * as programTemplates from "../programTemplates.js";
 import type * as scheduleOverrides from "../scheduleOverrides.js";
 import type * as seed from "../seed.js";
@@ -57,6 +58,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/migrateTemplates": typeof migrations_migrateTemplates;
   migrations: typeof migrations;
   onboarding: typeof onboarding;
+  programShape: typeof programShape;
   programTemplates: typeof programTemplates;
   scheduleOverrides: typeof scheduleOverrides;
   seed: typeof seed;

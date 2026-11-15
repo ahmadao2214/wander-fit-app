@@ -1292,6 +1292,9 @@ export const getGenerationStatus = internalQuery({
 export const regenerateCategoryTemplates = internalMutation({
   args: {
     categoryId: v.number(),
+    // Throw (and roll back) if any template fails, so a seed script exits
+    // non-zero instead of leaving the category half generated.
+    failOnErrors: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const categoryId = args.categoryId as GppCategoryId;
@@ -1303,26 +1306,32 @@ export const regenerateCategoryTemplates = internalMutation({
     const allExercises = await ctx.db.query("exercises").collect();
     const exerciseMap = new Map(allExercises.map((e) => [e.slug, e._id]));
 
-    // Delete all existing templates for this category
+    // Existing templates are replaced in place, so their IDs (and the saved
+    // sessions that point at them) survive a regenerate.
     const existing = await ctx.db
       .query("program_templates")
       .withIndex("by_category_phase", (q) => q.eq("gppCategoryId", categoryId))
       .collect();
-
-    let deleted = 0;
+    const slotKey = (t: { phase: string; skillLevel: string; week: number; day: number }) =>
+      `${t.phase}|${t.skillLevel}|${t.week}|${t.day}`;
+    const bySlot = new Map<string, (typeof existing)[number]>();
+    const extras: typeof existing = [];
     for (const t of existing) {
-      await ctx.db.delete(t._id);
-      deleted++;
+      if (bySlot.has(slotKey(t))) extras.push(t);
+      else bySlot.set(slotKey(t), t);
     }
+    const generatedSlots = new Set<string>();
 
     // Regenerate
     let created = 0;
+    let updated = 0;
     const errors: string[] = [];
 
     for (const phase of PHASES) {
       for (const skillLevel of SKILL_LEVELS) {
         for (const week of WEEKS) {
           for (const day of DAYS) {
+            generatedSlots.add(slotKey({ phase, skillLevel, week, day }));
             try {
               const template = generateTemplate(categoryId, phase, skillLevel, week, day);
 
@@ -1345,7 +1354,7 @@ export const regenerateCategoryTemplates = internalMutation({
                 };
               });
 
-              await ctx.db.insert("program_templates", {
+              const doc = {
                 gppCategoryId: template.gppCategoryId,
                 phase: template.phase,
                 skillLevel: template.skillLevel,
@@ -1355,9 +1364,15 @@ export const regenerateCategoryTemplates = internalMutation({
                 description: template.description,
                 estimatedDurationMinutes: template.estimatedDurationMinutes,
                 exercises: exercisesWithIds,
-              });
-
-              created++;
+              };
+              const current = bySlot.get(slotKey(doc));
+              if (current) {
+                await ctx.db.replace(current._id, doc);
+                updated++;
+              } else {
+                await ctx.db.insert("program_templates", doc);
+                created++;
+              }
             } catch (error) {
               errors.push(`${phase}, ${skillLevel}, W${week}D${day}: ${error}`);
             }
@@ -1366,10 +1381,23 @@ export const regenerateCategoryTemplates = internalMutation({
       }
     }
 
+    // Remove duplicates and slots the generator no longer makes. A slot that
+    // failed to generate keeps its old template.
+    let deleted = 0;
+    for (const t of [...extras, ...[...bySlot.values()].filter((t) => !generatedSlots.has(slotKey(t)))]) {
+      await ctx.db.delete(t._id);
+      deleted++;
+    }
+
+    if (args.failOnErrors && errors.length > 0) {
+      throw new Error(`Category ${categoryId}: ${errors.length} templates failed. First: ${errors[0]}`);
+    }
+
     return {
       message: `Category ${categoryId} (${CATEGORY_NAMES[categoryId]}) regenerated`,
       deleted,
       created,
+      updated,
       errors: errors.length > 0 ? errors : undefined,
     };
   },
