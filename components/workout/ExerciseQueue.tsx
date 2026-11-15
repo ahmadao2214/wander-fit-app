@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import {
   YStack,
   XStack,
@@ -6,7 +6,6 @@ import {
   Card,
   Button,
   styled,
-  type ColorTokens,
 } from 'tamagui'
 import {
   Check,
@@ -32,6 +31,8 @@ import DraggableFlatList, {
 } from 'react-native-draggable-flatlist'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { phaseTokens } from '../../lib/phase'
+import type { Phase } from '../../types'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
@@ -65,8 +66,8 @@ interface ExerciseQueueProps {
   currentIndex: number
   onExerciseSelect: (index: number) => void
   onReorder: (fromIndex: number, toIndex: number) => void
-  /** Primary intensity color token (e.g., "$intensityLow6") */
-  intensityColor?: ColorTokens
+  /** Training phase: colors the current exercise and the edge tab */
+  trainingPhase?: Phase
 }
 
 const DRAWER_WIDTH = Dimensions.get('window').width * 0.85
@@ -90,8 +91,9 @@ export function ExerciseQueue({
   currentIndex,
   onExerciseSelect,
   onReorder,
-  intensityColor = '$primary',
+  trainingPhase,
 }: ExerciseQueueProps) {
+  const phase = useMemo(() => phaseTokens(trainingPhase), [trainingPhase])
   const [open, setOpen] = useState(false)
   const slideAnim = useRef(new Animated.Value(DRAWER_WIDTH)).current
   const insets = useSafeAreaInsets()
@@ -196,7 +198,7 @@ export function ExerciseQueue({
             p="$3"
             mb="$2"
             bg={isActive ? '$color2' : isCurrent ? '$color2' : isCompleted ? '$color3' : '$surface'}
-            borderColor={isActive ? intensityColor : isCurrent ? intensityColor : '$borderColor'}
+            borderColor={isActive || isCurrent ? phase.fill : '$borderColor'}
             borderWidth={isCurrent || isActive ? 2 : 1}
             rounded="$4"
             opacity={isCompleted && !isCurrent ? 0.7 : 1}
@@ -222,7 +224,7 @@ export function ExerciseQueue({
                 width={28}
                 height={28}
                 rounded="$10"
-                bg={isCompleted ? '$green10' : isCurrent ? intensityColor : '$color4'}
+                bg={isCompleted ? '$green10' : isCurrent ? phase.fill : '$color4'}
                 items="center"
                 justify="center"
               >
@@ -232,7 +234,7 @@ export function ExerciseQueue({
                   <Text
                     fontSize={12}
                     fontFamily="$body" fontWeight="700"
-                    color={isCurrent ? '$color12' : '$color11'}
+                    color={isCurrent ? phase.onFill : '$color11'}
                   >
                     {index + 1}
                   </Text>
@@ -261,10 +263,10 @@ export function ExerciseQueue({
 
               {/* Current Badge or Navigation Arrow */}
               {isCurrent ? (
-                <Card bg={intensityColor} px="$2" py="$1" rounded="$2">
+                <Card bg={phase.fill} px="$2" py="$1" rounded="$2">
                   <Text
                     fontSize={10}
-                    color="$color12"
+                    color={phase.onFill}
                     fontFamily="$body" fontWeight="700"
                     letterSpacing={0.5}
                   >
@@ -279,7 +281,7 @@ export function ExerciseQueue({
         </TouchableOpacity>
       </ScaleDecorator>
     )
-  }, [currentIndex, onExerciseSelect, triggerHaptic, intensityColor])
+  }, [currentIndex, onExerciseSelect, triggerHaptic, phase])
 
   const keyExtractor = useCallback((item: Exercise, index: number) =>
     `${item.exerciseId}-${index}`, [])
@@ -290,9 +292,19 @@ export function ExerciseQueue({
       <View
         style={styles.edgeTab}
         {...edgePanResponder.panHandlers}
+        // VoiceOver/TalkBack can't drive the pan responder; give it a button
+        accessible
+        accessibilityRole="button"
+        accessibilityLabel="Exercise list"
+        accessibilityHint="Shows every exercise in this workout"
+        accessibilityActions={[{ name: 'activate' }]}
+        onAccessibilityAction={(e) => {
+          if (e.nativeEvent.actionName === 'activate') setOpen(true)
+        }}
+        testID="exercise-queue-tab"
       >
         <YStack
-          bg={intensityColor}
+          bg={phase.fill}
           width={EDGE_TAB_WIDTH}
           height={80}
           borderTopLeftRadius={12}
@@ -304,7 +316,7 @@ export function ExerciseQueue({
           items="center"
           justify="center"
         >
-          <ChevronLeft size={16} color="white" style={{ marginLeft: -2 }} />
+          <ChevronLeft size={16} color={phase.onFill} style={{ marginLeft: -2 }} />
         </YStack>
       </View>
 

@@ -1,18 +1,8 @@
 import { YStack, XStack, Text, Card, type ColorTokens } from 'tamagui'
 import { CheckCircle, Play, Lock } from '@tamagui/lucide-icons'
 import type { Phase } from '../../types'
+import { phaseTokens } from '../../lib/phase'
 
-/**
- * Phase colors for visual distinction
- * GPP = Blue (foundation phase)
- * SPP = Orange (sport-specific phase)
- * SSP = Green (competition prep phase)
- */
-const PHASE_COLORS: Record<Phase, { dot: ColorTokens }> = {
-  GPP: { dot: '$blue9' },
-  SPP: { dot: '$orange9' },
-  SSP: { dot: '$green9' },
-}
 
 export interface CalendarWorkoutCardProps {
   templateId: string
@@ -57,7 +47,7 @@ export function CalendarWorkoutCard({
   onLongPress,
 }: CalendarWorkoutCardProps) {
   // Use phase colors for visual distinction
-  const colors = PHASE_COLORS[phase]
+  const colors = { dot: phaseTokens(phase).fill }
 
   // One neutral surface for every card. Phase is the left stripe; today is
   // the border; in progress, done and locked are the icon (and dimming).

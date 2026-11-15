@@ -30,7 +30,7 @@ import { ConfettiEffect } from '../../../../components/workout/ConfettiEffect'
 import { WarmupSection, type WarmupExercise } from '../../../../components/workout/WarmupSection'
 import { WARMUP_PHASES } from '../../../../convex/warmupSequences'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { PanResponder, Platform, Vibration, Animated, useColorScheme, Pressable } from 'react-native'
+import { PanResponder, Platform, Vibration, Animated, Pressable } from 'react-native'
 import { mapIntensityToLevel, normalizeTrackedSets } from '../../../../lib'
 import { activeSeconds } from '../../../../lib/sessionTiming'
 import {
@@ -39,6 +39,7 @@ import {
   mainTemplateIndices,
   normalizeExerciseOrder,
 } from '../../../../lib/executionOrder'
+import { phaseTokens } from '../../../../lib/phase'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
@@ -174,34 +175,9 @@ export default function WorkoutExecutionScreen() {
     () => mapIntensityToLevel(session?.targetIntensity),
     [session?.targetIntensity]
   )
-  const colorScheme = useColorScheme()
-  const isDark = colorScheme === 'dark'
 
-  // Phase-based accent colors (GPP=blue, SPP=orange, SSP=green)
-  // Matches workout detail screen's phaseColor system
-  const intensityColors = useMemo(() => {
-    const phase = session?.template?.phase
-    if (phase === 'SPP') {
-      return {
-        primary: '$orange9' as const,
-        light: isDark ? '$orange3' : '$orange2',
-        text: '$orange11' as const,
-      }
-    }
-    if (phase === 'SSP') {
-      return {
-        primary: '$green9' as const,
-        light: isDark ? '$green3' : '$green2',
-        text: '$green11' as const,
-      }
-    }
-    // Default: GPP = blue
-    return {
-      primary: '$blue9' as const,
-      light: isDark ? '$blue3' : '$blue2',
-      text: '$blue11' as const,
-    }
-  }, [session?.template?.phase, isDark])
+  // Phase identity colors (progress dots, set tiles, queue); actions use $primary
+  const phase = phaseTokens(session?.template?.phase)
 
   // Keep refs in sync
   useEffect(() => {
@@ -696,10 +672,7 @@ export default function WorkoutExecutionScreen() {
         onComplete={() => setShowWarmup(false)}
         onBack={() => router.back()}
         mode="flow"
-        phaseColor={
-          template?.phase === 'GPP' ? '$blue9'
-            : template?.phase === 'SPP' ? '$orange9' : '$green9'
-        }
+        trainingPhase={template?.phase}
       />
     )
   }
@@ -741,19 +714,30 @@ export default function WorkoutExecutionScreen() {
           </Pressable>
 
           {/* Dot Stepper Progress */}
-          <XStack items="center" gap="$1.5">
+          {/* Done = solid phase dot, current = wide pill, upcoming = hollow ring:
+              the shape carries the state, so it never depends on color alone */}
+          <XStack
+            items="center"
+            gap="$1.5"
+            accessible
+            accessibilityRole="progressbar"
+            accessibilityLabel={`Exercise ${currentExerciseIndex + 1} of ${orderedExercises.length}, ${
+              orderedExercises.filter((_, idx) => completionAt(idx)?.completed).length
+            } done`}
+            testID="exercise-progress"
+          >
             {orderedExercises.map((_, idx) => {
               const isCompleted = completionAt(idx)?.completed
               const isCurrent = idx === currentExerciseIndex
               return (
                 <YStack
                   key={idx}
-                  width={isCurrent ? 10 : 8}
-                  height={isCurrent ? 10 : 8}
+                  width={isCurrent ? 18 : 8}
+                  height={8}
                   rounded={100}
-                  bg={isCompleted ? intensityColors.primary : isCurrent ? 'transparent' : '$color5'}
-                  borderWidth={isCurrent ? 2 : 0}
-                  borderColor={isCurrent ? '$color8' : undefined}
+                  bg={isCurrent ? '$color12' : isCompleted ? phase.fill : 'transparent'}
+                  borderWidth={isCurrent || isCompleted ? 0 : 1.5}
+                  borderColor={isCurrent || isCompleted ? undefined : '$color8'}
                 />
               )
             })}
@@ -841,8 +825,7 @@ export default function WorkoutExecutionScreen() {
                   prescribedReps={currentExercise.scaledReps ?? currentExercise.reps}
                   prescribedSets={currentExercise.scaledSets ?? currentExercise.sets}
                   onSetUpdate={handleSetUpdate}
-                  intensityColor={intensityColors.primary}
-                  intensityLightColor={intensityColors.light}
+                  trainingPhase={session?.template?.phase}
                   previousSets={previousSetsForCurrentExercise}
                 />
               )}
@@ -881,11 +864,9 @@ export default function WorkoutExecutionScreen() {
           <Button
             flex={1}
             size="$5"
-            bg={intensityColors.primary}
+            bg="$primary"
             color="white"
             iconAfter={isLastExercise ? Trophy : ChevronRight}
-            // White on the phase fill is 3.0-3.3:1, which AA allows only for
-            // large text (18.66px bold and up)
             fontSize={19}
             fontFamily="$body" fontWeight="700"
             rounded="$4"
@@ -912,7 +893,7 @@ export default function WorkoutExecutionScreen() {
         currentIndex={currentExerciseIndex}
         onExerciseSelect={handleExerciseSelect}
         onReorder={handleReorder}
-        intensityColor={intensityColors.primary}
+        trainingPhase={session?.template?.phase}
       />
 
       {/* Exit Confirmation Dialog */}

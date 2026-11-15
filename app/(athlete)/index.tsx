@@ -1,4 +1,4 @@
-import { AlertDialog, YStack, XStack, Text, Card, Button, ScrollView, Spinner, styled, type ColorTokens } from 'tamagui'
+import { AlertDialog, YStack, XStack, Text, Card, Button, ScrollView, Spinner, styled } from 'tamagui'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
@@ -18,6 +18,8 @@ import { todayHeading, phaseWeekSegments, progressCaption, countMainExercises, m
 import { workoutMetaLine } from '../../lib/workoutMeta'
 import { DEFAULT_WEEKS_PER_PHASE } from '../../lib/calendarUtils'
 import { pausedLabel } from '../../lib/sessionTiming'
+import { PHASE_NAMES, phaseTokens } from '../../lib/phase'
+import type { Phase } from '../../types'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
@@ -41,11 +43,6 @@ const SectionLabel = styled(Text, {
   color: '$color10',
 })
 
-const PHASE_NAMES: Record<string, string> = {
-  GPP: 'General prep',
-  SPP: 'Specific prep',
-  SSP: 'Sport-specific prep',
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PHASE PROGRESS
@@ -60,21 +57,20 @@ function PhaseProgress({
   phase,
   week,
   weeksPerPhase,
-  phaseColor,
   caption,
 }: {
-  phase: string
+  phase: Phase
   week: number
   weeksPerPhase: number
-  phaseColor: ColorTokens
   caption: string | null
 }) {
   const segments = phaseWeekSegments(week, weeksPerPhase)
   return (
     <YStack gap="$2.5" testID="phase-progress">
-      <XStack justify="space-between" items="baseline">
-        <SectionLabel>{PHASE_NAMES[phase] ?? phase}</SectionLabel>
-        <Text fontSize={13} fontFamily="$body" fontWeight="600" color="$color11">
+      {/* The full name wraps on narrow phones or large text; the week count keeps its width */}
+      <XStack justify="space-between" items="flex-end" gap="$3">
+        <SectionLabel style={{ flex: 1 }}>{PHASE_NAMES[phase]}</SectionLabel>
+        <Text fontSize={13} fontFamily="$body" fontWeight="600" color="$color11" style={{ flexShrink: 0 }}>
           Week {Math.min(week, segments.length)} of {segments.length}
         </Text>
       </XStack>
@@ -85,7 +81,7 @@ function PhaseProgress({
             flex={1}
             height={6}
             rounded="$10"
-            bg={segment === 'upcoming' ? '$color4' : phaseColor}
+            bg={segment === 'upcoming' ? '$color4' : phaseTokens(phase).fill}
             opacity={segment === 'current' ? 0.45 : 1}
           />
         ))}
@@ -258,12 +254,8 @@ export default function AthleteDashboard() {
   // Discard a paused session (the athlete's explicit choice; Exit only pauses)
   const abandonSession = useMutation(api.gppWorkoutSessions.abandonSession)
 
-  // Phase color (GPP=blue, SPP=orange, SSP=green)
-  const phaseColor: ColorTokens = programState?.phase === 'GPP'
-    ? '$blue9'
-    : programState?.phase === 'SPP'
-      ? '$orange9'
-      : '$green9'
+  // Phase colors: one brand hue, deepening GPP → SSP (lib/phase.ts)
+  const phase = phaseTokens(programState?.phase)
 
   // Loading state
   if (authLoading || programState === undefined) {
@@ -446,7 +438,7 @@ export default function AthleteDashboard() {
                       fontSize={14}
                       fontFamily="$body"
                       fontWeight="600"
-                      color={phaseColor}
+                      color={phase.text}
                     >
                       {/* The athlete's scheduled position. todayWorkout.week is the template's
                           lookup week, which differs when phases are shorter than 4 weeks. */}
@@ -489,10 +481,9 @@ export default function AthleteDashboard() {
                 <YStack gap="$1">
                   <Button
                     size="$5"
-                    bg={phaseColor}
+                    bg="$primary"
                     color="white"
                     icon={RotateCcw}
-                    // Large text: white on the phase fill is 3.0-3.3:1
                     fontSize={19}
                     fontFamily="$body" fontWeight="700"
                     rounded="$4"
@@ -539,7 +530,6 @@ export default function AthleteDashboard() {
             phase={programState.phase}
             week={programState.week}
             weeksPerPhase={programState.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE}
-            phaseColor={phaseColor}
             caption={
               progress
                 ? progressCaption({
