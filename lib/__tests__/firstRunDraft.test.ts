@@ -139,6 +139,41 @@ describe('createDraftStore', () => {
     expect(data.get(DRAFT_KEY)).toBe(saved)
   })
 
+  it('reads again after a failed read instead of saving an empty draft over it', async () => {
+    const { storage, data } = memoryStorage()
+    await createDraftStore(storage, () => 1000).save({ answers: { sportId: 's1' }, lastStep: 'days' })
+    let failures = 1
+    const flaky: DraftStorage = {
+      ...storage,
+      getItem: async (key) => {
+        if (failures-- > 0) throw new Error('keychain locked')
+        return storage.getItem(key)
+      },
+    }
+    const store = createDraftStore(flaky, () => 5000)
+    expect((await store.load()).answers).toEqual({})
+    // The promise screen reaching its step on launch
+    const saved = await store.save({ lastStep: 'promise' })
+    expect(saved.answers).toEqual({ sportId: 's1' })
+    expect(JSON.parse(data.get(DRAFT_KEY)!).answers).toEqual({ sportId: 's1' })
+  })
+
+  it('does not write a step over storage it still cannot read', async () => {
+    const { storage, data } = memoryStorage()
+    await createDraftStore(storage, () => 1000).save({ answers: { sportId: 's1' }, lastStep: 'days' })
+    const saved = data.get(DRAFT_KEY)
+    const locked: DraftStorage = {
+      ...storage,
+      getItem: async () => {
+        throw new Error('keychain locked')
+      },
+    }
+    const store = createDraftStore(locked, () => 5000)
+    await store.load()
+    await store.save({ lastStep: 'promise' })
+    expect(data.get(DRAFT_KEY)).toBe(saved)
+  })
+
   it('falls back to an empty draft when storage fails', async () => {
     const store = createDraftStore(brokenStorage(), () => 3000)
     expect(await store.load()).toEqual({ answers: {}, lastStep: 'promise', firstLaunchAt: 3000 })

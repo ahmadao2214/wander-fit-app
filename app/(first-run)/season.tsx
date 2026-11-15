@@ -80,6 +80,7 @@ export default function FirstRunSeason() {
             onValueChange={([value]) => {
               setWeeks(value)
               setNoSeason(false)
+              void save({ seasonStart: seasonStartForWeeks(value, now) })
             }}
             accessibilityLabel="Weeks until your first game"
             aria-valuetext={away}
@@ -104,7 +105,11 @@ export default function FirstRunSeason() {
         label="No set season"
         detail="We'll build a 12-week plan"
         selected={shownNoSeason}
-        onPress={() => setNoSeason(!shownNoSeason)}
+        onPress={() => {
+          const next = !shownNoSeason
+          setNoSeason(next)
+          void save({ seasonStart: next ? null : seasonStartForWeeks(shownWeeks, now) })
+        }}
         testID="season-none"
       />
     </FirstRunScreen>

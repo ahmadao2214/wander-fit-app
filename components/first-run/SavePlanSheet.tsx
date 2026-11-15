@@ -94,7 +94,8 @@ export function SavePlanSheet({ open, onOpenChange }: { open: boolean; onOpenCha
     }
   }
 
-  const onSaveSignedIn = () => void finish()
+  const onSaveSignedIn = () =>
+    void finish({ email: fields.current.email.trim() || undefined, name: fields.current.name.trim() || undefined })
 
   const onApple = async () => {
     setErrors({})

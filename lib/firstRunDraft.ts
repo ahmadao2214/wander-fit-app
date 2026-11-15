@@ -103,27 +103,38 @@ export function createDraftStore(storage: DraftStorage, now: () => number = Date
     }
   }
 
+  // True while storage has failed to read: the cached draft is a stand-in,
+  // and the next read tries storage again before anything is written.
+  let unread = false
+
   async function read(): Promise<FirstRunDraft> {
-    if (cached) return cached
+    if (cached && !unread) return cached
     let stored: FirstRunDraft | null = null
-    let readFailed = false
     try {
       stored = parseDraft(await storage.getItem(DRAFT_KEY))
     } catch (error) {
-      readFailed = true
       console.warn('First Run draft not loaded:', error)
+      // Storage that failed to read may still hold the athlete's answers, so
+      // don't write over it.
+      unread = true
+      cached ??= { answers: {}, lastStep: 'promise', firstLaunchAt: now() }
+      return cached
+    }
+    if (unread && cached) {
+      // Storage is back: keep what it holds, plus anything answered meanwhile.
+      unread = false
+      const standIn = cached
+      cached = stored
+        ? { ...stored, answers: { ...stored.answers, ...standIn.answers } }
+        : standIn
+      if (!stored) await write(cached)
+      return cached
     }
     if (stored) {
       cached = stored
       return stored
     }
     const fresh: FirstRunDraft = { answers: {}, lastStep: 'promise', firstLaunchAt: now() }
-    if (readFailed) {
-      // Storage that failed to read may still hold the athlete's answers, so
-      // don't write over it; the next answer saved will.
-      cached = fresh
-      return fresh
-    }
     await write(fresh)
     return fresh
   }
@@ -150,7 +161,10 @@ export function createDraftStore(storage: DraftStorage, now: () => number = Date
           lastStep: patch.lastStep ?? current.lastStep,
           firstLaunchAt: current.firstLaunchAt,
         }
-        await write(next)
+        // A step reached on screen isn't worth writing over answers that
+        // storage couldn't read.
+        if (unread && !patch.answers) cached = next
+        else await write(next)
         notify()
         return next
       }),

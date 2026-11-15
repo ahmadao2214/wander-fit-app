@@ -72,6 +72,21 @@ describe('First Run season', () => {
     expect((await testDraft.reopen()).answers.seasonStart).toBeNull()
   })
 
+  it('keeps a season answer through a relaunch before Continue', async () => {
+    await show(<FirstRunSeason />)
+    const slider = screen.UNSAFE_root.findAll(
+      (node) => typeof node.props.onValueChange === 'function' && node.props.max === 52
+    )[0]
+    await act(async () => {
+      slider.props.onValueChange([30])
+    })
+    expect(weeksUntilSeason((await testDraft.reopen()).answers.seasonStart!, new Date())).toBe(30)
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('season-none'))
+    })
+    expect((await testDraft.reopen()).answers.seasonStart).toBeNull()
+  })
+
   it('reopens on the answer already given', async () => {
     await testDraft.seed({ answers: { seasonStart: null }, lastStep: 'season' })
     await show(<FirstRunSeason />)
