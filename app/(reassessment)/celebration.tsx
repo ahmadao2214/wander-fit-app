@@ -178,7 +178,7 @@ export default function CelebrationScreen() {
             fontFamily="$body"
             fontWeight="700"
             rounded="$4"
-            pressStyle={{ opacity: 0.9, scale: 0.98 }}
+            pressStyle={{ bg: '$primaryPress', scale: 0.98 }}
             onPress={() => router.push('/(reassessment)/self-assessment' as any)}
           >
             Continue to Check-In

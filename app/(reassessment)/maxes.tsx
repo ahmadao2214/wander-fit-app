@@ -247,7 +247,7 @@ export default function MaxesScreen() {
                 fontFamily="$body"
                 fontWeight="700"
                 rounded="$4"
-                pressStyle={{ opacity: 0.9, scale: 0.98 }}
+                pressStyle={{ bg: '$primaryPress', scale: 0.98 }}
                 disabled={hasErrors || isSaving}
                 opacity={hasErrors ? 0.5 : 1}
                 onPress={handleSave}

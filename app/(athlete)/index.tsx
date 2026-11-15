@@ -308,7 +308,7 @@ export default function AthleteDashboard() {
           bg="$primary"
           color="white"
           fontFamily="$body" fontWeight="700"
-          pressStyle={{ opacity: 0.9, scale: 0.98 }}
+          pressStyle={{ bg: '$primaryPress', scale: 0.98 }}
           onPress={() => router.push('/(intake)/sport')}
         >
           Get Started
@@ -384,7 +384,7 @@ export default function AthleteDashboard() {
                   color="white"
                   fontFamily="$body" fontWeight="700"
                   rounded="$3"
-                  pressStyle={{ opacity: 0.9 }}
+                  pressStyle={{ bg: '$primaryPress' }}
                   onPress={() => {
                     router.push('/(reassessment)/celebration' as any)
                   }}
@@ -487,7 +487,7 @@ export default function AthleteDashboard() {
                     fontSize={19}
                     fontFamily="$body" fontWeight="700"
                     rounded="$4"
-                    pressStyle={{ opacity: 0.9, scale: 0.98 }}
+                    pressStyle={{ bg: '$primaryPress', scale: 0.98 }}
                     onPress={() => {
                       router.push({
                         pathname: '/(athlete)/workout/execute/[id]',
@@ -511,7 +511,7 @@ export default function AthleteDashboard() {
                   icon={Play}
                   fontFamily="$body" fontWeight="700"
                   rounded="$4"
-                  pressStyle={{ opacity: 0.9, scale: 0.98 }}
+                  pressStyle={{ bg: '$primaryPress', scale: 0.98 }}
                   onPress={() => {
                     if (todayWorkout) {
                       router.push(`/(athlete)/workout/${todayWorkout._id}`)

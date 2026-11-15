@@ -76,6 +76,9 @@ describe('History tab', () => {
     ])
     const { getAllByTestId, queryByText } = render(<HistoryPage />, { wrapper: AllTheProviders })
     expect(getAllByTestId('history-not-finished')).toHaveLength(1)
+    // The completed row has no chip, so its check is what a screen reader hears
+    expect(getAllByTestId('history-completed')).toHaveLength(1)
+    expect(getAllByTestId('history-completed')[0].props.accessibilityLabel).toBe('Completed')
     expect(queryByText(/abandoned/i)).toBeNull()
     expect(queryByText(/^completed$/i)).toBeNull()
   })

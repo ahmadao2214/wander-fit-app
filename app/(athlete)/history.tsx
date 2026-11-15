@@ -124,6 +124,11 @@ export default function HistoryPage() {
                       bg={session.status === 'completed' ? '$intensityLow2' : '$accent1'}
                       items="center"
                       justify="center"
+                      // Completed rows have no chip, so the check carries the spoken
+                      // status; unfinished rows say it in their chip
+                      accessible={session.status === 'completed'}
+                      accessibilityLabel={session.status === 'completed' ? 'Completed' : undefined}
+                      testID={session.status === 'completed' ? 'history-completed' : undefined}
                     >
                       {session.status === 'completed' ? (
                         <CheckCircle size={22} color="$green10" />
@@ -240,7 +245,7 @@ function HistoryEmptyState() {
         fontFamily="$body"
         fontWeight="600"
         rounded="$4"
-        pressStyle={{ scale: 0.97, opacity: 0.9 }}
+        pressStyle={{ scale: 0.97, bg: '$primaryPress' }}
         onPress={() => router.navigate('/(athlete)')}
       >
         Go to today's workout

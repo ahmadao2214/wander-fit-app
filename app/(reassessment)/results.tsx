@@ -164,7 +164,7 @@ export default function ResultsScreen() {
               fontFamily="$body"
               fontWeight="700"
               rounded="$4"
-              pressStyle={{ opacity: 0.9, scale: 0.98 }}
+              pressStyle={{ bg: '$primaryPress', scale: 0.98 }}
               onPress={() => {
                 if (redirectTimerRef.current) {
                   clearTimeout(redirectTimerRef.current)
@@ -378,7 +378,7 @@ export default function ResultsScreen() {
             fontFamily="$body"
             fontWeight="700"
             rounded="$4"
-            pressStyle={{ opacity: 0.9, scale: 0.98 }}
+            pressStyle={{ bg: '$primaryPress', scale: 0.98 }}
             disabled={isSubmitting}
             onPress={handleComplete}
           >

@@ -639,7 +639,7 @@ export default function WorkoutDetailScreen() {
                 fontSize={19}
                 fontWeight="700"
                 disabled={isStarting}
-                pressStyle={{ scale: 0.97, opacity: 0.9 }}
+                pressStyle={{ scale: 0.97, bg: '$primaryPress' }}
               >
                 {isStarting ? '…' : isPaused ? 'Resume' : 'Start'}
               </Button>

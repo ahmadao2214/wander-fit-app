@@ -243,7 +243,8 @@ export function WorkoutCalendar({
             bg={viewMode === 'week' ? '$primary' : 'transparent'}
             color={viewMode === 'week' ? 'white' : '$color11'}
             onPress={() => setViewMode('week')}
-            pressStyle={{ opacity: 0.8 }}
+            // Darker fill on press, not opacity: white on a faded $primary drops under AA
+            pressStyle={{ bg: viewMode === 'week' ? '$primaryPress' : '$color4' }}
             rounded="$3"
             px="$4"
           >
@@ -254,7 +255,8 @@ export function WorkoutCalendar({
             bg={viewMode === 'month' ? '$primary' : 'transparent'}
             color={viewMode === 'month' ? 'white' : '$color11'}
             onPress={() => setViewMode('month')}
-            pressStyle={{ opacity: 0.8 }}
+            // Darker fill on press, not opacity: white on a faded $primary drops under AA
+            pressStyle={{ bg: viewMode === 'month' ? '$primaryPress' : '$color4' }}
             rounded="$3"
             px="$4"
           >

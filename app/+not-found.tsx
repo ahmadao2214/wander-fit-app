@@ -40,7 +40,7 @@ export default function NotFoundScreen() {
           fontFamily="$body"
           fontWeight="700"
           rounded="$4"
-          pressStyle={{ scale: 0.97, opacity: 0.9 }}
+          pressStyle={{ scale: 0.97, bg: '$primaryPress' }}
           onPress={() => router.replace('/')}
         >
           Go to the app

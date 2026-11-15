@@ -1,3 +1,5 @@
+import { readFileSync, readdirSync, statSync } from 'fs'
+import { join } from 'path'
 import config from '../../tamagui.config'
 import { contrastRatio } from '../contrast'
 
@@ -31,4 +33,33 @@ describe('action color', () => {
       expect(contrastRatio(v('tabInactive'), bar)).toBeGreaterThanOrEqual(4.5)
     })
   }
+})
+
+// Pressing a $primary button must switch to the tested $primaryPress fill.
+// Fading it with opacity blends in the screen color: at 0.9 over a light
+// background, white labels drop to 4.4:1. Intake and onboarding are being
+// rebuilt by First Run and are not scanned.
+describe('pressed action buttons', () => {
+  const ROOT = join(__dirname, '..', '..')
+  const SKIP = /__tests__|\(intake\)|\(onboarding\)/
+  function files(dir: string): string[] {
+    return readdirSync(dir).flatMap((name) => {
+      const path = join(dir, name)
+      if (SKIP.test(path)) return []
+      if (statSync(path).isDirectory()) return files(path)
+      return path.endsWith('.tsx') ? [path] : []
+    })
+  }
+
+  it('use $primaryPress, not opacity, on press', () => {
+    const offenders: string[] = []
+    for (const file of [...files(join(ROOT, 'app')), ...files(join(ROOT, 'components'))]) {
+      const source = readFileSync(file, 'utf8')
+      // Opening tags that fill with $primary and fade on press
+      for (const tag of source.match(/<[A-Z][A-Za-z.]*\b[^>]*?bg="\$primary"[^>]*?>/gs) ?? []) {
+        if (/pressStyle=\{\{[^}]*opacity/.test(tag)) offenders.push(file.replace(ROOT, ''))
+      }
+    }
+    expect(offenders).toEqual([])
+  })
 })

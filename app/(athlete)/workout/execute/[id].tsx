@@ -870,7 +870,7 @@ export default function WorkoutExecutionScreen() {
             fontSize={19}
             fontFamily="$body" fontWeight="700"
             rounded="$4"
-            pressStyle={{ opacity: 0.9, scale: 0.98 }}
+            pressStyle={{ bg: '$primaryPress', scale: 0.98 }}
             onPress={goToNextExercise}
             testID="execute-next"
           >
@@ -1109,7 +1109,7 @@ export default function WorkoutExecutionScreen() {
                 icon={Check}
                 fontFamily="$body" fontWeight="700"
                 rounded="$4"
-                pressStyle={{ opacity: 0.9, scale: 0.98 }}
+                pressStyle={{ bg: '$primaryPress', scale: 0.98 }}
                 onPress={handleCompleteWorkout}
               >
                 Done
@@ -1186,7 +1186,7 @@ export default function WorkoutExecutionScreen() {
                 color="white"
                 fontFamily="$body" fontWeight="700"
                 rounded="$4"
-                pressStyle={{ opacity: 0.9, scale: 0.98 }}
+                pressStyle={{ bg: '$primaryPress', scale: 0.98 }}
                 onPress={() => {
                   setShowReassessmentPrompt(false)
                   router.replace('/(reassessment)/celebration' as any)
