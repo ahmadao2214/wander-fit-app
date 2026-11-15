@@ -275,6 +275,13 @@ Before opening a PR, `bun run test:ci` and `bun run typecheck` should both pass;
 - Lib tests: `lib/__tests__/calculations.test.ts`
 - Convex tests: `convex/__tests__/userMaxes.test.ts`, and with `convex-test`: `convex/__tests__/authGuards.test.ts`
 
+### EAS builds
+
+- iOS builds are capped at 15 a month (Free plan, resets on the 13th). The rules are in `docs/BUILDS.md`.
+- Merging to main does not build. Releases go out once a week, on Friday, through `.eas/workflows/release-testflight.yml`.
+- Never start a build yourself (`eas build`, `eas workflow:run`, a `testflight-*` tag) unless the user asks for that build in the same message.
+- If only the TestFlight upload failed, resubmit the existing build with `eas submit --id`. Don't rebuild.
+
 ### Simulator self-check
 
 - Before you ask for review, show the changed journey working in a simulator.

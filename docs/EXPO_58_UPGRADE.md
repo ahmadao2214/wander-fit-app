@@ -4,7 +4,7 @@
 
 Upgrade from main `09fedf6ff21bafa5fbbeffb07e3dc1ddfad74720`, independently of the Explore branch. No generated native directories are tracked at this base (`git ls-files android ios` is empty). Existing local Android directories were not replaced. Build source lives separately at `/Volumes/wander-fit-review/expo58-upgrade/app`; `/Volumes/wander-fit-review/app` belongs to Explore and is not modified.
 
-Azhar explicitly authorized this upgrade's merge-triggered build. Main pushes trigger `.eas/workflows/release-main.yml`: a production-profile iOS EAS build followed by TestFlight submission/internal distribution, not public App Store release. Leave that workflow unchanged. This does not authorize separate manual cloud builds, cloud simulator sessions, paid inference, or production data mutations. Distribution acceptance remains deferred until observed. Authenticated native journey proof is still a merge gate.
+Azhar explicitly authorized this upgrade's merge-triggered build. (Historical: at the time, main pushes triggered `.eas/workflows/release-main.yml`. Merges no longer build; see `docs/BUILDS.md`.) This does not authorize separate manual cloud builds, cloud simulator sessions, paid inference, or production data mutations. Distribution acceptance remains deferred until observed. Authenticated native journey proof is still a merge gate.
 
 ## Incremental compatibility decisions
 
