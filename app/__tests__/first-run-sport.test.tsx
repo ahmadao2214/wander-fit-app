@@ -52,7 +52,7 @@ describe('First Run sport', () => {
     for (const sport of SPORTS) expect(screen.getByTestId(`sport-${sport.name}`)).toBeTruthy()
     expect(screen.getAllByTestId('sport-icon-still')).toHaveLength(SPORTS.length)
     expect(screen.queryByTestId('sport-icon-once')).toBeNull()
-    expect(screen.getByTestId('first-run-continue').props.accessibilityState.disabled).toBe(true)
+    expect(screen.getByTestId('first-run-continue')).toBeDisabled()
     expect(screen.getByTestId('program-bar-empty')).toBeTruthy()
   })
 

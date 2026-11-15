@@ -49,12 +49,12 @@ describe('First Run about you', () => {
 
   it('needs both answers before See my plan', async () => {
     await show()
-    const disabled = () => screen.getByTestId('first-run-see-plan').props.accessibilityState.disabled
-    expect(disabled()).toBe(true)
+    const button = () => screen.getByTestId('first-run-see-plan')
+    expect(button()).toBeDisabled()
     await press('age-18-35')
-    expect(disabled()).toBe(true)
+    expect(button()).toBeDisabled()
     await press('years-1-2')
-    expect(disabled()).toBe(false)
+    expect(button()).not.toBeDisabled()
     await press('first-run-see-plan')
     expect(mockPush).toHaveBeenCalledWith('/(first-run)/reveal')
   })

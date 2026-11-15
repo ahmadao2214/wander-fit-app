@@ -38,7 +38,7 @@ function PrimaryButton({ children, onPress, disabled, testID }: {
       fontWeight="700"
       rounded="$4"
       pressStyle={disabled ? undefined : { bg: '$primaryPress', scale: 0.98 }}
-      accessibilityState={{ disabled: !!disabled }}
+      aria-disabled={!!disabled}
       testID={testID}
     >
       {children}
@@ -141,7 +141,8 @@ export function SavePlanSheet({ open, onOpenChange }: { open: boolean; onOpenCha
     setBusy(true)
     setErrors({})
     try {
-      await signUp.create({ emailAddress: email.trim(), password, firstName: name.trim() })
+      // The Clerk instance doesn't collect names; the name goes to our users row.
+      await signUp.create({ emailAddress: email.trim(), password })
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' })
       setStep('code')
     } catch (error) {

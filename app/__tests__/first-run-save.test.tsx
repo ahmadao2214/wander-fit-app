@@ -98,7 +98,7 @@ describe('Save your plan', () => {
     await show()
     await signUpWithEmail()
 
-    expect(mockSignUp.create).toHaveBeenCalledWith({ emailAddress: 'a@b.co', password: 'long-enough-1', firstName: 'Sam' })
+    expect(mockSignUp.create).toHaveBeenCalledWith({ emailAddress: 'a@b.co', password: 'long-enough-1' })
     expect(mockCreateUser).toHaveBeenCalledWith({ clerkId: 'user_1', email: 'a@b.co', name: 'Sam', role: 'client' })
     expect(mockCompleteIntake).toHaveBeenCalledWith(
       expect.objectContaining({

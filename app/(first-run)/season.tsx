@@ -82,7 +82,7 @@ export default function FirstRunSeason() {
               setNoSeason(false)
             }}
             accessibilityLabel="Weeks until your first game"
-            accessibilityValue={{ min: 1, max: MAX_SEASON_WEEKS, now: shownWeeks, text: away }}
+            aria-valuetext={away}
             testID="season-slider"
           >
             <Slider.Track bg="$color5" height={6} rounded={3}>

@@ -177,7 +177,7 @@ export function FirstRunScreen({
             rounded="$4"
             pressStyle={primaryDisabled ? undefined : { bg: '$primaryPress', scale: 0.98 }}
             hoverStyle={primaryDisabled ? undefined : { bg: '$primaryHover' }}
-            accessibilityState={{ disabled: primaryDisabled }}
+            aria-disabled={primaryDisabled}
             testID={primaryTestID}
           >
             {primaryLabel}

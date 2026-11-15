@@ -158,7 +158,7 @@ describe('First Run reveal', () => {
     mockWorkout = undefined
     await show()
     expect(screen.getByTestId('reveal-loading')).toBeTruthy()
-    expect(screen.getByTestId('first-run-save').props.accessibilityState.disabled).toBe(true)
+    expect(screen.getByTestId('first-run-save')).toBeDisabled()
   })
 
   it('Save my plan opens the account sheet', async () => {
