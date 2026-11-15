@@ -13,15 +13,9 @@ import {
   Flag,
 } from '@tamagui/lucide-icons'
 import { Vibration } from 'react-native'
-import LottieView from 'lottie-react-native'
-import { getSportInitials } from '../../lib'
+import { SportIcon } from '../../components/sport-icon/SportIcon'
 import { formatDateISO } from '../../lib/calendarUtils'
 import { IntakeProgressDots, COMBINED_FLOW_SCREENS, COMBINED_FLOW_SCREEN_COUNT, COMBINED_FLOW_ROUTES } from '../../components/IntakeProgressDots'
-
-// Sport Lottie mapping (same as sport.tsx)
-const SPORT_LOTTIE: Record<string, any> = {
-  'Soccer': require('../../assets/lottie/sports/soccer.json'),
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
@@ -227,62 +221,6 @@ const CalendarMonth = ({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Sport Icon Component (for timeline)
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface SportIconProps {
-  name: string
-  size?: number
-}
-
-const SportIcon = ({ name, size = 36 }: SportIconProps) => {
-  const lottieSource = SPORT_LOTTIE[name]
-
-  if (lottieSource) {
-    return (
-      <Circle
-        size={size}
-        bg="$brand3"
-        overflow="hidden"
-        items="center"
-        justify="center"
-        borderWidth={2}
-        borderColor="$primary"
-      >
-        <LottieView
-          source={lottieSource}
-          autoPlay
-          loop
-          speed={0.8}
-          style={{ width: size * 1.3, height: size * 1.3 }}
-        />
-      </Circle>
-    )
-  }
-
-  // Fallback: initials
-  const initials = getSportInitials(name)
-
-  return (
-    <Circle
-      size={size}
-      bg="$brand3"
-      borderWidth={2}
-      borderColor="$primary"
-    >
-      <Text
-        fontSize={size / 2.5}
-        fontFamily="$body"
-        fontWeight="700"
-        color="$primary"
-      >
-        {initials}
-      </Text>
-    </Circle>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // WeeksDisplay Component (with count-up animation and sport icon)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -419,7 +357,7 @@ const WeeksDisplay = ({ weeks, sportName }: WeeksDisplayProps) => {
                 }],
               }}
             >
-              <SportIcon name={sportName} size={SPORT_ICON_SIZE} />
+              <SportIcon name={sportName} size={SPORT_ICON_SIZE} bg="$brand3" borderColor="$primary" />
             </Animated.View>
           )}
 
