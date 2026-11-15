@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import {
   YStack,
   XStack,
@@ -6,7 +6,6 @@ import {
   Card,
   Button,
   styled,
-  type ColorTokens,
 } from 'tamagui'
 import {
   Check,
@@ -67,7 +66,6 @@ interface ExerciseQueueProps {
   currentIndex: number
   onExerciseSelect: (index: number) => void
   onReorder: (fromIndex: number, toIndex: number) => void
-  /** Primary intensity color token (e.g., "$intensityLow6") */
   /** Training phase: colors the current exercise and the edge tab */
   trainingPhase?: Phase
 }
@@ -95,7 +93,7 @@ export function ExerciseQueue({
   onReorder,
   trainingPhase,
 }: ExerciseQueueProps) {
-  const phase = phaseTokens(trainingPhase)
+  const phase = useMemo(() => phaseTokens(trainingPhase), [trainingPhase])
   const [open, setOpen] = useState(false)
   const slideAnim = useRef(new Animated.Value(DRAWER_WIDTH)).current
   const insets = useSafeAreaInsets()
@@ -294,6 +292,16 @@ export function ExerciseQueue({
       <View
         style={styles.edgeTab}
         {...edgePanResponder.panHandlers}
+        // VoiceOver/TalkBack can't drive the pan responder; give it a button
+        accessible
+        accessibilityRole="button"
+        accessibilityLabel="Exercise list"
+        accessibilityHint="Shows every exercise in this workout"
+        accessibilityActions={[{ name: 'activate' }]}
+        onAccessibilityAction={(e) => {
+          if (e.nativeEvent.actionName === 'activate') setOpen(true)
+        }}
+        testID="exercise-queue-tab"
       >
         <YStack
           bg={phase.fill}

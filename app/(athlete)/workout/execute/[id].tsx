@@ -714,19 +714,30 @@ export default function WorkoutExecutionScreen() {
           </Pressable>
 
           {/* Dot Stepper Progress */}
-          <XStack items="center" gap="$1.5">
+          {/* Done = solid phase dot, current = wide pill, upcoming = hollow ring:
+              the shape carries the state, so it never depends on color alone */}
+          <XStack
+            items="center"
+            gap="$1.5"
+            accessible
+            accessibilityRole="progressbar"
+            accessibilityLabel={`Exercise ${currentExerciseIndex + 1} of ${orderedExercises.length}, ${
+              orderedExercises.filter((_, idx) => completionAt(idx)?.completed).length
+            } done`}
+            testID="exercise-progress"
+          >
             {orderedExercises.map((_, idx) => {
               const isCompleted = completionAt(idx)?.completed
               const isCurrent = idx === currentExerciseIndex
               return (
                 <YStack
                   key={idx}
-                  width={isCurrent ? 10 : 8}
-                  height={isCurrent ? 10 : 8}
+                  width={isCurrent ? 18 : 8}
+                  height={8}
                   rounded={100}
-                  bg={isCompleted ? phase.fill : isCurrent ? 'transparent' : '$color5'}
-                  borderWidth={isCurrent ? 2 : 0}
-                  borderColor={isCurrent ? '$color8' : undefined}
+                  bg={isCurrent ? '$color12' : isCompleted ? phase.fill : 'transparent'}
+                  borderWidth={isCurrent || isCompleted ? 0 : 1.5}
+                  borderColor={isCurrent || isCompleted ? undefined : '$color8'}
                 />
               )
             })}

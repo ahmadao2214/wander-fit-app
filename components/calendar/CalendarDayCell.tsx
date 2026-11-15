@@ -9,12 +9,6 @@ import { phaseTokens } from '../../lib/phase'
 /** Height an empty week-view day keeps while a workout is dragged, so it can take the drop. */
 const WEEK_DROP_MIN_HEIGHT = 96
 
-/**
- * Phase colors for visual distinction
- * GPP = Blue (foundation phase)
- * SPP = Orange (sport-specific phase)
- * SSP = Green (competition prep phase)
- */
 
 export interface WorkoutWithSlot extends Omit<CalendarWorkoutCardProps, 'onPress' | 'onLongPress' | 'compact'> {
   /** Slot info for drag-drop */

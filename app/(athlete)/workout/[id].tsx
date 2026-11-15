@@ -426,6 +426,9 @@ export default function WorkoutDetailScreen() {
                   bg={viewMode === "review" ? "$surface" : "transparent"}
                   color={viewMode === "review" ? "$color12" : "$color11"}
                   onPress={() => setViewMode("review")}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: viewMode === "review" }}
+                  hitSlop={8}
                   icon={ListChecks}
                   px="$2"
                 >
@@ -436,6 +439,9 @@ export default function WorkoutDetailScreen() {
                   bg={viewMode === "preview" ? "$surface" : "transparent"}
                   color={viewMode === "preview" ? "$color12" : "$color11"}
                   onPress={() => setViewMode("preview")}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: viewMode === "preview" }}
+                  hitSlop={8}
                   icon={ClipboardList}
                   px="$2"
                 >
@@ -630,8 +636,9 @@ export default function WorkoutDetailScreen() {
                 onPress={startWorkout}
                 testID="workout-start"
                 icon={isStarting ? undefined : Play}
+                // Large bold text: white on the dark-theme $primary is 3.68:1
                 fontSize={19}
-                fontWeight="600"
+                fontWeight="700"
                 disabled={isStarting}
                 pressStyle={{ scale: 0.97, opacity: 0.9 }}
               >

@@ -25,7 +25,8 @@ export function phaseTitle(phase: Phase): string {
 
 /**
  * Raw values behind the `$phase*` theme tokens in tamagui.config.ts.
- * - `fill`: dots, bars, filled badges and buttons
+ * - `fill`: dots, bars, borders and filled badges; at least 3:1 against the
+ *   background and surfaces, so it reads as a UI part (WCAG 1.4.11)
  * - `onFill`: text and icons on `fill`
  * - `text`: phase-colored text on the screen background or a surface
  * - `tint`: a quiet background for a phase-scoped card; `text` reads on it
@@ -39,14 +40,14 @@ export interface PhaseSwatch {
 
 export const PHASE_SWATCHES: Record<'light' | 'dark', Record<Phase, PhaseSwatch>> = {
   light: {
-    GPP: { fill: '#60A5FA', onFill: '#0F172A', text: '#2563EB', tint: '#EFF6FF' },
-    SPP: { fill: '#2563EB', onFill: '#FFFFFF', text: '#1D4ED8', tint: '#DBEAFE' },
+    GPP: { fill: '#3B82F6', onFill: '#0F172A', text: '#2563EB', tint: '#EFF6FF' },
+    SPP: { fill: '#1D4ED8', onFill: '#FFFFFF', text: '#1D4ED8', tint: '#DBEAFE' },
     SSP: { fill: '#1E3A8A', onFill: '#FFFFFF', text: '#1E3A8A', tint: '#BFDBFE' },
   },
   dark: {
     GPP: { fill: '#BFDBFE', onFill: '#0F172A', text: '#BFDBFE', tint: '#172554' },
     SPP: { fill: '#60A5FA', onFill: '#0F172A', text: '#93C5FD', tint: '#172554' },
-    SSP: { fill: '#2563EB', onFill: '#FFFFFF', text: '#60A5FA', tint: '#172554' },
+    SSP: { fill: '#3B82F6', onFill: '#0F172A', text: '#60A5FA', tint: '#172554' },
   },
 }
 

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { ScrollView, View, StyleSheet, Pressable, type ScrollViewInstance } from 'react-native'
-import { YStack, XStack, Text, Button, Card, H3, type ColorTokens } from 'tamagui'
+import { YStack, XStack, Text, Button, Card, H3 } from 'tamagui'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ChevronDown, ChevronUp, ChevronLeft, Check } from '@tamagui/lucide-icons'
 import type { WarmupPhase, ExerciseSection } from '../../types'
@@ -331,6 +331,8 @@ function WarmupFlow({ exercises, totalDuration, onComplete, onBack, trainingPhas
             size="$5"
             bg="$primary"
             color="white"
+            // Large bold text: white on the dark-theme $primary is 3.68:1
+            fontSize={19}
             fontWeight="700"
             onPress={onComplete}
             icon={allComplete ? Check : undefined}

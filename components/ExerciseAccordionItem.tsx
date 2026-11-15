@@ -4,7 +4,6 @@ import {
   XStack, 
   Text, 
   Card,
-  type ColorTokens,
 } from 'tamagui'
 import { 
   GripVertical,

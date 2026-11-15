@@ -54,6 +54,11 @@ describe('phase colors', () => {
           expect(contrastRatio(s.text, s.tint)).toBeGreaterThanOrEqual(4.5)
         })
 
+        it(`${phase} fill stands out from the background and surface (3:1)`, () => {
+          expect(contrastRatio(s.fill, BACKGROUNDS[mode].background)).toBeGreaterThanOrEqual(3)
+          expect(contrastRatio(s.fill, BACKGROUNDS[mode].surface)).toBeGreaterThanOrEqual(3)
+        })
+
         it(`${phase} label on its fill passes AA`, () => {
           expect(contrastRatio(s.onFill, s.fill)).toBeGreaterThanOrEqual(4.5)
         })
