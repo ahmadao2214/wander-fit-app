@@ -11,13 +11,15 @@
 //   node scripts/lottie/check.mjs soccer     # just these slugs
 //
 // Native players (lottie-ios, lottie-android) can't run here; the simulator
-// pass covers those. Structural checks run in Jest: lib/__tests__/sportAnimations.test.ts.
+// pass covers those. Structural checks run in Jest: lib/__tests__/sportAnimations.test.ts;
+// the pixel checks themselves live in frameChecks.mjs, tested in Jest too.
 
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
-import { SAFE_RADIUS, CANVAS } from './motion.mjs'
+import { SAFE_RADIUS } from './motion.mjs'
+import { checkFrames } from './frameChecks.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const require = createRequire(path.join(root, 'package.json'))
@@ -31,10 +33,6 @@ const TILES = [
   { name: 'dark selected', circle: '#1E3A8A', card: '#0F172A' },
   { name: 'dark idle', circle: '#334155', card: '#1E293B' },
 ]
-const ALPHA_VISIBLE = 16
-const LOOP_TOLERANCE = 0.002 // share of pixels allowed to differ between first and last frame
-const CENTRE_TOLERANCE = 0.02 // share of the canvas width
-
 const assetsDir = path.join(root, 'assets/lottie/sports')
 const outDir = path.join(root, 'e2e-artifacts/lottie')
 
@@ -86,34 +84,6 @@ async function renderAll(json) {
   return frames
 }
 
-// ── checks ──────────────────────────────────────────────────────────────────
-function measure(frame) {
-  const { data, width } = frame
-  const scale = CANVAS / width
-  let maxRadius = 0
-  let minX = Infinity
-  let maxX = -Infinity
-  for (let i = 0; i < data.length; i += 4) {
-    if (data[i + 3] < ALPHA_VISIBLE) continue
-    const p = i / 4
-    const x = ((p % width) + 0.5) * scale
-    const y = (Math.floor(p / width) + 0.5) * scale
-    maxRadius = Math.max(maxRadius, Math.hypot(x - CANVAS / 2, y - CANVAS / 2))
-    minX = Math.min(minX, x)
-    maxX = Math.max(maxX, x)
-  }
-  return { maxRadius, centreX: (minX + maxX) / 2 }
-}
-
-function differingShare(a, b) {
-  let differ = 0
-  for (let i = 0; i < a.data.length; i += 4) {
-    const d = Math.abs(a.data[i] - b.data[i]) + Math.abs(a.data[i + 1] - b.data[i + 1]) + Math.abs(a.data[i + 2] - b.data[i + 2]) + Math.abs(a.data[i + 3] - b.data[i + 3])
-    if (d > 24) differ++
-  }
-  return differ / (a.data.length / 4)
-}
-
 // ── contact sheet ───────────────────────────────────────────────────────────
 const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16))
 
@@ -156,23 +126,7 @@ mkdirSync(outDir, { recursive: true })
 let failures = 0
 for (const slug of slugs) {
   const frames = await renderAll(readFileSync(path.join(assetsDir, `${slug}.json`), 'utf8'))
-  const problems = []
-  let worst = { maxRadius: 0, frame: 0 }
-  frames.forEach((frame, index) => {
-    const { maxRadius } = measure(frame)
-    if (maxRadius > worst.maxRadius) worst = { maxRadius, frame: index }
-  })
-  if (worst.maxRadius > SAFE_RADIUS) {
-    problems.push(`frame ${worst.frame} draws ${worst.maxRadius.toFixed(0)} units from centre, past the ${SAFE_RADIUS} safe circle`)
-  }
-  const loopDiff = differingShare(frames[0], frames[frames.length - 1])
-  if (loopDiff > LOOP_TOLERANCE) {
-    problems.push(`last frame differs from frame 0 on ${(loopDiff * 100).toFixed(2)}% of pixels (loop jumps)`)
-  }
-  const rest = measure(frames[0])
-  if (Math.abs(rest.centreX - CANVAS / 2) > CANVAS * CENTRE_TOLERANCE) {
-    problems.push(`rest pose is off centre by ${(rest.centreX - CANVAS / 2).toFixed(0)} units`)
-  }
+  const { problems, worst, loopDiff } = checkFrames(frames)
   const sheetPath = path.join(outDir, `${slug}-sheet.png`)
   writeFileSync(sheetPath, contactSheet(frames))
 
