@@ -199,7 +199,7 @@ export function SetEditSheet({
               <Text fontFamily="$body" fontWeight="600" fontSize={14} color="$color11">
                 RPE
               </Text>
-              <Text fontSize={18} fontFamily="$body" fontWeight="700" color="$primary">
+              <Text fontSize={18} fontFamily="$body" fontWeight="700" color="$primaryText">
                 {rpe}/10
               </Text>
             </XStack>

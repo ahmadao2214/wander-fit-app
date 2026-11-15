@@ -48,7 +48,7 @@ export default function MaxesScreen() {
   if (coreLifts === undefined) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$primary" />
+        <Spinner size="large" color="$primaryText" />
         <Text fontFamily="$body" color="$color10">Loading...</Text>
       </YStack>
     )

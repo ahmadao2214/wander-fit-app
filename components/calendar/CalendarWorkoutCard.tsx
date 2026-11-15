@@ -59,7 +59,7 @@ export function CalendarWorkoutCard({
   const getStatusIcon = () => {
     if (isLocked) return <Lock size={10} color="$color10" />
     if (isCompleted) return <CheckCircle size={10} color="$color10" />
-    if (isInProgress) return <Play size={10} color="$primary" />
+    if (isInProgress) return <Play size={10} color="$primaryText" />
     return null
   }
 

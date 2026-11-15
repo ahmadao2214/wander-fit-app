@@ -69,6 +69,17 @@ describe('History tab', () => {
     expect(getByText('Upper Push/Pull')).toBeTruthy()
   })
 
+  it('marks an unfinished session in plain words and leaves completed ones unbadged', () => {
+    mockUseQuery.mockReturnValue([
+      session({ _id: 'done', status: 'completed' }),
+      session({ _id: 'quit', status: 'abandoned', templateSnapshot: undefined, templateName: 'Upper Push/Pull' }),
+    ])
+    const { getAllByTestId, queryByText } = render(<HistoryPage />, { wrapper: AllTheProviders })
+    expect(getAllByTestId('history-not-finished')).toHaveLength(1)
+    expect(queryByText(/abandoned/i)).toBeNull()
+    expect(queryByText(/^completed$/i)).toBeNull()
+  })
+
   it('leaves a session still in progress out of the log', () => {
     mockUseQuery.mockReturnValue([session({ status: 'in_progress' })])
     const { queryByText, getByText } = render(<HistoryPage />, { wrapper: AllTheProviders })

@@ -203,7 +203,7 @@ export function CalendarMonthView({
               size="$2"
               chromeless
               onPress={handleGoToToday}
-              color="$primary"
+              color="$primaryText"
             >
               Today
             </Button>

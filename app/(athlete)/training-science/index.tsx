@@ -191,7 +191,7 @@ export default function TrainingSciencePage() {
   if (authLoading) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$primary" />
+        <Spinner size="large" color="$primaryText" />
         <Text color="$color10" fontFamily="$body">
           Loading...
         </Text>
@@ -226,7 +226,7 @@ export default function TrainingSciencePage() {
           <ScienceSection
             title="The Three Phases"
             icon={Layers}
-            iconColor="$primary"
+            iconColor="$primaryText"
             iconBgColor="$brand2"
             defaultExpanded
           >
@@ -259,7 +259,7 @@ export default function TrainingSciencePage() {
           <ScienceSection
             title="Understanding Your Numbers"
             icon={Dumbbell}
-            iconColor="$primary"
+            iconColor="$primaryText"
             iconBgColor="$brand2"
           >
             {/* 1RM */}
@@ -325,7 +325,7 @@ export default function TrainingSciencePage() {
           <ScienceSection
             title="Training Intensity"
             icon={Activity}
-            iconColor="$primary"
+            iconColor="$primaryText"
             iconBgColor="$brand2"
           >
             <BodyText>
@@ -389,7 +389,7 @@ export default function TrainingSciencePage() {
             <ScienceSection
               title="Your Sport Category"
               icon={Trophy}
-              iconColor="$primary"
+              iconColor="$primaryText"
               iconBgColor="$brand2"
             >
               <Card
@@ -401,8 +401,8 @@ export default function TrainingSciencePage() {
               >
                 <YStack gap="$2">
                   <XStack items="center" gap="$2">
-                    <category.icon size={18} color="$primary" />
-                    <SubHeading color="$primary">
+                    <category.icon size={18} color="$primaryText" />
+                    <SubHeading color="$primaryText">
                       Category {programState?.gppCategoryId}: {category.name}
                     </SubHeading>
                   </XStack>
@@ -422,7 +422,7 @@ export default function TrainingSciencePage() {
           <ScienceSection
             title="Your Profile Factors"
             icon={Users}
-            iconColor="$primary"
+            iconColor="$primaryText"
             iconBgColor="$brand2"
           >
             <BodyText>
@@ -454,7 +454,7 @@ export default function TrainingSciencePage() {
           <ScienceSection
             title="Rest Periods"
             icon={Clock}
-            iconColor="$primary"
+            iconColor="$primaryText"
             iconBgColor="$brand2"
           >
             <BodyText>

@@ -3,7 +3,7 @@ import { useColorScheme } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Dumbbell, Calendar, User, Clock } from '@tamagui/lucide-icons'
 import { AthleteOnlyRoute } from '../../components/AuthGuard'
-import { brandPrimary } from '../../tamagui.config'
+import { tabTints } from '../../tamagui.config'
 
 /**
  * Athlete Tab Layout
@@ -24,15 +24,16 @@ export default function AthleteLayout() {
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
   const insets = useSafeAreaInsets()
+  const tint = tabTints[isDark ? 'dark' : 'light']
 
   return (
     <AthleteOnlyRoute>
       <Tabs
         screenOptions={{
-          // Electric Blue for active tab (brand primary)
-          tabBarActiveTintColor: brandPrimary,
-          // Muted slate for inactive tabs
-          tabBarInactiveTintColor: isDark ? '#64748B' : '#94A3B8',
+          // Theme tokens, so both labels pass AA on the bar in light and dark.
+          // The old hardcoded #94A3B8 on white was 2.6:1, and #2563EB on navy 3.5:1.
+          tabBarActiveTintColor: tint.active,
+          tabBarInactiveTintColor: tint.inactive,
           // Tab bar styling - account for Android navigation bar
           tabBarStyle: {
             backgroundColor: isDark ? '#0F172A' : '#FFFFFF',

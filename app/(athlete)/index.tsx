@@ -261,7 +261,7 @@ export default function AthleteDashboard() {
   if (authLoading || programState === undefined) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$primary" />
+        <Spinner size="large" color="$primaryText" />
         <Text color="$color10" fontFamily="$body">
           Loading your program...
         </Text>
@@ -290,7 +290,7 @@ export default function AthleteDashboard() {
           items="center" 
           justify="center"
         >
-          <Target size={48} color="$primary" />
+          <Target size={48} color="$primaryText" />
         </YStack>
         <YStack items="center" gap="$2">
           <DisplayHeading>COMPLETE YOUR SETUP</DisplayHeading>

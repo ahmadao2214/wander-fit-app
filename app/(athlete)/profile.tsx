@@ -96,7 +96,7 @@ export default function ProfilePage() {
   if (authLoading) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$primary" />
+        <Spinner size="large" color="$primaryText" />
         <Text color="$color10" fontFamily="$body">
           Loading profile...
         </Text>
@@ -366,7 +366,7 @@ export default function ProfilePage() {
                   borderColor="$borderColor"
                 >
                   <YStack items="center" gap="$1">
-                    <StatNumber color="$primary">
+                    <StatNumber color="$primaryText">
                       {latestIntake.preferredTrainingDaysPerWeek}
                     </StatNumber>
                     <Text
@@ -391,7 +391,7 @@ export default function ProfilePage() {
                   borderColor="$borderColor"
                 >
                   <YStack items="center" gap="$1">
-                    <StatNumber color="$primary">
+                    <StatNumber color="$primaryText">
                       {latestIntake.yearsOfExperience}
                     </StatNumber>
                     <Text
@@ -455,7 +455,7 @@ export default function ProfilePage() {
             >
               <XStack items="center" gap="$3">
                 <YStack bg="$brand2" p="$2" rounded="$10">
-                  <Lightbulb size={18} color="$primary" />
+                  <Lightbulb size={18} color="$primaryText" />
                 </YStack>
                 <YStack flex={1}>
                   <Text

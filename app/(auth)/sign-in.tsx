@@ -200,7 +200,7 @@ export default function SignInPage() {
                   p="$4" 
                   rounded="$10"
                 >
-                  <Zap size={40} color="$primary" />
+                  <Zap size={40} color="$primaryText" />
                 </YStack>
                 <DisplayHeading>WELCOME BACK</DisplayHeading>
                 <Subtitle>
@@ -337,7 +337,7 @@ export default function SignInPage() {
                   Don't have an account?
                 </Text>
                 <Link href="/sign-up">
-                  <Text fontFamily="$body" fontWeight="600" color="$primary" cursor="pointer" hoverStyle={{ opacity: 0.8 }}>
+                  <Text fontFamily="$body" fontWeight="600" color="$primaryText" cursor="pointer" hoverStyle={{ opacity: 0.8 }}>
                     Sign up
                   </Text>
                 </Link>

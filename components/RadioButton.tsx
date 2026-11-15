@@ -96,7 +96,7 @@ export function RadioButton({
         <IconContainer checked={checked}>
           <Icon
             size={28}
-            color={checked ? 'white' : '$primary'}
+            color={checked ? 'white' : '$primaryText'}
           />
         </IconContainer>
 

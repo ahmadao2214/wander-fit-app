@@ -63,7 +63,7 @@ export default function CommitmentScreen() {
   if (onboardingState === undefined || onboardingData === undefined || existingProgram === undefined) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center">
-        <Spinner size="large" color="$primary" />
+        <Spinner size="large" color="$primaryText" />
       </YStack>
     )
   }
@@ -177,7 +177,7 @@ export default function CommitmentScreen() {
             <Text fontSize="$8" fontWeight="bold" color="$color12" text="center">
               Make Your
             </Text>
-            <Text fontSize="$8" fontWeight="bold" color="$primary" text="center">
+            <Text fontSize="$8" fontWeight="bold" color="$primaryText" text="center">
               Commitment
             </Text>
           </YStack>
@@ -224,7 +224,7 @@ export default function CommitmentScreen() {
                   <Text
                     fontSize="$3"
                     fontWeight="600"
-                    color={hasCommitted ? '$primary' : '$color12'}
+                    color={hasCommitted ? '$primaryText' : '$color12'}
                   >
                     {commitment.text}
                   </Text>
@@ -248,11 +248,11 @@ export default function CommitmentScreen() {
               borderColor="$primary"
             >
               <Text fontSize="$6">🎉</Text>
-              <Text fontSize="$4" fontWeight="bold" color="$primary">
+              <Text fontSize="$4" fontWeight="bold" color="$primaryText">
                 You're Committed!
               </Text>
               <XStack items="center" gap="$2">
-                <Spinner size="small" color="$primary" />
+                <Spinner size="small" color="$primaryText" />
                 <Text fontSize="$3" color="$color11">
                   Creating your program...
                 </Text>

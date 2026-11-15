@@ -22,7 +22,7 @@ interface ExerciseTypeIconProps {
 export function ExerciseTypeIcon({
   tags,
   size = 64,
-  color = '$primary',
+  color = '$primaryText',
   bgColor,
 }: ExerciseTypeIconProps) {
   const IconComponent = isCardioExercise(tags) ? Footprints : Dumbbell

@@ -207,6 +207,8 @@ const lightTheme = {
   primaryHover: '#1D4ED8',
   primaryPress: '#1E40AF',
   primaryFocus: '#2563EB',
+  // Blue text and icons; $primary is the button fill
+  primaryText: '#2563EB',
 
   // Accent (Flame Orange)
   accent: '#F97316',
@@ -297,11 +299,14 @@ const darkTheme = {
   color11: '#CBD5E1',           // Strong text
   color12: '#F8FAFC',           // Primary text
 
-  // Primary brand (Electric Blue - brighter for dark mode)
-  primary: '#3B82F6',
-  primaryHover: '#60A5FA',
-  primaryPress: '#2563EB',
-  primaryFocus: '#3B82F6',
+  // Primary brand (Electric Blue). The fill stays at #2563EB in dark mode so
+  // white labels pass AA (5.2:1; #3B82F6 was 3.7:1). Blue text and icons use
+  // the lighter $primaryText instead.
+  primary: '#2563EB',
+  primaryHover: '#1D4ED8',
+  primaryPress: '#1E40AF',
+  primaryFocus: '#2563EB',
+  primaryText: '#60A5FA',
 
   // Accent (Flame Orange)
   accent: '#FB923C',
@@ -708,5 +713,11 @@ export const categoryAccentColors = {
 
 // Brand color constants for direct use
 export const brandPrimary = '#2563EB'  // Electric Blue
+
+/** Tab bar label colors, for React Navigation (outside Tamagui's theme). */
+export const tabTints = {
+  light: { active: lightTheme.tabActive, inactive: lightTheme.tabInactive },
+  dark: { active: darkTheme.tabActive, inactive: darkTheme.tabInactive },
+} as const
 export const brandAccent = '#F97316'   // Flame Orange
 export const brandNavy = '#0F172A'     // Deep Navy

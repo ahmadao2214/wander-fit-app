@@ -199,8 +199,8 @@ export function PerformanceReviewItem({
                     )}
                     {set.rpe !== undefined && set.rpe > 0 && (
                       <XStack items="center" gap="$1">
-                        <Activity size={12} color="$primary" />
-                        <Text fontSize="$2" color="$primary" fontWeight="500">
+                        <Activity size={12} color="$primaryText" />
+                        <Text fontSize="$2" color="$primaryText" fontWeight="500">
                           {set.rpe}
                         </Text>
                       </XStack>

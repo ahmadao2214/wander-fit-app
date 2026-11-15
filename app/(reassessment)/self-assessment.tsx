@@ -81,7 +81,7 @@ export default function SelfAssessmentScreen() {
   if (reassessmentStatus === undefined) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$primary" />
+        <Spinner size="large" color="$primaryText" />
         <Text fontFamily="$body" color="$color10">Loading...</Text>
       </YStack>
     )
@@ -231,7 +231,7 @@ export default function SelfAssessmentScreen() {
             {canUpgrade && reassessmentStatus?.nextSkillLevel && (
               <Card p="$4" bg="$brand1" borderColor="$brand3" borderWidth={1} rounded="$4">
                 <XStack items="center" gap="$3">
-                  <TrendingUp size={24} color="$primary" />
+                  <TrendingUp size={24} color="$primaryText" />
                   <YStack flex={1}>
                     <Text fontFamily="$body" fontWeight="700" color="$brand9">
                       Skill Level Upgrade Available

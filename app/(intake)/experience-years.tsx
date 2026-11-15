@@ -48,7 +48,7 @@ const SKILL_STYLES = {
     description: 'Developing your skills',
   },
   Advanced: {
-    color: '$primary',
+    color: '$primaryText',
     label: 'Advanced',
     description: 'Refining your expertise',
   },

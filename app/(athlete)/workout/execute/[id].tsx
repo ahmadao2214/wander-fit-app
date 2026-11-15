@@ -655,7 +655,7 @@ export default function WorkoutExecutionScreen() {
   if (!session || !template) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$primary" />
+        <Spinner size="large" color="$primaryText" />
         <Text fontFamily="$body" color="$color10">Loading workout...</Text>
       </YStack>
     )
@@ -1033,7 +1033,7 @@ export default function WorkoutExecutionScreen() {
               
               <XStack gap="$6">
                 <YStack items="center">
-                  <Text fontFamily="$body" fontWeight="700" fontSize={24} color="$primary">
+                  <Text fontFamily="$body" fontWeight="700" fontSize={24} color="$primaryText">
                     {formatTime(elapsedTime)}
                   </Text>
                   <Text fontSize={12} color="$color10" fontFamily="$body">

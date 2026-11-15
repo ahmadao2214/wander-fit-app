@@ -35,7 +35,7 @@ export default function CelebrationScreen() {
   if (reassessmentStatus === undefined) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$primary" />
+        <Spinner size="large" color="$primaryText" />
         <Text fontFamily="$body" color="$color10">Loading...</Text>
       </YStack>
     )
@@ -111,8 +111,8 @@ export default function CelebrationScreen() {
                 items="center"
                 gap="$2"
               >
-                <Dumbbell size={20} color="$primary" />
-                <Text fontFamily="$body" fontWeight="700" fontSize={24} color="$primary">
+                <Dumbbell size={20} color="$primaryText" />
+                <Text fontFamily="$body" fontWeight="700" fontSize={24} color="$primaryText">
                   {stats.completed}
                 </Text>
                 <Text fontSize={11} color="$color10" fontFamily="$body" fontWeight="500">

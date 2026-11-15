@@ -180,7 +180,7 @@ export function WorkoutCalendar({
   if (fullCalendar === undefined) {
     return (
       <YStack flex={1} items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$primary" />
+        <Spinner size="large" color="$primaryText" />
         <Text color="$color10">Loading calendar...</Text>
       </YStack>
     )

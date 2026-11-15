@@ -135,7 +135,7 @@ export default function ResultsScreen() {
   if (sport === undefined || category === undefined) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$primary" />
+        <Spinner size="large" color="$primaryText" />
         <Text color="$gray11">Calculating your program...</Text>
       </YStack>
     )
@@ -170,7 +170,7 @@ export default function ResultsScreen() {
 
           {/* Header */}
           <YStack gap="$2" items="center">
-            <CheckCircle size={64} color="$primary" />
+            <CheckCircle size={64} color="$primaryText" />
             <H2 text="center">Your Program is Ready!</H2>
             <Text color="$gray11" text="center" fontSize="$4">
               Here's what we've designed for you
@@ -224,7 +224,7 @@ export default function ResultsScreen() {
             <YStack gap="$4">
               {/* Sport */}
               <XStack items="center" gap="$3">
-                <Target size={24} color="$primary" />
+                <Target size={24} color="$primaryText" />
                 <YStack flex={1}>
                   <Text fontSize="$2" color="$color10">Sport</Text>
                   <Text fontSize="$5" fontWeight="700" color="$color12">
@@ -235,7 +235,7 @@ export default function ResultsScreen() {
 
               {/* Age Group */}
               <XStack items="center" gap="$3">
-                <User size={24} color="$primary" />
+                <User size={24} color="$primaryText" />
                 <YStack flex={1}>
                   <Text fontSize="$2" color="$color10">Age Group</Text>
                   <Text fontSize="$5" fontWeight="700" color="$color12">
@@ -246,7 +246,7 @@ export default function ResultsScreen() {
 
               {/* Skill Level */}
               <XStack items="center" gap="$3">
-                <Trophy size={24} color="$primary" />
+                <Trophy size={24} color="$primaryText" />
                 <YStack flex={1}>
                   <Text fontSize="$2" color="$color10">Skill Level</Text>
                   <Text fontSize="$5" fontWeight="700" color="$color12">
@@ -257,7 +257,7 @@ export default function ResultsScreen() {
 
               {/* Training Days */}
               <XStack items="center" gap="$3">
-                <Calendar size={24} color="$primary" />
+                <Calendar size={24} color="$primaryText" />
                 <YStack flex={1}>
                   <Text fontSize="$2" color="$color10">Training Schedule</Text>
                   <Text fontSize="$5" fontWeight="700" color="$color12">
@@ -268,7 +268,7 @@ export default function ResultsScreen() {
 
               {/* Training Phase */}
               <XStack items="center" gap="$3">
-                <Clock size={24} color="$primary" />
+                <Clock size={24} color="$primaryText" />
                 <YStack flex={1}>
                   <Text fontSize="$2" color="$color10">Current Phase</Text>
                   <Text fontSize="$5" fontWeight="700" color="$color12">
@@ -287,7 +287,7 @@ export default function ResultsScreen() {
             <Card p="$5" bg="$background" borderColor="$borderColor" borderWidth={1}>
               <YStack gap="$4">
                 <XStack items="center" gap="$2">
-                  <Dumbbell size={20} color="$primary" />
+                  <Dumbbell size={20} color="$primaryText" />
                   <Text fontSize="$5" fontWeight="600" color="$color12">
                     Your Starting Maxes
                   </Text>
