@@ -33,6 +33,8 @@ interface FirstRunScreenProps {
   secondary?: React.ReactNode
   /** The content scrolls by default; a screen with its own list turns this off. */
   scroll?: boolean
+  /** Centers a short screen's content vertically instead of top-aligning it. */
+  centered?: boolean
 }
 
 function previousStep(step: FirstRunStep): FirstRunStep | null {
@@ -57,6 +59,7 @@ export function FirstRunScreen({
   primaryTestID,
   secondary,
   scroll = true,
+  centered = false,
 }: FirstRunScreenProps) {
   const insets = useSafeAreaInsets()
   const router = useRouter()
@@ -70,7 +73,16 @@ export function FirstRunScreen({
   }
 
   const body = (
-    <YStack gap="$5" px="$5" pb="$5" width="100%" maxW={560} self="center">
+    <YStack
+      gap="$5"
+      px="$5"
+      pb="$5"
+      width="100%"
+      maxW={560}
+      self="center"
+      flex={centered ? 1 : undefined}
+      justify={centered ? 'center' : undefined}
+    >
       <YStack gap="$2">
         <Text
           fontFamily="$body"

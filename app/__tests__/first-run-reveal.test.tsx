@@ -66,6 +66,7 @@ jest.mock('../../components/first-run/SavePlanSheet', () => ({
   },
 }))
 jest.mock('expo-router', () => ({
+  useFocusEffect: (cb: () => void) => jest.requireActual('react').useEffect(cb, [cb]),
   useRouter: () => ({ push: jest.fn(), back: jest.fn(), replace: jest.fn(), canGoBack: () => true }),
   Redirect: ({ href }: { href: string }) => {
     const { Text } = jest.requireActual('react-native')

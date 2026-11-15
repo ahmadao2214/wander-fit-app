@@ -11,6 +11,7 @@ export default function FirstRunPromise() {
   return (
     <FirstRunScreen
       step="promise"
+      centered
       title="Let's build your plan for this season."
       subtitle="Five questions, then your first workout."
       primaryLabel="Choose your sport"

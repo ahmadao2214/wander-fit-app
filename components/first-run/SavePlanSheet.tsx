@@ -198,8 +198,22 @@ export function SavePlanSheet({ open, onOpenChange }: { open: boolean; onOpenCha
       snapPoints={keyboard ? [90] : [step === 'choose' ? 45 : 75]}
       dismissOnSnapToBottom={step !== 'saving'}
     >
-      <Sheet.Overlay />
-      <Sheet.Frame p="$5" bg="$background" maxW={560} self="center" width="100%" testID="save-plan-sheet">
+      <Sheet.Overlay
+        bg="rgba(15, 23, 42, 0.45)"
+        enterStyle={{ opacity: 0 }}
+        exitStyle={{ opacity: 0 }}
+        animation="quick"
+      />
+      <Sheet.Frame
+        p="$5"
+        bg="$background"
+        maxW={560}
+        self="center"
+        width="100%"
+        borderTopLeftRadius="$6"
+        borderTopRightRadius="$6"
+        testID="save-plan-sheet"
+      >
         <Sheet.Handle />
         <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <YStack gap="$4" pt="$3" pb="$6">
@@ -224,9 +238,14 @@ export function SavePlanSheet({ open, onOpenChange }: { open: boolean; onOpenCha
             ) : null}
 
             {step === 'choose' && clerkUser ? (
-              <PrimaryButton onPress={onSaveSignedIn} testID="save-plan-signed-in">
-                {`Save to ${clerkUser.primaryEmailAddress?.emailAddress ?? 'your account'}`}
-              </PrimaryButton>
+              <YStack gap="$2">
+                <Text fontFamily="$body" fontSize={15} color="$color11" numberOfLines={1} ellipsizeMode="middle">
+                  Signed in as {clerkUser.primaryEmailAddress?.emailAddress ?? 'your account'}
+                </Text>
+                <PrimaryButton onPress={onSaveSignedIn} testID="save-plan-signed-in">
+                  Save to this account
+                </PrimaryButton>
+              </YStack>
             ) : null}
 
             {step === 'choose' && !clerkUser ? (

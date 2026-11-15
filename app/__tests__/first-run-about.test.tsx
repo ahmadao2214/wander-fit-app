@@ -12,6 +12,7 @@ jest.mock('../../lib/firstRunStorage', () => ({
 jest.mock('convex/react', () => ({ useQuery: () => undefined }))
 const mockPush = jest.fn()
 jest.mock('expo-router', () => ({
+  useFocusEffect: (cb: () => void) => jest.requireActual('react').useEffect(cb, [cb]),
   useRouter: () => ({ push: mockPush, back: jest.fn(), replace: jest.fn(), canGoBack: () => true }),
 }))
 jest.mock('react-native-safe-area-context', () => ({

@@ -20,6 +20,7 @@ jest.mock('convex/react', () => ({
 
 const mockPush = jest.fn()
 jest.mock('expo-router', () => ({
+  useFocusEffect: (cb: () => void) => jest.requireActual('react').useEffect(cb, [cb]),
   useRouter: () => ({ push: mockPush, back: jest.fn(), replace: jest.fn(), canGoBack: () => true }),
 }))
 jest.mock('react-native-safe-area-context', () => ({
@@ -52,7 +53,7 @@ describe('First Run sport', () => {
     expect(screen.getAllByTestId('sport-icon-still')).toHaveLength(SPORTS.length)
     expect(screen.queryByTestId('sport-icon-once')).toBeNull()
     expect(screen.getByTestId('first-run-continue').props.accessibilityState.disabled).toBe(true)
-    expect(screen.queryByTestId('program-bar')).toBeNull()
+    expect(screen.getByTestId('program-bar-empty')).toBeTruthy()
   })
 
   it('narrows the grid as the athlete searches', async () => {
