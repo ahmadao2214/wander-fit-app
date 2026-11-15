@@ -11,6 +11,7 @@ import {
   gray, grayDark,
   slate, slateDark
 } from '@tamagui/colors'
+import { phaseThemeColors } from './lib/phase'
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ATHLETIC MOMENTUM DESIGN SYSTEM
@@ -230,6 +231,9 @@ const lightTheme = {
   tabActive: '#2563EB',
   tabInactive: '#64748B',
 
+  // Phase colors (GPP/SPP/SSP): one brand hue, see lib/phase.ts
+  ...phaseThemeColors('light'),
+
   // Brand colors in theme
   ...brandColors,
   
@@ -320,7 +324,10 @@ const darkTheme = {
 
   // Tab bar
   tabActive: '#3B82F6',
-  tabInactive: '#64748B',
+  tabInactive: '#94A3B8',
+
+  // Phase colors (GPP/SPP/SSP): one brand hue, see lib/phase.ts
+  ...phaseThemeColors('dark'),
 
   // Brand colors (adjusted for dark mode)
   brand1: '#0F172A',

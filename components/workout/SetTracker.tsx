@@ -5,6 +5,8 @@ import { TouchableOpacity, Platform, Vibration, type LayoutChangeEvent } from 'r
 import { SetEditSheet } from './SetEditSheet'
 import { parseReps } from '../../lib'
 import { nextSetIndex, setTileLayout } from '../../lib/workout'
+import { phaseTokens } from '../../lib/phase'
+import type { Phase } from '../../types'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
@@ -45,10 +47,8 @@ interface SetTrackerProps {
   prescribedReps: string
   prescribedSets: number
   onSetUpdate: (setIndex: number, data: SetData) => void
-  /** Primary intensity color for completed sets (e.g. $intensityMed6) */
-  intensityColor?: `$${string}` | string
-  /** Light intensity color for completed pill background (e.g. $intensityMed2) */
-  intensityLightColor?: `$${string}` | string
+  /** Training phase: colors the next set's tile and completed checks */
+  trainingPhase?: Phase
   /** Previous performance data for comparison hints */
   previousSets?: PreviousSetData[]
 }
@@ -69,10 +69,10 @@ export function SetTracker({
   prescribedReps,
   prescribedSets,
   onSetUpdate,
-  intensityColor = '$primary',
-  intensityLightColor = '$color3',
+  trainingPhase,
   previousSets,
 }: SetTrackerProps) {
+  const phase = phaseTokens(trainingPhase)
   const [editingSetIndex, setEditingSetIndex] = useState<number | null>(null)
   const [rowWidth, setRowWidth] = useState(0)
   const activeIndex = nextSetIndex(sets)
@@ -197,8 +197,8 @@ export function SetTracker({
                   py={isNext ? '$3.5' : '$3'}
                   minH={isNext ? 84 : 72}
                   justify="center"
-                  bg={isNext ? (intensityLightColor as any) : isCompleted ? '$color3' : isSkipped ? '$color4' : '$background'}
-                  borderColor={isNext ? (intensityColor as any) : '$borderColor'}
+                  bg={isNext ? phase.tint : isCompleted ? '$color3' : isSkipped ? '$color4' : '$background'}
+                  borderColor={isNext ? phase.fill : '$borderColor'}
                   borderWidth={isNext ? 2 : 1}
                   rounded="$4"
                 >
@@ -216,7 +216,7 @@ export function SetTracker({
                       // Weight goes on its own line so "12" and "225 lb" fit a third-width tile
                       <YStack items="center">
                         <XStack items="center" gap="$1">
-                          <Check size={18} color={intensityColor as any} strokeWidth={3} />
+                          <Check size={18} color={phase.text} strokeWidth={3} />
                           {set.repsCompleted != null && (
                             <Text fontSize={18} color="$color12" fontFamily="$body" fontWeight="700">
                               {set.repsCompleted}

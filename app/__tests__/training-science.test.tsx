@@ -83,9 +83,20 @@ describe('TrainingSciencePage', () => {
     )
 
     // The Three Phases section is defaultExpanded
-    expect(getByText('GPP: Building Your Foundation')).toBeTruthy()
-    expect(getByText('SPP: Sports Physical Preparedness')).toBeTruthy()
-    expect(getByText('SSP: Sports Specific Preparation')).toBeTruthy()
+    expect(getByText('GPP: General Physical Preparedness')).toBeTruthy()
+    expect(getByText('SPP: Specific Physical Preparedness')).toBeTruthy()
+    expect(getByText('SSP: Sport-Specific Preparedness')).toBeTruthy()
+  })
+
+  it('never uses the retired phase expansions', () => {
+    mockUseQuery.mockReturnValue({ gppCategoryId: 2 })
+    const { queryByText } = render(
+      <TrainingSciencePage />,
+      { wrapper: AllTheProviders }
+    )
+    expect(queryByText(/Sports Physical Preparedness/)).toBeNull()
+    expect(queryByText(/Sports Specific Preparation/)).toBeNull()
+    expect(queryByText(/General Physical Preparation\b/)).toBeNull()
   })
 
   it('shows each phase as load, reps or focus, and tempo instead of one dense line', () => {

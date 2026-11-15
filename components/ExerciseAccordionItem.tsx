@@ -14,6 +14,8 @@ import {
   RotateCcw,
   Info,
 } from '@tamagui/lucide-icons'
+import { phaseTokens } from '../lib/phase'
+import type { Phase } from '../types'
 
 /**
  * Exercise type from the template (with optional intensity scaling)
@@ -52,8 +54,8 @@ interface ExerciseAccordionItemProps {
   onToggle: () => void
   drag?: () => void
   isActive?: boolean
-  /** Intensity color token (e.g., "$intensityLow6", "$intensityMed6", "$intensityHigh6") */
-  intensityColor?: ColorTokens
+  /** Training phase: colors the order number and drag state */
+  trainingPhase?: Phase
 }
 
 /**
@@ -71,8 +73,9 @@ export function ExerciseAccordionItem({
   onToggle,
   drag,
   isActive,
-  intensityColor = "$primary",
+  trainingPhase,
 }: ExerciseAccordionItemProps) {
+  const phase = phaseTokens(trainingPhase)
   const exerciseDetails = exercise.exercise
 
   // Use scaled values if available, otherwise fall back to base values
@@ -82,7 +85,7 @@ export function ExerciseAccordionItem({
 
   return (
     <Card
-      borderColor={isActive ? intensityColor : "$borderColor"}
+      borderColor={isActive ? phase.fill : "$borderColor"}
       borderWidth={isActive ? 2 : 1}
       bg={isActive ? "$color2" : "$background"}
       elevation={isActive ? 4 : 0}
@@ -106,7 +109,7 @@ export function ExerciseAccordionItem({
               styles.dragHandleInner,
               isActive && styles.dragHandleActive
             ]}>
-              <GripVertical size={20} color={isActive ? intensityColor : "$color9"} />
+              <GripVertical size={20} color={isActive ? phase.text : "$color9"} />
             </View>
           </Pressable>
         )}
@@ -115,14 +118,13 @@ export function ExerciseAccordionItem({
         <Card
           width={28}
           height={28}
-          bg={intensityColor}
+          bg={phase.fill}
           rounded="$10"
           items="center"
           justify="center"
           p={0}
         >
-          {/* Navy, not white: white on the phase fill is 3.0-3.3:1, under AA for small text */}
-          <Text color="$color12" fontWeight="700" fontSize="$2">
+          <Text color={phase.onFill} fontWeight="700" fontSize="$2">
             {index + 1}
           </Text>
         </Card>

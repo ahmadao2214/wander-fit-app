@@ -119,7 +119,7 @@ describe('WarmupSection', () => {
         totalDuration={10}
         onComplete={mockOnComplete}
         mode="preview"
-        phaseColor="$blue9"
+        trainingPhase="GPP"
       />,
       { wrapper: AllTheProviders }
     )
@@ -209,7 +209,7 @@ describe('WarmupSection', () => {
         totalDuration={10}
         onComplete={mockOnComplete}
         mode="preview"
-        phaseColor="$blue9"
+        trainingPhase="GPP"
       />,
       { wrapper: AllTheProviders }
     )
@@ -274,7 +274,7 @@ describe('WarmupSection', () => {
         totalDuration={10}
         onComplete={mockOnComplete}
         mode="preview"
-        phaseColor="$blue9"
+        trainingPhase="GPP"
       />,
       { wrapper: AllTheProviders }
     )
@@ -298,7 +298,7 @@ describe('WarmupSection', () => {
         totalDuration={10}
         onComplete={mockOnComplete}
         mode="preview"
-        phaseColor="$blue9"
+        trainingPhase="GPP"
       />,
       { wrapper: AllTheProviders }
     )
@@ -487,14 +487,14 @@ describe('WarmupSection', () => {
     expect(queryByTestId('phase-affordance-mobility')).toBeNull()
   })
 
-  it('accepts phaseColor prop without crashing', () => {
+  it('accepts the trainingPhase prop without crashing', () => {
     const { getByText } = render(
       <WarmupSection
         exercises={mockExercises}
         totalDuration={10}
         onComplete={mockOnComplete}
         mode="flow"
-        phaseColor="$blue9"
+        trainingPhase="GPP"
       />,
       { wrapper: AllTheProviders }
     )

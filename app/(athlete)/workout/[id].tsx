@@ -44,6 +44,7 @@ import {
   normalizeExerciseOrder,
   templateOrderToMainOrder,
 } from '../../../lib/executionOrder'
+import { phaseTokens } from '../../../lib/phase'
 
 /**
  * Exercise type for the draggable list (with intensity scaling)
@@ -304,13 +305,8 @@ export default function WorkoutDetailScreen() {
       ? 'High intensity'
       : 'Moderate intensity'
 
-  // Phase color for UI elements (exercise numbers, Start button)
-  // GPP = blue, SPP = orange, SSP = green
-  const phaseColor = template?.phase === 'GPP'
-    ? '$blue9'
-    : template?.phase === 'SPP'
-      ? '$orange9'
-      : '$green9'
+  // Phase identity color (labels, exercise numbers); actions use $primary
+  const phase = phaseTokens(template?.phase)
 
   // Render item for DraggableFlatList
   const renderExerciseItem = useCallback(
@@ -325,12 +321,12 @@ export default function WorkoutDetailScreen() {
             onToggle={() => toggleExpanded(item.exerciseId)}
             drag={canReorder ? drag : undefined}
             isActive={isActive}
-            intensityColor={phaseColor}
+            trainingPhase={template?.phase}
           />
         </ScaleDecorator>
       )
     },
-    [expandedExerciseIds, toggleExpanded, canReorder, phaseColor]
+    [expandedExerciseIds, toggleExpanded, canReorder, template?.phase]
   )
 
   // Key extractor for FlatList
@@ -424,11 +420,11 @@ export default function WorkoutDetailScreen() {
                 </Text>
               </XStack>
               {/* View Mode Toggle */}
-              <XStack gap="$1" bg="$green3" rounded="$3" p="$1">
+              <XStack gap="$1" bg="$color3" rounded="$3" p="$1">
                 <Button
                   size="$2"
-                  bg={viewMode === "review" ? "$green6" : "transparent"}
-                  color={viewMode === "review" ? "white" : "$green11"}
+                  bg={viewMode === "review" ? "$surface" : "transparent"}
+                  color={viewMode === "review" ? "$color12" : "$color11"}
                   onPress={() => setViewMode("review")}
                   icon={ListChecks}
                   px="$2"
@@ -437,8 +433,8 @@ export default function WorkoutDetailScreen() {
                 </Button>
                 <Button
                   size="$2"
-                  bg={viewMode === "preview" ? "$green6" : "transparent"}
-                  color={viewMode === "preview" ? "white" : "$green11"}
+                  bg={viewMode === "preview" ? "$surface" : "transparent"}
+                  color={viewMode === "preview" ? "$color12" : "$color11"}
                   onPress={() => setViewMode("preview")}
                   icon={ClipboardList}
                   px="$2"
@@ -550,7 +546,7 @@ export default function WorkoutDetailScreen() {
             totalDuration={warmupDuration}
             onComplete={() => {}}
             mode="preview"
-            phaseColor={phaseColor}
+            trainingPhase={template?.phase}
           />
         )}
 
@@ -629,12 +625,11 @@ export default function WorkoutDetailScreen() {
             {isPhaseUnlocked && !isCompleted && (
               <Button
                 size="$4"
-                bg={phaseColor}
+                bg="$primary"
                 color="white"
                 onPress={startWorkout}
                 testID="workout-start"
                 icon={isStarting ? undefined : Play}
-                // Large text: white on the phase fill is 3.0-3.3:1
                 fontSize={19}
                 fontWeight="600"
                 disabled={isStarting}
@@ -672,7 +667,7 @@ export default function WorkoutDetailScreen() {
               {template.name}
             </Text>
             <Text testID="workout-meta" fontSize={14} fontFamily="$body" color="$color10">
-              <Text fontSize={14} fontFamily="$body" fontWeight="600" color={phaseColor}>
+              <Text fontSize={14} fontFamily="$body" fontWeight="600" color={phase.text}>
                 {template.phase}
               </Text>
               {' · '}

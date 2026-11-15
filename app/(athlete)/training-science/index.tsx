@@ -19,6 +19,8 @@ import {
 } from '@tamagui/lucide-icons'
 import type { ColorTokens } from 'tamagui'
 import { ScienceSection } from '../../../components/training-science/ScienceSection'
+import { phaseTitle, phaseTokens } from '../../../lib/phase'
+import type { Phase } from '../../../types'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
@@ -99,24 +101,16 @@ const CATEGORY_INFO: Record<number, {
 
 type PhaseSpec = { icon: typeof Zap; label: string; value: string }
 
-const PHASES: {
-  key: 'GPP' | 'SPP' | 'SSP'
-  title: string
+const PHASE_SPECS: {
+  key: Phase
   body: string
   icon: typeof Zap
-  bg: ColorTokens
-  accent: ColorTokens
-  text: ColorTokens
   specs: PhaseSpec[]
 }[] = [
   {
     key: 'GPP',
-    title: 'GPP: Building Your Foundation',
-    body: 'General Physical Preparation focuses on movement quality, work capacity, and injury prevention. Think of this as building the engine.',
+    body: 'Movement quality, work capacity and injury prevention. This builds the engine everything else runs on.',
     icon: Target,
-    bg: '$blue3',
-    accent: '$blue9',
-    text: '$blue11',
     specs: [
       { icon: Weight, label: 'Load', value: '60–75%' },
       { icon: Repeat, label: 'Reps', value: 'Higher' },
@@ -125,12 +119,8 @@ const PHASES: {
   },
   {
     key: 'SPP',
-    title: 'SPP: Sports Physical Preparedness',
-    body: 'Sports Physical Preparedness builds sport-ready athleticism. Now we develop the physical qualities your sport demands.',
+    body: 'Turns that base into the strength, speed and power your sport asks for.',
     icon: Flame,
-    bg: '$orange3',
-    accent: '$accent',
-    text: '$orange11',
     specs: [
       { icon: Weight, label: 'Load', value: '75–85%' },
       { icon: Target, label: 'Focus', value: 'Sport moves' },
@@ -139,12 +129,8 @@ const PHASES: {
   },
   {
     key: 'SSP',
-    title: 'SSP: Sports Specific Preparation',
-    body: 'Sports Specific Preparation is about competition readiness. Lower volume, higher intensity, maintaining your gains. Time to race.',
+    body: 'Competition readiness: lower volume and higher intensity, keeping what you built.',
     icon: Trophy,
-    bg: '$green3',
-    accent: '$green9',
-    text: '$green11',
     specs: [
       { icon: Weight, label: 'Load', value: '85–90%' },
       { icon: Repeat, label: 'Volume', value: 'Lower' },
@@ -152,6 +138,17 @@ const PHASES: {
     ],
   },
 ]
+
+const PHASES = PHASE_SPECS.map((spec) => {
+  const colors = phaseTokens(spec.key)
+  return {
+    ...spec,
+    title: phaseTitle(spec.key),
+    bg: colors.tint,
+    accent: colors.fill,
+    text: colors.text,
+  }
+})
 
 /** Load / reps / tempo as three labeled values instead of one dense line. */
 function PhaseSpecs({ specs, accent, text }: { specs: PhaseSpec[]; accent: ColorTokens; text: ColorTokens }) {
