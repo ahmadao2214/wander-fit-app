@@ -184,6 +184,27 @@ describe('Save your plan', () => {
     expect(mockSignUp.create).toHaveBeenLastCalledWith(expect.objectContaining({ emailAddress: 'a@b.co' }))
   })
 
+  it('hides Change email while the code is being checked', async () => {
+    let finishVerify = () => {}
+    mockSignUp.attemptEmailAddressVerification.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishVerify = () => resolve({ status: 'complete', createdSessionId: 'sess_1', createdUserId: 'user_1' })
+        })
+    )
+    await show()
+    await press('save-plan-email')
+    fireEvent.changeText(screen.getByTestId('save-plan-name'), 'Sam')
+    fireEvent.changeText(screen.getByTestId('save-plan-email-input'), 'a@b.co')
+    fireEvent.changeText(screen.getByTestId('save-plan-password'), 'long-enough-1')
+    await press('save-plan-create')
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId('save-plan-code'), '424242')
+    })
+    expect(screen.queryByTestId('save-plan-change-email')).toBeNull()
+    await act(async () => finishVerify())
+  })
+
   it('offers sign-in when the email already has an account', async () => {
     mockSignUp.create.mockRejectedValueOnce({ errors: [{ code: 'form_identifier_exists' }] })
     await show()

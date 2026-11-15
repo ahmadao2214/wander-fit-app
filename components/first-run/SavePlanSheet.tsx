@@ -418,22 +418,25 @@ export function SavePlanSheet({ open, onOpenChange }: { open: boolean; onOpenCha
                 >
                   Resend code
                 </Text>
-                <Text
-                  fontFamily="$body"
-                  fontSize={14}
-                  fontWeight="600"
-                  color="$primaryText"
-                  text="center"
-                  accessibilityRole="button"
-                  onPress={() => {
-                    setCode('')
-                    setErrors({})
-                    setStep('email')
-                  }}
-                  testID="save-plan-change-email"
-                >
-                  Change email
-                </Text>
+                {busy ? null : (
+                  // Hidden while verifying, so a late success can't save to the old address
+                  <Text
+                    fontFamily="$body"
+                    fontSize={14}
+                    fontWeight="600"
+                    color="$primaryText"
+                    text="center"
+                    accessibilityRole="button"
+                    onPress={() => {
+                      setCode('')
+                      setErrors({})
+                      setStep('email')
+                    }}
+                    testID="save-plan-change-email"
+                  >
+                    Change email
+                  </Text>
+                )}
               </YStack>
             ) : null}
           </YStack>
