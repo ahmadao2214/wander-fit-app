@@ -144,6 +144,14 @@ jobs:
           path: e2e-artifacts/history/web/
           if-no-files-found: warn
           retention-days: 14
+      - name: Upload workout-exit-resume evidence
+        if: always() && hashFiles('e2e-artifacts/workout-exit-resume/web/.scrubbed') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-web-workout-exit-resume
+          path: e2e-artifacts/workout-exit-resume/web/
+          if-no-files-found: warn
+          retention-days: 14
       - name: Summary
         if: always()
         env:

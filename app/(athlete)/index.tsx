@@ -1,4 +1,4 @@
-import { YStack, XStack, Text, Card, Button, ScrollView, Spinner, styled, type ColorTokens } from 'tamagui'
+import { AlertDialog, YStack, XStack, Text, Card, Button, ScrollView, Spinner, styled, type ColorTokens } from 'tamagui'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
@@ -17,6 +17,7 @@ import {
 import { todayHeading, phaseWeekSegments, progressCaption, countMainExercises, msUntilNextMidnight } from '../../lib/today'
 import { workoutMetaLine } from '../../lib/workoutMeta'
 import { DEFAULT_WEEKS_PER_PHASE } from '../../lib/calendarUtils'
+import { pausedLabel } from '../../lib/sessionTiming'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
@@ -118,6 +119,87 @@ function useCurrentDate(): Date {
   return date
 }
 
+/**
+ * Discard a paused workout. Exit only pauses, so ending a session for good
+ * is its own choice, and it asks first.
+ */
+function DiscardPausedWorkout({ onDiscard }: { onDiscard: () => Promise<void> }) {
+  const [open, setOpen] = useState(false)
+  const [isDiscarding, setIsDiscarding] = useState(false)
+
+  const handleDiscard = async () => {
+    setIsDiscarding(true)
+    try {
+      await onDiscard()
+      setOpen(false)
+    } catch (error) {
+      console.error('Failed to discard workout:', error)
+    } finally {
+      setIsDiscarding(false)
+    }
+  }
+
+  return (
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialog.Trigger asChild>
+        <Button
+          size="$3"
+          chromeless
+          self="center"
+          color="$color11"
+          fontFamily="$body"
+          fontWeight="600"
+          testID="today-discard"
+        >
+          Discard
+        </Button>
+      </AlertDialog.Trigger>
+      <AlertDialog.Portal>
+        <AlertDialog.Overlay key="overlay" opacity={0.5} />
+        <AlertDialog.Content bg="$surface" elevate key="content" p="$5" mx="$4" rounded="$5">
+          <YStack gap="$3">
+            <AlertDialog.Title fontFamily="$body" fontWeight="700" fontSize={20}>
+              Discard this workout?
+            </AlertDialog.Title>
+            <AlertDialog.Description fontFamily="$body" color="$color10">
+              The sets you logged won't count. You can start this workout fresh any time.
+            </AlertDialog.Description>
+            <XStack gap="$3" pt="$2">
+              <AlertDialog.Cancel asChild>
+                <Button
+                  flex={1}
+                  bg="$background"
+                  borderWidth={2}
+                  borderColor="$borderColor"
+                  fontFamily="$body"
+                  fontWeight="700"
+                  color="$color11"
+                  rounded="$4"
+                >
+                  Keep it
+                </Button>
+              </AlertDialog.Cancel>
+              <Button
+                flex={1}
+                bg="$red11"
+                color="white"
+                fontFamily="$body"
+                fontWeight="700"
+                rounded="$4"
+                disabled={isDiscarding}
+                onPress={handleDiscard}
+                testID="today-discard-confirm"
+              >
+                {isDiscarding ? '…' : 'Discard'}
+              </Button>
+            </XStack>
+          </YStack>
+        </AlertDialog.Content>
+      </AlertDialog.Portal>
+    </AlertDialog>
+  )
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
@@ -173,8 +255,8 @@ export default function AthleteDashboard() {
     todayWorkout ? { templateId: todayWorkout._id } : "skip"
   )
 
-  // Start session mutation
-  const startSession = useMutation(api.gppWorkoutSessions.startSession)
+  // Discard a paused session (the athlete's explicit choice; Exit only pauses)
+  const abandonSession = useMutation(api.gppWorkoutSessions.abandonSession)
 
   // Phase color (GPP=blue, SPP=orange, SSP=green)
   const phaseColor: ColorTokens = programState?.phase === 'GPP'
@@ -243,14 +325,17 @@ export default function AthleteDashboard() {
     )
   }
 
-  // Determine workout state
-  const isInProgress = todaySession && 
-    todaySession.status === 'in_progress' && 
-    todayWorkout
-  
-  const isCompleted = todaySession && 
+  // Determine workout state. A paused session comes first, whichever day it's
+  // from: Today offers Resume (or Discard) rather than a fresh Start.
+  const pausedSession = activeSession ?? null
+  const pausedElsewhere = !!pausedSession && pausedSession.templateId !== todayWorkout?._id
+  const isCompleted = !pausedSession && todaySession &&
     todaySession.status === 'completed' &&
     todayWorkout
+
+  const cardWorkoutName = pausedElsewhere
+    ? (pausedSession.templateSnapshot?.name ?? pausedSession.template?.name ?? 'Your workout')
+    : todayWorkout?.name
 
   return (
     <YStack flex={1} bg="$background">
@@ -335,7 +420,9 @@ export default function AthleteDashboard() {
               <YStack gap="$1.5">
                 <XStack justify="space-between" items="center">
                   {/* $color11: $color10 is 4.4:1 on the card's $brand1 tint, under AA */}
-                  <SectionLabel color="$color11">Today's workout</SectionLabel>
+                  <SectionLabel color="$color11">
+                    {pausedElsewhere ? 'Paused workout' : "Today's workout"}
+                  </SectionLabel>
                   {isCompleted && (
                     <XStack items="center" gap="$1">
                       <CheckCircle size={14} color="$green10" />
@@ -351,9 +438,9 @@ export default function AthleteDashboard() {
                   color="$color12"
                   lineHeight={30}
                 >
-                  {todayWorkout?.name || 'Loading…'}
+                  {cardWorkoutName || 'Loading…'}
                 </Text>
-                {todayWorkout && (
+                {todayWorkout && !pausedElsewhere && (
                   <Text testID="today-workout-meta" fontSize={14} color="$color11" fontFamily="$body">
                     <Text
                       fontSize={14}
@@ -370,6 +457,11 @@ export default function AthleteDashboard() {
                       minutes: todayWorkout.estimatedDurationMinutes,
                       exerciseCount: countMainExercises(todayWorkout.exercises),
                     })}
+                  </Text>
+                )}
+                {pausedSession && (
+                  <Text testID="today-paused" fontSize={14} color="$color11" fontFamily="$body">
+                    {pausedLabel(pausedSession.pausedAt ?? pausedSession.startedAt, today)} · your sets are saved
                   </Text>
                 )}
               </YStack>
@@ -393,26 +485,33 @@ export default function AthleteDashboard() {
                 >
                   View Workout
                 </Button>
-              ) : isInProgress ? (
-                <Button
-                  size="$5"
-                  bg={phaseColor}
-                  color="white"
-                  icon={RotateCcw}
-                  // Large text: white on the phase fill is 3.0-3.3:1
-                  fontSize={19}
-                  fontFamily="$body" fontWeight="700"
-                  rounded="$4"
-                  pressStyle={{ opacity: 0.9, scale: 0.98 }}
-                  onPress={() => {
-                    router.push({
-                      pathname: '/(athlete)/workout/execute/[id]',
-                      params: { id: todaySession._id },
-                    })
-                  }}
-                >
-                  Resume Workout
-                </Button>
+              ) : pausedSession ? (
+                <YStack gap="$1">
+                  <Button
+                    size="$5"
+                    bg={phaseColor}
+                    color="white"
+                    icon={RotateCcw}
+                    // Large text: white on the phase fill is 3.0-3.3:1
+                    fontSize={19}
+                    fontFamily="$body" fontWeight="700"
+                    rounded="$4"
+                    pressStyle={{ opacity: 0.9, scale: 0.98 }}
+                    onPress={() => {
+                      router.push({
+                        pathname: '/(athlete)/workout/execute/[id]',
+                        params: { id: pausedSession._id },
+                      })
+                    }}
+                  >
+                    Resume Workout
+                  </Button>
+                  <DiscardPausedWorkout
+                    onDiscard={async () => {
+                      await abandonSession({ sessionId: pausedSession._id })
+                    }}
+                  />
+                </YStack>
               ) : (
                 <Button
                   size="$5"

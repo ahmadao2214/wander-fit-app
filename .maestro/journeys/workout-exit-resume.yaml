@@ -1,0 +1,88 @@
+url: ${VERIFY_URL}
+---
+# Regression: X → Exit abandoned the session, so Today offered a fresh Start
+# and the logged sets were lost. Exit now pauses: Today shows Resume, and the
+# logged set is still there. An onboarded persona with no sessions.
+- runFlow: ../subflows/_evidence-start.yaml
+- extendedWaitUntil:
+    visible: "WELCOME BACK"
+    timeout: 90000
+- runFlow: ../subflows/_sign-in.yaml
+- extendedWaitUntil:
+    visible:
+      id: today-workout-card
+    timeout: 90000
+- tapOn: "Start Workout"
+- extendedWaitUntil:
+    visible:
+      id: workout-start
+    timeout: 30000
+- tapOn:
+    id: workout-start
+- extendedWaitUntil:
+    visible:
+      id: warmup-skip
+    timeout: 30000
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: warmup-skip
+    commands:
+      - tapOn:
+          id: warmup-skip
+- extendedWaitUntil:
+    visible:
+      id: execute-exercise-name
+    timeout: 30000
+- copyTextFrom:
+    id: execute-exercise-name
+# On web the tile's testID is the inner card's (set-tile-next), not set-0
+- tapOn:
+    id: set-tile-next
+- assertVisible:
+    id: sets-logged
+    text: "1/.*"
+- takeScreenshot: 01-set-logged
+
+# X → Pause and exit lands on Today with the session paused, not abandoned
+# Web reports the accessibility label as the id when there is one
+- tapOn:
+    id: "execute-exit|Exit workout"
+- extendedWaitUntil:
+    visible: "Pause this workout?"
+    timeout: 10000
+- takeScreenshot: 02-exit-dialog
+# AlertDialog.Action drops the button's testID on web; tap its label
+- tapOn: "Pause and exit"
+- extendedWaitUntil:
+    visible:
+      id: today-paused
+    timeout: 30000
+- assertVisible: "Resume Workout"
+- assertNotVisible: "Start Workout"
+- takeScreenshot: 03-today-paused
+
+# Resume opens the same exercise with set 1 still logged
+- tapOn: "Resume Workout"
+- extendedWaitUntil:
+    visible:
+      id: execute-exercise-name
+    timeout: 30000
+# Resume opens the first exercise not finished. A one-set exercise is
+# finished by its logged set, so step back to it.
+- runFlow:
+    when:
+      notVisible:
+        id: execute-exercise-name
+        text: ${maestro.copiedText}
+    commands:
+      - tapOn: "Previous"
+- assertVisible:
+    id: execute-exercise-name
+    text: ${maestro.copiedText}
+- assertVisible:
+    id: sets-logged
+    text: "1/.*"
+- takeScreenshot: 04-resumed
+- runFlow: ../subflows/_evidence-stop.yaml

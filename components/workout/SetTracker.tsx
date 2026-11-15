@@ -150,7 +150,7 @@ export function SetTracker({
       <YStack gap="$3">
         <XStack items="center" gap="$2">
           <SectionLabel>SETS</SectionLabel>
-          <Text fontSize={12} color="$color9" fontFamily="$body">
+          <Text testID="sets-logged" fontSize={12} color="$color9" fontFamily="$body">
             {sets.filter(s => s.completed).length}/{prescribedSets}
           </Text>
           {previousSummary && (

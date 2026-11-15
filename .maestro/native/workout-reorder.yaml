@@ -44,8 +44,14 @@ appId: com.offseason.asrafit
 - assertNotVisible: "Set 1, .*, done"
 - takeScreenshot: native-reorder-second-clean
 
-# Restart the app so the session reloads from the server, then resume.
-# (The X button's Exit abandons the session, so Today would offer a new start.)
+# Exit through the X: it pauses the session. Then restart the app so the
+# session reloads from the server, and resume from Today.
+- tapOn:
+    id: execute-exit
+- tapOn:
+    id: exit-pause
+- assertVisible:
+    id: today-paused
 - stopApp
 - launchApp
 # A Debug dev client opens its developer menu on launch; Release builds don't.

@@ -39,6 +39,7 @@ describe("web flows", () => {
     expect(listWebFlows()).toContain("sign-up")
     expect(listWebFlows()).toContain("activation")
     expect(listWebFlows()).toContain("history")
+    expect(listWebFlows()).toContain("workout-exit-resume")
   })
 
   it("keeps launch on the web entry and a parseable header on the shared files", () => {

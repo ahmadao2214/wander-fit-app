@@ -1,0 +1,57 @@
+# Regression: X → Exit used to abandon the session, so Today offered a fresh
+# Start and the logged sets were lost, though the dialog promised a resume.
+# Exit now pauses: Today shows Resume, and the logged set is still there.
+# Starts on Today with an unlocked, uncompleted workout and no paused session
+# (see .cursor/skills/verify-wander-fit/features/workout-exit-resume.md).
+appId: com.offseason.asrafit
+---
+- assertVisible:
+    id: today-heading
+- tapOn: "Start Workout"
+- tapOn:
+    id: workout-start
+- runFlow:
+    when:
+      visible:
+        id: warmup-skip
+    commands:
+      - tapOn:
+          id: warmup-skip
+- assertVisible:
+    id: execute-exercise-name
+- copyTextFrom:
+    id: execute-exercise-name
+- tapOn:
+    id: set-0
+- assertVisible: "Set 1, .*, done"
+
+# X → Pause and exit lands on Today with the session paused, not abandoned
+- tapOn:
+    id: execute-exit
+- assertVisible: "Pause this workout?"
+- tapOn:
+    id: exit-pause
+- assertVisible:
+    id: today-heading
+- assertVisible:
+    id: today-paused
+- assertNotVisible: "Start Workout"
+- takeScreenshot: native-exit-paused-today
+
+# Resume opens the first exercise not finished. A one-set exercise is
+# finished by its logged set, so step back to it.
+- tapOn: "Resume Workout"
+- assertVisible:
+    id: execute-exercise-name
+- runFlow:
+    when:
+      notVisible:
+        id: execute-exercise-name
+        text: ${maestro.copiedText}
+    commands:
+      - tapOn: "Previous"
+- assertVisible:
+    id: execute-exercise-name
+    text: ${maestro.copiedText}
+- assertVisible: "Set 1, .*, done"
+- takeScreenshot: native-exit-resumed
