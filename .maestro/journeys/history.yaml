@@ -19,7 +19,10 @@ url: ${VERIFY_URL}
 - extendedWaitUntil:
     visible: "GPP W1D1"
     timeout: 30000
-- assertVisible: "(?i)completed"
+# Completed rows show the check (spoken "Completed") and no status chip
+- assertVisible:
+    id: history-completed
+- assertNotVisible: "Not finished"
 - assertNotVisible: "(?i)no workouts yet"
 - takeScreenshot: 02-history
 - runFlow: ../subflows/_evidence-stop.yaml

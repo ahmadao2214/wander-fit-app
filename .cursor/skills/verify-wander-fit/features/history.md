@@ -4,7 +4,7 @@ An athlete who has finished a workout sees it on the History tab.
 
 ## Sub-features
 
-- `history-lists-gpp-session`: a persona provisioned with `--state with-history` (onboarded, plus one completed GPP W1D1 session) signs in, opens History, and sees the session row (`GPP W1D1`, status completed). The empty state ("No workouts yet") must not show.
+- `history-lists-gpp-session`: a persona provisioned with `--state with-history` (onboarded, plus one completed GPP W1D1 session) signs in, opens History, and sees the session row (`GPP W1D1`) with the completed check (`history-completed`, spoken "Completed") and no "Not finished" chip. The empty state ("No workouts yet") must not show.
 
 ## Run
 
