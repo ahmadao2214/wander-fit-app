@@ -32,8 +32,8 @@ Removed from the First Run: maxes (Profile already edits them; workouts run on R
 
 | Needed | Owner | Blocks |
 |---|---|---|
-| PRs #105, #106, #107 merged (#105 makes sign-up athlete-only and deletes orphaned onboarding screens) | visual-legacy chat | Task 1 branch base; avoids conflicting deletes |
-| `components/sport-icon/SportIcon.tsx`, props for still or play-once, reduced-motion aware, static fallback | sport animation chat | Tasks 6 and 9 |
+| PRs #105, #106, #107 merged (#105 makes sign-up athlete-only and deletes orphaned onboarding screens) | visual-legacy chat | Done: merged 2026-11-14 |
+| `components/sport-icon/SportIcon.tsx`, props for still or play-once, reduced-motion aware, static fallback | sport animation chat | Done: merged in #109 and #111 (2026-11-15) |
 | Sign in with Apple enabled in the Clerk dashboard and the Apple Developer account (Services ID, key) | Azhar | Apple button in Task 10 (email works without it) |
 
 ## Task list

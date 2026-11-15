@@ -4,32 +4,32 @@ Plan: `tasks/plan.md`. Verification commands: `bun run test -- <pattern>`, `bun 
 
 ## Phase 1: Foundation (PR 1)
 
-- [ ] **Task 1: First Run rules as pure functions** (S)
+- [x] **Task 1: First Run rules as pure functions** (S)
   - `lib/firstRun.ts`: answer types; years choice → 0/1/3 years; "No set season" → `weeksUntilSeason` undefined; default days Mon/Wed/Fri; phase weeks and session count using `convex/weekMapping.ts` and `lib/calculations.ts`.
   - Acceptance: every season length from 1 to 52 weeks and "no season" gives the same phase weeks as `completeIntake` would store; each years choice maps to Novice, Moderate, Advanced.
   - Verify: `bun run test -- firstRun` (new `lib/__tests__/firstRun.test.ts`).
   - Depends on: none. Files: `lib/firstRun.ts`, its test.
 
-- [ ] **Task 2: Device draft** (S)
+- [x] **Task 2: Device draft** (S)
   - `lib/firstRunDraft.ts`: save, load and clear answers, last step reached and `firstLaunchAt` (set once, on first load). SecureStore on native, localStorage on web, both wrapped so a failure falls back to an empty draft.
   - Acceptance: round-trips a draft; `firstLaunchAt` never changes after it's set; clear removes everything; corrupt data loads as empty.
   - Verify: `bun run test -- firstRunDraft`.
   - Depends on: 1. Files: `lib/firstRunDraft.ts`, its test.
 
-- [ ] **Task 3: `completeIntake` takes `firstLaunchAt` and keeps an existing program** (S)
+- [x] **Task 3: `completeIntake` takes `firstLaunchAt` and keeps an existing program** (S)
   - Add optional `firstLaunchAt` to the args and store it (optional field on `users`). Confirm that an account with a program keeps it, and return a flag the client can use for the notice.
   - Acceptance: a new account stores `firstLaunchAt` and gets GPP week 1 day 1; a second call on an account with a program leaves the program unchanged and reports it.
   - Verify: `bun run test -- userPrograms` (convex-test).
   - Depends on: none. Files: `convex/schema.ts`, `convex/userPrograms.ts`, `convex/__tests__/userPrograms.test.ts`.
 
-- [ ] **Task 4: Workout templates in the e2e database** (M)
+- [x] **Task 4: Workout templates in the e2e database** (M)
   - The verify runner's seed step also runs the generated-template mutation on `wander-fit-e2e`, so `getWorkout` returns real Day 1s. Update the "Today card stays Loading" gotcha in the feature map.
   - Acceptance: after `node scripts/verify/run.mjs deploy`, `programTemplates.getWorkout` for category 2, GPP, Novice, week 1, day 1 returns "Lower Body A - Foundation".
   - Verify: run the deploy step, then the query with the Convex CLI.
   - Depends on: none. Files: `scripts/verify/run.mjs`, `.cursor/skills/verify-wander-fit/features/activation.md`.
 
 ### Checkpoint A
-- [ ] `bun run test:ci` and `bun run typecheck` pass. No user-visible change. PR 1 opened.
+- [x] `bun run test:ci` and `bun run typecheck` pass. No user-visible change. PR 1 opened.
 
 ## Phase 2: The journey (PR 2)
 
@@ -42,6 +42,7 @@ Plan: `tasks/plan.md`. Verification commands: `bun run test -- <pattern>`, `bun 
 - [ ] **Task 6: Promise and Sport** (M)
   - Promise copy as in the plan. Sport: all 27 from `sports.list`, alphabetical, search, still `SportIcon`, selected state, light haptic on iOS (Task 15). Writes the draft.
   - Acceptance: search narrows the grid; selecting stores the sport and shows "Basketball · Power" in the "Your program" bar without animation; Continue needs a selection.
+  - SportIcon (merged in #109/#111): `<SportIcon name={sport.name} mode="still" />`. The icon is hidden from accessibility, so each tile's label must say the sport name and its selected state.
   - Verify: `app/__tests__/first-run-sport.test.tsx`.
   - Depends on: 5, SportIcon. Files: `app/(first-run)/index.tsx`, `app/(first-run)/sport.tsx`, `components/first-run/ProgramBar.tsx`, test.
 
@@ -60,6 +61,8 @@ Plan: `tasks/plan.md`. Verification commands: `bun run test -- <pattern>`, `bun 
 - [ ] **Task 9: Reveal** (M)
   - Day 1 card from `programTemplates.getWorkout`, GPP/SPP/SSP bar (placeholder tints, names as text, tap shows the full name), session count, one category line. One animated moment: `SportIcon` plays once, content resolves with it. Reduced motion and web: resting frame, no movement. Loading state while the template loads; no rings, no scores.
   - Acceptance: numbers match Task 1 for the draft; reduced motion renders with no animation; "Save my plan" opens the account sheet.
+  - SportIcon: `mode="once"` with `onFinish` resolving the rest of the reveal. With Reduce Motion on or unknown, or a sport with no animation, `onFinish` fires at once, so content appears together. One play is about 5 s, so content must not wait for it to finish; start it alongside the play and use `onFinish` only to settle. Check on web that lottie-react-native plays (or falls back to still) and that `useReducedMotion` reads the media query.
+  - Show `programWeeks` from `revealProgram`, not the season distance: phases are 2–8 weeks, so a season 52 weeks away runs a 24-week program and one 1 week away runs 6 weeks. Copy must not claim the program ends at the first game when they differ.
   - Verify: `app/__tests__/first-run-reveal.test.tsx`, plus a manual reduced-motion check in the simulator.
   - Depends on: 1, 5, SportIcon. Files: `app/(first-run)/reveal.tsx`, `components/first-run/PhaseBar.tsx`, `components/first-run/DayOneCard.tsx`, test.
 
