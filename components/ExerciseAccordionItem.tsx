@@ -5,6 +5,7 @@ import {
   Text, 
   Card,
 } from 'tamagui'
+import { Caption } from './Typography'
 import { 
   GripVertical,
   ChevronDown,
@@ -166,9 +167,7 @@ export function ExerciseAccordionItem({
                 .slice(0, 3)
                 .map((tag) => (
                   <Card key={tag} bg="$gray3" px="$2" py="$0.5" rounded="$2">
-                    <Text fontSize="$1" color="$color10">
-                      {tag.replace(/_/g, ' ')}
-                    </Text>
+                    <Caption>{tag.replace(/_/g, ' ')}</Caption>
                   </Card>
                 ))}
             </XStack>

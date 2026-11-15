@@ -1,4 +1,4 @@
-import { AlertDialog, YStack, XStack, Text, Card, Button, ScrollView, Spinner, styled } from 'tamagui'
+import { AlertDialog, YStack, XStack, Text, Card, Button, ScrollView, Spinner } from 'tamagui'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
@@ -20,29 +20,7 @@ import { DEFAULT_WEEKS_PER_PHASE } from '../../lib/calendarUtils'
 import { pausedLabel } from '../../lib/sessionTiming'
 import { PHASE_NAMES, phaseTokens } from '../../lib/phase'
 import type { Phase } from '../../types'
-
-// ─────────────────────────────────────────────────────────────────────────────
-// STYLED COMPONENTS
-// ─────────────────────────────────────────────────────────────────────────────
-
-// Display heading using Bebas Neue
-const DisplayHeading = styled(Text, {
-  fontFamily: '$heading',
-  fontSize: 32,
-  letterSpacing: 1,
-  color: '$color12',
-})
-
-// Section label
-const SectionLabel = styled(Text, {
-  fontFamily: '$body',
-  fontWeight: '600',
-  fontSize: 11,
-  letterSpacing: 1.5,
-  textTransform: 'uppercase',
-  color: '$color10',
-})
-
+import { Display, Title, Body, Supporting, Caption, numeric } from '../../components/Typography'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PHASE PROGRESS
@@ -69,10 +47,10 @@ function PhaseProgress({
     <YStack gap="$2.5" testID="phase-progress">
       {/* The full name wraps on narrow phones or large text; the week count keeps its width */}
       <XStack justify="space-between" items="flex-end" gap="$3">
-        <SectionLabel style={{ flex: 1 }}>{PHASE_NAMES[phase]}</SectionLabel>
-        <Text fontSize={13} fontFamily="$body" fontWeight="600" color="$color11" style={{ flexShrink: 0 }}>
+        <Body fontWeight="600" style={{ flex: 1 }}>{PHASE_NAMES[phase]}</Body>
+        <Supporting fontWeight="600" style={[numeric, { flexShrink: 0 }]}>
           Week {Math.min(week, segments.length)} of {segments.length}
-        </Text>
+        </Supporting>
       </XStack>
       <XStack gap="$1.5" accessibilityLabel={`Week ${week} of ${segments.length}`}>
         {segments.map((segment, index) => (
@@ -87,9 +65,7 @@ function PhaseProgress({
         ))}
       </XStack>
       {caption && (
-        <Text fontSize={13} fontFamily="$body" color="$color10">
-          {caption}
-        </Text>
+        <Supporting color="$color10">{caption}</Supporting>
       )}
     </YStack>
   )
@@ -154,7 +130,7 @@ function DiscardPausedWorkout({ onDiscard }: { onDiscard: () => Promise<void> })
         <AlertDialog.Overlay key="overlay" opacity={0.5} />
         <AlertDialog.Content bg="$surface" elevate key="content" p="$5" mx="$4" rounded="$5">
           <YStack gap="$3">
-            <AlertDialog.Title fontFamily="$body" fontWeight="700" fontSize={20}>
+            <AlertDialog.Title fontFamily="$body" fontWeight="700" fontSize={18} lineHeight={24}>
               Discard this workout?
             </AlertDialog.Title>
             <AlertDialog.Description fontFamily="$body" color="$color10">
@@ -293,7 +269,7 @@ export default function AthleteDashboard() {
           <Target size={48} color="$primaryText" />
         </YStack>
         <YStack items="center" gap="$2">
-          <DisplayHeading>COMPLETE YOUR SETUP</DisplayHeading>
+          <Display text="center">Complete your setup</Display>
           <Text 
             color="$color10" 
             text="center" 
@@ -344,12 +320,12 @@ export default function AthleteDashboard() {
           {/* Header: the date, with the athlete's sport and category as a quiet label */}
           <YStack gap="$1" testID="today-heading">
             {programState.sportName && (
-              <SectionLabel>
+              <Supporting color="$color10" fontWeight="600">
                 {programState.sportName}
                 {programState.categoryShortName ? ` · ${programState.categoryShortName}` : ''}
-              </SectionLabel>
+              </Supporting>
             )}
-            <DisplayHeading>{todayHeading(today)}</DisplayHeading>
+            <Display>{todayHeading(today)}</Display>
           </YStack>
 
           {/* Reassessment Banner */}
@@ -374,9 +350,9 @@ export default function AthleteDashboard() {
                   <Text fontFamily="$body" fontWeight="600" color="$brand9">
                     Phase Assessment Ready
                   </Text>
-                  <Text fontSize={13} color="$brand8" fontFamily="$body">
+                  <Supporting color="$brand8">
                     Complete your check-in to unlock {reassessmentStatus.nextPhase}
-                  </Text>
+                  </Supporting>
                 </YStack>
                 <Button
                   size="$3"
@@ -412,49 +388,37 @@ export default function AthleteDashboard() {
               <YStack gap="$1.5">
                 <XStack justify="space-between" items="center">
                   {/* $color11: $color10 is 4.4:1 on the card's $brand1 tint, under AA */}
-                  <SectionLabel color="$color11">
+                  <Supporting color="$color11" fontWeight="600">
                     {pausedElsewhere ? 'Paused workout' : "Today's workout"}
-                  </SectionLabel>
+                  </Supporting>
                   {isCompleted && (
                     <XStack items="center" gap="$1">
                       <CheckCircle size={14} color="$green10" />
-                      <Text fontSize={12} color="$green11" fontFamily="$body" fontWeight="600">
+                      <Caption color="$green11" fontWeight="600">
                         Done
-                      </Text>
+                      </Caption>
                     </XStack>
                   )}
                 </XStack>
-                <Text
-                  fontSize={24}
-                  fontFamily="$body" fontWeight="700"
-                  color="$color12"
-                  lineHeight={30}
-                >
-                  {cardWorkoutName || 'Loading…'}
-                </Text>
+                <Title>{cardWorkoutName || 'Loading…'}</Title>
                 {todayWorkout && !pausedElsewhere && (
-                  <Text testID="today-workout-meta" fontSize={14} color="$color11" fontFamily="$body">
-                    <Text
-                      fontSize={14}
-                      fontFamily="$body"
-                      fontWeight="600"
-                      color={phase.text}
-                    >
+                  <Supporting testID="today-workout-meta">
+                    <Supporting fontWeight="600" color={phase.text}>
                       {/* The athlete's scheduled position. todayWorkout.week is the template's
                           lookup week, which differs when phases are shorter than 4 weeks. */}
                       {programState.phase} W{programState.week} D{programState.day}
-                    </Text>
+                    </Supporting>
                     {' · '}
                     {workoutMetaLine({
                       minutes: todayWorkout.estimatedDurationMinutes,
                       exerciseCount: countMainExercises(todayWorkout.exercises),
                     })}
-                  </Text>
+                  </Supporting>
                 )}
                 {pausedSession && (
-                  <Text testID="today-paused" fontSize={14} color="$color11" fontFamily="$body">
+                  <Supporting testID="today-paused">
                     {pausedLabel(pausedSession.pausedAt ?? pausedSession.startedAt, today)} · your sets are saved
-                  </Text>
+                  </Supporting>
                 )}
               </YStack>
 
@@ -484,7 +448,7 @@ export default function AthleteDashboard() {
                     bg="$primary"
                     color="white"
                     icon={RotateCcw}
-                    fontSize={19}
+                    fontSize={18}
                     fontFamily="$body" fontWeight="700"
                     rounded="$4"
                     pressStyle={{ bg: '$primaryPress', scale: 0.98 }}

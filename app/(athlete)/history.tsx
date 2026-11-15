@@ -1,4 +1,4 @@
-import { YStack, XStack, Text, Card, Button, ScrollView, Spinner, styled } from 'tamagui'
+import { YStack, XStack, Text, Card, Button, ScrollView, Spinner } from 'tamagui'
 import { useQuery } from 'convex/react'
 import { useRouter } from 'expo-router'
 import { api } from 'convex/_generated/api'
@@ -11,23 +11,7 @@ import {
   XCircle,
   Dumbbell,
 } from '@tamagui/lucide-icons'
-
-// ─────────────────────────────────────────────────────────────────────────────
-// STYLED COMPONENTS
-// ─────────────────────────────────────────────────────────────────────────────
-
-const DisplayHeading = styled(Text, {
-  fontFamily: '$heading',
-  fontSize: 28,
-  letterSpacing: 0.5,
-  color: '$color12',
-})
-
-const Subtitle = styled(Text, {
-  fontFamily: '$body',
-  fontSize: 14,
-  color: '$color10',
-})
+import { Display, Body, Supporting, Caption, numeric } from '../../components/Typography'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN COMPONENT
@@ -96,10 +80,8 @@ export default function HistoryPage() {
         >
           {/* Header */}
           <YStack gap="$1">
-            <DisplayHeading>WORKOUT HISTORY</DisplayHeading>
-            <Subtitle>
-              Your completed training sessions
-            </Subtitle>
+            <Display>Workout history</Display>
+            <Supporting color="$color10">Your completed training sessions</Supporting>
           </YStack>
 
           {/* Sessions List */}
@@ -139,34 +121,26 @@ export default function HistoryPage() {
 
                     {/* Session Details */}
                     <YStack flex={1} gap="$1">
-                      <Text 
-                        fontSize={15} 
-                        fontFamily="$body" fontWeight="600"
-                        color="$color12"
-                      >
+                      <Body fontWeight="600">
                         {session.templateSnapshot?.name || session.templateName}
-                      </Text>
+                      </Body>
                       <XStack gap="$3" flexWrap="wrap">
                         <XStack items="center" gap="$1">
                           <Calendar size={13} color="$color10" />
-                          <Text fontSize={12} color="$color10" fontFamily="$body">
-                            {formatDate(session.startedAt)}
-                          </Text>
+                          <Caption>{formatDate(session.startedAt)}</Caption>
                         </XStack>
                         {session.totalDurationSeconds ? (
                           <XStack items="center" gap="$1">
                             <Clock size={13} color="$color10" />
-                            <Text fontSize={12} color="$color10" fontFamily="$body">
-                              {formatDuration(session.totalDurationSeconds)}
-                            </Text>
+                            <Caption style={numeric}>{formatDuration(session.totalDurationSeconds)}</Caption>
                           </XStack>
                         ) : null}
                         {session.templateSnapshot?.phase && (
                           <XStack items="center" gap="$1">
                             <Dumbbell size={13} color="$color10" />
-                            <Text fontSize={12} color="$color10" fontFamily="$body">
+                            <Caption>
                               {session.templateSnapshot.phase} W{session.templateSnapshot.week}D{session.templateSnapshot.day}
-                            </Text>
+                            </Caption>
                           </XStack>
                         )}
                       </XStack>
@@ -176,9 +150,9 @@ export default function HistoryPage() {
                         An unfinished session gets a plain-language chip. */}
                     {session.status !== 'completed' && (
                       <Card bg="$orange2" px="$2" py="$1" rounded="$2" testID="history-not-finished">
-                        <Text fontSize={12} fontFamily="$body" fontWeight="600" color="$orange11">
+                        <Caption fontWeight="600" color="$orange11">
                           Not finished
-                        </Text>
+                        </Caption>
                       </Card>
                     )}
                   </XStack>
@@ -235,9 +209,7 @@ function HistoryEmptyState() {
         <GhostRow opacity={0.55} />
         <GhostRow opacity={0.25} />
       </YStack>
-      <Text fontSize={17} fontFamily="$body" fontWeight="600" color="$color12">
-        No workouts yet
-      </Text>
+      <Body fontWeight="600">No workouts yet</Body>
       <Button
         size="$4"
         bg="$primary"

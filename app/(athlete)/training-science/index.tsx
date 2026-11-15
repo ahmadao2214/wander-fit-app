@@ -21,32 +21,19 @@ import type { ColorTokens } from 'tamagui'
 import { ScienceSection } from '../../../components/training-science/ScienceSection'
 import { phaseTitle, phaseTokens } from '../../../lib/phase'
 import type { Phase } from '../../../types'
+import { Body, Caption, Supporting } from '../../../components/Typography'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-const SectionLabel = styled(Text, {
-  fontFamily: '$body',
-  fontWeight: '600',
-  fontSize: 11,
-  letterSpacing: 1.5,
-  textTransform: 'uppercase',
-  color: '$color10',
-})
-
-const BodyText = styled(Text, {
-  fontFamily: '$body',
-  fontSize: 14,
-  lineHeight: 22,
+// Reading copy at body size; subheadings are body-size semibold
+const BodyText = styled(Body, {
   color: '$color11',
 })
 
-const SubHeading = styled(Text, {
-  fontFamily: '$body',
+const SubHeading = styled(Body, {
   fontWeight: '600',
-  fontSize: 15,
-  color: '$color12',
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -158,13 +145,13 @@ function PhaseSpecs({ specs, accent, text }: { specs: PhaseSpec[]; accent: Color
         <YStack key={spec.label} flex={1} gap="$1" testID={`phase-spec-${spec.label.toLowerCase()}`}>
           <XStack items="center" gap="$1">
             <spec.icon size={12} color={accent} />
-            <Text fontSize={11} fontFamily="$body" fontWeight="600" letterSpacing={0.8} textTransform="uppercase" color={text}>
+            <Caption fontWeight="600" color={text}>
               {spec.label}
-            </Text>
+            </Caption>
           </XStack>
-          <Text fontSize={15} fontFamily="$body" fontWeight="700" color={text}>
+          <Body fontWeight="700" color={text}>
             {spec.value}
-          </Text>
+          </Body>
         </YStack>
       ))}
     </XStack>
@@ -224,7 +211,7 @@ export default function TrainingSciencePage() {
 
           {/* The Three Phases */}
           <ScienceSection
-            title="The Three Phases"
+            title="The three phases"
             icon={Layers}
             iconColor="$primaryText"
             iconBgColor="$brand2"
@@ -257,7 +244,7 @@ export default function TrainingSciencePage() {
 
           {/* Understanding Your Numbers */}
           <ScienceSection
-            title="Understanding Your Numbers"
+            title="Understanding your numbers"
             icon={Dumbbell}
             iconColor="$primaryText"
             iconBgColor="$brand2"
@@ -277,42 +264,42 @@ export default function TrainingSciencePage() {
 
             {/* Prescription */}
             <YStack gap="$2" pt="$2">
-              <SubHeading>Reading Your Prescription</SubHeading>
+              <SubHeading>Reading your prescription</SubHeading>
               <BodyText>
                 Each exercise shows a prescription like "4 × 8 @ 135 lbs" which means:
               </BodyText>
               <Card bg="$color3" p="$3" rounded="$3">
                 <YStack gap="$1">
-                  <Text fontFamily="$body" fontSize={14} color="$color11">
+                  <BodyText>
                     <Text fontWeight="600">4</Text> = Sets (how many rounds)
-                  </Text>
-                  <Text fontFamily="$body" fontSize={14} color="$color11">
+                  </BodyText>
+                  <BodyText>
                     <Text fontWeight="600">8</Text> = Reps (lifts per set)
-                  </Text>
-                  <Text fontFamily="$body" fontSize={14} color="$color11">
+                  </BodyText>
+                  <BodyText>
                     <Text fontWeight="600">135 lbs</Text> = Target weight
-                  </Text>
+                  </BodyText>
                 </YStack>
               </Card>
             </YStack>
 
             {/* Tempo */}
             <YStack gap="$2" pt="$2">
-              <SubHeading>Tempo Notation (e.g., "2.1.2")</SubHeading>
+              <SubHeading>Tempo notation (e.g., "2.1.2")</SubHeading>
               <BodyText>
                 Tempo controls how fast you move the weight. The three numbers represent seconds for each phase of the lift:
               </BodyText>
               <Card bg="$color3" p="$3" rounded="$3">
                 <YStack gap="$1">
-                  <Text fontFamily="$body" fontSize={14} color="$color11">
+                  <BodyText>
                     <Text fontWeight="600">First number (2)</Text> = Eccentric (lowering)
-                  </Text>
-                  <Text fontFamily="$body" fontSize={14} color="$color11">
+                  </BodyText>
+                  <BodyText>
                     <Text fontWeight="600">Second number (1)</Text> = Pause at bottom
-                  </Text>
-                  <Text fontFamily="$body" fontSize={14} color="$color11">
+                  </BodyText>
+                  <BodyText>
                     <Text fontWeight="600">Third number (2)</Text> = Concentric (lifting)
-                  </Text>
+                  </BodyText>
                 </YStack>
               </Card>
               <BodyText>
@@ -323,7 +310,7 @@ export default function TrainingSciencePage() {
 
           {/* Training Intensity */}
           <ScienceSection
-            title="Training Intensity"
+            title="Training intensity"
             icon={Activity}
             iconColor="$primaryText"
             iconBgColor="$brand2"
@@ -336,7 +323,7 @@ export default function TrainingSciencePage() {
             <YStack gap="$2">
               <Card bg="$intensityLow2" p="$3" rounded="$3" borderLeftWidth={3} borderLeftColor="$intensityLow6">
                 <YStack gap="$1">
-                  <SubHeading color="$intensityLow9">Low Intensity</SubHeading>
+                  <SubHeading color="$intensityLow9">Low intensity</SubHeading>
                   <BodyText>
                     Recovery focus. 60-70% effort with longer rest. You should feel like you have 4-5 reps left after each set.
                   </BodyText>
@@ -345,7 +332,7 @@ export default function TrainingSciencePage() {
 
               <Card bg="$intensityMed2" p="$3" rounded="$3" borderLeftWidth={3} borderLeftColor="$intensityMed6">
                 <YStack gap="$1">
-                  <SubHeading color="$intensityMed9">Moderate Intensity</SubHeading>
+                  <SubHeading color="$intensityMed9">Moderate intensity</SubHeading>
                   <BodyText>
                     Standard training. 75-80% effort with balanced rest. You should feel like you have 3-4 reps left.
                   </BodyText>
@@ -354,7 +341,7 @@ export default function TrainingSciencePage() {
 
               <Card bg="$intensityHigh2" p="$3" rounded="$3" borderLeftWidth={3} borderLeftColor="$intensityHigh6">
                 <YStack gap="$1">
-                  <SubHeading color="$intensityHigh9">High Intensity</SubHeading>
+                  <SubHeading color="$intensityHigh9">High intensity</SubHeading>
                   <BodyText>
                     Pushing limits. 85-90% effort with shorter rest. You should feel like you have only 1-2 reps left.
                   </BodyText>
@@ -370,15 +357,15 @@ export default function TrainingSciencePage() {
               </BodyText>
               <Card bg="$color3" p="$3" rounded="$3">
                 <YStack gap="$1">
-                  <Text fontFamily="$body" fontSize={14} color="$color11">
+                  <BodyText>
                     <Text fontWeight="600">RPE 5-6:</Text> Moderate effort, 4-5 reps left
-                  </Text>
-                  <Text fontFamily="$body" fontSize={14} color="$color11">
+                  </BodyText>
+                  <BodyText>
                     <Text fontWeight="600">RPE 7-8:</Text> Hard effort, 2-3 reps left
-                  </Text>
-                  <Text fontFamily="$body" fontSize={14} color="$color11">
+                  </BodyText>
+                  <BodyText>
                     <Text fontWeight="600">RPE 9-10:</Text> Maximum effort, 0-1 reps left
-                  </Text>
+                  </BodyText>
                 </YStack>
               </Card>
             </YStack>
@@ -387,7 +374,7 @@ export default function TrainingSciencePage() {
           {/* Your Sport Category - Personalized */}
           {category && (
             <ScienceSection
-              title="Your Sport Category"
+              title="Your sport category"
               icon={Trophy}
               iconColor="$primaryText"
               iconBgColor="$brand2"
@@ -406,9 +393,9 @@ export default function TrainingSciencePage() {
                       Category {programState?.gppCategoryId}: {category.name}
                     </SubHeading>
                   </XStack>
-                  <Text fontSize={13} fontFamily="$body" fontWeight="600" color="$brand9">
+                  <Supporting fontWeight="600" color="$brand9">
                     Emphasis: {category.emphasis}
-                  </Text>
+                  </Supporting>
                 </YStack>
               </Card>
               <BodyText>{category.description}</BodyText>
@@ -420,7 +407,7 @@ export default function TrainingSciencePage() {
 
           {/* Your Profile Factors */}
           <ScienceSection
-            title="Your Profile Factors"
+            title="Your profile factors"
             icon={Users}
             iconColor="$primaryText"
             iconBgColor="$brand2"
@@ -452,7 +439,7 @@ export default function TrainingSciencePage() {
 
           {/* Rest Periods */}
           <ScienceSection
-            title="Rest Periods"
+            title="Rest periods"
             icon={Clock}
             iconColor="$primaryText"
             iconBgColor="$brand2"
@@ -463,15 +450,15 @@ export default function TrainingSciencePage() {
 
             <Card bg="$color3" p="$3" rounded="$3">
               <YStack gap="$2">
-                <Text fontFamily="$body" fontSize={14} color="$color11">
+                <BodyText>
                   <Text fontWeight="600">30 seconds:</Text> Builds work capacity and metabolic stress. Common in GPP phase.
-                </Text>
-                <Text fontFamily="$body" fontSize={14} color="$color11">
+                </BodyText>
+                <BodyText>
                   <Text fontWeight="600">60 seconds:</Text> Balanced recovery for moderate intensity work. Most common rest period.
-                </Text>
-                <Text fontFamily="$body" fontSize={14} color="$color11">
+                </BodyText>
+                <BodyText>
                   <Text fontWeight="600">90-120 seconds:</Text> Full neural recovery for heavy or explosive work. Used in peaking phases.
-                </Text>
+                </BodyText>
               </YStack>
             </Card>
 

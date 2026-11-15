@@ -10,6 +10,7 @@ import {
   Separator,
   Spinner,
 } from 'tamagui'
+import { Supporting } from './Typography'
 import { X, Check, Dumbbell } from '@tamagui/lucide-icons'
 import { useMutation } from 'convex/react'
 import { api } from '../convex/_generated/api'
@@ -260,9 +261,7 @@ export function OneRepMaxSheet({
                       </Text>
                     </XStack>
                     {fieldError && (
-                      <Text fontSize={11} fontFamily="$body" color="$red10">
-                        {fieldError}
-                      </Text>
+                      <Supporting color="$red10">{fieldError}</Supporting>
                     )}
                   </YStack>
                 )

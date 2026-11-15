@@ -40,24 +40,19 @@ import {
   normalizeExerciseOrder,
 } from '../../../../lib/executionOrder'
 import { phaseTokens } from '../../../../lib/phase'
+import { Display, Title, SectionTitle, Body, Supporting, Caption, numeric, TYPE_SCALE } from '../../../../components/Typography'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-const DisplayHeading = styled(Text, {
-  fontFamily: '$heading',
-  fontSize: 28,
-  letterSpacing: 0.5,
-  color: '$color12',
-  text: 'center',
-})
-
+// Ticks every second, so its digits are fixed-width
 const TimerDisplay = styled(Text, {
   fontFamily: '$body',
   fontWeight: '700',
-  fontSize: 18,
-  letterSpacing: 0.5,
+  fontSize: TYPE_SCALE.section.size,
+  lineHeight: TYPE_SCALE.section.lineHeight,
+  fontVariant: ['tabular-nums'],
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -776,9 +771,9 @@ export default function WorkoutExecutionScreen() {
 
               {/* Exercise Name and Prescription */}
               <YStack items="center" gap="$3">
-                <DisplayHeading testID="execute-exercise-name">
-                  {exerciseDetails?.name?.toUpperCase() || 'EXERCISE'}
-                </DisplayHeading>
+                <Display testID="execute-exercise-name" text="center" accessibilityRole="header">
+                  {exerciseDetails?.name || 'Exercise'}
+                </Display>
 
                 {/* Prominent sets x reps badge */}
                 <XStack
@@ -789,31 +784,19 @@ export default function WorkoutExecutionScreen() {
                   items="center"
                   gap="$2"
                 >
-                  <Text
-                    fontSize={18}
-                    fontFamily="$body"
-                    fontWeight="700"
-                    color="$color12"
-                  >
+                  <SectionTitle accessibilityRole={undefined} fontWeight="700" style={numeric}>
                     {currentSetCount} {currentSetCount === 1 ? 'set' : 'sets'}
-                  </Text>
-                  <Text fontSize={16} color="$color9" fontFamily="$body">
-                    ×
-                  </Text>
-                  <Text
-                    fontSize={18}
-                    fontFamily="$body"
-                    fontWeight="700"
-                    color="$color12"
-                  >
+                  </SectionTitle>
+                  <Body color="$color10">×</Body>
+                  <SectionTitle accessibilityRole={undefined} fontWeight="700" style={numeric}>
                     {currentExercise.scaledReps ?? currentExercise.reps}
-                  </Text>
+                  </SectionTitle>
                 </XStack>
 
                 {currentExercise.tempo && (
-                  <Text fontSize={14} color="$color9" fontFamily="$body">
+                  <Supporting color="$color9">
                     {currentExercise.tempo} tempo
-                  </Text>
+                  </Supporting>
                 )}
                 {/* TODO: Add targetWeight display when schema is updated */}
               </YStack>
@@ -867,7 +850,7 @@ export default function WorkoutExecutionScreen() {
             bg="$primary"
             color="white"
             iconAfter={isLastExercise ? Trophy : ChevronRight}
-            fontSize={19}
+            fontSize={18}
             fontFamily="$body" fontWeight="700"
             rounded="$4"
             pressStyle={{ bg: '$primaryPress', scale: 0.98 }}
@@ -929,7 +912,7 @@ export default function WorkoutExecutionScreen() {
             rounded="$5"
           >
             <YStack gap="$3">
-              <AlertDialog.Title fontFamily="$body" fontWeight="700" fontSize={20}>
+              <AlertDialog.Title fontFamily="$body" fontWeight="700" fontSize={18} lineHeight={24}>
                 Pause this workout?
               </AlertDialog.Title>
               <AlertDialog.Description fontFamily="$body" color="$color10">
@@ -1018,14 +1001,7 @@ export default function WorkoutExecutionScreen() {
               </YStack>
               
               <YStack items="center" gap="$1">
-                <Text 
-                  fontFamily="$heading" 
-                  fontSize={32} 
-                  letterSpacing={1}
-                  color="$color12"
-                >
-                  WORKOUT COMPLETE!
-                </Text>
+                <Display>Workout complete!</Display>
                 <Text fontFamily="$body" color="$color10">
                   Great work today
                 </Text>
@@ -1033,30 +1009,30 @@ export default function WorkoutExecutionScreen() {
               
               <XStack gap="$6">
                 <YStack items="center">
-                  <Text fontFamily="$body" fontWeight="700" fontSize={24} color="$primaryText">
+                  <Title color="$primaryText" style={numeric}>
                     {formatTime(elapsedTime)}
-                  </Text>
-                  <Text fontSize={12} color="$color10" fontFamily="$body">
+                  </Title>
+                  <Caption color="$color10">
                     Duration
-                  </Text>
+                  </Caption>
                 </YStack>
                 <YStack items="center">
-                  <Text fontFamily="$body" fontWeight="700" fontSize={24} color="$green11">
+                  <Title color="$green11" style={numeric}>
                     {completedCount}/{orderedExercises.length}
-                  </Text>
-                  <Text fontSize={12} color="$color10" fontFamily="$body">
+                  </Title>
+                  <Caption color="$color10">
                     Exercises
-                  </Text>
+                  </Caption>
                 </YStack>
                 <YStack items="center">
-                  <Text fontFamily="$body" fontWeight="700" fontSize={24} color="$color11">
+                  <Title color="$color11" style={numeric}>
                     {exerciseCompletions.reduce((total, ex) =>
                       total + ex.sets.filter(s => s.completed && !s.skipped).length, 0
                     )}
-                  </Text>
-                  <Text fontSize={12} color="$color10" fontFamily="$body">
+                  </Title>
+                  <Caption color="$color10">
                     Sets
-                  </Text>
+                  </Caption>
                 </YStack>
               </XStack>
 
@@ -1070,12 +1046,12 @@ export default function WorkoutExecutionScreen() {
                   borderWidth={1}
                   borderColor="$borderColor"
                 >
-                  <Text fontSize={12} color="$color10" fontFamily="$body" mb="$2">
+                  <Caption color="$color10" mb="$2">
                     vs. Previous ({new Date(lastCompletedSession.completedAt || 0).toLocaleDateString()})
-                  </Text>
+                  </Caption>
                   <XStack gap="$4" justify="space-around">
                     <YStack items="center">
-                      <Text fontFamily="$body" fontWeight="600" fontSize={14} color={
+                      <Supporting fontWeight="600" color={
                         elapsedTime < (lastCompletedSession.totalDurationSeconds || 0)
                           ? '$success'
                           : elapsedTime > (lastCompletedSession.totalDurationSeconds || 0)
@@ -1084,18 +1060,18 @@ export default function WorkoutExecutionScreen() {
                       }>
                         {elapsedTime < (lastCompletedSession.totalDurationSeconds || 0) ? '-' : '+'}
                         {Math.abs(Math.round((elapsedTime - (lastCompletedSession.totalDurationSeconds || 0)) / 60))} min
-                      </Text>
-                      <Text fontSize={11} color="$color9" fontFamily="$body">
+                      </Supporting>
+                      <Caption color="$color9">
                         Time
-                      </Text>
+                      </Caption>
                     </YStack>
                     <YStack items="center">
-                      <Text fontFamily="$body" fontWeight="600" fontSize={14} color="$color11">
+                      <Supporting fontWeight="600" color="$color11">
                         {lastCompletedSession.exercises?.filter(e => e.completed && !e.skipped).length || 0}
-                      </Text>
-                      <Text fontSize={11} color="$color9" fontFamily="$body">
+                      </Supporting>
+                      <Caption color="$color9">
                         Prev Exercises
-                      </Text>
+                      </Caption>
                     </YStack>
                   </XStack>
                 </YStack>
@@ -1165,15 +1141,7 @@ export default function WorkoutExecutionScreen() {
               </YStack>
 
               <YStack items="center" gap="$1">
-                <Text
-                  fontFamily="$heading"
-                  fontSize={28}
-                  letterSpacing={1}
-                  color="$color12"
-                  text="center"
-                >
-                  {reassessmentPhase} PHASE COMPLETE!
-                </Text>
+                <Display text="center">{reassessmentPhase} phase complete!</Display>
                 <Text fontFamily="$body" color="$color10" text="center">
                   Complete a quick check-in to unlock the next phase.
                 </Text>

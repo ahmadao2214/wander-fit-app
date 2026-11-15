@@ -67,11 +67,11 @@ describe('TrainingSciencePage', () => {
       { wrapper: AllTheProviders }
     )
 
-    expect(getByText('THE THREE PHASES')).toBeTruthy()
-    expect(getByText('UNDERSTANDING YOUR NUMBERS')).toBeTruthy()
-    expect(getByText('TRAINING INTENSITY')).toBeTruthy()
-    expect(getByText('YOUR PROFILE FACTORS')).toBeTruthy()
-    expect(getByText('REST PERIODS')).toBeTruthy()
+    expect(getByText('The three phases')).toBeTruthy()
+    expect(getByText('Understanding your numbers')).toBeTruthy()
+    expect(getByText('Training intensity')).toBeTruthy()
+    expect(getByText('Your profile factors')).toBeTruthy()
+    expect(getByText('Rest periods')).toBeTruthy()
   })
 
   it('renders the three phases content (defaultExpanded)', () => {
@@ -123,7 +123,7 @@ describe('TrainingSciencePage', () => {
       { wrapper: AllTheProviders }
     )
 
-    expect(getByText('YOUR SPORT CATEGORY')).toBeTruthy()
+    expect(getByText('Your sport category')).toBeTruthy()
   })
 
   it('does not render sport category section when no program state', () => {
@@ -134,7 +134,7 @@ describe('TrainingSciencePage', () => {
       { wrapper: AllTheProviders }
     )
 
-    expect(queryByText('YOUR SPORT CATEGORY')).toBeNull()
+    expect(queryByText('Your sport category')).toBeNull()
   })
 })
 
@@ -156,7 +156,7 @@ describe('TrainingSciencePage Category Personalization', () => {
       )
 
       // The section header should always be visible
-      expect(getByText('YOUR SPORT CATEGORY')).toBeTruthy()
+      expect(getByText('Your sport category')).toBeTruthy()
 
       unmount()
     })
@@ -170,6 +170,6 @@ describe('TrainingSciencePage Category Personalization', () => {
       { wrapper: AllTheProviders }
     )
 
-    expect(queryByText('YOUR SPORT CATEGORY')).toBeNull()
+    expect(queryByText('Your sport category')).toBeNull()
   })
 })

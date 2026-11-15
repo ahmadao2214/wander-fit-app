@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { YStack, XStack, Text, Card, Button, ScrollView, Spinner, styled } from 'tamagui'
+import { YStack, XStack, Text, Card, Button, ScrollView, Spinner } from 'tamagui'
 import { useQuery } from 'convex/react'
 import { useRouter } from 'expo-router'
 import { api } from 'convex/_generated/api'
@@ -23,32 +23,7 @@ import {
 } from '@tamagui/lucide-icons'
 import { PHASE_NAMES } from '../../types'
 import { progressCaption } from '../../lib/today'
-
-// ─────────────────────────────────────────────────────────────────────────────
-// STYLED COMPONENTS
-// ─────────────────────────────────────────────────────────────────────────────
-
-const DisplayHeading = styled(Text, {
-  fontFamily: '$heading',
-  fontSize: 24,
-  letterSpacing: 0.5,
-  color: '$color12',
-})
-
-const SectionLabel = styled(Text, {
-  fontFamily: '$body',
-  fontWeight: '600',
-  fontSize: 11,
-  letterSpacing: 1.5,
-  textTransform: 'uppercase',
-  color: '$color10',
-})
-
-const StatNumber = styled(Text, {
-  fontFamily: '$body',
-  fontWeight: '700',
-  fontSize: 24,
-})
+import { Title, SectionTitle, Body, Supporting, Caption, numeric } from '../../components/Typography'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN COMPONENT
@@ -146,20 +121,14 @@ export default function ProfilePage() {
                 <User size={32} color="white" />
               </YStack>
               <YStack flex={1} gap="$1">
-                <DisplayHeading>{user.name?.toUpperCase()}</DisplayHeading>
-                <Text color="$color10" fontFamily="$body" fontSize={14}>
-                  {user.email}
-                </Text>
+                <Title>{user.name}</Title>
+                <Supporting color="$color10">{user.email}</Supporting>
                 {programState && (
                   <XStack items="center" gap="$2" pt="$1">
                     <Trophy size={14} color="$orange10" />
-                    <Text 
-                      fontSize={13} 
-                      color="$orange11"
-                      fontFamily="$body" fontWeight="600"
-                    >
+                    <Supporting color="$orange11" fontWeight="600">
                       {programState.skillLevel} Athlete
-                    </Text>
+                    </Supporting>
                   </XStack>
                 )}
               </YStack>
@@ -169,17 +138,15 @@ export default function ProfilePage() {
           {/* Progress: one line once there is something to count, no 0/0/0 scoreboard */}
           {progressLine && (
             <YStack gap="$2" testID="profile-progress">
-              <SectionLabel>PROGRESS</SectionLabel>
-              <Text fontSize={15} fontFamily="$body" color="$color12">
-                {progressLine}
-              </Text>
+              <SectionTitle>Progress</SectionTitle>
+              <Body>{progressLine}</Body>
             </YStack>
           )}
 
           {/* Training Info */}
           {programState && (
             <YStack gap="$3">
-              <SectionLabel>TRAINING INFO</SectionLabel>
+              <SectionTitle>Training info</SectionTitle>
 
               <Card
                 p="$4"
@@ -194,12 +161,8 @@ export default function ProfilePage() {
                     <XStack items="center" gap="$3">
                       <Award size={20} color="$color9" />
                       <YStack flex={1}>
-                        <Text fontSize={12} color="$color10" fontFamily="$body">
-                          Sport
-                        </Text>
-                        <Text fontSize={15} fontFamily="$body" fontWeight="600" color="$color12">
-                          {programState.sportName}
-                        </Text>
+                        <Caption>Sport</Caption>
+                        <Body fontWeight="600">{programState.sportName}</Body>
                       </YStack>
                     </XStack>
                   )}
@@ -209,12 +172,8 @@ export default function ProfilePage() {
                     <XStack items="center" gap="$3">
                       <Dumbbell size={20} color="$color9" />
                       <YStack flex={1}>
-                        <Text fontSize={12} color="$color10" fontFamily="$body">
-                          GPP Category
-                        </Text>
-                        <Text fontSize={15} fontFamily="$body" fontWeight="600" color="$color12">
-                          {programState.categoryName}
-                        </Text>
+                        <Caption>GPP Category</Caption>
+                        <Body fontWeight="600">{programState.categoryName}</Body>
                       </YStack>
                     </XStack>
                   )}
@@ -224,12 +183,8 @@ export default function ProfilePage() {
                     <XStack items="center" gap="$3">
                       <Clock size={20} color="$color9" />
                       <YStack flex={1}>
-                        <Text fontSize={12} color="$color10" fontFamily="$body">
-                          Program Duration
-                        </Text>
-                        <Text fontSize={15} fontFamily="$body" fontWeight="600" color="$color12">
-                          {programState.totalProgramWeeks} weeks
-                        </Text>
+                        <Caption>Program duration</Caption>
+                        <Body fontWeight="600">{programState.totalProgramWeeks} weeks</Body>
                       </YStack>
                     </XStack>
                   )}
@@ -237,36 +192,24 @@ export default function ProfilePage() {
                   <XStack items="center" gap="$3">
                     <Target size={20} color="$color9" />
                     <YStack flex={1}>
-                      <Text fontSize={12} color="$color10" fontFamily="$body">
-                        Current Phase
-                      </Text>
-                      <Text fontSize={15} fontFamily="$body" fontWeight="600" color="$color12">
-                        {PHASE_NAMES[programState.phase as keyof typeof PHASE_NAMES]}
-                      </Text>
+                      <Caption>Current phase</Caption>
+                      <Body fontWeight="600">{PHASE_NAMES[programState.phase as keyof typeof PHASE_NAMES]}</Body>
                     </YStack>
                   </XStack>
 
                   <XStack items="center" gap="$3">
                     <Calendar size={20} color="$color9" />
                     <YStack flex={1}>
-                      <Text fontSize={12} color="$color10" fontFamily="$body">
-                        Position
-                      </Text>
-                      <Text fontSize={15} fontFamily="$body" fontWeight="600" color="$color12">
-                        Week {programState.week}, Day {programState.day}
-                      </Text>
+                      <Caption>Position</Caption>
+                      <Body fontWeight="600">Week {programState.week}, Day {programState.day}</Body>
                     </YStack>
                   </XStack>
 
                   <XStack items="center" gap="$3">
                     <Trophy size={20} color="$color9" />
                     <YStack flex={1}>
-                      <Text fontSize={12} color="$color10" fontFamily="$body">
-                        Skill Level
-                      </Text>
-                      <Text fontSize={15} fontFamily="$body" fontWeight="600" color="$color12">
-                        {programState.skillLevel}
-                      </Text>
+                      <Caption>Skill level</Caption>
+                      <Body fontWeight="600">{programState.skillLevel}</Body>
                     </YStack>
                   </XStack>
                 </YStack>
@@ -277,7 +220,7 @@ export default function ProfilePage() {
           {/* My Maxes */}
           {coreLiftExercises && coreLiftExercises.length > 0 && (
             <YStack gap="$3">
-              <SectionLabel>MY MAXES</SectionLabel>
+              <SectionTitle>My maxes</SectionTitle>
 
               <Card
                 p="$4"
@@ -322,22 +265,13 @@ export default function ProfilePage() {
                           )}
                         </YStack>
                         <YStack flex={1}>
-                          <Text
-                            fontSize={14}
-                            fontFamily="$body"
-                            fontWeight="600"
-                            color="$color12"
-                          >
-                            {exercise.name}
-                          </Text>
+                          <Body fontWeight="600">{exercise.name}</Body>
                           {exercise.currentMax ? (
-                            <Text fontSize={12} fontFamily="$body" color="$color10">
+                            <Supporting color="$color10" style={numeric}>
                               {exercise.currentMax} lbs
-                            </Text>
+                            </Supporting>
                           ) : (
-                            <Text fontSize={12} fontFamily="$body" color="$color9">
-                              Not set
-                            </Text>
+                            <Supporting color="$color10">Not set</Supporting>
                           )}
                         </YStack>
                         <ChevronRight size={18} color="$color9" />
@@ -352,7 +286,7 @@ export default function ProfilePage() {
           {/* Assessment */}
           {latestIntake && (
             <YStack gap="$3">
-              <SectionLabel>ASSESSMENT</SectionLabel>
+              <SectionTitle>Assessment</SectionTitle>
 
               <XStack gap="$3" flexWrap="wrap">
                 {/* Training Days */}
@@ -366,17 +300,15 @@ export default function ProfilePage() {
                   borderColor="$borderColor"
                 >
                   <YStack items="center" gap="$1">
-                    <StatNumber color="$primaryText">
+                    <Title color="$primaryText" style={numeric}>
                       {latestIntake.preferredTrainingDaysPerWeek}
-                    </StatNumber>
-                    <Text
-                      fontSize={11}
-                      color="$color10"
+                    </Title>
+                    <Caption
                       text="center"
-                      fontFamily="$body" fontWeight="500"
+                      fontWeight="500"
                     >
-                      Days{'\n'}Per Week
-                    </Text>
+                      Days{'\n'}per week
+                    </Caption>
                   </YStack>
                 </Card>
 
@@ -391,17 +323,15 @@ export default function ProfilePage() {
                   borderColor="$borderColor"
                 >
                   <YStack items="center" gap="$1">
-                    <StatNumber color="$primaryText">
+                    <Title color="$primaryText" style={numeric}>
                       {latestIntake.yearsOfExperience}
-                    </StatNumber>
-                    <Text
-                      fontSize={11}
-                      color="$color10"
+                    </Title>
+                    <Caption
                       text="center"
-                      fontFamily="$body" fontWeight="500"
+                      fontWeight="500"
                     >
-                      Years{'\n'}Experience
-                    </Text>
+                      Years{'\n'}experience
+                    </Caption>
                   </YStack>
                 </Card>
 
@@ -416,21 +346,15 @@ export default function ProfilePage() {
                   borderColor="$borderColor"
                 >
                   <YStack items="center" gap="$1">
-                    <Text
-                      fontSize={14}
-                      fontFamily="$body" fontWeight="700"
-                      color="$color11"
-                    >
+                    <Body fontWeight="700" color="$color11" style={numeric}>
                       {new Date(latestIntake.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </Text>
-                    <Text
-                      fontSize={11}
-                      color="$color10"
+                    </Body>
+                    <Caption
                       text="center"
-                      fontFamily="$body" fontWeight="500"
+                      fontWeight="500"
                     >
-                      Last{'\n'}Assessment
-                    </Text>
+                      Last{'\n'}assessment
+                    </Caption>
                   </YStack>
                 </Card>
               </XStack>
@@ -439,7 +363,7 @@ export default function ProfilePage() {
 
           {/* Learn Section */}
           <YStack gap="$3">
-            <SectionLabel>LEARN</SectionLabel>
+            <SectionTitle>Learn</SectionTitle>
 
             {/* Training Science */}
             <Card
@@ -458,20 +382,8 @@ export default function ProfilePage() {
                   <Lightbulb size={18} color="$primaryText" />
                 </YStack>
                 <YStack flex={1}>
-                  <Text
-                    fontSize={15}
-                    fontFamily="$body" fontWeight="500"
-                    color="$color12"
-                  >
-                    Training Science
-                  </Text>
-                  <Text
-                    fontSize={12}
-                    fontFamily="$body"
-                    color="$color10"
-                  >
-                    Understand your program
-                  </Text>
+                  <Body fontWeight="500">Training Science</Body>
+                  <Supporting color="$color10">Understand your program</Supporting>
                 </YStack>
                 <ChevronRight size={20} color="$color9" />
               </XStack>
@@ -480,7 +392,7 @@ export default function ProfilePage() {
 
           {/* Settings Section */}
           <YStack gap="$3">
-            <SectionLabel>SETTINGS</SectionLabel>
+            <SectionTitle>Settings</SectionTitle>
 
             <Card
               p="$4"
@@ -497,14 +409,9 @@ export default function ProfilePage() {
                 <YStack bg="$color4" p="$2" rounded="$10">
                   <Settings size={18} color="$color10" />
                 </YStack>
-                <Text
-                  flex={1}
-                  fontSize={15}
-                  fontFamily="$body" fontWeight="500"
-                  color="$color12"
-                >
-                  App Settings
-                </Text>
+                <Body flex={1} fontWeight="500">
+                  App settings
+                </Body>
                 <ChevronRight size={20} color="$color9" />
               </XStack>
             </Card>

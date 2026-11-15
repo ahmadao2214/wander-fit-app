@@ -121,7 +121,7 @@ describe('CalendarDayCell', () => {
         { ...sampleWorkout, templateId: 'template-3', name: 'Workout 3' },
         { ...sampleWorkout, templateId: 'template-4', name: 'Workout 4' },
       ]
-      const { getByText, queryByText } = render(
+      const { getByText, queryByText, getByLabelText } = render(
         <CalendarDayCell {...defaultProps} compact workouts={workouts} />,
         { wrapper: AllTheProviders }
       )
@@ -129,7 +129,9 @@ describe('CalendarDayCell', () => {
       expect(getByText('Workout 2')).toBeTruthy()
       expect(getByText('Workout 3')).toBeTruthy()
       expect(queryByText('Workout 4')).toBeNull()
-      expect(getByText('+1 more')).toBeTruthy()
+      // A 12pt "+1" fits the narrow month cell; VoiceOver hears the full phrase
+      expect(getByText('+1')).toBeTruthy()
+      expect(getByLabelText('1 more workout')).toBeTruthy()
     })
   })
 

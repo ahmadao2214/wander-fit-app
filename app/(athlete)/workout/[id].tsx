@@ -4,7 +4,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   YStack,
   XStack,
-  H3,
   Text,
   Card,
   Button,
@@ -15,6 +14,7 @@ import { useQuery, useMutation } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
 import { useAuth } from '../../../hooks/useAuth'
 import { useDragReorder } from '../../../hooks/useDragReorder'
+import { Display, SectionTitle, Body, Supporting, Caption, numeric } from '../../../components/Typography'
 import { Id } from '../../../convex/_generated/dataModel'
 import {
   ChevronLeft,
@@ -380,9 +380,9 @@ export default function WorkoutDetailScreen() {
           <Card p="$3" bg="$brand1" borderColor="$brand3">
             <XStack items="center" gap="$2">
               <Bell size={18} color="$primaryText" />
-              <Text fontSize="$3" color="$brand9" flex={1}>
+              <Supporting color="$brand9" flex={1}>
                 Complete your reassessment to unlock {template.phase} workouts
-              </Text>
+              </Supporting>
               <Button
                 size="$2"
                 bg="$primary"
@@ -402,9 +402,9 @@ export default function WorkoutDetailScreen() {
           <Card p="$3" bg="$orange2" borderColor="$orange6">
             <XStack items="center" gap="$2">
               <Lock size={18} color="$orange11" />
-              <Text fontSize="$3" color="$orange11" flex={1}>
+              <Supporting color="$orange11" flex={1}>
                 Preview mode — complete {template.phase === 'SPP' ? 'GPP' : 'SPP'} to unlock
-              </Text>
+              </Supporting>
             </XStack>
           </Card>
         )}
@@ -458,27 +458,25 @@ export default function WorkoutDetailScreen() {
             <YStack gap="$3">
               <XStack items="center" gap="$2">
                 <History size={18} color="$color11" />
-                <Text fontSize="$3" fontWeight="600" color="$color12">
-                  Session Summary
-                </Text>
+                <Body fontWeight="600">Session summary</Body>
               </XStack>
               <XStack gap="$4" flexWrap="wrap">
                 <XStack items="center" gap="$2">
                   <Clock size={14} color="$color10" />
-                  <Text fontSize="$3" color="$color11">
+                  <Supporting color="$color11">
                     {Math.round((lastCompletedSession.totalDurationSeconds || 0) / 60)} min
-                  </Text>
+                  </Supporting>
                 </XStack>
-                <Text fontSize="$3" color="$color10">
+                <Supporting color="$color10">
                   {lastCompletedSession.targetIntensity || 'Moderate'} intensity
-                </Text>
-                <Text fontSize="$3" color="$color10">
+                </Supporting>
+                <Supporting color="$color10">
                   {new Date(lastCompletedSession.completedAt || 0).toLocaleDateString()}
-                </Text>
+                </Supporting>
                 {lastCompletedSession.exercises && (
-                  <Text fontSize="$3" color="$color10">
+                  <Supporting color="$color10">
                     {lastCompletedSession.exercises.filter(e => !e.skipped).length}/{lastCompletedSession.exercises.length} exercises
-                  </Text>
+                  </Supporting>
                 )}
               </XStack>
             </YStack>
@@ -491,23 +489,21 @@ export default function WorkoutDetailScreen() {
             <YStack gap="$3">
               <XStack items="center" gap="$2">
                 <History size={18} color="$color11" />
-                <Text fontSize="$3" fontWeight="600" color="$color12">
-                  Previous Performance
-                </Text>
+                <Body fontWeight="600">Previous performance</Body>
               </XStack>
               <XStack gap="$4" flexWrap="wrap">
                 <XStack items="center" gap="$2">
                   <Clock size={14} color="$color10" />
-                  <Text fontSize="$3" color="$color11">
+                  <Supporting color="$color11">
                     {Math.round((lastCompletedSession.totalDurationSeconds || 0) / 60)} min
-                  </Text>
+                  </Supporting>
                 </XStack>
-                <Text fontSize="$3" color="$color10">
+                <Supporting color="$color10">
                   {lastCompletedSession.targetIntensity || 'Moderate'} intensity
-                </Text>
-                <Text fontSize="$3" color="$color10">
+                </Supporting>
+                <Supporting color="$color10">
                   {new Date(lastCompletedSession.completedAt || 0).toLocaleDateString()}
-                </Text>
+                </Supporting>
               </XStack>
               {lastCompletedSession.exercises && lastCompletedSession.exercises.length > 0 && (
                 <YStack gap="$2" pt="$2" borderTopWidth={1} borderTopColor="$borderColor">
@@ -523,21 +519,21 @@ export default function WorkoutDetailScreen() {
 
                     return (
                       <XStack key={String(ex.exerciseId)} justify="space-between" items="center">
-                        <Text fontSize="$2" color="$color11" numberOfLines={1} flex={1}>
+                        <Supporting numberOfLines={1} flex={1}>
                           {ex.exerciseName}
-                        </Text>
-                        <Text fontSize="$2" color="$color10">
+                        </Supporting>
+                        <Supporting color="$color10" style={numeric}>
                           {completedSets.length} sets
                           {bestSet.weight ? ` @ ${bestSet.weight} lbs` : ''}
-                          {bestSet.repsCompleted ? ` x ${bestSet.repsCompleted}` : ''}
-                        </Text>
+                          {bestSet.repsCompleted ? ` × ${bestSet.repsCompleted}` : ''}
+                        </Supporting>
                       </XStack>
                     )
                   })}
                   {lastCompletedSession.exercises.length > 3 && (
-                    <Text fontSize="$2" color="$color9">
+                    <Caption color="$color9">
                       +{lastCompletedSession.exercises.length - 3} more exercises
-                    </Text>
+                    </Caption>
                   )}
                 </YStack>
               )}
@@ -558,11 +554,11 @@ export default function WorkoutDetailScreen() {
 
         {/* Exercise List Header */}
         <XStack items="center" justify="space-between" pt="$2">
-          <H3>{isCompleted && viewMode === "review" ? "Performance" : "Exercises"}</H3>
+          <SectionTitle>{isCompleted && viewMode === "review" ? "Performance" : "Exercises"}</SectionTitle>
           {canReorder && viewMode === "preview" && (
-            <Text fontSize="$2" color="$color10">
+            <Caption color="$color10">
               Hold to drag
-            </Text>
+            </Caption>
           )}
         </XStack>
       </YStack>
@@ -636,7 +632,7 @@ export default function WorkoutDetailScreen() {
                 onPress={startWorkout}
                 testID="workout-start"
                 icon={isStarting ? undefined : Play}
-                fontSize={19}
+                fontSize={18}
                 fontWeight="700"
                 disabled={isStarting}
                 pressStyle={{ scale: 0.97, bg: '$primaryPress' }}
@@ -661,28 +657,19 @@ export default function WorkoutDetailScreen() {
             )}
           </XStack>
           <YStack gap="$1">
-            <Text
-              fontFamily="$heading"
-              fontSize={34}
-              lineHeight={36}
-              letterSpacing={0.5}
-              textTransform="uppercase"
-              color="$color12"
-              numberOfLines={2}
-            >
-              {template.name}
-            </Text>
-            <Text testID="workout-meta" fontSize={14} fontFamily="$body" color="$color10">
-              <Text fontSize={14} fontFamily="$body" fontWeight="600" color={phase.text}>
+            {/* The one display moment on this screen; long names wrap rather than truncate */}
+            <Display accessibilityRole="header">{template.name}</Display>
+            <Supporting testID="workout-meta" color="$color10">
+              <Supporting fontWeight="600" color={phase.text}>
                 {template.phase}
-              </Text>
+              </Supporting>
               {' · '}
               {workoutMetaLine({
                 minutes: template.estimatedDurationMinutes,
                 exerciseCount: mainExercises.length,
                 intensity: isPhaseUnlocked && !isCompleted ? intensityName : undefined,
               })}
-            </Text>
+            </Supporting>
           </YStack>
         </YStack>
 

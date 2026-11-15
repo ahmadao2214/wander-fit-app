@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
 import { YStack, XStack, Text, Button, Spinner } from 'tamagui'
+import { Body } from '../Typography'
 import { Dumbbell } from '@tamagui/lucide-icons'
 import { useQuery, useMutation } from 'convex/react'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
@@ -191,9 +192,9 @@ export function WorkoutCalendar({
     return (
       <YStack flex={1} items="center" justify="center" gap="$4" p="$6">
         <Dumbbell size={48} color="$color8" />
-        <Text fontSize="$5" fontWeight="600" color="$color11">
-          No Program Found
-        </Text>
+        <Body fontWeight="600" color="$color11">
+          No program found
+        </Body>
         <Text color="$color10" text="center">
           Complete the intake flow to create your personalized training program.
         </Text>

@@ -12,6 +12,7 @@ import {
   Separator,
   ScrollView,
 } from 'tamagui'
+import { Supporting, Caption } from '../Typography'
 import { X, Check, Minus, Plus } from '@tamagui/lucide-icons'
 import { parseReps } from '../../lib'
 
@@ -127,9 +128,9 @@ export function SetEditSheet({
           <XStack items="center" justify="space-between">
             <YStack>
               <H3 fontFamily="$body">Set {setNumber}</H3>
-              <Text fontSize={13} fontFamily="$body" color="$color9">
+              <Supporting color="$color9">
                 Prescribed: {prescribedReps} reps
-              </Text>
+              </Supporting>
             </YStack>
             <Button
               size="$3"
@@ -144,9 +145,9 @@ export function SetEditSheet({
 
           {/* Reps Stepper */}
           <YStack gap="$2">
-            <Text fontFamily="$body" fontWeight="600" fontSize={14} color="$color11">
+            <Supporting fontWeight="600" color="$color11">
               Reps Completed
-            </Text>
+            </Supporting>
             <XStack items="center" justify="center" gap="$4">
               <Button
                 size="$3"
@@ -174,9 +175,9 @@ export function SetEditSheet({
 
           {/* Weight Input */}
           <YStack gap="$2">
-            <Text fontFamily="$body" fontWeight="600" fontSize={14} color="$color11">
+            <Supporting fontWeight="600" color="$color11">
               Weight (optional)
-            </Text>
+            </Supporting>
             <XStack items="center" gap="$2">
               <Input
                 flex={1}
@@ -196,9 +197,9 @@ export function SetEditSheet({
           {/* RPE Slider */}
           <YStack gap="$2">
             <XStack items="center" justify="space-between">
-              <Text fontFamily="$body" fontWeight="600" fontSize={14} color="$color11">
+              <Supporting fontWeight="600" color="$color11">
                 RPE
-              </Text>
+              </Supporting>
               <Text fontSize={18} fontFamily="$body" fontWeight="700" color="$primaryText">
                 {rpe}/10
               </Text>
@@ -224,8 +225,8 @@ export function SetEditSheet({
               />
             </Slider>
             <XStack justify="space-between">
-              <Text fontSize={11} fontFamily="$body" color="$color9">Easy</Text>
-              <Text fontSize={11} fontFamily="$body" color="$color9">Max effort</Text>
+              <Caption color="$color9">Easy</Caption>
+              <Caption color="$color9">Max effort</Caption>
             </XStack>
           </YStack>
 
