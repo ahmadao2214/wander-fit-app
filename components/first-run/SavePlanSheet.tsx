@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Keyboard, Platform, ScrollView } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useSignUp, useSSO, useUser } from '@clerk/clerk-expo'
@@ -70,9 +70,10 @@ export function SavePlanSheet({ open, onOpenChange }: { open: boolean; onOpenCha
   const savePlan = useSavePlan()
 
   const [step, setStep] = useState<Step>('choose')
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  // The fields are uncontrolled: re-rendering the sheet on every keystroke
+  // dropped characters on iOS. The values live here until Create account.
+  const fields = useRef({ name: '', email: '', password: '' })
+  const [sentTo, setSentTo] = useState('')
   const [code, setCode] = useState('')
   const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string; general?: string }>({})
   const [accountExists, setAccountExists] = useState(false)
@@ -119,6 +120,7 @@ export function SavePlanSheet({ open, onOpenChange }: { open: boolean; onOpenCha
   const onCreate = async () => {
     if (!isLoaded) return
     Keyboard.dismiss()
+    const { name, email, password } = fields.current
     const missing = {
       name: name.trim() ? undefined : 'Enter your first name.',
       email: email.trim() ? undefined : 'Enter your email.',
@@ -135,6 +137,7 @@ export function SavePlanSheet({ open, onOpenChange }: { open: boolean; onOpenCha
       // The Clerk instance doesn't collect names; the name goes to our users row.
       await signUp.create({ emailAddress: email.trim(), password })
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' })
+      setSentTo(email.trim())
       setStep('code')
     } catch (error) {
       const mapped = getSignUpFormErrors(error)
@@ -157,7 +160,7 @@ export function SavePlanSheet({ open, onOpenChange }: { open: boolean; onOpenCha
         return
       }
       await setActive({ session: attempt.createdSessionId })
-      await finish({ email: email.trim(), name: name.trim() })
+      await finish({ email: fields.current.email.trim(), name: fields.current.name.trim() })
     } catch (error) {
       setErrors({ general: getVerificationErrorMessage(error) })
       setCode('')
@@ -177,6 +180,8 @@ export function SavePlanSheet({ open, onOpenChange }: { open: boolean; onOpenCha
     }
   }
 
+  const snapPoints = useMemo(() => [step === 'choose' ? 45 : 90], [step])
+
   const close = (next: boolean) => {
     if (step === 'saving') return
     onOpenChange(next)
@@ -189,7 +194,7 @@ export function SavePlanSheet({ open, onOpenChange }: { open: boolean; onOpenCha
       onOpenChange={close}
       // Steps with inputs open tall enough to sit above the keyboard, so the
       // sheet doesn't jump (and move the field being tapped) when it opens.
-      snapPoints={[step === 'choose' ? 45 : 90]}
+      snapPoints={snapPoints}
       dismissOnSnapToBottom={step !== 'saving'}
     >
       <Sheet.Overlay
@@ -216,7 +221,7 @@ export function SavePlanSheet({ open, onOpenChange }: { open: boolean; onOpenCha
                 {step === 'code' ? 'Check your email' : 'Save your plan'}
               </Text>
               <Text fontFamily="$body" fontSize={16} color="$color11">
-                {step === 'code' ? `Enter the 6-digit code we sent to ${email.trim()}.` : "So it's here tomorrow."}
+                {step === 'code' ? `Enter the 6-digit code we sent to ${sentTo}.` : "So it's here tomorrow."}
               </Text>
             </YStack>
 
@@ -274,8 +279,10 @@ export function SavePlanSheet({ open, onOpenChange }: { open: boolean; onOpenCha
                     nativeID="save-plan-name"
                     testID="save-plan-name"
                     accessibilityLabel="First name"
-                    value={name}
-                    onChangeText={setName}
+                    defaultValue={fields.current.name}
+                    onChangeText={(text) => {
+                      fields.current.name = text
+                    }}
                     autoComplete="given-name"
                     textContentType="givenName"
                     size="$5"
@@ -292,8 +299,10 @@ export function SavePlanSheet({ open, onOpenChange }: { open: boolean; onOpenCha
                     nativeID="save-plan-email-input"
                     testID="save-plan-email-input"
                     accessibilityLabel="Email"
-                    value={email}
-                    onChangeText={setEmail}
+                    defaultValue={fields.current.email}
+                    onChangeText={(text) => {
+                      fields.current.email = text
+                    }}
                     autoCapitalize="none"
                     autoCorrect={false}
                     keyboardType="email-address"
@@ -330,8 +339,10 @@ export function SavePlanSheet({ open, onOpenChange }: { open: boolean; onOpenCha
                       nativeID="save-plan-password"
                       testID="save-plan-password"
                       accessibilityLabel="Password"
-                      value={password}
-                      onChangeText={setPassword}
+                      defaultValue={fields.current.password}
+                      onChangeText={(text) => {
+                      fields.current.password = text
+                    }}
                       secureTextEntry={!showPassword}
                       autoComplete="new-password"
                       textContentType="newPassword"
