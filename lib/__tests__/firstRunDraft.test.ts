@@ -104,6 +104,20 @@ describe('createDraftStore', () => {
     expect((await createDraftStore(storage).load()).answers).toEqual({})
   })
 
+  it('tells subscribers about loads, saves and clears', async () => {
+    const { storage } = memoryStorage()
+    const store = createDraftStore(storage, () => 1000)
+    const seen: (string | null)[] = []
+    const unsubscribe = store.subscribe(() => seen.push(store.current()?.lastStep ?? null))
+    expect(store.current()).toBeNull()
+    await store.load()
+    await store.save({ lastStep: 'sport' })
+    await store.clear()
+    unsubscribe()
+    await store.load()
+    expect(seen).toEqual(['promise', 'sport', null])
+  })
+
   it('loads corrupt data as an empty draft', async () => {
     const { storage } = memoryStorage({ [DRAFT_KEY]: '{not json' })
     const draft = await createDraftStore(storage, () => 2000).load()

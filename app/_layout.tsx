@@ -75,6 +75,14 @@ function RootLayoutNav() {
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
       <Stack>
+        {/* First Run: intake, reveal and save, before any account */}
+        <Stack.Screen
+          name="(first-run)"
+          options={{
+            headerShown: false,
+          }}
+        />
+
         {/* Auth routes (sign in, sign up) */}
         <Stack.Screen
           name="(auth)"

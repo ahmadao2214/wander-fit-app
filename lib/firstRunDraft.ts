@@ -75,10 +75,16 @@ export interface DraftStore {
   save(patch: { answers?: Partial<FirstRunAnswers>; lastStep?: FirstRunStep }): Promise<FirstRunDraft>
   /** Removes the draft, after the program is saved. */
   clear(): Promise<void>
+  /** The draft as last loaded or saved, or null before the first load. */
+  current(): FirstRunDraft | null
+  /** Called after every load, save and clear. Returns an unsubscribe. */
+  subscribe(listener: () => void): () => void
 }
 
 export function createDraftStore(storage: DraftStorage, now: () => number = Date.now): DraftStore {
   let cached: FirstRunDraft | null = null
+  const listeners = new Set<() => void>()
+  const notify = () => listeners.forEach((listener) => listener())
   // Writes run one at a time so quick taps can't overwrite each other.
   let queue: Promise<unknown> = Promise.resolve()
   const enqueue = <T>(task: () => Promise<T>): Promise<T> => {
@@ -115,7 +121,19 @@ export function createDraftStore(storage: DraftStorage, now: () => number = Date
   }
 
   return {
-    load: () => enqueue(read),
+    current: () => cached,
+    subscribe: (listener) => {
+      listeners.add(listener)
+      return () => {
+        listeners.delete(listener)
+      }
+    },
+    load: () =>
+      enqueue(async () => {
+        const draft = await read()
+        notify()
+        return draft
+      }),
     save: (patch) =>
       enqueue(async () => {
         const current = await read()
@@ -125,6 +143,7 @@ export function createDraftStore(storage: DraftStorage, now: () => number = Date
           firstLaunchAt: current.firstLaunchAt,
         }
         await write(next)
+        notify()
         return next
       }),
     clear: () =>
@@ -137,6 +156,7 @@ export function createDraftStore(storage: DraftStorage, now: () => number = Date
           // Don't let a later load bring the cleared answers back.
           await write({ answers: {}, lastStep: 'promise', firstLaunchAt: now() })
         }
+        notify()
       }),
   }
 }

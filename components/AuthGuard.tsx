@@ -3,9 +3,6 @@ import { Redirect, type Href } from 'expo-router'
 import { YStack, Text, Spinner } from 'tamagui'
 import { useAuth } from '../hooks/useAuth'
 
-// Route for onboarding - cast needed until expo-router types are regenerated
-const ONBOARDING_ROUTE = '/(onboarding)' as Href
-
 interface AuthGuardProps {
   children: React.ReactNode
   requireAuth?: boolean
@@ -25,7 +22,7 @@ export function AuthGuard({
   children, 
   requireAuth = true, 
   requireIntake = true,
-  fallbackRoute = '/(auth)/sign-in'
+  fallbackRoute = '/'
 }: AuthGuardProps) {
   const { isAuthenticated, isLoading, user, needsSetup } = useAuth()
 
@@ -49,9 +46,9 @@ export function AuthGuard({
     return <Redirect href="/(auth)/sign-up" />
   }
 
-  // If intake is required but not completed
+  // If intake is required but not completed → the First Run, via the root
   if (requireAuth && requireIntake && user && !user.intakeCompletedAt) {
-    return <Redirect href="/(intake)/sport" />
+    return <Redirect href="/" />
   }
 
   // All checks passed, render the children
@@ -59,11 +56,12 @@ export function AuthGuard({
 }
 
 /**
- * AthleteOnlyRoute - For authenticated users with completed intake AND onboarding
- * Used by the main athlete tabs
+ * AthleteOnlyRoute - For signed-in athletes with a program. Used by the
+ * athlete tabs. Anyone else goes to the root, which opens the First Run.
+ * The old onboarding screens are no longer required.
  */
 export function AthleteOnlyRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading, user, needsSetup, needsOnboarding } = useAuth()
+  const { isAuthenticated, isLoading, user } = useAuth()
 
   if (isLoading) {
     return (
@@ -74,27 +72,10 @@ export function AthleteOnlyRoute({ children }: { children: React.ReactNode }) {
     )
   }
 
-  // Not authenticated → go to sign in
-  if (!isAuthenticated) {
-    return <Redirect href="/(auth)/sign-in" />
+  if (!isAuthenticated || !user?.intakeCompletedAt) {
+    return <Redirect href="/" />
   }
 
-  // Needs Convex user setup → go to sign up
-  if (needsSetup) {
-    return <Redirect href="/(auth)/sign-up" />
-  }
-
-  // Needs intake → go to intake
-  if (!user?.intakeCompletedAt) {
-    return <Redirect href="/(intake)/sport" />
-  }
-
-  // Needs onboarding → go to onboarding
-  if (needsOnboarding) {
-    return <Redirect href={ONBOARDING_ROUTE} />
-  }
-
-  // All checks passed
   return <>{children}</>
 }
 
@@ -154,11 +135,13 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * PublicOnlyRoute - For unauthenticated users only (sign in, sign up)
- * Redirects to appropriate screen if already authenticated
+ * PublicOnlyRoute - For signed-out screens (sign in, sign up). A signed-in
+ * athlete with a program goes to the tabs; one without a program goes back
+ * to the First Run through the root. An account that exists in Clerk but
+ * not yet in Convex stays, so sign-up can finish creating it.
  */
 export function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading, user, needsSetup, needsOnboarding } = useAuth()
+  const { isAuthenticated, isLoading, user, needsSetup } = useAuth()
 
   if (isLoading) {
     return (
@@ -169,27 +152,18 @@ export function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
     )
   }
 
-  // Authenticated but needs Convex setup → stay on sign-up
   if (isAuthenticated && needsSetup) {
     return <>{children}</>
   }
 
-  // Authenticated without intake → go to intake
-  if (isAuthenticated && user && !user.intakeCompletedAt) {
-    return <Redirect href="/(intake)/sport" />
-  }
-
-  // Authenticated with intake but needs onboarding → go to onboarding
-  if (isAuthenticated && needsOnboarding) {
-    return <Redirect href={ONBOARDING_ROUTE} />
-  }
-
-  // Authenticated with intake and onboarding → go to dashboard
   if (isAuthenticated && user?.intakeCompletedAt) {
     return <Redirect href="/(athlete)" />
   }
 
-  // Not authenticated → show public content
+  if (isAuthenticated) {
+    return <Redirect href="/" />
+  }
+
   return <>{children}</>
 }
 

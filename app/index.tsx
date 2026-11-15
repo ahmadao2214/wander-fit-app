@@ -1,51 +1,32 @@
 import { Redirect } from 'expo-router'
-import { YStack, Text, Spinner } from 'tamagui'
+import { YStack, Spinner } from 'tamagui'
 import { useAuth } from '../hooks/useAuth'
+import { useFirstRunDraft } from '../hooks/useFirstRunDraft'
+import { rootRoute } from '../lib/firstRunRoutes'
 
 /**
- * Root Index Page
- *
- * Handles initial routing based on auth state:
- * 1. Not authenticated → Sign in
- * 2. Authenticated but no Convex user → Sign up (create user)
- * 3. Authenticated but no intake → Intake flow
- * 4. Authenticated with intake but no onboarding → Onboarding flow
- * 5. Authenticated with both complete → Athlete dashboard
+ * Where the app opens. Signed-in athletes with a program go to their tabs;
+ * everyone else goes to the First Run at the step they last reached. See
+ * `lib/firstRunRoutes.ts`.
  */
 export default function IndexPage() {
-  const { isAuthenticated, isLoading, user, needsSetup, needsIntake, needsOnboarding } = useAuth()
+  const { isLoading, isAuthenticated, user } = useAuth()
+  const { draft } = useFirstRunDraft()
 
-  // Show loading while determining where to redirect
-  if (isLoading) {
+  const route = rootRoute({
+    isLoading,
+    isAuthenticated,
+    hasProgram: !!user?.intakeCompletedAt,
+    lastStep: draft?.lastStep ?? null,
+  })
+
+  if (!route) {
     return (
-      <YStack flex={1} items="center" justify="center" gap="$4" bg="$background">
+      <YStack flex={1} items="center" justify="center" bg="$background" testID="root-loading">
         <Spinner size="large" color="$primaryText" />
-        <Text color="$gray11">Loading...</Text>
-        <Text fontSize="$2" color="$gray9">Checking authentication...</Text>
       </YStack>
     )
   }
 
-  // Not authenticated → go to sign in
-  if (!isAuthenticated) {
-    return <Redirect href="/(auth)/sign-in" />
-  }
-
-  // Authenticated with Clerk but no Convex user → complete sign up
-  if (needsSetup) {
-    return <Redirect href="/(auth)/sign-up" />
-  }
-
-  // Authenticated but needs intake → go to intake flow
-  if (needsIntake || !user?.intakeCompletedAt) {
-    return <Redirect href="/(intake)/sport" />
-  }
-
-  // Authenticated with intake but needs onboarding → go to onboarding flow
-  if (needsOnboarding) {
-    return <Redirect href="/(onboarding)" />
-  }
-
-  // Fully set up → go to athlete dashboard
-  return <Redirect href="/(athlete)" />
+  return <Redirect href={route} />
 }
