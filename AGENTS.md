@@ -171,8 +171,8 @@ Every unit and component test runs under **Jest**, in one run with two projects 
 
 | Project | Directories | File type | Environment |
 |---------|-------------|-----------|-------------|
-| `node` | `convex/__tests__/`, `lib/__tests__/`, `hooks/__tests__/`, `scripts/**` | `*.test.ts`, `*.test.mjs` | Node, no React Native runtime. TypeScript and ESM go through a plain Babel setup (not `babel.config.js`). |
-| `react-native` | `app/**/__tests__/`, `components/**/__tests__/` | `*.test.tsx` | `jest-expo` preset: RN renderer, native module mocks, `babel-preset-expo`. |
+| `node` | `convex/__tests__/`, `lib/__tests__/`, `hooks/__tests__/` (`*.test.ts`); `scripts/**`, `babel/__tests__/` (`*.test.mjs`) | `*.test.ts`, `*.test.mjs` | Node, no React Native runtime. TypeScript and ESM go through a plain Babel setup (not `babel.config.js`). |
+| `react-native` | `app/**/__tests__/`, `components/**/__tests__/` | `*.test.tsx` (`*.test.ts` also matches) | `jest-expo` preset: RN renderer, native module mocks, `babel-preset-expo`. |
 
 - Use the Jest globals (`describe`, `it`, `expect`, `jest.fn()`, `jest.mock()`) with no import. Their types come from `@types/jest` via `"types"` in `tsconfig.json`.
 - `expect` takes one argument. To say which case failed inside a loop, put the case in the value, e.g. `expect(missing).toEqual([])`.
@@ -182,7 +182,7 @@ Every unit and component test runs under **Jest**, in one run with two projects 
 - A Vitest test from an older branch converts with `node scripts/codemods/vitest-to-jest.mjs <file>`. It is safe to run again, and `--check` lists files that still need it.
 
 ### Test File Locations
-- **Components**: `components/<component-name>/__tests__/<ComponentName>.test.tsx`
+- **Components**: `components/<area>/__tests__/<ComponentName>.test.tsx` (e.g. `components/workout/__tests__/`), or `components/__tests__/` for top-level components
 - **Screens**: `app/__tests__/<screen-name>.test.tsx`
 - **Lib/Utils**: `lib/__tests__/<module-name>.test.ts`
 - **Hook logic**: `hooks/__tests__/<hook-name>.test.ts`
@@ -282,4 +282,4 @@ Before opening a PR, `bun run test:ci` and `bun run typecheck` should both pass;
 - Do at most one EAS cloud simulator run per pull request, for the recording. Cap it with `--max-duration-minutes 5` or less, and link the recording in the pull request description. Cloud minutes are scarce: the plan includes 60 a month for everything.
 - Never leave a cloud session running. Run `eas simulator:stop` when you finish, even after a failure.
 - The simulator check adds to the journey tests under Journeys above; it doesn't replace them. A new journey still ships with a Maestro flow and a feature-map entry, and a changed journey updates its flow.
-- How to run both loops: `scripts/sim/README.md`. The cloud run is `npm run sim:cloud-check`.
+- How to run both loops: `scripts/sim/README.md`. The cloud run is `bun run sim:cloud-check`.
