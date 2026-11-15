@@ -51,13 +51,40 @@ describe('pressed action buttons', () => {
     })
   }
 
+  // JSX opening tags, ending at the first `>` outside braces, so an
+  // `onPress={() => …}` inside the tag doesn't cut it short
+  function openingTags(source: string): string[] {
+    const tags: string[] = []
+    for (const match of source.matchAll(/<[A-Z][A-Za-z.]*\b/g)) {
+      let depth = 0
+      for (let i = match.index! + match[0].length; i < source.length; i++) {
+        const c = source[i]
+        if (c === '{') depth++
+        else if (c === '}') depth--
+        else if (c === '>' && depth === 0) {
+          tags.push(source.slice(match.index!, i + 1))
+          break
+        }
+      }
+    }
+    return tags
+  }
+
+  it('finds a fading $primary button even after an arrow-function prop', () => {
+    const tag = '<Button onPress={() => go()} bg="$primary" pressStyle={{ opacity: 0.9 }}>'
+    const [found] = openingTags(tag)
+    expect(found).toBe(tag)
+  })
+
   it('use $primaryPress, not opacity, on press', () => {
     const offenders: string[] = []
     for (const file of [...files(join(ROOT, 'app')), ...files(join(ROOT, 'components'))]) {
       const source = readFileSync(file, 'utf8')
       // Opening tags that fill with $primary and fade on press
-      for (const tag of source.match(/<[A-Z][A-Za-z.]*\b[^>]*?bg="\$primary"[^>]*?>/gs) ?? []) {
-        if (/pressStyle=\{\{[^}]*opacity/.test(tag)) offenders.push(file.replace(ROOT, ''))
+      for (const tag of openingTags(source)) {
+        if (tag.includes('bg="$primary"') && /pressStyle=\{\{[^}]*opacity/.test(tag)) {
+          offenders.push(file.replace(ROOT, ''))
+        }
       }
     }
     expect(offenders).toEqual([])
