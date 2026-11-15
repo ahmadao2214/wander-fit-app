@@ -1292,6 +1292,9 @@ export const getGenerationStatus = internalQuery({
 export const regenerateCategoryTemplates = internalMutation({
   args: {
     categoryId: v.number(),
+    // Throw (and roll back) if any template fails, so a seed script exits
+    // non-zero instead of leaving the category half generated.
+    failOnErrors: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const categoryId = args.categoryId as GppCategoryId;
@@ -1364,6 +1367,10 @@ export const regenerateCategoryTemplates = internalMutation({
           }
         }
       }
+    }
+
+    if (args.failOnErrors && errors.length > 0) {
+      throw new Error(`Category ${categoryId}: ${errors.length} templates failed. First: ${errors[0]}`);
     }
 
     return {
