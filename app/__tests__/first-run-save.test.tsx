@@ -170,6 +170,20 @@ describe('Save your plan', () => {
     expect(mockCompleteIntake).not.toHaveBeenCalled()
   })
 
+  it('goes back to fix a mistyped email after the code is sent', async () => {
+    await testDraft.seed({ answers, lastStep: 'reveal' })
+    await show()
+    await press('save-plan-email')
+    fireEvent.changeText(screen.getByTestId('save-plan-name'), 'Sam')
+    fireEvent.changeText(screen.getByTestId('save-plan-email-input'), 'a@b.cm')
+    fireEvent.changeText(screen.getByTestId('save-plan-password'), 'long-enough-1')
+    await press('save-plan-create')
+    await press('save-plan-change-email')
+    fireEvent.changeText(screen.getByTestId('save-plan-email-input'), 'a@b.co')
+    await press('save-plan-create')
+    expect(mockSignUp.create).toHaveBeenLastCalledWith(expect.objectContaining({ emailAddress: 'a@b.co' }))
+  })
+
   it('offers sign-in when the email already has an account', async () => {
     mockSignUp.create.mockRejectedValueOnce({ errors: [{ code: 'form_identifier_exists' }] })
     await show()

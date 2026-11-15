@@ -30,15 +30,22 @@ export default function FirstRunSeason() {
   // Until the athlete touches anything, show what the draft holds.
   const shownNoSeason = noSeason ?? stored === null
   const shownWeeks = weeks ?? (stored ? weeksUntilSeason(stored, now) : DEFAULT_SEASON_WEEKS)
-  const date = formatSeasonDate(seasonStartForWeeks(shownWeeks, now))
+  // An untouched stored date stays put; recomputing it from whole weeks
+  // would move it a little later on every visit.
+  const seasonStart = shownNoSeason
+    ? null
+    : weeks === null && stored
+      ? stored
+      : seasonStartForWeeks(shownWeeks, now)
+  const date = formatSeasonDate(seasonStart ?? seasonStartForWeeks(shownWeeks, now))
   const away = `${shownWeeks} ${shownWeeks === 1 ? 'week' : 'weeks'} away`
 
   const answers = draft
-    ? { ...draft.answers, seasonStart: shownNoSeason ? null : seasonStartForWeeks(shownWeeks, now) }
+    ? { ...draft.answers, seasonStart }
     : null
 
   const onContinue = async () => {
-    await save({ seasonStart: shownNoSeason ? null : seasonStartForWeeks(shownWeeks, now) })
+    await save({ seasonStart })
     router.push('/(first-run)/days')
   }
 
@@ -108,6 +115,7 @@ export default function FirstRunSeason() {
         onPress={() => {
           const next = !shownNoSeason
           setNoSeason(next)
+          setWeeks(shownWeeks)
           void save({ seasonStart: next ? null : seasonStartForWeeks(shownWeeks, now) })
         }}
         testID="season-none"

@@ -1,7 +1,7 @@
 import React from 'react'
 import { act, fireEvent, render, screen } from '@testing-library/react-native'
 import { testDraft, Wrapper as wrapper } from '../../jest/firstRunTestUtils'
-import { weeksUntilSeason } from '../../lib/firstRun'
+import { toIsoDate, weeksUntilSeason } from '../../lib/firstRun'
 
 jest.mock('../../lib/firstRunStorage', () => ({
   get firstRunDraft() {
@@ -85,6 +85,34 @@ describe('First Run season', () => {
       fireEvent.press(screen.getByTestId('season-none'))
     })
     expect((await testDraft.reopen()).answers.seasonStart).toBeNull()
+  })
+
+  it('keeps a stored date that the athlete leaves alone', async () => {
+    const stored = toIsoDate(new Date(Date.now() + 80 * 24 * 60 * 60 * 1000))
+    await testDraft.seed({ answers: { seasonStart: stored }, lastStep: 'season' })
+    await show(<FirstRunSeason />)
+    expect(screen.getByTestId('season-weeks').props.children).toBe('12 weeks away')
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('first-run-continue'))
+    })
+    expect((await testDraft.reopen()).answers.seasonStart).toBe(stored)
+  })
+
+  it('keeps the slider position through No set season and back', async () => {
+    await show(<FirstRunSeason />)
+    const slider = screen.UNSAFE_root.findAll(
+      (node) => typeof node.props.onValueChange === 'function' && node.props.max === 52
+    )[0]
+    await act(async () => {
+      slider.props.onValueChange([30])
+    })
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('season-none'))
+    })
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('season-none'))
+    })
+    expect(screen.getByTestId('season-weeks').props.children).toBe('30 weeks away')
   })
 
   it('reopens on the answer already given', async () => {
