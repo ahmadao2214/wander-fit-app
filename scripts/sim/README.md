@@ -17,11 +17,13 @@ How an agent shows a changed journey working before review. The rule is in `AGEN
 npm run sim:tunnel -- --port 8081     # terminal 1: Metro on dev, behind Expo's ngrok tunnel
 npm run sim:cloud-check               # terminal 2: one session, capped at 5 minutes, always stopped
 npm run sim:cloud-check -- --journey path/to/steps.sh --name "Workout logging for PR 123"
+npm run sim:cloud-check -- --first-run   # the First Run to Day 1, saved to a new +clerk_test account
 ```
 
 `cloud-check` prints the screenshot folder, the minutes used and the recording link. Put the link in the pull request description.
 
-- **What it does:** it starts Expo Go in an EAS cloud session, loads your Metro, signs in and waits for Today. It then runs your `--journey` script, if you pass one.
+- **What it does:** it starts Expo Go in an EAS cloud session and loads your Metro. The app opens on the First Run, so the script taps "I have an account", signs in and waits for Today. It then runs your `--journey` script, if you pass one.
+- **`--first-run`:** instead of signing in, `first-run.sh` answers the five questions, saves the plan to a new `e2e-<ms>-signup+clerk_test@example.com` account (code 424242) and starts Day 1. It prints the address; delete that account afterwards. To dry-run it on a local dev client, pass `SIM_APP_ID=<bundle id>`.
 - **Writing a journey script:** it runs with `$A`, the path to the agent-device binary, and `$SHOTS`, the screenshot folder. Pass `--platform ios` on every command.
 - **Typical run:** about 3 minutes. Loading the bundle takes 60–120 s of that, depending on ngrok.
 
@@ -30,6 +32,7 @@ npm run sim:cloud-check -- --journey path/to/steps.sh --name "Workout logging fo
 - **The tunnel is ngrok** (`@expo/ngrok` is a dev dependency). SDK 54 has no faster built-in tunnel, and its ws-tunnel runs at about 40 KB/s.
 - **`no-multipart.cjs` is loaded into Metro.** Expo Go asks for a multipart progress stream. Metro sends it uncompressed (19 MB), and ngrok relays that at about 145 KB/s. Without the multipart request, Metro sends the bundle gzipped (2.6 MB).
 - **The URL is typed in by hand.** A freshly installed cloud Expo Go ignores the URL it was launched with, so the script uses **Enter URL manually**.
-- **Some taps use coordinates.** Expo Go's dev-menu sheet and the menu that follows aren't in the accessibility tree. The script closes them by coordinates for an iPhone 17 at 402x874 points.
+- **Some taps use coordinates.** Expo Go's dev-menu sheet and the menu that follows aren't in the accessibility tree. The script closes them by coordinates for an iPhone 17 at 402x874 points. When the sheet doesn't show, the first tap lands on "I have an account", and the scripts handle either screen.
+- **The code is typed slowly** (`--delay-ms 300`). Typed at full speed, the code boxes drop digits.
 - **Agent-device is installed once.** All device steps run inside one `simulator:exec`, because each `npx` call costs 10–20 s.
 - **Secrets stay out:** the password never appears in the recording, screenshots or session logs. Session events redact command arguments. Never commit `.env.eas-simulator`; it holds a session token.
