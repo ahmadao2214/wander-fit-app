@@ -4,11 +4,13 @@
 # is always stopped, even after a failure. See scripts/sim/README.md.
 #
 # Usage: scripts/sim/cloud-check.sh [--port 8081] [--name "Sign-in to Today self-check"] [--journey path.sh]
+#        scripts/sim/cloud-check.sh --first-run   # the First Run to Day 1, saved to a new +clerk_test account
 set -uo pipefail
 
 PORT=8081
 NAME="Sign-in to Today self-check"
 JOURNEY=""
+FIRST_RUN=""
 MAX_MINUTES=5
 AGENT_DEVICE_VERSION=0.21.37
 while [[ $# -gt 0 ]]; do
@@ -16,6 +18,7 @@ while [[ $# -gt 0 ]]; do
     --port) PORT="$2"; shift 2 ;;
     --name) NAME="$2"; shift 2 ;;
     --journey) JOURNEY="$(cd "$(dirname "$2")" && pwd)/$(basename "$2")"; shift 2 ;;
+    --first-run) FIRST_RUN=1; [[ "$NAME" == "Sign-in to Today self-check" ]] && NAME="First Run self-check"; shift ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
@@ -29,8 +32,13 @@ SID=""
 t0=$(date +%s)
 ts() { echo "[$(( $(date +%s) - t0 ))s] $*"; }
 
+if [[ -n "$FIRST_RUN" ]]; then
+  # A new throwaway account; persona.mjs sweep matches this address shape.
+  export FIRST_RUN_EMAIL="e2e-$(date +%s)000-signup+clerk_test@example.com"
+  export FIRST_RUN_PASSWORD="Fr-$(openssl rand -hex 8)!"
+  echo "First Run account: $FIRST_RUN_EMAIL (delete it afterwards)"
 # Credentials: the environment, or the gitignored .env.local in the main checkout. Never printed.
-if [[ -z "${TEST_USER_EMAIL:-}" || -z "${TEST_USER_PASSWORD:-}" ]]; then
+elif [[ -z "${TEST_USER_EMAIL:-}" || -z "${TEST_USER_PASSWORD:-}" ]]; then
   ENV_FILE="${SIM_ENV_FILE:-$(git worktree list --porcelain | head -1 | cut -d' ' -f2-)/.env.local}"
   # dotenv values may be quoted; drop one surrounding pair.
   env_value() { local v; v="$(grep -m1 "^$1=" "$ENV_FILE" | cut -d= -f2-)"; v="${v%$'\r'}"
@@ -38,8 +46,10 @@ if [[ -z "${TEST_USER_EMAIL:-}" || -z "${TEST_USER_PASSWORD:-}" ]]; then
   TEST_USER_EMAIL="$(env_value TEST_USER_EMAIL)"
   TEST_USER_PASSWORD="$(env_value TEST_USER_PASSWORD)"
 fi
-[[ -n "$TEST_USER_EMAIL" && -n "$TEST_USER_PASSWORD" ]] || { echo "TEST_USER_EMAIL/TEST_USER_PASSWORD not found" >&2; exit 1; }
-export TEST_USER_EMAIL TEST_USER_PASSWORD
+if [[ -z "$FIRST_RUN" ]]; then
+  [[ -n "$TEST_USER_EMAIL" && -n "$TEST_USER_PASSWORD" ]] || { echo "TEST_USER_EMAIL/TEST_USER_PASSWORD not found" >&2; exit 1; }
+  export TEST_USER_EMAIL TEST_USER_PASSWORD
+fi
 
 # The tunnel host, from the running Metro's manifest. Start Metro first with `npm run sim:tunnel`.
 HOST="$(curl -s -H 'expo-platform: ios' -H 'accept: application/json' "http://localhost:$PORT/" \
@@ -84,7 +94,12 @@ SID="$(printf '%s' "$START_JSON" | node -e 'let s="";process.stdin.on("data",d=>
 [[ -n "$SID" ]] || { echo "simulator:start failed" >&2; exit 1; }
 ts "session $SID ready"
 
-"${EAS[@]}" simulator:exec bash "$ROOT/scripts/sim/sign-in-to-today.sh" "$AD" "$HOST" "$SHOTS" "$JOURNEY" 2>&1 \
+if [[ -n "$FIRST_RUN" ]]; then
+  STEPS=("$ROOT/scripts/sim/first-run.sh" "$AD" "$HOST" "$SHOTS")
+else
+  STEPS=("$ROOT/scripts/sim/sign-in-to-today.sh" "$AD" "$HOST" "$SHOTS" "$JOURNEY")
+fi
+"${EAS[@]}" simulator:exec bash "${STEPS[@]}" 2>&1 \
   | grep -v -E 'DEP0040|trace-deprecation'
 STATUS=${PIPESTATUS[0]}
 ts "screenshots in $SHOTS"

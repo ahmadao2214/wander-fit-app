@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Device steps for an EAS cloud session: load the app in Expo Go, sign in, reach Today.
+# Device steps for an EAS cloud session: load the app in Expo Go, open sign-in from the First Run,
+# sign in, reach Today.
 # Run by cloud-check.sh inside ONE `eas simulator:exec`, so the session env loads once.
 # Usage: sign-in-to-today.sh <agent-device-binary> <exp-host> <shots-dir> [journey-steps.sh]
 # Reads TEST_USER_EMAIL / TEST_USER_PASSWORD from the environment. Never prints them.
@@ -16,18 +17,22 @@ fail() { ts "FAIL: $*"; shot fail; exit 1; }
 
 # A freshly installed Expo Go drops the launch URL. Type it into "Enter URL manually" instead.
 # That cell is merged in the accessibility tree, so these are coordinates (iPhone 17, 402x874 points).
-if ad wait 'id=sign-in-email' 8000; then
+# Signed out, the app opens on the First Run.
+if ad wait 'id=first-run-sign-in' 8000; then
   ts "launch URL loaded the app"
 else
   ad wait text "Enter URL manually" 5000 || fail "neither the app nor Expo Go home is showing"
   ad press 201 311; ad press 201 358; ad type "exp://$HOST"; ad press 201 411
-  ad wait 'id=sign-in-email' 120000 || fail "sign-in screen never appeared"
+  ad wait 'id=first-run-sign-in' 120000 || fail "First Run never appeared"
   ts "app loaded via Enter URL manually"
 fi
 
 # First launch shows Expo Go's dev-menu onboarding sheet, then the dev menu; neither is in the
-# accessibility tree. Tap Continue, then the menu's X. Both points are empty space on bare sign-in.
+# accessibility tree. Tap Continue, then the menu's X. If the sheet didn't show, the first tap
+# lands on "I have an account", which is where this is going anyway.
 ad wait 2000; ad press 201 799; ad wait 1500; ad press 376 290; ad wait 1500
+ad wait 'id=sign-in-email' 1500 || ad press 'id=first-run-sign-in' || fail "I have an account"
+ad wait 'id=sign-in-email' 10000 || fail "sign-in screen never appeared"
 shot 01-sign-in
 
 # Paste the password: typing it makes iOS flash each character in the recording.
