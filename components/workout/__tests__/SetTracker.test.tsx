@@ -39,7 +39,7 @@ describe('SetTracker', () => {
       <SetTracker sets={sets(['done', 'skipped'])} prescribedReps="8" prescribedSets={2} onSetUpdate={jest.fn()} />,
       { wrapper: AllTheProviders }
     )
-    expect(queryByText(/NEXT/)).toBeNull()
+    expect(queryByText(/· Next/)).toBeNull()
   })
 
   it('sizes each tile to a third of the measured row', () => {
