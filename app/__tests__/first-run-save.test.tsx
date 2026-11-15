@@ -10,7 +10,12 @@ jest.mock('../../lib/firstRunStorage', () => ({
 }))
 
 // Clerk: a sign-up that verifies, and a session whose user appears on setActive.
-const mockClerk: { user: null | { id: string; primaryEmailAddress: { emailAddress: string }; fullName: string; firstName: string } } = { user: null }
+const mockClerk: {
+  user: null | { id: string; primaryEmailAddress: { emailAddress: string }; fullName: string; firstName: string }
+  signOut: jest.Mock
+} = { user: null, signOut: jest.fn(async () => {}) }
+// The signed-in user the sheet sees through useUser
+let mockSignedIn: null | { primaryEmailAddress: { emailAddress: string } } = null
 const mockSignUp = {
   create: jest.fn(async () => ({})),
   prepareEmailAddressVerification: jest.fn(async () => ({})),
@@ -22,7 +27,7 @@ const mockSetActive = jest.fn(async () => {
 jest.mock('@clerk/clerk-expo', () => ({
   useSignUp: () => ({ isLoaded: true, signUp: mockSignUp, setActive: mockSetActive }),
   useSSO: () => ({ startSSOFlow: jest.fn() }),
-  useUser: () => ({ user: null }),
+  useUser: () => ({ user: mockSignedIn }),
   useClerk: () => mockClerk,
 }))
 jest.mock('expo-auth-session', () => ({ makeRedirectUri: () => 'myapp://oauth' }))
@@ -78,6 +83,7 @@ async function signUpWithEmail() {
 beforeEach(async () => {
   jest.clearAllMocks()
   mockClerk.user = null
+  mockSignedIn = null
   testDraft.reset()
   await testDraft.seed({ answers, lastStep: 'reveal' })
   await testDraft.current.load()
@@ -153,6 +159,15 @@ describe('Save your plan', () => {
     expect(screen.getByText('Enter your first name.')).toBeTruthy()
     expect(screen.getByText('Enter your email.')).toBeTruthy()
     expect(mockSignUp.create).not.toHaveBeenCalled()
+  })
+
+  it('lets a signed-in athlete switch to a different account', async () => {
+    mockSignedIn = { primaryEmailAddress: { emailAddress: 'wrong@b.co' } }
+    await show()
+    expect(screen.getByText('Signed in as wrong@b.co')).toBeTruthy()
+    await press('save-plan-switch-account')
+    expect(mockClerk.signOut).toHaveBeenCalled()
+    expect(mockCompleteIntake).not.toHaveBeenCalled()
   })
 
   it('offers sign-in when the email already has an account', async () => {

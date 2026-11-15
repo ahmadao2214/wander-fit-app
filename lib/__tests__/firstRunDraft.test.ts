@@ -79,6 +79,28 @@ describe('createDraftStore', () => {
     expect(reopened.lastStep).toBe('about')
   })
 
+  it('shows a saved answer before slow storage finishes writing', async () => {
+    const { storage, data } = memoryStorage()
+    const store = createDraftStore(storage, () => 1000)
+    await store.load()
+    let finishWrite = () => {}
+    storage.setItem = (key, value) =>
+      new Promise<void>((resolve) => {
+        finishWrite = () => {
+          data.set(key, value)
+          resolve()
+        }
+      })
+    const seen: (number[] | undefined)[] = []
+    store.subscribe(() => seen.push(store.current()?.answers.trainingDays))
+    const saving = store.save({ answers: { trainingDays: [1, 3, 5, 6] } })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(seen).toEqual([[1, 3, 5, 6]])
+    finishWrite()
+    await saving
+    expect(JSON.parse(data.get(DRAFT_KEY)!).answers.trainingDays).toEqual([1, 3, 5, 6])
+  })
+
   it('clear removes everything', async () => {
     const { storage, data } = memoryStorage()
     const store = createDraftStore(storage, () => 1000)

@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { Keyboard, Platform, ScrollView } from 'react-native'
 import { useRouter } from 'expo-router'
-import { useSignUp, useSSO, useUser } from '@clerk/clerk-expo'
+import { useClerk, useSignUp, useSSO, useUser } from '@clerk/clerk-expo'
 import * as AuthSession from 'expo-auth-session'
 import { Button, Input, Sheet, Spinner, Text, XStack, YStack } from 'tamagui'
 import { Eye, EyeOff } from '@tamagui/lucide-icons'
@@ -66,6 +66,7 @@ export function SavePlanSheet({ open, onOpenChange }: { open: boolean; onOpenCha
   const { isLoaded, signUp, setActive } = useSignUp()
   const { startSSOFlow } = useSSO()
   const { user: clerkUser } = useUser()
+  const { signOut } = useClerk()
   const { clear } = useFirstRunDraft()
   const savePlan = useSavePlan()
 
@@ -245,6 +246,19 @@ export function SavePlanSheet({ open, onOpenChange }: { open: boolean; onOpenCha
                 <PrimaryButton onPress={onSaveSignedIn} testID="save-plan-signed-in">
                   Save to this account
                 </PrimaryButton>
+                <Text
+                  fontFamily="$body"
+                  fontSize={14}
+                  fontWeight="600"
+                  color="$primaryText"
+                  accessibilityRole="button"
+                  onPress={() => void signOut()}
+                  self="center"
+                  py="$2"
+                  testID="save-plan-switch-account"
+                >
+                  Use a different account
+                </Text>
               </YStack>
             ) : null}
 

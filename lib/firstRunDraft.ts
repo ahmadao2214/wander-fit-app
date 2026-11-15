@@ -161,11 +161,13 @@ export function createDraftStore(storage: DraftStorage, now: () => number = Date
           lastStep: patch.lastStep ?? current.lastStep,
           firstLaunchAt: current.firstLaunchAt,
         }
+        // Show the answer now; storage can be slow, and the next tap
+        // builds on what's on screen.
+        cached = next
+        notify()
         // Never write over answers storage couldn't read. The next save
         // that reads storage again merges these answers and writes them.
-        if (unread) cached = next
-        else await write(next)
-        notify()
+        if (!unread) await write(next)
         return next
       }),
     clear: () =>
