@@ -22,6 +22,7 @@ while [[ $# -gt 0 ]]; do
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
+[[ -n "$FIRST_RUN" && -n "$JOURNEY" ]] && { echo "--first-run doesn't take --journey" >&2; exit 2; }
 
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
