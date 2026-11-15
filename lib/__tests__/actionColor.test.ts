@@ -37,11 +37,10 @@ describe('action color', () => {
 
 // Pressing a $primary button must switch to the tested $primaryPress fill.
 // Fading it with opacity blends in the screen color: at 0.9 over a light
-// background, white labels drop to 4.4:1. Intake and onboarding are being
-// rebuilt by First Run and are not scanned.
+// background, white labels drop to 4.4:1.
 describe('pressed action buttons', () => {
   const ROOT = join(__dirname, '..', '..')
-  const SKIP = /__tests__|\(intake\)|\(onboarding\)/
+  const SKIP = /__tests__/
   function files(dir: string): string[] {
     return readdirSync(dir).flatMap((name) => {
       const path = join(dir, name)

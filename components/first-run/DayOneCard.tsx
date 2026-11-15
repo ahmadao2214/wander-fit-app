@@ -33,7 +33,7 @@ export function DayOneCard({ workout, dateLabel }: { workout: DayOneWorkout; dat
       testID="day-one-card"
     >
       <XStack justify="space-between" items="baseline" gap="$3">
-        <Text fontFamily="$body" fontSize={13} fontWeight="700" color="$primary">
+        <Text fontFamily="$body" fontSize={13} fontWeight="700" color="$primaryText">
           Day 1{dateLabel ? ` · ${dateLabel}` : ''}
         </Text>
         <Text fontFamily="$body" fontSize={13} color="$color11" style={{ fontVariant: ['tabular-nums'] }}>

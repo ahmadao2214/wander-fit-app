@@ -22,7 +22,7 @@ export default function FirstRunPromise() {
           fontFamily="$body"
           fontSize={15}
           fontWeight="600"
-          color="$primary"
+          color="$primaryText"
           text="center"
           py="$2"
           accessibilityRole="link"

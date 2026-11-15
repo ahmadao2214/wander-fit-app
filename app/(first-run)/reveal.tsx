@@ -68,7 +68,7 @@ export default function FirstRunReveal() {
       >
         {!ready || !program || !sport ? (
           <YStack py="$10" items="center" gap="$3" testID="reveal-loading">
-            <Spinner size="large" color="$primary" />
+            <Spinner size="large" color="$primaryText" />
             <Text fontFamily="$body" color="$color11">
               Building your plan…
             </Text>

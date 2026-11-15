@@ -229,7 +229,7 @@ export function SavePlanSheet({ open, onOpenChange }: { open: boolean; onOpenCha
 
             {step === 'saving' ? (
               <XStack gap="$3" items="center" py="$4" testID="save-plan-saving">
-                <Spinner color="$primary" />
+                <Spinner color="$primaryText" />
                 <Text fontFamily="$body" fontSize={16} color="$color12">
                   Saving your plan…
                 </Text>
@@ -319,7 +319,7 @@ export function SavePlanSheet({ open, onOpenChange }: { open: boolean; onOpenCha
                       fontFamily="$body"
                       fontSize={14}
                       fontWeight="600"
-                      color="$primary"
+                      color="$primaryText"
                       accessibilityRole="link"
                       onPress={() => {
                         onOpenChange(false)
@@ -395,7 +395,7 @@ export function SavePlanSheet({ open, onOpenChange }: { open: boolean; onOpenCha
                   fontFamily="$body"
                   fontSize={14}
                   fontWeight="600"
-                  color="$primary"
+                  color="$primaryText"
                   text="center"
                   accessibilityRole="button"
                   onPress={onResend}

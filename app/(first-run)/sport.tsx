@@ -122,7 +122,7 @@ export default function FirstRunSport() {
 
       {sports === undefined ? (
         <YStack py="$8" items="center">
-          <Spinner size="large" color="$primary" />
+          <Spinner size="large" color="$primaryText" />
         </YStack>
       ) : shown.length === 0 ? (
         <YStack py="$6" gap="$2" items="center">
