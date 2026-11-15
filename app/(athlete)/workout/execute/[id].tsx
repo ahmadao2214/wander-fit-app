@@ -349,10 +349,12 @@ export default function WorkoutExecutionScreen() {
     }
   }, [session, isInitialized])
 
-  // Opening a paused session ends the pause, so its clock runs again
+  // Opening a paused session ends the pause, so its clock runs again. Not
+  // after this screen's own Exit: its pause must stand until Resume.
   const resumeRequestedRef = useRef(false)
   useEffect(() => {
     if (!session?._id || session.pausedAt === undefined || resumeRequestedRef.current) return
+    if (sessionEndedRef.current) return
     resumeRequestedRef.current = true
     resumeSession({ sessionId: session._id }).catch((error) => {
       console.error('Failed to resume workout:', error)

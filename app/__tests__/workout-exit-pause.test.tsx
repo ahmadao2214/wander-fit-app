@@ -119,6 +119,19 @@ describe('Exiting a workout', () => {
     expect(mockResume).toHaveBeenCalledWith({ sessionId: 'session_1' })
   })
 
+  it("doesn't undo the pause when Exit's own save comes back to a still-mounted screen", async () => {
+    const { getByTestId, findByTestId, rerender } = renderSession()
+    fireEvent.press(getByTestId('execute-exit'))
+    const pause = await findByTestId('exit-pause')
+    await act(async () => {
+      fireEvent.press(pause)
+    })
+    // The query now reports the pause while the screen is still mounted
+    mockSession = { ...mockSession, pausedAt: Date.now() }
+    rerender(<WorkoutExecutionScreen />)
+    expect(mockResume).not.toHaveBeenCalled()
+  })
+
   it("doesn't call resume for a session that isn't paused", () => {
     renderSession()
     expect(mockResume).not.toHaveBeenCalled()
