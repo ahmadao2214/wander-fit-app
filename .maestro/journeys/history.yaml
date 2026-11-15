@@ -12,7 +12,7 @@ url: ${VERIFY_URL}
 - takeScreenshot: 01-today
 - tapOn: "History"
 - extendedWaitUntil:
-    visible: "WORKOUT HISTORY"
+    visible: "Workout history"
     timeout: 30000
 - extendedWaitUntil:
     visible: "GPP W1D1"

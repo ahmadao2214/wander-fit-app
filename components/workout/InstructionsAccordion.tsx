@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { YStack, XStack, Text, Card } from 'tamagui'
+import { Supporting, Caption } from '../Typography'
 import { ChevronDown, ChevronUp, Info, Package } from '@tamagui/lucide-icons'
 import { Pressable } from 'react-native'
 import { visibleEquipment } from '../../lib/workout'
@@ -45,9 +46,9 @@ export function InstructionsAccordion({
         <Card bg="$color3" p="$3" rounded="$3" borderLeftWidth={3} borderLeftColor="$yellow9">
           <XStack gap="$2" items="flex-start">
             <Info size={14} color="$yellow11" style={{ marginTop: 2 }} />
-            <Text fontSize={13} fontFamily="$body" color="$color11" flex={1}>
+            <Supporting color="$color11" flex={1}>
               {filteredNotes}
-            </Text>
+            </Supporting>
           </XStack>
         </Card>
       )}
@@ -58,9 +59,9 @@ export function InstructionsAccordion({
           <Package size={14} color="$color9" />
           {shownEquipment.map((item, idx) => (
             <Card key={idx} bg="$color3" px="$2" py="$1" rounded="$2">
-              <Text fontSize={12} fontFamily="$body" color="$color11" textTransform="capitalize">
+              <Caption color="$color11" textTransform="capitalize">
                 {item.replace(/_/g, ' ')}
-              </Text>
+              </Caption>
             </Card>
           ))}
         </XStack>
@@ -76,22 +77,20 @@ export function InstructionsAccordion({
               ) : (
                 <ChevronDown size={14} color="$color9" />
               )}
-              <Text fontSize={13} fontFamily="$body" fontWeight="500" color="$color9">
+              <Supporting fontWeight="500" color="$color9">
                 {isExpanded ? 'Hide instructions' : 'How to perform'}
-              </Text>
+              </Supporting>
             </XStack>
           </Pressable>
 
           {isExpanded && (
-            <Text
-              fontSize={14}
-              fontFamily="$body"
+            <Supporting
               color="$color11"
               lineHeight={22}
               self="flex-start"
             >
               {instructions}
-            </Text>
+            </Supporting>
           )}
         </YStack>
       )}

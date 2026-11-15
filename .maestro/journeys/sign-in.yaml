@@ -8,7 +8,7 @@ url: ${VERIFY_URL}
       id: today-heading
     timeout: 90000
 - assertVisible: "Today"
-# The card is missing while Today still says COMPLETE YOUR SETUP.
+# The card is missing while Today still says "Complete your setup".
 - extendedWaitUntil:
     visible:
       id: today-workout-card
@@ -17,7 +17,7 @@ url: ${VERIFY_URL}
 - takeScreenshot: 03-today
 - tapOn: "Profile"
 - extendedWaitUntil:
-    visible: "TRAINING INFO"
+    visible: "Training info"
     timeout: 30000
 # The profile list scrolls inside the page. Maestro web only scrolls the window,
 # and it omits text that sits outside the viewport.

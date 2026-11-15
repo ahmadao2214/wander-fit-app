@@ -1,5 +1,6 @@
 import { useRef, useMemo, useCallback } from 'react'
 import { YStack, XStack, Text, Button, ScrollView } from 'tamagui'
+import { Body, Caption } from '../Typography'
 import { ChevronLeft, ChevronRight } from '@tamagui/lucide-icons'
 import { Animated, PanResponder, Dimensions } from 'react-native'
 import { CalendarDayCell } from './CalendarDayCell'
@@ -195,9 +196,7 @@ export function CalendarMonthView({
         )}
 
         <XStack items="center" gap="$2">
-          <Text fontSize="$4" fontWeight="600" color="$color12">
-            {formatMonthYear(currentMonth)}
-          </Text>
+          <Body fontWeight="600">{formatMonthYear(currentMonth)}</Body>
           {!isCurrentMonthVisible && isTodayInProgram && (
             <Button
               size="$2"
@@ -229,9 +228,7 @@ export function CalendarMonthView({
       <XStack px="$2">
         {DAY_NAMES.map((day) => (
           <YStack key={day} flex={1} items="center">
-            <Text fontSize={10} fontWeight="500" color="$color10">
-              {day}
-            </Text>
+            <Caption fontWeight="500">{day}</Caption>
           </YStack>
         ))}
       </XStack>

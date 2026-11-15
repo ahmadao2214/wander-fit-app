@@ -5,7 +5,6 @@ import {
   Text,
   Card,
   Button,
-  styled,
 } from 'tamagui'
 import {
   Check,
@@ -32,20 +31,8 @@ import DraggableFlatList, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { phaseTokens } from '../../lib/phase'
+import { SectionTitle, Body, Supporting, Caption } from '../Typography'
 import type { Phase } from '../../types'
-
-// ─────────────────────────────────────────────────────────────────────────────
-// STYLED COMPONENTS
-// ─────────────────────────────────────────────────────────────────────────────
-
-const SectionLabel = styled(Text, {
-  fontFamily: '$body',
-  fontWeight: '600',
-  fontSize: 11,
-  letterSpacing: 1.5,
-  textTransform: 'uppercase',
-  color: '$color10',
-})
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -231,47 +218,36 @@ export function ExerciseQueue({
                 {isCompleted ? (
                   <Check size={16} color="white" strokeWidth={3} />
                 ) : (
-                  <Text
-                    fontSize={12}
-                    fontFamily="$body" fontWeight="700"
+                  <Caption fontWeight="700"
                     color={isCurrent ? phase.onFill : '$color11'}
                   >
                     {index + 1}
-                  </Text>
+                  </Caption>
                 )}
               </Card>
 
               {/* Exercise Info */}
               <YStack flex={1} gap="$0.5">
-                <Text
-                  fontSize={14}
-                  fontFamily="$body"
+                <Body
                   fontWeight={isCurrent ? '700' : '500'}
                   color={isCompleted ? '$color10' : '$color12'}
                   textDecorationLine={isCompleted ? 'line-through' : 'none'}
                 >
                   {item.name}
-                </Text>
-                <Text
-                  fontSize={12}
+                </Body>
+                <Caption
                   color="$color10"
-                  fontFamily="$body"
                 >
                   {item.scaledSets ?? item.sets} × {item.scaledReps ?? item.reps}
-                </Text>
+                </Caption>
               </YStack>
 
               {/* Current Badge or Navigation Arrow */}
               {isCurrent ? (
                 <Card bg={phase.fill} px="$2" py="$1" rounded="$2">
-                  <Text
-                    fontSize={10}
-                    color={phase.onFill}
-                    fontFamily="$body" fontWeight="700"
-                    letterSpacing={0.5}
-                  >
-                    NOW
-                  </Text>
+                  <Caption color={phase.onFill} fontWeight="700">
+                    Now
+                  </Caption>
                 </Card>
               ) : !isCompleted && !canDrag ? (
                 <ChevronRight size={18} color="$color9" />
@@ -366,20 +342,12 @@ export function ExerciseQueue({
                 <YStack px="$4" pt="$4" pb="$2">
                   <XStack items="center" justify="space-between" pb="$3">
                     <YStack gap="$0.5">
-                      <Text
-                        fontSize={18}
-                        fontFamily="$body" fontWeight="700"
-                        color="$color12"
-                      >
-                        Exercises
-                      </Text>
-                      <Text
-                        fontSize={13}
+                      <SectionTitle fontWeight="700">Exercises</SectionTitle>
+                      <Supporting
                         color="$color10"
-                        fontFamily="$body"
                       >
                         {completedCount}/{exercises.length} done
-                      </Text>
+                      </Supporting>
                     </YStack>
                     <Pressable onPress={() => setOpen(false)} hitSlop={8}>
                       <ChevronRight size={28} color="$color" />
@@ -389,13 +357,11 @@ export function ExerciseQueue({
                   {/* Drag hint */}
                   <XStack items="center" gap="$2">
                     <GripVertical size={14} color="$color9" />
-                    <Text
-                      fontSize={12}
+                    <Caption
                       color="$color9"
-                      fontFamily="$body"
                     >
                       Hold to reorder upcoming
-                    </Text>
+                    </Caption>
                   </XStack>
                 </YStack>
               </View>

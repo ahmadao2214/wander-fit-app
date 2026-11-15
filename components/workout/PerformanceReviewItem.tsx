@@ -5,6 +5,7 @@ import {
   Text,
   Card,
 } from 'tamagui'
+import { Body, Supporting, Caption } from '../Typography'
 import {
   ChevronDown,
   ChevronUp,
@@ -103,26 +104,26 @@ export function PerformanceReviewItem({
 
           {/* Exercise Name & Summary */}
           <YStack flex={1} gap="$1">
-            <Text fontWeight="500" fontSize="$4" numberOfLines={1}>
+            <Body fontWeight="500" numberOfLines={1}>
               {exercise.exerciseName}
-            </Text>
+            </Body>
             <XStack gap="$2" items="center">
               {isSkipped ? (
-                <Text fontSize="$2" color="$red10">Skipped</Text>
+                <Caption color="$red10">Skipped</Caption>
               ) : (
                 <>
-                  <Text fontSize="$2" color="$color10">
+                  <Caption color="$color10">
                     {completedSets.length}/{exercise.prescribedSets} sets
-                  </Text>
+                  </Caption>
                   {maxWeight > 0 && (
-                    <Text fontSize="$2" color="$color10">
+                    <Caption color="$color10">
                       @ {maxWeight} lbs
-                    </Text>
+                    </Caption>
                   )}
                   {totalReps > 0 && (
-                    <Text fontSize="$2" color="$color9">
+                    <Caption color="$color9">
                       ({totalReps} reps)
-                    </Text>
+                    </Caption>
                   )}
                 </>
               )}
@@ -132,9 +133,9 @@ export function PerformanceReviewItem({
           {/* RPE Badge (if available) */}
           {avgRpe !== null && avgRpe > 0 && (
             <Card bg="$primary" px="$2" py="$1" rounded="$3">
-              <Text fontSize="$2" color="white" fontWeight="600">
+              <Caption color="white" fontWeight="600">
                 RPE {avgRpe}
-              </Text>
+              </Caption>
             </Card>
           )}
 
@@ -152,9 +153,9 @@ export function PerformanceReviewItem({
         <YStack gap="$2" px="$4" pb="$4">
           {/* Prescribed info */}
           <XStack items="center" gap="$2" pb="$2" borderBottomWidth={1} borderBottomColor="$borderColor">
-            <Text fontSize="$2" color="$color9">
+            <Caption color="$color9">
               Prescribed: {exercise.prescribedSets} x {exercise.prescribedReps}
-            </Text>
+            </Caption>
           </XStack>
 
           {/* Set-by-set breakdown */}
@@ -177,46 +178,46 @@ export function PerformanceReviewItem({
                   justify="center"
                   p={0}
                 >
-                  <Text fontSize="$1" fontWeight="600" color={set.skipped ? "$color10" : "$color11"}>
+                  <Caption fontWeight="600" color={set.skipped ? "$color10" : "$color11"}>
                     {set.setNumber}
-                  </Text>
+                  </Caption>
                 </Card>
 
                 {/* Set details */}
                 {set.skipped ? (
-                  <Text fontSize="$3" color="$color9" fontStyle="italic">
+                  <Supporting color="$color9" fontStyle="italic">
                     Skipped
-                  </Text>
+                  </Supporting>
                 ) : set.completed ? (
                   <XStack flex={1} gap="$3" items="center">
-                    <Text fontSize="$3" color="$color11">
+                    <Supporting color="$color11">
                       {set.repsCompleted ? `${set.repsCompleted} reps` : 'Completed'}
-                    </Text>
+                    </Supporting>
                     {set.weight !== undefined && set.weight > 0 && (
-                      <Text fontSize="$3" color="$color10">
+                      <Supporting color="$color10">
                         @ {set.weight} lbs
-                      </Text>
+                      </Supporting>
                     )}
                     {set.rpe !== undefined && set.rpe > 0 && (
                       <XStack items="center" gap="$1">
                         <Activity size={12} color="$primaryText" />
-                        <Text fontSize="$2" color="$primaryText" fontWeight="500">
+                        <Caption color="$primaryText" fontWeight="500">
                           {set.rpe}
-                        </Text>
+                        </Caption>
                       </XStack>
                     )}
                   </XStack>
                 ) : (
-                  <Text fontSize="$3" color="$color9">
+                  <Supporting color="$color9">
                     Not completed
-                  </Text>
+                  </Supporting>
                 )}
               </XStack>
             ))
           ) : (
-            <Text fontSize="$3" color="$color9" fontStyle="italic">
+            <Supporting color="$color9" fontStyle="italic">
               No set data recorded
-            </Text>
+            </Supporting>
           )}
         </YStack>
       )}

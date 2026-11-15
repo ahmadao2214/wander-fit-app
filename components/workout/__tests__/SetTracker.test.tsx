@@ -18,8 +18,8 @@ describe('SetTracker', () => {
       <SetTracker sets={sets(['done', 'todo', 'todo'])} prescribedReps="10" prescribedSets={3} onSetUpdate={jest.fn()} />,
       { wrapper: AllTheProviders }
     )
-    expect(getByText('SET 2 · NEXT')).toBeTruthy()
-    expect(queryByText('SET 3 · NEXT')).toBeNull()
+    expect(getByText('Set 2 · Next')).toBeTruthy()
+    expect(queryByText('Set 3 · Next')).toBeNull()
     expect(getByLabelText('Set 2, 10, next, tap when done')).toBeTruthy()
     expect(getByLabelText('Set 1, 10, done')).toBeTruthy()
   })
@@ -39,7 +39,7 @@ describe('SetTracker', () => {
       <SetTracker sets={sets(['done', 'skipped'])} prescribedReps="8" prescribedSets={2} onSetUpdate={jest.fn()} />,
       { wrapper: AllTheProviders }
     )
-    expect(queryByText(/NEXT/)).toBeNull()
+    expect(queryByText(/· Next/)).toBeNull()
   })
 
   it('sizes each tile to a third of the measured row', () => {
@@ -49,7 +49,7 @@ describe('SetTracker', () => {
     )
     const row = UNSAFE_getAllByProps({ flexWrap: 'wrap' })[0]
     fireEvent(row, 'layout', { nativeEvent: { layout: { width: 340, height: 100, x: 0, y: 0 } } })
-    const tile = getByText('SET 1 · NEXT')
+    const tile = getByText('Set 1 · Next')
     let node: any = tile
     while (node && node.props?.accessibilityRole !== 'button') node = node.parent
     expect(StyleSheet.flatten(node.props.style).width).toBe(108)
@@ -62,7 +62,7 @@ describe('SetTracker', () => {
     )
     const row = UNSAFE_getAllByProps({ flexWrap: 'wrap' })[0]
     fireEvent(row, 'layout', { nativeEvent: { layout: { width: 340, height: 100, x: 0, y: 0 } } })
-    let node: any = getByText('SET 1 · NEXT')
+    let node: any = getByText('Set 1 · Next')
     while (node && node.props?.accessibilityRole !== 'button') node = node.parent
     expect(StyleSheet.flatten(node.props.style).width).toBe(108)
   })
@@ -106,4 +106,18 @@ describe('SetTracker', () => {
     expect(getByLabelText('Set 1, 8 at 225 lb, done')).toBeTruthy()
     expect(getByLabelText('Set 2, 12, next, tap when done')).toBeTruthy()
   })
+
+  it('never shrinks a long prescription below the 12pt floor', () => {
+    const { getAllByText } = render(
+      <SetTracker sets={sets(['todo', 'todo'])} prescribedReps="10 each side" prescribedSets={2} onSetUpdate={jest.fn()} />,
+      { wrapper: AllTheProviders }
+    )
+    const tiles = getAllByText('10 each side')
+    expect(tiles.length).toBe(2)
+    for (const node of tiles) {
+      const { fontSize } = StyleSheet.flatten(node.props.style)
+      expect(fontSize * node.props.minimumFontScale).toBeGreaterThanOrEqual(12)
+    }
+  })
+
 })

@@ -1,14 +1,9 @@
 import { useState, ComponentType } from 'react'
-import { YStack, XStack, Text, Card, styled } from 'tamagui'
+import { YStack, XStack, Card } from 'tamagui'
 import { ChevronDown, ChevronUp } from '@tamagui/lucide-icons'
 import { Pressable } from 'react-native'
 
-const SectionTitle = styled(Text, {
-  fontFamily: '$heading',
-  fontSize: 18,
-  letterSpacing: 0.5,
-  color: '$color12',
-})
+import { SectionTitle } from '../Typography'
 
 interface ScienceSectionProps {
   title: string
@@ -37,12 +32,17 @@ export function ScienceSection({
       borderColor="$borderColor"
       overflow="hidden"
     >
-      <Pressable onPress={() => setIsExpanded(!isExpanded)}>
+      <Pressable
+        onPress={() => setIsExpanded(!isExpanded)}
+        accessibilityRole="button"
+        accessibilityLabel={title}
+        accessibilityState={{ expanded: isExpanded }}
+      >
         <XStack p="$4" items="center" gap="$3">
           <YStack bg={iconBgColor as any} p="$2" rounded="$10">
             <Icon size={20} color={iconColor} />
           </YStack>
-          <SectionTitle flex={1}>{title.toUpperCase()}</SectionTitle>
+          <SectionTitle flex={1} accessibilityRole={undefined}>{title}</SectionTitle>
           {isExpanded ? (
             <ChevronUp size={20} color="$color9" />
           ) : (

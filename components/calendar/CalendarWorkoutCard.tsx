@@ -1,4 +1,5 @@
 import { YStack, XStack, Text, Card, type ColorTokens } from 'tamagui'
+import { Caption } from '../Typography'
 import { CheckCircle, Play, Lock } from '@tamagui/lucide-icons'
 import type { Phase } from '../../types'
 import { phaseTokens } from '../../lib/phase'
@@ -97,7 +98,8 @@ export function CalendarWorkoutCard({
       >
         <XStack items="center" gap="$1" px="$1" py="$0.5">
           <Text
-            fontSize={9}
+            fontSize={12}
+            lineHeight={16}
             fontWeight="500"
             color={isLocked || isCompleted ? '$color9' : '$color11'}
             numberOfLines={1}
@@ -133,9 +135,7 @@ export function CalendarWorkoutCard({
       <YStack gap="$1.5" px="$2" py="$1.5">
         {/* Duration and status icon */}
         <XStack items="center" justify="space-between">
-          <Text fontSize={10} fontWeight="600" color="$color10">
-            ~{estimatedDurationMinutes}m
-          </Text>
+          <Caption fontWeight="600">~{estimatedDurationMinutes}m</Caption>
           {getStatusIcon()}
         </XStack>
 
@@ -158,17 +158,16 @@ export function CalendarWorkoutCard({
             {exercisePreview.map((exerciseName, idx) => (
               <Text
                 key={idx}
-                fontSize={9}
-                color="$color9"
+                fontSize={12}
+                lineHeight={16}
+                color="$color10"
                 numberOfLines={1}
               >
                 {exerciseName}
               </Text>
             ))}
             {remainingExercises > 0 && (
-              <Text fontSize={9} color="$color9">
-                +{remainingExercises} more
-              </Text>
+              <Caption>+{remainingExercises} more</Caption>
             )}
           </YStack>
         )}

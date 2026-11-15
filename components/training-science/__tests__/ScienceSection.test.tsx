@@ -16,12 +16,12 @@ describe('ScienceSection', () => {
     children: <Text>Test content</Text>,
   }
 
-  it('renders with title in uppercase', () => {
+  it('renders the title as written (the type role sets the case)', () => {
     const { getByText } = render(
       <ScienceSection {...defaultProps} />,
       { wrapper: AllTheProviders }
     )
-    expect(getByText('TEST SECTION')).toBeTruthy()
+    expect(getByText('Test Section')).toBeTruthy()
   })
 
   it('renders collapsed by default', () => {
@@ -51,7 +51,7 @@ describe('ScienceSection', () => {
     expect(queryByText('Test content')).toBeNull()
 
     // Press the header to expand
-    fireEvent.press(getByText('TEST SECTION'))
+    fireEvent.press(getByText('Test Section'))
 
     // Now content should be visible
     expect(getByText('Test content')).toBeTruthy()
@@ -67,7 +67,7 @@ describe('ScienceSection', () => {
     expect(getByText('Test content')).toBeTruthy()
 
     // Press the header to collapse
-    fireEvent.press(getByText('TEST SECTION'))
+    fireEvent.press(getByText('Test Section'))
 
     // Now content should be hidden
     expect(queryByText('Test content')).toBeNull()
@@ -83,7 +83,7 @@ describe('ScienceSection', () => {
       { wrapper: AllTheProviders }
     )
     // Component should render without errors with custom colors
-    expect(getByText('TEST SECTION')).toBeTruthy()
+    expect(getByText('Test Section')).toBeTruthy()
   })
 
   it('renders multiple children correctly', () => {

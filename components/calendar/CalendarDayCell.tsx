@@ -1,5 +1,6 @@
 import { useCallback, useRef, useEffect, useMemo } from 'react'
 import { YStack, XStack, Text } from 'tamagui'
+import { Caption } from '../Typography'
 import { View, LayoutChangeEvent, type ViewInstance } from 'react-native'
 import { CalendarWorkoutCard, CalendarWorkoutCardProps } from './CalendarWorkoutCard'
 import { DraggableWorkoutCard } from './DraggableWorkoutCard'
@@ -162,15 +163,16 @@ export function CalendarDayCell({
           pb="$0.5"
         >
           <YStack
-            width={20}
-            height={20}
-            rounded={10}
+            width={22}
+            height={22}
+            rounded={11}
             bg={isToday ? '$primary' : 'transparent'}
             items="center"
             justify="center"
           >
             <Text
-              fontSize={11}
+              fontSize={12}
+              lineHeight={16}
               fontWeight={isToday ? '700' : '500'}
               color={isToday ? 'white' : '$color11'}
             >
@@ -210,9 +212,13 @@ export function CalendarDayCell({
             })}
             {/* Show +N more if there are more workouts */}
             {workouts.length > 3 && (
-              <Text fontSize={8} color="$color9" text="center">
-                +{workouts.length - 3} more
-              </Text>
+              <Caption
+                color="$color10"
+                text="center"
+                accessibilityLabel={`${workouts.length - 3} more ${workouts.length - 3 === 1 ? 'workout' : 'workouts'}`}
+              >
+                +{workouts.length - 3}
+              </Caption>
             )}
           </YStack>
         )}

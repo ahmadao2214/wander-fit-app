@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useMemo } from 'react'
 import { YStack, XStack, Text, Button, ScrollView } from 'tamagui'
+import { Body } from '../Typography'
 import { ChevronLeft, ChevronRight } from '@tamagui/lucide-icons'
 import { FlatList, Dimensions, NativeScrollEvent, NativeSyntheticEvent, View } from 'react-native'
 import { CalendarDayCell, WorkoutWithSlot } from './CalendarDayCell'
@@ -280,7 +281,8 @@ export function CalendarWeekView({
           {/* Day header */}
           <YStack items="center" gap="$0.5">
             <Text
-              fontSize={11}
+              fontSize={12}
+              lineHeight={16}
               fontWeight="500"
               color={isDateToday ? '$primaryText' : '$color9'}
             >
@@ -296,6 +298,7 @@ export function CalendarWeekView({
             >
               <Text
                 fontSize={14}
+                lineHeight={20}
                 fontWeight={isDateToday ? '700' : '500'}
                 color={isDateToday ? 'white' : '$color12'}
               >
@@ -365,9 +368,7 @@ export function CalendarWeekView({
         )}
 
         <XStack items="center" gap="$2">
-          <Text fontSize="$4" fontWeight="600" color="$color12">
-            {formatWeekRange(displayedWeek)}
-          </Text>
+          <Body fontWeight="600">{formatWeekRange(displayedWeek)}</Body>
           {!isCurrentWeekVisible && isTodayInProgram && (
             <Button
               size="$2"

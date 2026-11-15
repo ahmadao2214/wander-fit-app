@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { YStack, XStack, Text, Card, styled } from 'tamagui'
+import { YStack, XStack, Text, Card } from 'tamagui'
 import { Check, SkipForward } from '@tamagui/lucide-icons'
 import { TouchableOpacity, Platform, Vibration, type LayoutChangeEvent } from 'react-native'
 import { SetEditSheet } from './SetEditSheet'
@@ -7,19 +7,13 @@ import { parseReps } from '../../lib'
 import { nextSetIndex, setTileLayout } from '../../lib/workout'
 import { phaseTokens } from '../../lib/phase'
 import type { Phase } from '../../types'
+import { Supporting, Caption, numeric, MIN_FONT_SIZE, TYPE_SCALE } from '../Typography'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
 // ─────────────────────────────────────────────────────────────────────────────
 
 const TILE_GAP = 8
-
-const SectionLabel = styled(Text, {
-  fontFamily: '$body',
-  fontWeight: '600',
-  fontSize: 12,
-  color: '$color10',
-})
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -149,16 +143,16 @@ export function SetTracker({
     <>
       <YStack gap="$3">
         <XStack items="center" gap="$2">
-          <SectionLabel>SETS</SectionLabel>
-          <Text testID="sets-logged" fontSize={12} color="$color9" fontFamily="$body">
+          <Supporting fontWeight="600" color="$color10">Sets</Supporting>
+          <Supporting testID="sets-logged" color="$color10" style={numeric}>
             {sets.filter(s => s.completed).length}/{prescribedSets}
-          </Text>
+          </Supporting>
           {previousSummary && (
-            <Text fontSize={11} color="$color9" fontFamily="$body" ml="auto">
+            <Caption color="$color9" ml="auto">
               Last: {previousSummary.sets} sets
               {previousSummary.maxWeight ? ` @ ${previousSummary.maxWeight}lb` : ''}
               {previousSummary.maxReps ? ` x${previousSummary.maxReps}` : ''}
-            </Text>
+            </Caption>
           )}
         </XStack>
 
@@ -174,6 +168,7 @@ export function SetTracker({
             const isCompleted = set.completed
             const isSkipped = set.skipped
             const isNext = index === activeIndex
+            const repsSize = isNext ? 24 : 18
             const stateLabel = isCompleted ? 'done' : isSkipped ? 'skipped' : isNext ? 'next, tap when done' : 'to do'
             // A logged set announces what was logged; others announce the prescription
             const loggedWeight = set.weight != null && set.weight > 0 ? ` at ${set.weight} lb` : ''
@@ -203,14 +198,9 @@ export function SetTracker({
                   rounded="$4"
                 >
                   <YStack items="center" gap="$1">
-                    <Text
-                      fontSize={12}
-                      fontFamily="$body" fontWeight="700"
-                      letterSpacing={0.5}
-                      color={isNext ? '$color12' : '$color11'}
-                    >
-                      {isNext ? `SET ${index + 1} · NEXT` : `SET ${index + 1}`}
-                    </Text>
+                    <Caption fontWeight="700" color={isNext ? '$color12' : '$color11'}>
+                      {isNext ? `Set ${index + 1} · Next` : `Set ${index + 1}`}
+                    </Caption>
 
                     {isCompleted ? (
                       // Weight goes on its own line so "12" and "225 lb" fit a third-width tile
@@ -218,38 +208,39 @@ export function SetTracker({
                         <XStack items="center" gap="$1">
                           <Check size={18} color={phase.text} strokeWidth={3} />
                           {set.repsCompleted != null && (
-                            <Text fontSize={18} color="$color12" fontFamily="$body" fontWeight="700">
+                            <Text fontSize={18} lineHeight={24} color="$color12" fontFamily="$body" fontWeight="700" style={numeric}>
                               {set.repsCompleted}
                             </Text>
                           )}
                         </XStack>
                         {set.weight != null && set.weight > 0 && (
-                          <Text
+                          <Supporting
                             testID={`set-${index}-weight`}
-                            fontSize={13}
                             color="$color11"
-                            fontFamily="$body"
                             numberOfLines={1}
                             adjustsFontSizeToFit
+                            // Shrinks to fit the tile, but never under the 12pt floor
+                            minimumFontScale={MIN_FONT_SIZE / TYPE_SCALE.supporting.size}
+                            style={numeric}
                           >
                             {set.weight} lb
-                          </Text>
+                          </Supporting>
                         )}
                       </YStack>
                     ) : isSkipped ? (
                       <XStack items="center" gap="$1">
                         <SkipForward size={14} color="$color11" />
-                        <Text fontSize={13} color="$color11" fontFamily="$body">
-                          Skipped
-                        </Text>
+                        <Supporting>Skipped</Supporting>
                       </XStack>
                     ) : (
                       <Text
-                        fontSize={isNext ? 22 : 17}
+                        fontSize={repsSize}
                         color={isNext ? '$color12' : '$color11'}
                         fontFamily="$body" fontWeight={isNext ? '700' : '600'}
                         numberOfLines={1}
                         adjustsFontSizeToFit
+                        minimumFontScale={MIN_FONT_SIZE / repsSize}
+                        style={numeric}
                       >
                         {displayReps}
                       </Text>

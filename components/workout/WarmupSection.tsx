@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { ScrollView, View, StyleSheet, Pressable, type ScrollViewInstance } from 'react-native'
-import { YStack, XStack, Text, Button, Card, H3 } from 'tamagui'
+import { YStack, XStack, Text, Button, Card } from 'tamagui'
+import { Display, SectionTitle, Body, Supporting, Caption } from '../Typography'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ChevronDown, ChevronUp, ChevronLeft, Check } from '@tamagui/lucide-icons'
 import type { WarmupPhase, ExerciseSection } from '../../types'
@@ -87,12 +88,12 @@ function ExerciseRows({ exercises, indent }: { exercises: WarmupExercise[]; inde
     <>
       {exercises.map((ex) => (
         <XStack key={ex.orderIndex} justify="space-between" items="center" pl={indent ? '$6' : 0}>
-          <Text fontSize={14} color="$color" flex={1} numberOfLines={1}>
+          <Supporting color="$color" flex={1} numberOfLines={1}>
             {ex.name}
-          </Text>
-          <Text fontSize={13} color="$colorFocus" ml="$2">
+          </Supporting>
+          <Supporting color="$colorFocus" ml="$2">
             {ex.sets > 1 ? `${ex.sets} × ${ex.reps}` : ex.reps}
-          </Text>
+          </Supporting>
         </XStack>
       ))}
     </>
@@ -144,25 +145,24 @@ function PhaseCard({ phase, exercises, phaseIndex, isCompleted, onToggle, traini
             {isCompleted ? (
               <Check size={14} color="white" />
             ) : (
-              <Text color={colors.onFill} fontSize={12} fontWeight="700">
+              <Caption color={colors.onFill} fontWeight="700">
                 {phaseIndex + 1}
-              </Text>
+              </Caption>
             )}
           </YStack>
-          <Text
-            fontSize={15}
+          <Body
             fontWeight="600"
             color={isCompleted ? "$color10" : "$color"}
             flex={1}
             textDecorationLine={isCompleted ? "line-through" : "none"}
           >
             {PHASE_LABELS[phase]}
-          </Text>
+          </Body>
           {/* Tap affordance (right side) */}
           {isCompleted ? (
             <XStack items="center" gap="$1">
               <Check size={14} color="$green10" />
-              <Text fontSize={12} color="$green11" fontWeight="600">Done</Text>
+              <Caption color="$green11" fontWeight="600">Done</Caption>
             </XStack>
           ) : (
             <YStack
@@ -253,15 +253,10 @@ function WarmupFlow({ exercises, totalDuration, onComplete, onBack, trainingPhas
           )}
 
           {/* Title (left-aligned) */}
-          <Text
-            fontFamily="$heading"
-            fontSize={28}
-            letterSpacing={0.5}
-            color="$color12"
-            flex={1}
-          >
+          {/* "WARMUP" stays in caps for the First Run Maestro flow, which asserts it */}
+          <Display flex={1} accessibilityRole="header">
             WARMUP
-          </Text>
+          </Display>
 
           {/* Skip button (right) — hidden when all phases complete */}
           {!allComplete && (
@@ -290,9 +285,9 @@ function WarmupFlow({ exercises, totalDuration, onComplete, onBack, trainingPhas
       >
         {/* Hint text */}
         {activePhases.length > 0 && (
-          <Text fontSize={12} color="$color10" mb="$3">
+          <Caption color="$color10" mb="$3">
             Tap each phase when complete
-          </Text>
+          </Caption>
         )}
         {ungrouped.length > 0 && (
           <Card borderWidth={1} borderColor="$borderColor" bg="$background" rounded="$4" p="$3" gap="$2" mb="$3">
@@ -331,7 +326,7 @@ function WarmupFlow({ exercises, totalDuration, onComplete, onBack, trainingPhas
             size="$5"
             bg="$primary"
             color="white"
-            fontSize={19}
+            fontSize={18}
             fontWeight="700"
             onPress={onComplete}
             icon={allComplete ? Check : undefined}
@@ -366,14 +361,14 @@ function WarmupPreview({ exercises, totalDuration, trainingPhase }: Pick<WarmupS
         onPress={() => setExpanded(!expanded)}
       >
         <YStack>
-          <H3>Warmup</H3>
-          <Text fontSize={13} color="$colorFocus">
+          <SectionTitle accessibilityRole={undefined}>Warmup</SectionTitle>
+          <Supporting color="$colorFocus">
             {warmupSummary({
               durationMin: totalDuration,
               phaseCount: activePhases.length,
               exerciseCount: exercises.length,
             })}
-          </Text>
+          </Supporting>
         </YStack>
         {expanded ? (
           <ChevronUp size={20} color="$colorFocus" />
@@ -407,16 +402,16 @@ function WarmupPreview({ exercises, totalDuration, trainingPhase }: Pick<WarmupS
                   items="center"
                   justify="center"
                 >
-                  <Text color={colors.onFill} fontSize={11} fontWeight="700">
+                  <Caption color={colors.onFill} fontWeight="700">
                     {index + 1}
-                  </Text>
+                  </Caption>
                 </YStack>
-                <Text fontSize={14} fontWeight="600" color="$color" flex={1}>
+                <Supporting fontWeight="600" color="$color" flex={1}>
                   {PHASE_LABELS[phase]}
-                </Text>
-                <Text fontSize={12} color="$colorFocus">
+                </Supporting>
+                <Caption color="$colorFocus">
                   {phaseExercises.length} exercises · {duration} min
-                </Text>
+                </Caption>
               </XStack>
             )
           })}

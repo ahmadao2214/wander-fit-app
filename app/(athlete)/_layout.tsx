@@ -45,7 +45,8 @@ export default function AthleteLayout() {
           },
           tabBarLabelStyle: {
             fontFamily: 'PlusJakartaSans',
-            fontSize: 11,
+            // Caption size, the app's text floor
+            fontSize: 12,
             fontWeight: '600',
           },
           headerShown: false,
