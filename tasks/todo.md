@@ -82,19 +82,20 @@ Plan: `tasks/plan.md`. Verification commands: `bun run test -- <pattern>`, `bun 
 ### Checkpoint B
 - [x] `bun run test:ci` and `bun run typecheck` pass.
 - [x] On the local iPhone 17 simulator (one simulator only; use `device_open`): fresh install → Start Day 1 in under 2 minutes, warm-up showing. Same on web.
-- [ ] Show Azhar before Phase 3.
+- [x] Show Azhar before Phase 3.
 
 ## Phase 3: Replace and prove (PR 2)
 
-- [ ] **Task 12: Delete the old screens** (M)
+- [x] **Task 12: Delete the old screens** (M)
   - Delete `app/(intake)/`, `app/(onboarding)/`, `components/IntakeProgressDots.tsx` and their tests, plus the onboarding state fields and queries once nothing reads them. Keep everything reassessment uses.
   - Acceptance: no imports of deleted files; reassessment still works.
   - Verify: `bun run typecheck`, `bun run test:ci`, a reassessment screen test.
   - Depends on: 11. Files: the deleted folders, `convex/onboarding.ts`, `convex/schema.ts`.
 
-- [ ] **Task 13: First Run journey replaces activation** (M)
+- [x] **Task 13: First Run journey replaces activation** (M)
   - `.maestro/journeys/first-run.yaml` with web and native entries. Starts signed out, answers the intake, asserts the Day 1 name on the reveal, signs up with a `+clerk_test` email, lands on the warm-up. `persona inspect` checks the program (GPP, week 1, day 1) and `firstLaunchAt`. Feature map `first-run.md` replaces `activation.md`; remove the `needs-intake` persona state.
   - Acceptance: `node scripts/verify/run.mjs all first-run` passes on web and native.
+  - Done on web (all four web flows pass). Native has no Maestro flow: Maestro's iOS `inputText` dropped characters on the iOS 27.2 simulator. Native is proven by the recorded iPhone 17 run instead (see the feature map). The separate sign-up screen and journey went too; the save sheet is the only sign-up.
   - Verify: that command, with the evidence under `e2e-artifacts/first-run/`.
   - Depends on: 4, 12. Files: `.maestro/journeys/first-run.yaml`, `.maestro/web/first-run.yaml`, `.maestro/native/first-run.yaml`, `scripts/verify/run.mjs`, `convex/e2e.ts`, feature map.
 
@@ -104,13 +105,13 @@ Plan: `tasks/plan.md`. Verification commands: `bun run test -- <pattern>`, `bun 
   - Verify: the list query before and after.
   - Depends on: 13 merged. Files: none in the app; a one-off script in the scratchpad.
 
-- [ ] **Task 15: Haptics** (S)
+- [x] **Task 15: Haptics** (S)
   - Add `expo-haptics` (pinned version, `bun.lock` patched in place); light impact on sport selection on iOS only.
   - Acceptance: one haptic per selection; nothing on web.
   - Verify: `bun run typecheck`; feel it on the simulator build.
   - Depends on: 6. Files: `package.json`, `bun.lock`, `app/(first-run)/sport.tsx`.
 
-- [ ] **Task 16: Simulator self-check and recording** (S)
+- [ ] **Task 16: Simulator self-check and recording** (S) — local iPhone 17 recording done (81 s, launch → warm-up); the EAS cloud run waits until the dev deployment has these functions
   - Local loop on the iPhone 17, then one EAS cloud run of at most 5 minutes for the recording, linked in the PR; `eas simulator:stop` after.
   - Acceptance: recording shows launch → Start Day 1.
   - Depends on: 13.
