@@ -124,6 +124,21 @@ describe('createDraftStore', () => {
     expect(draft).toEqual({ answers: {}, lastStep: 'promise', firstLaunchAt: 2000 })
   })
 
+  it('does not write over stored answers when a read fails', async () => {
+    const { storage, data } = memoryStorage()
+    await createDraftStore(storage, () => 1000).save({ answers: { sportId: 's1' }, lastStep: 'days' })
+    const saved = data.get(DRAFT_KEY)
+    const flaky: DraftStorage = {
+      ...storage,
+      getItem: async () => {
+        throw new Error('keychain locked')
+      },
+    }
+    const draft = await createDraftStore(flaky, () => 5000).load()
+    expect(draft.answers).toEqual({})
+    expect(data.get(DRAFT_KEY)).toBe(saved)
+  })
+
   it('falls back to an empty draft when storage fails', async () => {
     const store = createDraftStore(brokenStorage(), () => 3000)
     expect(await store.load()).toEqual({ answers: {}, lastStep: 'promise', firstLaunchAt: 3000 })

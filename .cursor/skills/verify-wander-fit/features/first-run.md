@@ -27,3 +27,5 @@ Preconditions: `node scripts/verify/run.mjs doctor` passed; the e2e URL is set; 
 - No set season keeps the program at 12 weeks whatever the date, so the session count is stable. A season date would make it depend on the day the flow runs.
 - The shared wander-fit-e2e dev deployment is redeployed by other runs. If the save fails with `extra field firstLaunchAt`, the deployment is running older functions: run `deploy` again.
 - The reveal and Today need the generated program templates. `deploy` runs the generator per category.
+- Native: there is no Maestro flow for the First Run on iOS. On the iOS 27.2 simulator, Maestro 2.12.1's `inputText` dropped characters from the email (`signup+clerk_test@example.com` arrived as `sinupcer_test@eaple.com`), which sends Clerk a real address. Prove native runs with the device tooling (`agent-device fill`) and a recording instead.
+- A local simulator build must be signed (ad-hoc is enough: `CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO`). An unsigned build has no keychain access, so SecureStore fails: the draft never persists and Clerk can't keep a session.

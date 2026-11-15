@@ -106,9 +106,11 @@ export function createDraftStore(storage: DraftStorage, now: () => number = Date
   async function read(): Promise<FirstRunDraft> {
     if (cached) return cached
     let stored: FirstRunDraft | null = null
+    let readFailed = false
     try {
       stored = parseDraft(await storage.getItem(DRAFT_KEY))
     } catch (error) {
+      readFailed = true
       console.warn('First Run draft not loaded:', error)
     }
     if (stored) {
@@ -116,6 +118,12 @@ export function createDraftStore(storage: DraftStorage, now: () => number = Date
       return stored
     }
     const fresh: FirstRunDraft = { answers: {}, lastStep: 'promise', firstLaunchAt: now() }
+    if (readFailed) {
+      // Storage that failed to read may still hold the athlete's answers, so
+      // don't write over it; the next answer saved will.
+      cached = fresh
+      return fresh
+    }
     await write(fresh)
     return fresh
   }

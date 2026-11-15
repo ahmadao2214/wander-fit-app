@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Keyboard, Platform, ScrollView } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useSignUp, useSSO, useUser } from '@clerk/clerk-expo'
@@ -77,18 +77,7 @@ export function SavePlanSheet({ open, onOpenChange }: { open: boolean; onOpenCha
   const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string; general?: string }>({})
   const [accountExists, setAccountExists] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [keyboard, setKeyboard] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-
-  useEffect(() => {
-    if (Platform.OS === 'web') return
-    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboard(true))
-    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboard(false))
-    return () => {
-      show.remove()
-      hide.remove()
-    }
-  }, [])
 
   const finish = async (account: { email?: string; name?: string } = {}) => {
     setStep('saving')
@@ -198,7 +187,9 @@ export function SavePlanSheet({ open, onOpenChange }: { open: boolean; onOpenCha
       modal
       open={open}
       onOpenChange={close}
-      snapPoints={keyboard ? [90] : [step === 'choose' ? 45 : 75]}
+      // Steps with inputs open tall enough to sit above the keyboard, so the
+      // sheet doesn't jump (and move the field being tapped) when it opens.
+      snapPoints={[step === 'choose' ? 45 : 90]}
       dismissOnSnapToBottom={step !== 'saving'}
     >
       <Sheet.Overlay
