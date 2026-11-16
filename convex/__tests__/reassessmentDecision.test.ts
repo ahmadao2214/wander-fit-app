@@ -235,4 +235,44 @@ describe("end-of-block check-in", () => {
     const entry = calendar!.calendarData[firstDate!].workouts.find((w) => w.phase === "GPP" && w.week === 1 && w.day === 1);
     expect(entry?.isCompleted).toBe(false);
   });
+
+  // Greptile review on #120: moving on late must not move past workouts
+  it("after a late Move on, past GPP keeps its dates and SPP starts now", async () => {
+    const { t, asAthlete } = await setup({ completedInBlock: 3 });
+    await t.run(async (ctx) => {
+      await ctx.db.insert("program_templates", {
+        gppCategoryId: 2,
+        phase: "SPP",
+        skillLevel: "Novice",
+        week: 1,
+        day: 1,
+        name: "SPP day 1",
+        estimatedDurationMinutes: 30,
+        exercises: [],
+      });
+    });
+    // "Challenging" keeps the skill level, so the Novice templates still apply
+    await asAthlete.mutation(api.userPrograms.completeReassessment, {
+      phaseDifficulty: "challenging",
+      maxesUpdated: false,
+      decision: "move_on",
+    });
+
+    const calendar = await asAthlete.query(api.workoutCalendar.getFullProgramCalendar, {});
+    const dateOf = (phase: string) =>
+      Object.values(calendar!.calendarData).find((d) =>
+        d.workouts.some((w) => w.phase === phase && w.week === 1 && w.day === 1)
+      )!.date;
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const daysFromToday = (iso: string) =>
+      Math.round((new Date(iso + "T00:00:00").getTime() - startOfToday.getTime()) / DAY);
+
+    // The program was created 30 days ago: GPP stays there
+    expect(daysFromToday(dateOf("GPP"))).toBeGreaterThanOrEqual(-30);
+    expect(daysFromToday(dateOf("GPP"))).toBeLessThan(-23);
+    // SPP starts on the next training day
+    expect(daysFromToday(dateOf("SPP"))).toBeGreaterThanOrEqual(0);
+    expect(daysFromToday(dateOf("SPP"))).toBeLessThan(7);
+  });
 });

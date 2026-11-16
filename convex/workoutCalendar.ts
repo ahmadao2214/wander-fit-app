@@ -1,5 +1,5 @@
 import { query, mutation } from "./_generated/server";
-import { countsAsDone, scheduleStart } from "./blockCompletion";
+import { calendarStart, countsAsDone, phaseAnchor, slotOnDate } from "./blockCompletion";
 import { v } from "convex/values";
 import { mapUserWeekToTemplateWeek } from "./weekMapping";
 
@@ -8,7 +8,7 @@ import { mapUserWeekToTemplateWeek } from "./weekMapping";
  *
  * Provides calendar-based view of the workout program, mapping
  * workout slots (phase, week, day) to actual calendar dates based on:
- * - scheduleStart(program): phaseStartDate, moved back by the phases before it
+ * - phaseAnchor(program, phase): each phase's anchor date (convex/blockCompletion.ts)
  * - intake_responses.selectedTrainingDays (which days user trains)
  *
  * UX Model: "Start = Swap"
@@ -381,7 +381,7 @@ export const getCalendarView = query({
     // Parse date range
     const start = parseDateISO(startDate);
     const end = parseDateISO(endDate);
-    const programStartDate = scheduleStart(program);
+    const programStartDate = calendarStart(program);
 
     // Determine which phases are unlocked
     const unlockedPhases: Phase[] = ["GPP"];
@@ -438,7 +438,7 @@ export const getCalendarView = query({
       };
 
       // Get scheduled workout for this date (pass weeksPerPhase for dynamic calculation)
-      const slot = getWorkoutForDate(programStartDate, trainingDays, currentDate, weeksPerPhase);
+      const slot = slotOnDate(program, (anchor) => getWorkoutForDate(anchor, trainingDays, currentDate, weeksPerPhase));
 
       if (slot && unlockedPhases.includes(slot.phase)) {
         const slotKey = `${slot.phase}-${slot.week}-${slot.day}`;
@@ -601,11 +601,10 @@ export const cascadeWorkoutsToToday = mutation({
     // Get dynamic weeks per phase (fallback to 4 for existing users)
     const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
 
-    const programStartDate = scheduleStart(program);
     const today = startOfDay(new Date());
 
     // Get today's scheduled slot
-    const todaySlot = getWorkoutForDate(programStartDate, trainingDays, today, weeksPerPhase);
+    const todaySlot = slotOnDate(program, (anchor) => getWorkoutForDate(anchor, trainingDays, today, weeksPerPhase));
     if (!todaySlot) {
       // Today is not a training day - no cascade needed
       return { cascadeApplied: false, reason: "not_training_day", affectedSlots: 0 };
@@ -1106,7 +1105,6 @@ export const moveWorkoutToDate = mutation({
       DEFAULT_TRAINING_DAYS[3];
 
     const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
-    const programStartDate = scheduleStart(program);
 
     // Validate source slot
     if (args.sourceWeek < 1 || args.sourceWeek > weeksPerPhase) {
@@ -1138,7 +1136,7 @@ export const moveWorkoutToDate = mutation({
     // Get the source slot's current effective date
     const sourceKey = `${args.sourcePhase}-${args.sourceWeek}-${args.sourceDay}`;
     const sourceCurrentDate = dateOverrideLookup.get(sourceKey) ??
-      formatDateISO(getDateForWorkout(programStartDate, trainingDays, {
+      formatDateISO(getDateForWorkout(phaseAnchor(program, args.sourcePhase), trainingDays, {
         phase: args.sourcePhase,
         week: args.sourceWeek,
         day: args.sourceDay,
@@ -1166,7 +1164,7 @@ export const moveWorkoutToDate = mutation({
       week: weeksPerPhase,
       day: trainingDays.length,
     };
-    const programEndDate = getDateForWorkout(programStartDate, trainingDays, lastWorkoutSlot, weeksPerPhase);
+    const programEndDate = getDateForWorkout(phaseAnchor(program, "SSP"), trainingDays, lastWorkoutSlot, weeksPerPhase);
     const isLastWeek = isSameWeek(sourceDate, programEndDate);
 
     if (isLastWeek) {
@@ -1195,7 +1193,7 @@ export const moveWorkoutToDate = mutation({
           if (slotKey === sourceKey) continue;
 
           const slotDate = dateOverrideLookup.get(slotKey) ??
-            formatDateISO(getDateForWorkout(programStartDate, trainingDays, slot, weeksPerPhase));
+            formatDateISO(getDateForWorkout(phaseAnchor(program, slot.phase), trainingDays, slot, weeksPerPhase));
 
           if (slotDate === args.targetDateISO) {
             targetSlot = slot;
@@ -1365,7 +1363,7 @@ export const getProgramCalendarMeta = query({
     // Get dynamic weeks per phase (fallback to 4 for existing users)
     const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
 
-    const programStartDate = scheduleStart(program);
+    const programStartDate = calendarStart(program);
 
     // Calculate program end date
     const lastWorkoutSlot: WorkoutSlot = {
@@ -1373,8 +1371,7 @@ export const getProgramCalendarMeta = query({
       week: weeksPerPhase,
       day: trainingDays.length,
     };
-    const programEndDate = getDateForWorkout(
-      programStartDate,
+    const programEndDate = getDateForWorkout(phaseAnchor(program, "SSP"),
       trainingDays,
       lastWorkoutSlot,
       weeksPerPhase
@@ -1467,7 +1464,7 @@ export const getFullProgramCalendar = query({
     // Get dynamic weeks per phase (fallback to 4 for existing users)
     const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
 
-    const programStartDate = scheduleStart(program);
+    const programStartDate = calendarStart(program);
 
     // Calculate program end date (last workout of SSP)
     const lastWorkoutSlot: WorkoutSlot = {
@@ -1475,8 +1472,7 @@ export const getFullProgramCalendar = query({
       week: weeksPerPhase,
       day: trainingDays.length,
     };
-    const programEndDate = getDateForWorkout(
-      programStartDate,
+    const programEndDate = getDateForWorkout(phaseAnchor(program, "SSP"),
       trainingDays,
       lastWorkoutSlot,
       weeksPerPhase
@@ -1652,7 +1648,7 @@ export const getFullProgramCalendar = query({
           if (dateOverride) {
             effectiveDate = parseDateISO(dateOverride);
           } else {
-            effectiveDate = getDateForWorkout(programStartDate, trainingDays, slot, weeksPerPhase);
+            effectiveDate = getDateForWorkout(phaseAnchor(program, slot.phase), trainingDays, slot, weeksPerPhase);
           }
           const effectiveDateISO = formatDateISO(effectiveDate);
 

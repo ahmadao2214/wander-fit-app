@@ -1,5 +1,5 @@
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
-import { countsAsDone, scheduleStart } from "./blockCompletion";
+import { countsAsDone, slotOnDate } from "./blockCompletion";
 import { v } from "convex/values";
 import { getCurrentUser } from "./authHelpers";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -923,11 +923,10 @@ export const startSession = mutation({
           DEFAULT_TRAINING_DAYS[intake.preferredTrainingDaysPerWeek] ??
           DEFAULT_TRAINING_DAYS[3];
 
-        const programStartDate = scheduleStart(userProgram);
         const today = startOfDay(new Date());
 
         // Get today's scheduled slot
-        const todaySlot = getWorkoutForDate(programStartDate, trainingDays, today);
+        const todaySlot = slotOnDate(userProgram, (anchor) => getWorkoutForDate(anchor, trainingDays, today));
 
         if (todaySlot) {
           const selectedSlot: WorkoutSlot = {
