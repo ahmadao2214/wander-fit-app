@@ -26,8 +26,9 @@ jest.mock('lottie-react-native', () => {
   return () => <View />
 })
 jest.mock('react-native-reanimated', () => jest.requireActual('../../jest/reanimatedMock'))
-// Reduce Motion on: each step happens at once, with no timers.
-jest.mock('../../hooks/useReducedMotion', () => ({ useReducedMotion: () => true }))
+// Reduce Motion on by default: each step happens at once, with no timers.
+let mockReduced = true
+jest.mock('../../hooks/useReducedMotion', () => ({ useReducedMotion: () => mockReduced }))
 
 // eslint-disable-next-line import/first
 import FirstRunAbout, { firstQuestion } from '../(first-run)/about'
@@ -38,6 +39,7 @@ async function showAbout() {
 }
 
 beforeEach(async () => {
+  mockReduced = true
   testDraft.reset()
   mockPush.mockClear()
   await testDraft.seed({ answers: { sportId: 'basketball', seasonStart: null, trainingDays: [1, 3, 5] } })
@@ -81,6 +83,40 @@ describe('First Run about you (player card)', () => {
     await showAbout()
     expect(screen.getByTestId('about-question').props.children).toBe('YEARS TRAINING FOR YOUR SPORT')
     expect(screen.getByTestId('card-age').props.children).toBe('36+')
+  })
+})
+
+describe('First Run about you, with motion', () => {
+  beforeEach(() => {
+    mockReduced = false
+    jest.useFakeTimers()
+  })
+  afterEach(() => jest.useRealTimers())
+
+  it('keeps the years question up through the beat before the reveal, resuming an age-only draft', async () => {
+    await testDraft.seed({ answers: { ageGroup: '36+' } })
+    await showAbout()
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('years-new'))
+    })
+    expect(screen.getByTestId('about-question').props.children).toBe('YEARS TRAINING FOR YOUR SPORT')
+    expect(mockPush).not.toHaveBeenCalled()
+    await act(async () => {
+      jest.advanceTimersByTime(700)
+    })
+    expect(mockPush).toHaveBeenCalledWith('/(first-run)/reveal')
+  })
+
+  it('holds the age question for its stamp beat before moving on', async () => {
+    await showAbout()
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('age-18-35'))
+    })
+    expect(screen.getByTestId('about-question').props.children).toBe('AGE GROUP')
+    await act(async () => {
+      jest.advanceTimersByTime(400)
+    })
+    expect(screen.getByTestId('about-question').props.children).toBe('YEARS TRAINING FOR YOUR SPORT')
   })
 })
 

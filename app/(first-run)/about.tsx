@@ -98,7 +98,12 @@ export default function FirstRunAbout() {
 
   const ageGroup = draft?.answers.ageGroup
   const years = draft?.answers.years
+  // Latched once the draft loads, then moved only by an answer, so a save
+  // can't flip the question back while its stamp plays.
   const [question, setQuestion] = useState<Question | null>(null)
+  useEffect(() => {
+    if (draft && question === null) setQuestion(firstQuestion(draft.answers))
+  }, [draft, question])
   const shown: Question = question ?? firstQuestion({ ageGroup, years })
   const color = category?.color ?? NIGHT.action
   const timers = useRef<ReturnType<typeof setTimeout>[]>([])
