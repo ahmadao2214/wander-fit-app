@@ -28,19 +28,21 @@ export function phaseWeekSegments(currentWeek: number, weeksPerPhase: number): W
 }
 
 /**
- * "3 workouts done · 2-day streak". Null before the first workout, so the
- * tab doesn't show a row of zeros.
+ * "5 workouts done · 3 weeks on plan". Null before the first workout, so the
+ * tab doesn't show a row of zeros. Weeks on plan (lib/weeksOnPlan) shows from
+ * 2 up and is left out otherwise: never "0 weeks", never "streak lost".
+ * Only History passes it; Today stays about the next session.
  */
 export function progressCaption({
   workoutsCompleted,
-  currentStreak,
+  weeksOnPlan = 0,
 }: {
   workoutsCompleted: number
-  currentStreak: number
+  weeksOnPlan?: number
 }): string | null {
   if (workoutsCompleted <= 0) return null
   const parts = [`${workoutsCompleted} ${workoutsCompleted === 1 ? 'workout' : 'workouts'} done`]
-  if (currentStreak > 1) parts.push(`${currentStreak}-day streak`)
+  if (weeksOnPlan > 1) parts.push(`${weeksOnPlan} weeks on plan`)
   return parts.join(' · ')
 }
 

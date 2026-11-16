@@ -4,8 +4,7 @@ import { api } from 'convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
 import { SignOutButton } from '../../components/SignOutButton'
 import { useRouter } from 'expo-router'
-import { useEffect, useState } from 'react'
-import { AppState } from 'react-native'
+import { useState } from 'react'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   Play,
@@ -14,7 +13,8 @@ import {
   RotateCcw,
   Bell,
 } from '@tamagui/lucide-icons'
-import { todayHeading, phaseWeekSegments, progressCaption, countMainExercises, msUntilNextMidnight } from '../../lib/today'
+import { todayHeading, phaseWeekSegments, progressCaption, countMainExercises } from '../../lib/today'
+import { useCurrentDate } from '../../hooks/useCurrentDate'
 import { workoutMetaLine } from '../../lib/workoutMeta'
 import { DEFAULT_WEEKS_PER_PHASE } from '../../lib/calendarUtils'
 import { pausedLabel } from '../../lib/sessionTiming'
@@ -73,25 +73,6 @@ function PhaseProgress({
   )
 }
 
-/**
- * Today's date, kept current: re-read when the app comes back to the
- * foreground and at midnight, so a screen left open overnight doesn't show
- * yesterday.
- */
-function useCurrentDate(): Date {
-  const [date, setDate] = useState(() => new Date())
-  useEffect(() => {
-    const timer = setTimeout(() => setDate(new Date()), msUntilNextMidnight(date) + 1000)
-    return () => clearTimeout(timer)
-  }, [date])
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') setDate(new Date())
-    })
-    return () => subscription.remove()
-  }, [])
-  return date
-}
 
 /**
  * Discard a paused workout. Exit only pauses, so ending a session for good
@@ -494,10 +475,7 @@ export default function AthleteDashboard() {
             weeksPerPhase={programState.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE}
             caption={
               progress
-                ? progressCaption({
-                    workoutsCompleted: progress.daysCompleted,
-                    currentStreak: progress.currentStreak,
-                  })
+                ? progressCaption({ workoutsCompleted: progress.daysCompleted })
                 : null
             }
           />

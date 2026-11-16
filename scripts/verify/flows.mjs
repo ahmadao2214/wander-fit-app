@@ -36,7 +36,7 @@ export function artifactName(flow, platform = "web") {
 }
 
 // The First Run makes its own account through the UI, at the end of the
-// intake. History signs in as a persona with one completed GPP session.
+// intake. History signs in as a persona with completed GPP sessions.
 // Reassessment signs in at the end of a GPP block with the check-in pending.
 // Every other flow signs in as an onboarded persona created before Maestro
 // runs.

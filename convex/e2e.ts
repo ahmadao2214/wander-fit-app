@@ -9,11 +9,22 @@ const stateValidator = v.union(
   v.literal("new"),
   v.literal("onboarded"),
   v.literal("phase-end"),
-  // onboarded, plus one completed GPP W1D1 session for the History flow
+  // onboarded, plus one completed GPP W1D1 session today and two earlier
+  // weeks fully on plan, for the History flow
   v.literal("with-history"),
 );
 
 const TRAINING_DAYS = [0, 1, 2, 3, 4, 5, 6];
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/** Noon UTC on each day of the two Monday-to-Sunday weeks (UTC) before `now`'s week */
+function twoWeeksOnPlanBefore(now: number): number[] {
+  const today = Math.floor(now / MS_PER_DAY);
+  // 1970-01-01 was a Thursday, so (day + 3) % 7 is days since Monday
+  const thisMonday = today - ((today + 3) % 7);
+  return Array.from({ length: 14 }, (_, i) => (thisMonday - 14 + i) * MS_PER_DAY + MS_PER_DAY / 2);
+}
 
 // The rows intake and commitment write for a user.
 async function clearProgramRows(ctx: MutationCtx, userId: Id<"users">) {
@@ -146,23 +157,32 @@ export const provision = internalMutation({
       if (!template) {
         throw new Error("No GPP W1D1 Novice template for Basketball. Run seed:seedAll on wander-fit-e2e first.");
       }
-      const startedAt = now - 45 * 60 * 1000;
-      await ctx.db.insert("gpp_workout_sessions", {
-        userId,
-        templateId: template._id,
-        userProgramId,
-        startedAt,
-        completedAt: now,
-        totalDurationSeconds: 45 * 60,
-        status: "completed",
-        exercises: template.exercises.map((exercise) => ({
-          exerciseId: exercise.exerciseId,
-          completed: true,
-          skipped: false,
-          sets: Array.from({ length: exercise.sets }, () => ({ completed: true, skipped: false })),
-        })),
-        templateSnapshot: { name: template.name, phase: "GPP", week: 1, day: 1, workoutDate: startedAt },
-      });
+      const completedSession = (completedAt: number) => {
+        const startedAt = completedAt - 45 * 60 * 1000;
+        return ctx.db.insert("gpp_workout_sessions", {
+          userId,
+          templateId: template._id,
+          userProgramId,
+          startedAt,
+          completedAt,
+          totalDurationSeconds: 45 * 60,
+          status: "completed",
+          exercises: template.exercises.map((exercise) => ({
+            exerciseId: exercise.exerciseId,
+            completed: true,
+            skipped: false,
+            sets: Array.from({ length: exercise.sets }, () => ({ completed: true, skipped: false })),
+          })),
+          templateSnapshot: { name: template.name, phase: "GPP", week: 1, day: 1, workoutDate: startedAt },
+        });
+      };
+      // Weeks on plan (lib/weeksOnPlan): every day of the two Monday-to-Sunday
+      // weeks before this one, at noon UTC, so History shows
+      // "15 workouts done · 2 weeks on plan" for the 7-day persona
+      for (const completedAt of twoWeeksOnPlanBefore(now)) {
+        await completedSession(completedAt);
+      }
+      await completedSession(now);
     }
 
     return { email: args.email, state: args.state };

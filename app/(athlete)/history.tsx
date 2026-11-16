@@ -13,6 +13,8 @@ import {
 } from '@tamagui/lucide-icons'
 import { Display, Body, Supporting, Caption, numeric } from '../../components/Typography'
 import { progressCaption } from '../../lib/today'
+import { localDayArgs } from '../../lib/weeksOnPlan'
+import { useCurrentDate } from '../../hooks/useCurrentDate'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN COMPONENT
@@ -29,6 +31,8 @@ import { progressCaption } from '../../lib/today'
 export default function HistoryPage() {
   const { user, isLoading: authLoading } = useAuth()
   const insets = useSafeAreaInsets()
+  // The athlete's local day, so weeks on plan follow their calendar
+  const today = useCurrentDate()
 
   const sessions = useQuery(
     api.gppWorkoutSessions.getHistory,
@@ -37,10 +41,10 @@ export default function HistoryPage() {
   // How much has been done: History is where progress lives (design audit F06)
   const progress = useQuery(
     api.userPrograms.getProgressSummary,
-    user ? {} : "skip"
+    user ? localDayArgs(today) : "skip"
   )
   const progressLine = progress
-    ? progressCaption({ workoutsCompleted: progress.daysCompleted, currentStreak: progress.currentStreak })
+    ? progressCaption({ workoutsCompleted: progress.daysCompleted, weeksOnPlan: progress.weeksOnPlan })
     : null
   // A session still in progress belongs on Today, not in the log
   const finishedSessions = sessions?.filter((session) => session.status !== 'in_progress')

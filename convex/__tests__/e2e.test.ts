@@ -103,7 +103,7 @@ describe("e2e persona provisioning", () => {
     expect(await t.mutation(internal.e2e.remove, { email })).toEqual({ deleted: false, email });
   });
 
-  it("with-history adds one completed GPP session that History lists, and remove deletes it", async () => {
+  it("with-history adds completed GPP sessions that History lists, and remove deletes them", async () => {
     const t = newTest();
     await seedBasketball(t);
     await t.run(async (ctx) => {
@@ -123,13 +123,26 @@ describe("e2e persona provisioning", () => {
 
     const asPersona = t.withIdentity({ subject: persona.clerkId, email });
     const history = await asPersona.query(api.gppWorkoutSessions.getHistory, {});
-    expect(history.map((s) => [s.status, s.templateSnapshot?.name])).toEqual([["completed", "Lower Body Foundation"]]);
+    // Today's session, plus every day of the two weeks before this one
+    expect(history).toHaveLength(15);
+    expect(new Set(history.map((s) => `${s.status} ${s.templateSnapshot?.name}`))).toEqual(
+      new Set(["completed Lower Body Foundation"])
+    );
+
+    // History's progress line: "15 workouts done · 2 weeks on plan"
+    const progress = await asPersona.query(api.userPrograms.getProgressSummary, {
+      today: new Date().toISOString().slice(0, 10),
+      timezoneOffsetMinutes: 0,
+    });
+    expect([progress?.daysCompleted, progress?.weeksOnPlan]).toEqual([15, 2]);
 
     // Installed builds still call the old endpoint and read the old field names
     const legacy = await asPersona.query(api.workoutSessions.getHistory, {});
-    expect(legacy.map((s) => [s.totalDuration, s.workout.name, s.templateSnapshot?.name])).toEqual([
-      [45 * 60, "Lower Body Foundation", "Lower Body Foundation"],
-    ]);
+    expect(legacy[0]).toMatchObject({
+      totalDuration: 45 * 60,
+      workout: { name: "Lower Body Foundation" },
+      templateSnapshot: { name: "Lower Body Foundation" },
+    });
 
     await t.mutation(internal.e2e.remove, { email });
     const left = await t.run((ctx) => ctx.db.query("gpp_workout_sessions").collect());
