@@ -1,0 +1,969 @@
+<meta charset="utf-8">
+<title>First Run v2 Prototype</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: a control rail beside one phone. The intake is a deliberate single dark "game night" look. */
+:root {
+  --ink: #0B1220;          /* phone ground: deep navy */
+  --ink-2: #131C2E;        /* raised surface */
+  --line: #24314A;         /* hairlines, empty tiles */
+  --fg: #F4F6FB;           /* primary text */
+  --fg-2: #9AA6BD;         /* secondary text */
+  --action: #2563EB;       /* button fill (app $primary) */
+  --action-press: #1E40AF;
+  --page: #E9ECF2;         /* page around the phone */
+  --page-fg: #172033;
+  --page-fg-2: #55617A;
+  --rail: #FFFFFF;
+  --c1: #14B8A6; --c2: #A855F7; --c3: #F97316; --c4: #3B82F6;
+  --cat: #2563EB;          /* set per athlete */
+  --display: "Bebas Neue", "Oswald", Impact, "Arial Narrow", sans-serif;
+  --body: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #070B14; --page-fg: #E6EAF2; --page-fg-2: #8C97AD; --rail: #0F1626; color-scheme: dark } }
+:root[data-theme="dark"] { --page: #070B14; --page-fg: #E6EAF2; --page-fg-2: #8C97AD; --rail: #0F1626; color-scheme: dark }
+
+* { box-sizing: border-box }
+html, body { height: 100% }
+body { background: var(--page); color: var(--page-fg); font-family: var(--body); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px }
+.wrap { display: flex; gap: 28px; justify-content: center; align-items: flex-start; flex-wrap: wrap; max-width: 1180px; margin: 0 auto }
+
+/* ── Control rail ─────────────────────────────── */
+.rail { width: 340px; max-width: 100%; display: flex; flex-direction: column; gap: 18px; background: var(--rail); border-radius: 16px; padding: 20px }
+.rail h1 { font-family: var(--display); font-weight: 400; font-size: 34px; line-height: 1; margin: 0; letter-spacing: .01em }
+.rail p { margin: 0; color: var(--page-fg-2); font-size: 13px; line-height: 1.5 }
+.ctl { display: flex; flex-direction: column; gap: 8px }
+.ctl > span { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--page-fg-2) }
+.seg { display: flex; flex-wrap: wrap; gap: 6px }
+.seg button, .jump button, .restart { font: 600 13px var(--body); border: 1px solid color-mix(in srgb, var(--page-fg) 18%, transparent); background: transparent; color: var(--page-fg); padding: 7px 11px; border-radius: 999px; cursor: pointer }
+.seg button[aria-pressed="true"] { background: var(--page-fg); color: var(--rail); border-color: var(--page-fg) }
+.seg button:focus-visible, .jump button:focus-visible, .restart:focus-visible { outline: 2px solid var(--action); outline-offset: 2px }
+.jump { display: flex; flex-wrap: wrap; gap: 6px }
+.jump button { font-weight: 500; font-size: 12px; padding: 5px 9px }
+.restart { align-self: flex-start; background: var(--action); color: #fff; border-color: var(--action) }
+.note { font-size: 12px; color: var(--page-fg-2); line-height: 1.5; border-top: 1px solid color-mix(in srgb, var(--page-fg) 12%, transparent); padding-top: 12px }
+
+/* ── Phone ────────────────────────────────────── */
+.phone-col { display: flex; flex-direction: column; align-items: center; gap: 10px; min-width: 0 }
+.phone-scale { width: 390px; height: 844px; max-width: 100% }
+.phone { width: 390px; height: 844px; border-radius: 48px; background: var(--ink); color: var(--fg); position: relative; overflow: hidden; box-shadow: 0 0 0 10px #05070C, 0 30px 60px rgba(5,8,15,.35); transform-origin: top left; isolation: isolate; transition: background-color 900ms var(--ease) }
+.phone.tinted { background: color-mix(in srgb, var(--cat) 16%, var(--ink)) }
+.island { position: absolute; top: 11px; left: 50%; width: 120px; height: 34px; margin-left: -60px; background: #000; border-radius: 20px; z-index: 50 }
+.status { position: absolute; top: 16px; left: 34px; right: 30px; display: flex; justify-content: space-between; font: 600 15px var(--body); z-index: 49; pointer-events: none }
+.caption { font-size: 12px; color: var(--page-fg-2); text-align: center; max-width: 390px }
+
+/* world layers: drift (promise), backdrop (your sport), pages */
+.drift { position: absolute; inset: 0; z-index: 0; pointer-events: none; transition: opacity 600ms var(--ease) }
+.drift .d { position: absolute; width: 240px; height: 240px; opacity: .14; will-change: transform }
+.backdrop { position: absolute; width: 560px; height: 560px; right: -190px; bottom: 70px; z-index: 1; opacity: 0; pointer-events: none; will-change: transform, opacity }
+.backdrop.on { opacity: .13; animation: sway 14s ease-in-out infinite alternate }
+@keyframes sway { from { translate: 0 0 } to { translate: -22px -14px } }
+@keyframes cross { from { transform: translateX(-280px) } to { transform: translateX(420px) } }
+
+.stage { position: absolute; inset: 0; z-index: 2 }
+.page { position: absolute; inset: 0; display: flex; flex-direction: column; padding: 64px 24px 34px; background: transparent; will-change: transform }
+.page.solid { background: inherit }
+.page::after { content: ""; position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity 420ms var(--ease) }
+.page.dim::after { opacity: .45 }
+
+/* top bar: back + progress */
+.top { display: flex; align-items: center; gap: 14px; height: 36px; margin-bottom: 18px }
+.back { width: 36px; height: 36px; border-radius: 18px; border: 0; background: transparent; color: var(--fg); display: grid; place-items: center; cursor: pointer; margin-left: -8px }
+.back svg { width: 22px; height: 22px }
+.prog { flex: 1; display: flex; gap: 5px }
+.prog i { flex: 1; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; position: relative }
+.prog i b { position: absolute; inset: 0; background: var(--fg); transform-origin: left; transform: scaleX(0); transition: transform 420ms var(--ease) }
+.prog i.on b { transform: scaleX(1) }
+.qnum { font: 400 18px var(--display); color: var(--fg-2); letter-spacing: .04em; min-width: 38px; text-align: right }
+
+/* headline: clip-mask wipe */
+.hl { font-family: var(--display); font-weight: 400; font-size: 64px; line-height: .92; letter-spacing: .005em; margin: 0; text-transform: uppercase; overflow: hidden; text-wrap: balance }
+.hl > span { display: block; transform: translateY(0) }
+.hl.wipe > span { animation: wipe 320ms 60ms var(--ease) both }
+@keyframes wipe { from { transform: translateY(105%) } to { transform: translateY(0) } }
+.sub { font-size: 15px; color: var(--fg-2); margin: 10px 0 0; line-height: 1.45 }
+.label { font: 700 11px var(--body); letter-spacing: .14em; text-transform: uppercase; color: var(--fg-2) }
+
+.grow { flex: 1; min-height: 0 }
+.cta { margin-top: auto; display: flex; flex-direction: column; gap: 14px; align-items: stretch; padding-top: 14px }
+.btn { height: 56px; border-radius: 14px; border: 0; background: var(--action); color: #fff; font: 700 17px var(--body); cursor: pointer; transition: scale 150ms ease-out, background-color 150ms ease-out }
+.btn:active { scale: .97; background: var(--action-press) }
+.btn[disabled] { background: var(--line); color: var(--fg-2); cursor: default }
+.btn[disabled]:active { scale: 1 }
+.link { background: none; border: 0; color: #60A5FA; font: 600 15px var(--body); cursor: pointer; padding: 6px }
+
+/* Promise */
+.promise .hl { font-size: 92px; line-height: .88; margin-top: auto }
+.promise .cta { margin-top: 36px }
+
+/* Sport */
+.scroll { overflow-y: auto; margin: 0 -24px; padding: 0 24px; scrollbar-width: none }
+.scroll::-webkit-scrollbar { display: none }
+.pop { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 14px 0 22px }
+.tile { position: relative; border: 0; background: var(--ink-2); color: var(--fg); border-radius: 18px; padding: 10px 6px 10px; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; transition: scale 150ms ease-out, background-color 200ms ease-out, box-shadow 200ms ease-out; font: 600 12.5px var(--body); text-align: center; line-height: 1.15; min-height: 0 }
+.tile:active { scale: .96 }
+.tile .ic { width: 78px; height: 78px; pointer-events: none }
+.pop .tile .ic { width: 86px; height: 86px }
+.tile[aria-pressed="true"] { background: color-mix(in srgb, var(--cat) 30%, var(--ink-2)); box-shadow: inset 0 0 0 2px var(--cat) }
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding-bottom: 10px }
+.grid .tile { border-radius: 14px }
+.grid .tile .ic { width: 58px; height: 58px }
+.search { width: 100%; height: 44px; border-radius: 12px; border: 1px solid var(--line); background: transparent; color: var(--fg); padding: 0 14px; font: 500 15px var(--body); margin: 10px 0 12px }
+.search::placeholder { color: var(--fg-2) }
+.bugline { height: 44px; margin: -10px 0 20px }
+.bug { height: 44px; display: flex; align-items: stretch; overflow: hidden; border-radius: 6px }
+.bug .a { background: var(--fg); color: var(--ink); font: 400 24px/44px var(--display); padding: 0 12px; letter-spacing: .02em }
+.bug .b { background: var(--cat); color: #fff; font: 400 24px/44px var(--display); padding: 0 14px; flex: 1; letter-spacing: .04em }
+.bug.in { animation: bugin 360ms var(--ease) both }
+@keyframes bugin { from { clip-path: inset(0 100% 0 0) } to { clip-path: inset(0 0 0 0) } }
+
+/* Season */
+.big { font: 400 150px/.85 var(--display); letter-spacing: -.01em; font-variant-numeric: tabular-nums }
+.bigrow { display: flex; align-items: flex-end; gap: 12px; margin-top: 26px }
+.bigrow .u { font: 400 30px/1 var(--display); color: var(--fg-2); padding-bottom: 14px; letter-spacing: .02em }
+.date { font-size: 16px; color: var(--fg-2); margin-top: 8px }
+input[type=range] { width: 100%; accent-color: var(--fg); height: 40px; margin-top: 18px }
+.nos { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 16px 18px; border-radius: 14px; border: 0; background: var(--ink-2); color: var(--fg); font: 600 15px var(--body); cursor: pointer; text-align: left }
+.nos small { display: block; color: var(--fg-2); font-weight: 500; font-size: 13px; margin-top: 2px }
+.nos .dot { width: 22px; height: 22px; border-radius: 11px; box-shadow: inset 0 0 0 2px var(--line); flex: none }
+.nos[aria-pressed="true"] .dot { background: var(--fg); box-shadow: inset 0 0 0 6px var(--fg), inset 0 0 0 9px var(--ink) }
+.muted { opacity: .35; transition: opacity 200ms ease-out }
+.cal { margin-top: 18px }
+.cal .mh { display: flex; justify-content: space-between; align-items: center; font: 400 26px var(--display); letter-spacing: .03em }
+.cal .mh button { background: none; border: 0; color: var(--fg); font-size: 22px; width: 36px; height: 36px; cursor: pointer }
+.cal .wd, .cal .days { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; gap: 4px }
+.cal .wd span { font: 700 11px var(--body); color: var(--fg-2); padding: 8px 0 }
+.cal .days button { aspect-ratio: 1; border: 0; border-radius: 50%; background: none; color: var(--fg); font: 600 14px var(--body); cursor: pointer; font-variant-numeric: tabular-nums }
+.cal .days button[disabled] { color: var(--line); cursor: default }
+.cal .days button[aria-pressed="true"] { background: var(--fg); color: var(--ink) }
+.runway { margin-top: 30px; position: relative; height: 128px; touch-action: none; user-select: none }
+.runway .track { position: absolute; left: 0; right: 28px; top: 44px; height: 46px; display: flex; gap: 3px }
+.runway .blk { height: 100%; border-radius: 6px; display: flex; flex-direction: column; justify-content: center; padding: 0 8px; overflow: hidden; transition: flex-grow 140ms ease-out; min-width: 0 }
+.runway .blk b { font: 400 20px/1 var(--display); letter-spacing: .04em }
+.runway .blk small { font: 600 11px var(--body); opacity: .85; white-space: nowrap }
+.runway .gap { background: repeating-linear-gradient(90deg, var(--line) 0 4px, transparent 4px 8px); border-radius: 6px }
+.runway .ends { position: absolute; left: 0; right: 0; top: 100px; display: flex; justify-content: space-between; font: 700 11px var(--body); letter-spacing: .1em; color: var(--fg-2) }
+.runway .flag { position: absolute; top: 0; width: 56px; margin-left: -28px; height: 96px; display: flex; flex-direction: column; align-items: center; cursor: grab }
+.runway .flag .pole { width: 3px; flex: 1; background: var(--fg) }
+.runway .flag .tag { background: var(--fg); color: var(--ink); font: 400 17px/1 var(--display); padding: 6px 8px 4px; border-radius: 4px; letter-spacing: .04em; white-space: nowrap }
+.runway .hint { position: absolute; top: -26px; left: 0; font-size: 12px; color: var(--fg-2) }
+
+/* Days */
+.days-c { display: flex; flex-direction: column; flex: 1; justify-content: center; align-items: center; text-align: center; gap: 26px }
+.days-c .hl { font-size: 58px }
+.week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 7px; width: 100% }
+.day { position: relative; height: 132px; border: 0; border-radius: 14px; background: var(--ink-2); color: var(--fg); cursor: pointer; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding-bottom: 12px; transition: scale 150ms ease-out }
+.day:active { scale: .95 }
+.day .fill { position: absolute; inset: 0; background: var(--fg); transform: scaleY(0); transform-origin: bottom; transition: transform 220ms var(--ease) }
+.day[aria-pressed="true"] .fill { transform: scaleY(1) }
+.day span { position: relative; font: 400 26px/1 var(--display); letter-spacing: .04em; transition: color 220ms ease-out }
+.day[aria-pressed="true"] span { color: var(--ink) }
+.sum { font: 400 26px/1.05 var(--display); letter-spacing: .04em }
+.sum small { display: block; font: 600 14px var(--body); color: var(--fg-2); letter-spacing: 0; margin-top: 6px }
+
+/* About */
+.choices { display: flex; flex-direction: column; gap: 10px }
+.choice { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; width: 100%; border: 0; background: var(--ink-2); color: var(--fg); border-radius: 14px; padding: 16px 18px; cursor: pointer; transition: scale 150ms ease-out, background-color 200ms ease-out; text-align: left }
+.choice:active { scale: .97 }
+.choice b { font: 400 30px/1 var(--display); letter-spacing: .03em }
+.choice small { font: 600 13px var(--body); color: var(--fg-2) }
+.choice[aria-pressed="true"] { background: var(--fg); color: var(--ink) }
+.choice[aria-pressed="true"] small { color: #44506A }
+.lt .choice { border-radius: 0 10px 10px 0; padding: 22px 18px; box-shadow: inset 6px 0 0 var(--cat) }
+.lt .choice b { font-size: 40px }
+.card { width: 172px; height: 214px; margin: 0 auto 18px; border-radius: 16px; background: var(--fg); color: var(--ink); position: relative; overflow: hidden; display: flex; flex-direction: column; padding: 12px }
+.card .art { flex: 1; border-radius: 10px; background: var(--cat); position: relative; overflow: hidden }
+.card .art .ic { position: absolute; inset: -6% -6% -10% -6% }
+.card .row { display: flex; justify-content: space-between; margin-top: 8px; font: 700 10px var(--body); letter-spacing: .1em; color: #55617A }
+.card .val { display: flex; justify-content: space-between; font: 400 24px/1 var(--display); letter-spacing: .02em; margin-top: 2px }
+.card .val span { min-width: 60px }
+.card .val span:last-child { text-align: right }
+.stamp { animation: stamp 260ms var(--ease) both }
+@keyframes stamp { from { transform: scale(1.35); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+.qlabel { font: 400 24px var(--display); letter-spacing: .04em; margin: 14px 0 8px; color: var(--fg-2) }
+
+/* Reveal */
+.reveal { padding-top: 64px }
+.cats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 24px }
+.cat { height: 150px; border-radius: 16px; background: var(--ink-2); padding: 14px; display: flex; flex-direction: column; justify-content: flex-end; transition: opacity 400ms var(--ease), transform 400ms var(--ease), background-color 400ms var(--ease) }
+.cat b { font: 400 30px/1 var(--display); letter-spacing: .03em; color: var(--fg-2) }
+.cat.lit { background: var(--cat) }
+.cat.lit b { color: #fff }
+.cat.fade { opacity: .25 }
+.lead { font: 400 30px/1 var(--display); letter-spacing: .04em; color: var(--fg-2); margin-top: auto }
+.catname { font: 400 128px/.85 var(--display); color: var(--cat); letter-spacing: .005em }
+.catline { font-size: 16px; line-height: 1.45; color: var(--fg); max-width: 32ch; margin-top: 12px }
+.band { margin: -64px -24px 0; height: 236px; padding: 82px 24px 16px; background: var(--cat); color: #fff; position: relative; overflow: hidden; transform-origin: top }
+.band .ic { position: absolute; right: -46px; top: 54px; width: 190px; height: 190px }
+.band .k { font: 700 11px var(--body); letter-spacing: .14em; text-transform: uppercase; opacity: .85 }
+.band .t { font: 400 50px/.9 var(--display); letter-spacing: .01em; margin-top: 6px; max-width: 230px; position: relative }
+.phases { display: flex; gap: 3px; margin-top: 18px }
+.ph { flex: 1; height: 52px; border-radius: 6px; padding: 7px 9px; display: flex; flex-direction: column; justify-content: space-between; transform-origin: left; color: #fff }
+.ph b { font: 400 20px/1 var(--display); letter-spacing: .04em }
+.ph small { font: 600 11px var(--body); opacity: .9 }
+.ph.g { background: #3B82F6 } .ph.s { background: #1D4ED8 } .ph.p { background: #1E3A8A }
+.d1 { margin-top: 14px; background: var(--ink-2); border-radius: 16px; padding: 16px }
+.d1 .k { display: flex; justify-content: space-between; font: 700 11px var(--body); letter-spacing: .12em; text-transform: uppercase; color: #60A5FA }
+.d1 .k span:last-child { color: var(--fg-2); letter-spacing: .04em }
+.d1 h3 { font: 400 30px/1 var(--display); letter-spacing: .02em; margin: 8px 0 8px }
+.d1 ul { margin: 0; padding: 0; list-style: none; font-size: 14px; line-height: 1.7; color: var(--fg-2) }
+.total { display: flex; align-items: flex-end; gap: 12px; margin-top: auto; padding-top: 12px }
+.total .n { font: 400 112px/.82 var(--display); letter-spacing: -.01em; font-variant-numeric: tabular-nums }
+.total .w { font: 400 26px/1 var(--display); letter-spacing: .04em; color: var(--fg-2); padding-bottom: 4px }
+.beat { opacity: 0 }
+.show { animation: rise 380ms var(--ease) both }
+@keyframes rise { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: none } }
+.draw { animation: draw 300ms var(--ease) both }
+@keyframes draw { from { transform: scaleX(0) } to { transform: scaleX(1) } }
+
+/* Sheet + Program */
+.sheet-bg { position: absolute; inset: 0; background: rgba(0,0,0,.5); z-index: 20; animation: fade 250ms var(--ease) both }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 21; background: var(--ink-2); border-radius: 22px 22px 0 0; padding: 22px 24px 40px; display: flex; flex-direction: column; gap: 12px; animation: up 300ms var(--ease) both }
+@keyframes up { from { transform: translateY(100%) } to { transform: none } }
+@keyframes fade { from { opacity: 0 } to { opacity: 1 } }
+.sheet h2 { font: 400 40px/1 var(--display); margin: 0; letter-spacing: .02em }
+.field { height: 50px; border-radius: 12px; border: 1px solid var(--line); background: var(--ink); color: var(--fg); padding: 0 14px; font: 500 15px var(--body) }
+.page.prog-tab { background: #F6F8FB; color: #172033 }
+.phone.lightbar .status { color: #172033 }
+.prog-tab .head { margin: -64px -24px 0; height: 236px; padding: 64px 24px 18px; display: flex; flex-direction: column; justify-content: flex-end; background: #FFFFFF; border-bottom: 1px solid #E3E8F0 }
+.prog-tab .h { font: 400 56px/.9 var(--display); letter-spacing: .02em }
+.prog-tab .today { position: relative; height: 14px; margin-top: 6px }
+.prog-tab .today span { position: absolute; left: 0; font: 700 10px var(--body); letter-spacing: .12em; color: #2563EB }
+.next { margin-top: 18px; background: #fff; border-radius: 16px; padding: 16px; box-shadow: 0 1px 0 rgba(15,23,42,.06), 0 0 0 1px rgba(15,23,42,.06); position: relative }
+.next .k { font: 700 11px var(--body); letter-spacing: .12em; color: #2563EB; text-transform: uppercase }
+.next h3 { font: 400 30px/1 var(--display); margin: 6px 0 4px; letter-spacing: .02em }
+.next p { margin: 0; color: #55617A; font-size: 14px }
+.next.pulse::after { content: ""; position: absolute; inset: -2px; border-radius: 18px; box-shadow: 0 0 0 2px #2563EB; animation: pulse 1400ms 500ms var(--ease) 1 both }
+@keyframes pulse { 0% { opacity: 0 } 30% { opacity: 1 } 100% { opacity: 0 } }
+.weeks { margin-top: 18px; display: flex; flex-direction: column; gap: 8px }
+.weeks div { display: flex; justify-content: space-between; padding: 12px 14px; border-radius: 12px; background: #fff; box-shadow: 0 0 0 1px rgba(15,23,42,.06); font-size: 14px; color: #55617A }
+.weeks b { color: #172033 }
+.tabs { position: absolute; left: 0; right: 0; bottom: 0; height: 84px; background: #fff; border-top: 1px solid #E3E8F0; display: flex; justify-content: space-around; padding-top: 12px; font: 600 11px var(--body); color: #8A95A8 }
+.tabs .on { color: #2563EB }
+.signin { align-items: center; text-align: center; justify-content: center; gap: 10px }
+.wordmark { font: 400 64px/1 var(--display); letter-spacing: .04em }
+.wordmark span { color: #60A5FA }
+
+/* v3: story bar, athletes, plain-English phases, week strip, themed days */
+.story { position: absolute; top: 50px; left: 24px; right: 24px; display: flex; gap: 4px; z-index: 30; opacity: 0; transition: opacity 200ms ease-out; pointer-events: none }
+.story.on { opacity: 1; pointer-events: auto }
+.story { top: 34px }
+.story button { flex: 1; height: 44px; padding: 20px 0; border: 0; background: none; cursor: pointer }
+.story i { display: block; height: 3px; border-radius: 2px; background: rgba(255,255,255,.28); overflow: hidden }
+.story i b { display: block; height: 100%; background: #fff; transform-origin: left; transform: scaleX(0) }
+.cat { height: 168px; position: relative; overflow: hidden }
+.cat .fig { position: absolute; left: 8px; right: 8px; top: 6px; bottom: 40px }
+.cat b { position: absolute; left: 14px; bottom: 12px }
+.tapnote { font-size: 13px; color: var(--fg-2); text-align: center; margin-top: 14px }
+.chip { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; border: 0; background: rgba(255,255,255,.18); color: #fff; font: 700 11px var(--body); letter-spacing: .14em; text-transform: uppercase; padding: 6px 10px; border-radius: 999px; cursor: pointer }
+.band .cd { font: 700 11px var(--body); letter-spacing: .12em; text-transform: uppercase; opacity: .9; margin-top: 10px; position: relative }
+.band { display: flex; flex-direction: column }
+.ph { height: 60px; border: 0; text-align: left; cursor: pointer; font: inherit }
+.ph b { font: 400 17px/1 var(--display); letter-spacing: .04em }
+.ph small { font: 700 10px var(--body); letter-spacing: .08em; opacity: .85 }
+.ph[aria-pressed="true"] { box-shadow: inset 0 -3px 0 #fff }
+.phcap { font-size: 14px; line-height: 1.4; color: var(--fg); min-height: 40px; margin-top: 8px }
+.phcap b { font-weight: 700 }
+.wk { margin-top: 10px }
+.wk .label { margin-bottom: 6px }
+.wk .row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px }
+.wk .d { height: 52px; border-radius: 8px; background: var(--ink-2); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px }
+.wk .d span { font: 700 10px var(--body); color: var(--fg-2); letter-spacing: .06em }
+.wk .d b { font: 400 15px/1 var(--display); letter-spacing: .04em; color: var(--line) }
+.wk .d.on b { color: var(--fg) }
+.wk .d { border: 0; cursor: pointer; font: inherit; transition: background-color 150ms ease-out }
+.wk .d[aria-pressed="true"] { background: var(--cat) }
+.wk .d[aria-pressed="true"] span, .wk .d[aria-pressed="true"] b { color: #fff }
+.wk .first { font-size: 13px; color: var(--fg-2); margin-top: 8px }
+.day .ball { position: absolute; left: 50%; top: 0; width: 34px; height: 34px; margin-left: -17px; opacity: 0; pointer-events: none; z-index: 1 }
+.day.themed .fill { transition: none }
+.day.themed[aria-pressed="true"] span { color: #fff }
+.day .fill.roll { background: #15803D }
+.day .fill.bounce { background: #C2410C }
+.day .fill.water { background: #0284C7; overflow: visible }
+.day .wave { position: absolute; left: 0; top: -6px; width: 200%; height: 8px; opacity: 0 }
+.reduced *, .reduced *::after { animation: none !important; transition: none !important }
+.reduced .backdrop.on { opacity: .13 }
+@media (max-width: 760px) { .rail { width: 100% } }
+@media (prefers-reduced-motion: reduce) { .drift .d { animation: none !important } }
+</style>
+
+<div class="wrap">
+  <aside class="rail" aria-label="Prototype controls">
+    <div>
+      <h1>First Run v2</h1>
+      <p>Tap through the phone. Try the Days screen as Soccer, Basketball and Swimming, and tap the category chip on the plan to go back to the category.</p>
+    </div>
+    <div class="ctl"><span>Decided</span><p>Category: hint, then payoff · Ending: continuous · Season: calendar · About you: player card</p></div>
+    <div class="ctl"><span>Motion</span><div class="seg" data-k="motion">
+      <button data-v="full">Full (iOS)</button><button data-v="reduced">Reduced motion</button></div></div>
+    <div class="ctl"><span>Jump to</span><div class="jump" id="jump"></div></div>
+    <button class="restart" id="restart" type="button">Restart from launch</button>
+    <p class="note">Real data: the app's 27 sport animations, the sport-to-category mapping, the program's phase math (2–8 weeks per phase), and each category's real Day 1 by level. Sport animations play at 1.6× here; in the app they run 5 s.</p>
+  </aside>
+
+  <div class="phone-col">
+    <div class="phone-scale" id="scaleBox">
+      <div class="phone" id="phone" aria-label="Phone prototype">
+        <div class="island"></div>
+        <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="drift" id="drift"></div>
+        <div class="backdrop" id="backdrop"></div>
+        <div class="stage" id="stage"></div>
+      </div>
+    </div>
+    <div class="caption" id="caption"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
+<script id="lotties" type="application/json">/*LOTTIES*/</script>
+<script>/*ATHLETE*/</script>
+<script>
+const LOT = JSON.parse(document.getElementById('lotties').textContent);
+// ── Real data ───────────────────────────────────────────────
+const SPORTS = [
+  ['Badminton',3],['Baseball',3],['Basketball',2],['Cheerleading',2],['Cricket',3],['Cross Country',1],['Diving',2],
+  ['Field Hockey',1],['Football',4],['General Fitness',4],['Golf',3],['Gymnastics',2],['Ice Hockey',4],['Lacrosse',1],
+  ['Martial Arts',4],['Racquetball',3],['Rugby',1],['Soccer',1],['Softball',3],['Swimming',4],['Tennis',3],
+  ['Track (Distance)',1],['Track (Sprints/Jumps)',2],['Ultimate Frisbee',1],['Volleyball',2],['Weightlifting',4],['Wrestling',4]];
+const POPULAR = ['Basketball','Soccer','Football','Baseball','Volleyball','Track (Sprints/Jumps)'];
+const CATS = {
+  1: { name: 'Endurance', color: '#14B8A6', line: 'Long runs with changes of direction. Built on endurance and single-leg stability.' },
+  2: { name: 'Power', color: '#A855F7', line: 'Jumping, landing and stopping fast. Built on vertical power and safe landings.' },
+  3: { name: 'Rotation', color: '#F97316', line: 'Swinging, throwing and twisting with force. Built on hip power and core control.' },
+  4: { name: 'Strength', color: '#3B82F6', line: 'Contact, grappling and moving heavy things. Built on total-body strength and grip.' }};
+const DAY1 = { // GPP week 1 day 1, from programTemplates.getWorkout
+  1: { Novice: [28,['Goblet Squat','Romanian Deadlift','Reverse Lunge','Plank']], Moderate: [35,['Back Squat','Romanian Deadlift','Bulgarian Split Squat','Single Leg RDL']], Advanced: [41,['Back Squat','Trap Bar Deadlift','Bulgarian Split Squat','Single Leg Deadlift']] },
+  2: { Novice: [28,['Goblet Squat','Hip Thrust','Reverse Lunge','Plank']], Moderate: [35,['Back Squat','Hip Thrust','Bulgarian Split Squat','Single Leg RDL']], Advanced: [41,['Front Squat','Trap Bar Deadlift','Assisted Pistol Squat','Single Leg Hip Thrust']] },
+  3: { Novice: [29,['Goblet Squat','Kickstand RDL','Lateral Lunge','Dead Bug']], Moderate: [35,['Back Squat','Single Leg RDL','Cossack Squat','Bulgarian Split Squat']], Advanced: [39,['Back Squat','Single Leg Deadlift','Assisted Pistol Squat','Deficit Reverse Lunge']] },
+  4: { Novice: [28,['Goblet Squat','Romanian Deadlift','Walking Lunge','Plank']], Moderate: [37,['Back Squat','Trap Bar Deadlift','Walking Lunge','Single Leg RDL']], Advanced: [41,['Back Squat','Conventional Deadlift','Front Squat','Nordic Curl']] }};
+const AGES = [['14-17','Youth','14–17'],['18-35','Performance','18–35'],['36+','Vitality','36+']];
+const YEARS = [['new','New to training','Novice'],['1-2','1–2 years','Moderate'],['3+','3+ years','Advanced']];
+const DAYN = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+const file = (n) => 'sports/' + n.toLowerCase().replace(/[()]/g,'').replace(/[\s/]+/g,'-') + '.json';
+const catOf = (n) => (SPORTS.find(s => s[0] === n) || [0,4])[1];
+// convex/weekMapping.ts + convex/programShape.ts
+const wpp = (w) => Math.max(2, Math.min(8, Math.floor(w / 3)));
+
+// ── State ───────────────────────────────────────────────────
+const S = { timing: 'hint', ending: 'flow', season: 'cal', about: 'card', motion: 'full',
+  sport: null, weeks: 12, noSeason: false, days: [1,3,5], age: null, years: null, calMonth: null };
+const now = new Date();
+const phone = document.getElementById('phone'), stage = document.getElementById('stage');
+const isReduced = () => S.motion === 'reduced';
+const level = () => (YEARS.find(y => y[0] === S.years) || YEARS[0])[2];
+const planWeeks = () => S.noSeason ? 12 : S.weeks;
+const shape = () => { const p = wpp(planWeeks()); return { p, total: p * 3, sessions: p * 3 * S.days.length }; };
+
+// ── Lottie helpers ──────────────────────────────────────────
+function icon(el, name, { play = false, speed = 1.6 } = {}) {
+  el.innerHTML = '';
+  const go = (data) => {
+    const a = lottie.loadAnimation({ container: el, renderer: 'svg', loop: false, autoplay: false, animationData: JSON.parse(JSON.stringify(data)) });
+    a.setSpeed(speed);
+    if (play && !isReduced()) a.play(); else a.goToAndStop(0, true);
+    el._anim = a;
+  };
+  const key = file(name).slice(7, -5);
+  if (LOT[key]) go(LOT[key]);
+}
+function replay(el) { if (el._anim && !isReduced()) { el._anim.goToAndStop(0, true); el._anim.play(); } }
+
+// ── Page turns ──────────────────────────────────────────────
+const ORDER = ['promise','sport','season','days','about','reveal'];
+let current = null, hist = [];
+function turn(build, dir = 1, opts = {}) {
+  const next = document.createElement('section');
+  next.className = 'page' + (opts.solid ? ' solid' : '');
+  build(next);
+  stage.appendChild(next);
+  const old = current; current = next;
+  if (!old || isReduced() || opts.instant || dir === 0) { if (old) old.remove(); afterEnter(next); return next; }
+  if (opts.fade) {
+    next.style.zIndex = 2;
+    next.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 320, easing: 'ease-out' }).onfinish = () => old.remove();
+    afterEnter(next); return next;
+  }
+  const D = 420, E = 'cubic-bezier(0.32, 0.72, 0, 1)';
+  if (dir > 0) {
+    next.style.zIndex = 2; next.style.background = getComputedStyle(phone).backgroundColor;
+    next.animate([{ transform: 'translateX(100%)' }, { transform: 'translateX(0)' }], { duration: D, easing: E });
+    old.classList.add('dim');
+    old.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-30%)' }], { duration: D, easing: E, fill: 'forwards' }).onfinish = () => old.remove();
+  } else {
+    old.style.zIndex = 2; old.style.background = getComputedStyle(phone).backgroundColor;
+    next.classList.add('dim');
+    next.animate([{ transform: 'translateX(-30%)' }, { transform: 'translateX(0)' }], { duration: D, easing: E });
+    requestAnimationFrame(() => next.classList.remove('dim'));
+    old.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(100%)' }], { duration: D, easing: E, fill: 'forwards' }).onfinish = () => old.remove();
+  }
+  setTimeout(() => { next.style.background = ''; }, D + 20);
+  afterEnter(next);
+  return next;
+}
+function afterEnter(p) { p.querySelectorAll('.hl').forEach(h => { if (!isReduced()) h.classList.add('wipe'); }); }
+function go(name, dir = 1) {
+  if (dir > 0 && current && current.dataset.name) hist.push(current.dataset.name);
+  phone.classList.toggle('lightbar', name === 'program');
+  if (name !== 'reveal') hideStory?.();
+  SCREENS[name](dir);
+  caption(name);
+}
+function back() { const prev = hist.pop(); if (prev) { SCREENS[prev](-1); caption(prev); } }
+
+// ── Shared pieces ───────────────────────────────────────────
+const BACK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>';
+function topBar(step) {
+  const total = S.about === 'pages' ? 6 : 5;
+  const bars = Array.from({ length: total }, (_, i) => `<i class="${i < step ? 'on' : ''}"><b></b></i>`).join('');
+  return `<div class="top"><button class="back" type="button" aria-label="Back" data-back>${BACK_SVG}</button><div class="prog">${bars}</div><span class="qnum">${step}/${total}</span></div>`;
+}
+function wire(p) { p.querySelector('[data-back]')?.addEventListener('click', back); }
+function setCat(tint) {
+  // "End only" keeps the category secret until the reveal, so selections stay neutral.
+  const c = S.sport && S.timing !== 'end' ? CATS[catOf(S.sport)].color : '#60A5FA';
+  phone.style.setProperty('--cat', c);
+  phone.classList.toggle('tinted', !!tint);
+}
+function worldTint() { return S.sport && S.timing !== 'end'; }
+
+// ── Promise ─────────────────────────────────────────────────
+function startDrift(on) {
+  const d = document.getElementById('drift');
+  if (!on) { d.style.opacity = 0; return; }
+  d.style.opacity = 1;
+  if (d.childElementCount) return;
+  [['Basketball', 120, 0], ['Soccer', 330, -9], ['Golf', 520, -17], ['Wrestling', 230, -5], ['Swimming', 620, -23]].forEach(([n, y, delay]) => {
+    const el = document.createElement('div'); el.className = 'd'; el.style.top = y + 'px';
+    el.style.animation = `cross ${24 + (y % 7)}s ${delay}s linear infinite`;
+    d.appendChild(el); icon(el, n);
+  });
+}
+const SCREENS = {
+  promise(dir) {
+    startDrift(true); setBackdrop(false); setCat(false);
+    turn(p => {
+      p.dataset.name = 'promise'; p.classList.add('promise');
+      p.innerHTML = `<h2 class="hl"><span>Let's build your plan for this season.</span></h2>
+        <div class="cta"><button class="btn" type="button" data-go>Choose your sport</button><button class="link" type="button" data-signin>I have an account</button></div>`;
+      p.querySelector('[data-go]').onclick = () => go('sport');
+      p.querySelector('[data-signin]').onclick = () => go('signin');
+    }, dir);
+  },
+
+  // ── Sport ──
+  sport(dir) {
+    startDrift(false); setBackdrop(false); setCat(worldTint() && S.timing === 'hint');
+    turn(p => {
+      p.dataset.name = 'sport';
+      const tileHTML = (n) => `<button class="tile" type="button" data-sport="${n}" aria-pressed="${S.sport === n}"><div class="ic"></div>${n}</button>`;
+      const rest = SPORTS.map(s => s[0]).filter(n => !POPULAR.includes(n));
+      p.innerHTML = `${topBar(1)}<h2 class="hl"><span>Pick your sport</span></h2>
+        <div class="scroll grow"><div class="label" style="margin-top:16px">Popular</div><div class="pop">${POPULAR.map(tileHTML).join('')}</div>${S.timing === 'pick' ? '<div class="bugline" id="bugline"></div>' : ''}
+        <div class="label">All sports</div><input class="search" id="sportSearch" type="search" placeholder="Search 27 sports" aria-label="Search sports">
+        <div class="grid">${rest.map(tileHTML).join('')}</div></div>
+        <div class="cta"><button class="btn" type="button" data-next ${S.sport ? '' : 'disabled'}>Continue</button></div>`;
+      wire(p);
+      p.querySelectorAll('.tile').forEach(t => icon(t.querySelector('.ic'), t.dataset.sport));
+      p.querySelector('#sportSearch').oninput = (e) => {
+        const q = e.target.value.trim().toLowerCase();
+        p.querySelectorAll('.grid .tile').forEach(t => { t.hidden = q && !t.dataset.sport.toLowerCase().includes(q); });
+      };
+      p.querySelectorAll('.tile').forEach(t => t.onclick = () => {
+        S.sport = t.dataset.sport;
+        p.querySelectorAll('.tile').forEach(o => o.setAttribute('aria-pressed', o === t));
+        setCat(S.timing === 'hint');
+        replay(t.querySelector('.ic'));
+        navigator.vibrate?.(10);
+        p.querySelector('[data-next]').disabled = false;
+        p.querySelector('.bug')?.remove();
+        if (S.timing === 'pick') {
+          const c = CATS[catOf(S.sport)];
+          const b = document.createElement('div'); b.className = 'bug' + (isReduced() ? '' : ' in');
+          b.innerHTML = `<span class="a">${S.sport.toUpperCase()}</span><span class="b">${c.name.toUpperCase()}</span>`;
+          p.querySelector('#bugline').appendChild(b);
+        }
+      });
+      p.querySelector('[data-next]').onclick = () => {
+        const tile = p.querySelector(`.tile[aria-pressed="true"] .ic`);
+        flyToBackdrop(tile);
+        go('season');
+      };
+    }, dir);
+  },
+
+  // ── Season ──
+  season(dir) {
+    startDrift(false); setBackdrop(true); setCat(worldTint());
+    turn(p => { p.dataset.name = 'season'; buildSeason(p); }, dir);
+  },
+
+  // ── Days ──
+  days(dir) {
+    startDrift(false); setBackdrop(true); setCat(worldTint());
+    turn(p => {
+      p.dataset.name = 'days';
+      const fam = FAMILY[S.sport] || null;
+      p.innerHTML = `${topBar(3)}<div class="days-c"><h2 class="hl"><span>Which days can you train?</span></h2>
+        <div class="week">${[1,2,3,4,5,6,0].map(d => `<button class="day${fam ? ' themed' : ''}" type="button" data-d="${d}" aria-pressed="false" aria-label="${DAYN[d]}"><div class="fill${fam ? ' ' + fam : ''}">${fam === 'water' ? WAVE : ''}</div><div class="ball"></div><span>${DAYN[d].slice(0,1)}</span></button>`).join('')}</div>
+        <div class="sum" id="sum"></div></div>
+        <div class="cta" style="margin-top:0"><button class="btn" type="button" data-next>Continue</button></div>`;
+      wire(p);
+      if (fam && fam !== 'water') p.querySelectorAll('.ball').forEach(el => icon(el, S.sport));
+      const sum = () => {
+        const n = S.days.length, list = [1,2,3,4,5,6,0].filter(d => S.days.includes(d)).map(d => DAYN[d].slice(0,1) + DAYN[d].slice(1).toLowerCase()).join(' / ');
+        p.querySelector('#sum').innerHTML = `${n} session${n === 1 ? '' : 's'} a week<small>${list || 'Pick at least one day'}</small>`;
+        p.querySelector('[data-next]').disabled = n === 0;
+      };
+      p.querySelectorAll('.day').forEach(b => b.onclick = () => {
+        const d = +b.dataset.d;
+        if (S.days.includes(d)) { if (S.days.length === 1) return; S.days = S.days.filter(x => x !== d); } else S.days = [...S.days, d].sort();
+        setDay(b, S.days.includes(d), fam); navigator.vibrate?.(8); sum();
+      });
+      sum();
+      // The preselected days fill one after another as the page arrives.
+      const pre = [...p.querySelectorAll('.day')].filter(b => S.days.includes(+b.dataset.d));
+      pre.forEach((b, i) => setTimeout(() => setDay(b, true, fam), isReduced() ? 0 : 420 + i * 260));
+      p.querySelector('[data-next]').onclick = () => go(S.about === 'pages' ? 'age' : 'about');
+    }, dir);
+  },
+
+  // ── About: player card ──
+  about(dir) {
+    setBackdrop(true); setCat(worldTint());
+    turn(p => {
+      p.dataset.name = 'about';
+      p.innerHTML = `${topBar(4)}<h2 class="hl" style="font-size:54px"><span>About you</span></h2>
+        <div class="card" style="margin-top:14px"><div class="art"><div class="ic"></div></div>
+          <div class="row"><span>Age group</span><span>Experience</span></div>
+          <div class="val"><span id="cAge">—</span><span id="cYrs">—</span></div></div>
+        <div class="grow"></div><div class="qlabel" id="ql"></div><div class="choices lt" id="qc"></div>`;
+      wire(p);
+      icon(p.querySelector('.card .ic'), S.sport || 'Basketball');
+      const $ = (q) => p.querySelector(q);
+      const stamp = (el) => { if (isReduced()) return; el.classList.remove('stamp'); void el.offsetWidth; el.classList.add('stamp'); };
+      const paintCard = () => {
+        const a = AGES.find(x => x[0] === S.age), y = YEARS.find(x => x[0] === S.years);
+        $('#cAge').textContent = a ? a[2] : '—'; $('#cYrs').textContent = y ? y[2] : '—';
+      };
+      // One labeled question at a time; each answer stamps onto the card.
+      const ask = (which) => {
+        const isAge = which === 'age';
+        $('#ql').textContent = isAge ? 'AGE GROUP' : 'YEARS TRAINING FOR YOUR SPORT';
+        const opts = isAge ? AGES.map(a => [a[0], a[1], a[2]]) : YEARS.map(y => [y[0], y[1], '']);
+        $('#qc').innerHTML = opts.map(o => `<button class="choice" type="button" data-v="${o[0]}" aria-pressed="${S[which] === o[0]}"><b>${o[1]}</b><small>${o[2]}</small></button>`).join('');
+        if (!isReduced()) $('#qc').animate([{ opacity: 0, transform: 'translateX(24px)' }, { opacity: 1, transform: 'none' }], { duration: 280, easing: 'cubic-bezier(0.32, 0.72, 0, 1)' });
+        $('#qc').querySelectorAll('[data-v]').forEach(b => b.onclick = () => {
+          S[which] = b.dataset.v; navigator.vibrate?.(8);
+          $('#qc').querySelectorAll('[data-v]').forEach(o => o.setAttribute('aria-pressed', o === b));
+          paintCard(); stamp($(isAge ? '#cAge' : '#cYrs'));
+          if (isAge) setTimeout(() => ask('years'), isReduced() ? 0 : 320); else maybeReveal();
+        });
+      };
+      paintCard(); ask(S.age && !S.years ? 'years' : 'age');
+    }, dir);
+  },
+  // ── About: two pages ──
+  age(dir) { aboutPage('age', 4, 'How old are you?', AGES.map(a => [a[0], a[1], a[2]]), 'age', () => go('years'), dir); },
+  years(dir) { aboutPage('years', 5, 'Years training for your sport?', YEARS.map(y => [y[0], y[1], '']), 'years', () => setTimeout(() => go('reveal'), isReduced() ? 0 : 450), dir); },
+
+  // ── Reveal ──
+  reveal(dir) { buildReveal(dir); },
+  plan(dir) { setBackdrop(false); setCat(false); turn(p => { p.dataset.name = 'plan'; buildPlan(p, false); }, dir); },
+  save() { openSheet(); },
+  program(dir) {
+    setBackdrop(false); setCat(false); startDrift(false);
+    turn(p => { p.dataset.name = 'program'; buildProgram(p); }, dir, { solid: true, fade: true });
+  },
+  signin(dir) {
+    startDrift(false); setBackdrop(false); setCat(false);
+    turn(p => {
+      p.dataset.name = 'signin'; p.classList.add('signin');
+      p.innerHTML = `<div class="top" style="position:absolute;top:64px;left:24px"><button class="back" type="button" aria-label="Back" data-back>${BACK_SVG}</button></div>
+        <div class="wordmark">WANDER<span>FIT</span></div><p class="sub" style="margin:0 0 18px">Welcome back.</p>
+        <input class="field" style="width:100%" placeholder="Email address" aria-label="Email address"><input class="field" style="width:100%" type="password" placeholder="Password" aria-label="Password">
+        <button class="btn" type="button" style="width:100%;margin-top:6px">Sign in</button>`;
+      wire(p);
+    }, dir);
+  },
+};
+
+function maybeReveal() {
+  if (S.age && S.years) setTimeout(() => { if (current?.dataset.name === 'about') go('reveal'); }, isReduced() ? 0 : 650);
+}
+function aboutPage(name, step, title, opts, key, after, dir) {
+  setBackdrop(true); setCat(worldTint());
+  turn(p => {
+    p.dataset.name = name;
+    p.innerHTML = `${topBar(step)}<h2 class="hl"><span>${title}</span></h2><div class="grow"></div>
+      <div class="choices lt">${opts.map(o => `<button class="choice" type="button" data-v="${o[0]}" aria-pressed="${S[key] === o[0]}"><b>${o[1]}</b><small>${o[2]}</small></button>`).join('')}</div>`;
+    wire(p);
+    p.querySelectorAll('[data-v]').forEach(b => b.onclick = () => {
+      S[key] = b.dataset.v; p.querySelectorAll('[data-v]').forEach(o => o.setAttribute('aria-pressed', o === b)); navigator.vibrate?.(8);
+      setTimeout(after, isReduced() ? 0 : 280);
+    });
+  }, dir);
+}
+
+// ── Sport-themed day fills: one choreography per movement family ──
+const FAMILY = { Soccer: 'roll', 'Field Hockey': 'roll', Lacrosse: 'roll', Rugby: 'roll', Basketball: 'bounce', Volleyball: 'bounce', Swimming: 'water', Diving: 'water' };
+const WAVE = '<svg class="wave" viewBox="0 0 80 8" preserveAspectRatio="none"><path d="M0 4 Q5 0 10 4 T20 4 T30 4 T40 4 T50 4 T60 4 T70 4 T80 4 V8 H0 Z" fill="#0284C7"/></svg>';
+function setDay(b, on, fam) {
+  b.setAttribute('aria-pressed', on);
+  const fill = b.querySelector('.fill'), ball = b.querySelector('.ball');
+  const H = b.clientHeight || 132, E = 'cubic-bezier(0.32, 0.72, 0, 1)';
+  if (!fam || isReduced()) { fill.style.transform = on ? 'scaleY(1)' : 'scaleY(0)'; return; }
+  fill.getAnimations().forEach(a => a.cancel()); ball.getAnimations().forEach(a => a.cancel());
+  const BALL = 34, top = (k) => H * (1 - k) - BALL; // the ball sits on the fill's surface
+  if (fam === 'roll') {
+    // The ball rolls up the day as it fills, then rolls out the top.
+    // An even roll (no front-loaded easing), so the ball stays visible the whole way up.
+    const ms = on ? 950 : 650, ks = on ? [0, 1] : [1, 0], IO = 'cubic-bezier(0.45, 0, 0.55, 1)';
+    const ride = (k) => H * (1 - k) - BALL * 0.6; // half-sunk at the surface
+    fill.animate([{ transform: `scaleY(${ks[0]})` }, { transform: `scaleY(${ks[1]})` }], { duration: ms, easing: IO, fill: 'forwards' });
+    ball.animate([
+      { transform: `translateY(${ride(ks[0])}px) rotate(0deg)`, opacity: 1 },
+      { transform: `translateY(${ride(ks[1])}px) rotate(${on ? -540 : 540}deg)`, opacity: 1, offset: .88 },
+      { transform: `translateY(${ride(ks[1]) + (on ? -14 : 0)}px) rotate(${on ? -600 : 600}deg)`, opacity: 0 }], { duration: ms + 130, easing: IO, fill: 'forwards' });
+  } else if (fam === 'bounce') {
+    if (!on) { fill.animate([{ transform: 'scaleY(1)' }, { transform: 'scaleY(0)' }], { duration: 420, easing: E, fill: 'forwards' }); return; }
+    // Exactly three dribbles. Each contact lands on the current surface and raises it a third.
+    const y = top;
+    ball.animate([
+      { transform: `translateY(${-BALL}px)`, opacity: 1, easing: 'ease-in' },
+      { transform: `translateY(${y(0)}px)`, offset: .22, easing: 'ease-out' },          // contact 1
+      { transform: `translateY(${y(1/3) - 40}px)`, offset: .36, easing: 'ease-in' },
+      { transform: `translateY(${y(1/3)}px)`, offset: .5, easing: 'ease-out' },         // contact 2
+      { transform: `translateY(${y(2/3) - 32}px)`, offset: .62, easing: 'ease-in' },
+      { transform: `translateY(${y(2/3)}px)`, offset: .76, easing: 'ease-out' },        // contact 3
+      { transform: `translateY(${-BALL}px)`, opacity: 1, offset: .94 },
+      { transform: `translateY(${-BALL}px)`, opacity: 0 }], { duration: 1150, fill: 'forwards' });
+    fill.animate([
+      { transform: 'scaleY(0)' }, { transform: 'scaleY(0)', offset: .22 }, { transform: 'scaleY(.334)', offset: .28 },
+      { transform: 'scaleY(.334)', offset: .5 }, { transform: 'scaleY(.667)', offset: .56 },
+      { transform: 'scaleY(.667)', offset: .76 }, { transform: 'scaleY(1)', offset: .82 }, { transform: 'scaleY(1)' }], { duration: 1150, fill: 'forwards' });
+  } else if (fam === 'water') {
+    // The day fills like a lane; the surface ripples, then settles.
+    const wave = fill.querySelector('.wave');
+    const ms = on ? 900 : 520;
+    fill.animate([{ transform: `scaleY(${on ? 0 : 1})` }, { transform: `scaleY(${on ? 1 : 0})` }], { duration: ms, easing: E, fill: 'forwards' });
+    if (on) wave.animate([{ transform: 'translateX(0)', opacity: 1 }, { transform: 'translateX(-50%)', opacity: 1, offset: .8 }, { transform: 'translateX(-60%)', opacity: 0 }], { duration: 1300, easing: 'ease-out', fill: 'forwards' });
+  }
+}
+
+// ── Backdrop: your sport becomes the world ──────────────────
+const bd = document.getElementById('backdrop');
+let bdSport = null;
+function setBackdrop(on) {
+  if (!on || !S.sport) { bd.classList.remove('on'); return; }
+  if (bdSport !== S.sport) { icon(bd, S.sport); bdSport = S.sport; }
+  bd.classList.add('on');
+}
+function flyToBackdrop(fromEl) {
+  if (!fromEl || isReduced()) return;
+  const pr = phone.getBoundingClientRect(), fr = fromEl.getBoundingClientRect();
+  if (bdSport !== S.sport) { icon(bd, S.sport); bdSport = S.sport; }
+  const br = { left: pr.width - 560 + 190, top: pr.height - 70 - 560 };
+  const k = pr.width / phone.offsetWidth; // page scale
+  const sx = (fr.width / k) / 560, dx = (fr.left - pr.left) / k - br.left, dy = (fr.top - pr.top) / k - br.top;
+  bd.classList.remove('on');
+  bd.animate([
+    { transform: `translate(${dx}px, ${dy}px) scale(${sx})`, transformOrigin: 'top left', opacity: 1 },
+    { transform: 'translate(0,0) scale(1)', transformOrigin: 'top left', opacity: .13 }],
+    { duration: 620, easing: 'cubic-bezier(0.32, 0.72, 0, 1)' }).onfinish = () => bd.classList.add('on');
+}
+
+// ── Season variations ───────────────────────────────────────
+function iso(d) { return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }); }
+function dateFor(w) { return new Date(now.getFullYear(), now.getMonth(), now.getDate() + w * 7); }
+function buildSeason(p) {
+  p.innerHTML = `${topBar(2)}<h2 class="hl"><span>When's your first game?</span></h2><div class="grow" id="sv"></div>
+    <button class="nos" type="button" data-nos aria-pressed="${S.noSeason}"><span>No set season<small>We'll build a 12-week plan</small></span><span class="dot"></span></button>
+    <div class="cta"><button class="btn" type="button" data-next>Continue</button></div>`;
+  wire(p);
+  const sv = p.querySelector('#sv');
+  const paint = () => { sv.classList.toggle('muted', S.noSeason); p.querySelector('[data-nos]').setAttribute('aria-pressed', S.noSeason); };
+  p.querySelector('[data-nos]').onclick = () => { S.noSeason = !S.noSeason; navigator.vibrate?.(8); paint(); if (S.season === 'runway') runway(sv); };
+  p.querySelector('[data-next]').onclick = () => go('days');
+  if (S.season === 'slider') slider(sv);
+  else if (S.season === 'cal') calendar(sv);
+  else runway(sv);
+  paint();
+}
+function slider(sv) {
+  sv.innerHTML = `<div class="bigrow"><span class="big" id="wk">${S.weeks}</span><span class="u">weeks to<br>game day</span></div><div class="date" id="dt"></div>
+    <input type="range" min="1" max="52" step="1" value="${S.weeks}" aria-label="Weeks until your first game" id="rg">`;
+  const upd = () => { sv.querySelector('#wk').textContent = S.weeks; sv.querySelector('#dt').textContent = 'Around ' + iso(dateFor(S.weeks)); };
+  sv.querySelector('#rg').oninput = (e) => { S.weeks = +e.target.value; S.noSeason = false; sv.classList.remove('muted'); document.querySelector('[data-nos]')?.setAttribute('aria-pressed', false); upd(); };
+  upd();
+}
+function calendar(sv) {
+  const base = S.calMonth || new Date(dateFor(S.weeks).getFullYear(), dateFor(S.weeks).getMonth(), 1);
+  S.calMonth = base;
+  const sel = dateFor(S.weeks), y = base.getFullYear(), m = base.getMonth();
+  const first = new Date(y, m, 1).getDay(), n = new Date(y, m + 1, 0).getDate();
+  const cells = []; for (let i = 0; i < first; i++) cells.push('<span></span>');
+  for (let d = 1; d <= n; d++) {
+    const dt = new Date(y, m, d), past = dt <= now, on = dt.toDateString() === sel.toDateString();
+    cells.push(`<button type="button" data-d="${d}" ${past ? 'disabled' : ''} aria-pressed="${on}">${d}</button>`);
+  }
+  sv.innerHTML = `<div class="bigrow" style="margin-top:14px"><span class="big" style="font-size:96px">${S.weeks}</span><span class="u">weeks<br>away</span></div>
+    <div class="cal"><div class="mh"><button type="button" data-m="-1" aria-label="Previous month">‹</button><span>${base.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase()}</span><button type="button" data-m="1" aria-label="Next month">›</button></div>
+    <div class="wd">${'SMTWTFS'.split('').map(c => `<span>${c}</span>`).join('')}</div><div class="days">${cells.join('')}</div></div>`;
+  sv.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { S.calMonth = new Date(y, m + +b.dataset.m, 1); calendar(sv); });
+  sv.querySelectorAll('[data-d]').forEach(b => b.onclick = () => {
+    const dt = new Date(y, m, +b.dataset.d), days = Math.round((dt - new Date(now.getFullYear(), now.getMonth(), now.getDate())) / 864e5);
+    S.weeks = Math.min(52, Math.max(1, Math.ceil(days / 7))); S.noSeason = false; navigator.vibrate?.(8); calendar(sv);
+    sv.classList.remove('muted'); document.querySelector('[data-nos]')?.setAttribute('aria-pressed', false);
+  });
+}
+function runway(sv) {
+  const draw = () => {
+    const w = planWeeks(), p = wpp(w), prog = p * 3, span = Math.max(w, prog);
+    const gap = Math.max(0, w - prog);
+    const blk = (cls, label, wk, bg) => `<div class="blk" style="flex:${wk} 1 0;background:${bg}"><b>${label}</b><small>${wk} wk</small></div>`;
+    sv.innerHTML = `<div class="bigrow"><span class="big" style="font-size:118px">${w}</span><span class="u">weeks to<br>game day</span></div>
+      <div class="date">${S.noSeason ? 'No set season · a 12-week plan' : 'Around ' + iso(dateFor(w))}</div>
+      <div class="runway" id="rw"><span class="hint">Drag the flag to your first game</span>
+        <div class="track">${blk('g','GPP',p,'#3B82F6')}${blk('s','SPP',p,'#1D4ED8')}${blk('p','SSP',p,'#1E3A8A')}${gap ? `<div class="gap" style="flex:${gap} 1 0"></div>` : ''}</div>
+        <div class="flag" id="flag" role="slider" tabindex="0" aria-label="Weeks until your first game" aria-valuemin="1" aria-valuemax="52" aria-valuenow="${w}"><span class="tag">GAME DAY</span><span class="pole"></span></div>
+        <div class="ends"><span>TODAY</span><span>${prog} WEEK PLAN</span></div></div>`;
+    const rw = sv.querySelector('#rw'), flag = sv.querySelector('#flag');
+    flag.style.left = `calc((100% - 28px) * ${Math.min(1, w / span)})`;
+    const setFrom = (x) => {
+      const r = rw.getBoundingClientRect(), trackPx = r.width * (rw.clientWidth - 28) / rw.clientWidth;
+      const frac = Math.max(0, Math.min(1, (x - r.left) / trackPx));
+      S.weeks = Math.max(1, Math.min(52, Math.round(frac * 52))); S.noSeason = false;
+      document.querySelector('[data-nos]')?.setAttribute('aria-pressed', false); sv.classList.remove('muted');
+      draw();
+    };
+    flag.onpointerdown = (e) => { flag.setPointerCapture(e.pointerId); flag.onpointermove = (ev) => setFrom(ev.clientX); flag.onpointerup = () => { flag.onpointermove = null; navigator.vibrate?.(8); }; };
+    rw.onclick = (e) => { if (e.target.closest('#flag')) return; setFrom(e.clientX); };
+    flag.onkeydown = (e) => { if (e.key === 'ArrowRight') { S.weeks = Math.min(52, S.weeks + 1); draw(); sv.querySelector('#flag').focus(); } if (e.key === 'ArrowLeft') { S.weeks = Math.max(1, S.weeks - 1); draw(); sv.querySelector('#flag').focus(); } };
+  };
+  draw();
+}
+
+// ── Reveal + plan ───────────────────────────────────────────
+// A two-part story: Category, then Plan. The category holds for HOLD ms (a tap skips it),
+// and the plan can always go back to it: tap the first story segment or the category chip.
+const HOLD = 3000; // the category can always be revisited, so it doesn't need longer
+const T = { lit: 520, lead: 820, name: 960, line: 1220 };
+const P = { icon: 0, phases: 700, phaseGap: 520, week: 2300, total: 2650, save: 2900 }; // from plan start
+const BAND_H = 236;
+const PHASE = [
+  ['g', 'GPP', 'Build the base', () => 'General fitness and how you move: strength, mobility and conditioning.'],
+  ['s', 'SPP', 'Train for your sport', (sport, cat) => `Training shifts to ${FOCUS[cat]} for ${sport.toLowerCase()}.`],
+  ['p', 'SSP', 'Sharpen for the season', () => `Less volume, the same speed and power, and recovery timed so you're fresh for ${S.noSeason ? 'the season' : 'your first game'}.`]];
+const FOCUS = { 1: 'repeat sprints and quick changes of direction', 2: 'jumping, landing and stopping fast', 3: 'hip power and rotation', 4: 'heavier strength and grip' };
+const WEEK_LABEL = ['LOWER', 'UPPER', 'POWER', 'LOWER', 'UPPER', 'FULL', 'RECOVER']; // GPP days 1–7
+const WEEK_NAME = ['Lower Body A', 'Upper Body A', 'Power & Conditioning', 'Lower Body B', 'Upper Body B', 'Full Body Athletic', 'Active Recovery'];
+// GPP week 1 minutes by category, level and program day (program_templates)
+const WEEK_MIN = {"1":{"Advanced":[41,44,36,44,42,40,16],"Moderate":[35,37,33,37,35,36,16],"Novice":[28,28,28,28,28,29,14]},"2":{"Advanced":[41,42,36,44,42,40,16],"Moderate":[35,37,33,35,37,36,16],"Novice":[28,28,28,28,28,29,14]},"3":{"Advanced":[39,36,36,44,42,38,16],"Moderate":[35,35,33,35,37,36,16],"Novice":[29,29,29,29,29,29,14]},"4":{"Advanced":[41,36,36,44,42,40,16],"Moderate":[37,37,33,37,37,38,16],"Novice":[28,28,28,28,28,29,14]}};
+const story = document.createElement('div'); story.className = 'story';
+story.innerHTML = '<button type="button" aria-label="Category" data-s="0"><i><b></b></i></button><button type="button" aria-label="Plan" data-s="1"><i><b></b></i></button>';
+phone.appendChild(story);
+const bars = story.querySelectorAll('b');
+function storyAt(seg, ms) {
+  story.classList.add('on');
+  bars.forEach(b => b.getAnimations().forEach(a => a.cancel()));
+  bars[0].style.transform = seg === 0 && ms ? 'scaleX(0)' : 'scaleX(1)';
+  bars[1].style.transform = seg === 1 ? 'scaleX(1)' : 'scaleX(0)';
+  if (seg === 0 && ms && !isReduced()) bars[0].animate([{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: ms, easing: 'linear', fill: 'forwards' });
+}
+story.querySelector('[data-s="0"]').onclick = (e) => { e.stopPropagation(); if (current?.dataset.name === 'reveal' && current.dataset.part === 'plan') showCategory(-1, { revisit: true }); };
+story.querySelector('[data-s="1"]').onclick = (e) => { e.stopPropagation(); if (current?.dataset.part === 'cat') toPlan(current); };
+function hideStory() { story.classList.remove('on'); }
+
+function buildReveal(dir) {
+  startDrift(false); setBackdrop(false);
+  const cat = catOf(S.sport || 'Basketball');
+  phone.style.setProperty('--cat', CATS[cat].color); phone.classList.remove('tinted');
+  if (S.timing === 'pick') { storyAt(1); turn(p => { p.dataset.name = 'reveal'; p.dataset.part = 'plan'; buildPlan(p, true); }, dir); return; }
+  showCategory(dir, { revisit: false });
+}
+function showCategory(dir, { revisit }) {
+  const cat = catOf(S.sport || 'Basketball'), c = CATS[cat];
+  storyAt(0, revisit ? 0 : HOLD);
+  turn(p => {
+    p.dataset.name = 'reveal'; p.dataset.part = 'cat'; p.classList.add('reveal');
+    p.innerHTML = `<div class="lead beat" id="lead">${(S.sport || 'Basketball').toUpperCase()} TRAINS FOR</div>
+      <div class="catname beat" id="cn">${c.name.toUpperCase()}</div>
+      <div class="catline beat" id="cl">${c.line}</div>
+      <div class="cats" id="cats">${[1,2,3,4].map(i => `<div class="cat beat" data-c="${i}" style="--cat:${CATS[i].color}"><div class="fig"></div><b>${CATS[i].name.toUpperCase()}</b></div>`).join('')}</div>
+      <div class="tapnote" id="tn">${revisit ? 'Tap to go back to your plan' : 'Tap to see your plan'}</div>`;
+    const R = isReduced() || revisit, $ = (s) => p.querySelector(s);
+    const tiles = [...p.querySelectorAll('.cat')];
+    const figs = tiles.map(t => ATHLETE.mount(t.querySelector('.fig'), +t.dataset.c, false, { litTile: CATS[+t.dataset.c].color }));
+    const at = (ms, fn) => R ? fn() : setTimeout(fn, ms);
+    tiles.forEach((t, i) => at(80 + i * 60, () => t.classList.add('show')));
+    at(T.lit, () => {
+      tiles.forEach((t, i) => (+t.dataset.c === cat ? t.classList.add('lit') : t.classList.add('fade')));
+      figs[cat - 1].play(R); navigator.vibrate?.(14);
+    });
+    at(T.lead, () => $('#lead').classList.add('show'));
+    at(T.name, () => $('#cn').classList.add('show'));
+    at(T.line, () => $('#cl').classList.add('show'));
+    if (R) { tiles.forEach(t => t.classList.remove('beat')); ['#lead','#cn','#cl'].forEach(s => $(s).classList.remove('beat')); }
+    p.onclick = () => toPlan(p, revisit);
+    if (!revisit) setTimeout(() => { if (current === p) toPlan(p, false); }, isReduced() ? HOLD + 800 : HOLD);
+  }, dir);
+}
+function toPlan(p, revisit) {
+  if (current !== p || p.dataset.leaving) return;
+  p.dataset.leaving = '1';
+  storyAt(1);
+  const cat = catOf(S.sport || 'Basketball');
+  if (revisit) { turn(np => { np.dataset.name = 'reveal'; np.dataset.part = 'plan'; buildPlan(np, false); }, 1); return; }
+  if (S.ending === 'flow' && !isReduced()) flowToPlan(p, cat);
+  else turn(np => { np.dataset.name = 'reveal'; np.dataset.part = 'plan'; buildPlan(np, true); }, 1);
+}
+function flowToPlan(p, cat) {
+  // The plan goes in underneath. Its band starts clipped to the lit tile, then opens to full width.
+  const lit = p.querySelector(`.cat[data-c="${cat}"]`);
+  const pr = phone.getBoundingClientRect(), k = pr.width / phone.offsetWidth, lr = lit.getBoundingClientRect();
+  const W = phone.offsetWidth;
+  const lx = (lr.left - pr.left) / k, ly = (lr.top - pr.top) / k, lw = lr.width / k, lh = lr.height / k;
+  const plan = document.createElement('section'); plan.className = 'page'; plan.dataset.name = 'reveal'; plan.dataset.part = 'plan';
+  buildPlan(plan, true, { delay: 550 });
+  plan.style.zIndex = 3; stage.appendChild(plan);
+  const band = plan.querySelector('.band'), bandText = plan.querySelectorAll('.band .chip, .band .t, .band .cd');
+  const tag = document.createElement('b'); tag.textContent = CATS[cat].name.toUpperCase();
+  tag.style.cssText = `position:absolute;left:${lx + 14}px;top:${ly + lh - 44}px;font:400 30px/1 var(--display);letter-spacing:.03em;color:#fff;z-index:2`;
+  band.appendChild(tag);
+  p.querySelectorAll('.cat:not(.lit), .lead, .catname, .catline, .tapnote').forEach(el => el.animate([{ opacity: 1 }, { opacity: 0, transform: 'translateY(10px)' }], { duration: 200, easing: 'ease-in', fill: 'forwards' }));
+  const E = 'cubic-bezier(0.32, 0.72, 0, 1)';
+  const from = `inset(${ly}px ${W - lx - lw}px ${BAND_H - ly - lh}px ${lx}px round 16px)`;
+  band.animate([{ clipPath: from }, { clipPath: 'inset(0px 0px 0px 0px round 0px)' }], { duration: 520, easing: E, fill: 'forwards' });
+  tag.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 220, delay: 300, fill: 'forwards' });
+  bandText.forEach(el => el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260, delay: 300, fill: 'backwards' }));
+  setTimeout(() => { p.remove(); current = plan; tag.remove(); }, 560);
+}
+function trainingOrder() { return [1,2,3,4,5,6,0].filter(d => S.days.includes(d)); }
+function firstDay() {
+  for (let o = 0; o < 7; o++) { const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + o); if (S.days.includes(d.getDay())) return { dow: d.getDay(), label: o === 0 ? 'Today' : o === 1 ? 'Tomorrow' : iso(d) }; }
+  return { dow: S.days[0], label: 'Today' };
+}
+function buildPlan(p, animate, { delay = 0 } = {}) {
+  const sport = S.sport || 'Basketball', cat = catOf(sport), c = CATS[cat], sh = shape(), lv = level();
+  const [min] = DAY1[cat][lv];
+  const order = trainingOrder(), first = firstDay();
+  const idx = (d) => { const i = order.indexOf(d); const fi = order.indexOf(first.dow); return i < 0 ? -1 : (i - fi + order.length) % order.length; };
+  const cd = S.noSeason ? 'No set season · 12-week plan' : `First game ${iso(dateFor(S.weeks))} · ${S.weeks} weeks`;
+  p.style.setProperty('--cat', c.color);
+  p.innerHTML = `<div class="band"><div class="ic"></div><button class="chip" type="button" id="chip">${c.name} ›</button><div class="t">${sport.toUpperCase()} PLAN</div><div class="cd">${cd}</div></div>
+    <div class="phases beat" id="phs">${PHASE.map(([k, a, label], i) => `<button class="ph ${k}" type="button" data-i="${i}" aria-pressed="false"><b>${label}</b><small>${a} · ${sh.p} wk</small></button>`).join('')}</div>
+    <div class="phcap beat" id="cap"></div>
+    <div class="wk beat" id="wk"><div class="label">Your week · tap a day</div><div class="row">${[1,2,3,4,5,6,0].map(d => { const i = idx(d); return `<button type="button" class="d${i >= 0 ? ' on' : ''}" data-dow="${d}" aria-pressed="${i === 0}"><span>${DAYN[d].slice(0,1)}</span><b>${i >= 0 ? WEEK_LABEL[i] : '—'}</b></button>`; }).join('')}</div>
+      <div class="first" id="dayline"></div></div>
+    <div class="total beat" id="tot"><span class="n">${sh.sessions}</span><span class="w">SESSIONS<br>OVER ${sh.total} WEEKS</span></div>
+    <div class="cta" style="padding-top:8px"><button class="btn beat" type="button" id="save">Save my plan</button></div>`;
+  const R = isReduced() || !animate, $ = (q) => p.querySelector(q);
+  const at = (ms, fn) => R ? fn() : setTimeout(fn, delay + ms);
+  const caption = (i) => { const [, a, label, line] = PHASE[i]; $('#cap').innerHTML = `<b>${label}.</b> ${line(sport, cat)}`; p.querySelectorAll('.ph').forEach(b => b.setAttribute('aria-pressed', +b.dataset.i === i)); };
+  icon($('.band .ic'), sport, { play: false });
+  at(P.icon, () => { const a = $('.band .ic')._anim; if (a && !R) { a.setSpeed(1.5); a.playSegments([0, 36], true); } });
+  at(P.phases, () => { $('#phs').classList.add('show'); $('#cap').classList.add('show'); });
+  [...$('#phs').children].forEach((ph, i) => {
+    if (!R) ph.style.transform = 'scaleX(0)';
+    at(P.phases + i * P.phaseGap, () => { ph.style.transform = ''; if (!R) ph.classList.add('draw'); });
+  });
+  at(P.phases, () => caption(0)); // "you start here" holds while the bar draws; taps change it
+  at(P.week, () => $('#wk').classList.add('show'));
+  at(P.total, () => { $('#tot').classList.add('show'); navigator.vibrate?.(14); });
+  at(P.save, () => $('#save').classList.add('show'));
+  p.querySelectorAll('.ph').forEach(b => b.onclick = () => caption(+b.dataset.i));
+  // The line under the week follows the selected day; Day 1 to start.
+  const dayLine = (dow) => {
+    const i = idx(dow), name = DAYN[dow].slice(0,1) + DAYN[dow].slice(1).toLowerCase();
+    p.querySelectorAll('.wk .d').forEach(d => d.setAttribute('aria-pressed', +d.dataset.dow === dow));
+    $('#dayline').textContent = i < 0 ? `${name} · Rest day`
+      : `Day ${i + 1} · ${i === 0 ? first.label : name} · ${WEEK_NAME[i]} · About ${WEEK_MIN[cat][lv][i]} min`;
+  };
+  p.querySelectorAll('.wk .d').forEach(d => d.onclick = () => { dayLine(+d.dataset.dow); navigator.vibrate?.(6); });
+  dayLine(first.dow);
+  $('#chip').onclick = () => showCategory(-1, { revisit: true });
+  $('#save').onclick = () => openSheet();
+}
+function openSheet() {
+  const bg = document.createElement('div'); bg.className = 'sheet-bg';
+  const sh = document.createElement('div'); sh.className = 'sheet';
+  sh.innerHTML = `<h2>SAVE YOUR PLAN</h2><p class="sub" style="margin:0">So it's here tomorrow.</p>
+    <input class="field" value="Riley" aria-label="First name"><input class="field" value="riley@school.edu" aria-label="Email"><input class="field" type="password" value="example-pass" aria-label="Password">
+    <button class="btn" type="button" id="create">Create account</button>`;
+  phone.append(bg, sh); hideStory();
+  sh.querySelector('#create').onclick = () => {
+    const out = isReduced() ? 0 : 220;
+    sh.animate([{ transform: 'none' }, { transform: 'translateY(100%)' }], { duration: out, easing: 'ease-in', fill: 'forwards' });
+    bg.animate([{ opacity: 1 }, { opacity: 0 }], { duration: out, fill: 'forwards' });
+    setTimeout(() => { bg.remove(); sh.remove(); go('program'); }, out);
+  };
+  bg.onclick = () => { bg.remove(); sh.remove(); };
+}
+function buildProgram(p) {
+  const sh = shape(), cat = catOf(S.sport || 'Basketball'), lv = level(), [min] = DAY1[cat][lv];
+  p.classList.add('prog-tab');
+  const first = (() => { for (let o = 0; o < 7; o++) { const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + o); if (S.days.includes(d.getDay())) return o === 0 ? 'Today' : o === 1 ? 'Tomorrow' : iso(d); } return 'Today'; })();
+  p.innerHTML = `<div class="head"><div class="h">PROGRAM</div><p style="margin:6px 0 0;color:#55617A;font-size:14px">${S.sport || 'Basketball'} · ${sh.total} weeks · ${S.days.length} days a week</p></div>
+    <div class="phases">${PHASE.map(([k, a, label], i) => `<div class="ph ${k}"><b>${label}</b><small>${a} · Wk ${i * sh.p + 1}–${(i + 1) * sh.p}</small></div>`).join('')}</div>
+    <div class="today"><span>▲ YOU ARE HERE</span></div>
+    <div class="next ${isReduced() ? '' : 'pulse'}"><div class="k">Up next · ${first}</div><h3>LOWER BODY A · FOUNDATION</h3><p>Day 1 · About ${min} min · Tap to see the workout</p></div>
+    <div class="weeks"><div><b>Week 1</b><span>${S.days.length} sessions · GPP</span></div><div><b>Week 2</b><span>${S.days.length} sessions · GPP</span></div><div><b>Week 3</b><span>${S.days.length} sessions · GPP</span></div></div>
+    <div class="tabs"><span>Today</span><span class="on">Program</span><span>History</span><span>Profile</span></div>`;
+}
+
+// ── Captions + controls ─────────────────────────────────────
+const CAP = {
+  promise: 'Promise. Sport icons drift slowly behind the headline.',
+  sport: 'Sport. A Popular row, then all sports. Tapping plays the icon once.',
+  season: 'Season. Switch between the three variations in the controls.',
+  days: 'Training days, centered. Each day fills like a gauge.',
+  about: 'About you as a player card: each answer stamps onto the card.',
+  age: 'About you, page 1 of 2: age group as broadcast lower-thirds.',
+  years: 'About you, page 2 of 2. Answering starts the reveal.',
+  reveal: 'The reveal: the category beat, then the plan.',
+  plan: 'The plan (two-page ending).',
+  program: 'Program tab, first visit. Day 1 is up next and nothing auto-starts.',
+  signin: 'Sign in with a wordmark instead of the lightning bolt.' };
+function caption(n) { document.getElementById('caption').textContent = CAP[n] || ''; }
+
+document.querySelectorAll('.seg').forEach(seg => {
+  const k = seg.dataset.k;
+  const sync = () => seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === S[k]));
+  seg.querySelectorAll('button').forEach(b => b.onclick = () => {
+    S[k] = b.dataset.v; sync();
+    phone.classList.toggle('reduced', isReduced());
+    const n = current?.dataset.name;
+    if (k === 'about' && (n === 'about' || n === 'age' || n === 'years')) { go(S.about === 'pages' ? 'age' : 'about', 1); return; }
+    if (n && SCREENS[n] && n !== 'save') { SCREENS[n](0); }
+  });
+  sync();
+});
+const JUMPS = [['promise','Promise'],['sport','Sport'],['season','Season'],['days:Soccer','Days · Soccer'],['days:Basketball','Days · Basketball'],['days:Swimming','Days · Swimming'],['about','About you'],['reveal','Reveal'],['program','Program tab'],['signin','Sign in']];
+document.getElementById('jump').innerHTML = JUMPS.map(([k, l]) => `<button type="button" data-j="${k}">${l}</button>`).join('');
+document.querySelectorAll('[data-j]').forEach(b => b.onclick = () => {
+  const [j0, sp] = b.dataset.j.split(':');
+  if (sp) { S.sport = sp; S.days = [1, 3, 5]; hist = []; go('days'); return; }
+  if (!S.sport && !['promise','sport','signin'].includes(b.dataset.j)) S.sport = 'Basketball';
+  if (b.dataset.j === 'reveal') { S.age = S.age || '14-17'; S.years = S.years || 'new'; }
+  const j = b.dataset.j === 'about' && S.about === 'pages' ? 'age' : b.dataset.j;
+  hist = []; go(j);
+});
+document.getElementById('restart').onclick = () => {
+  Object.assign(S, { sport: null, weeks: 12, noSeason: false, days: [1,3,5], age: null, years: null, calMonth: null });
+  hist = []; bdSport = null; bd.innerHTML = ''; go('promise');
+};
+
+// Fit the phone to narrow screens.
+function fit() {
+  const box = document.getElementById('scaleBox'), avail = Math.min(390, box.parentElement.clientWidth);
+  const k = avail / 390; phone.style.transform = `scale(${k})`; box.style.height = 844 * k + 'px'; box.style.width = 390 * k + 'px';
+}
+addEventListener('resize', fit); fit();
+go('promise');
+</script>

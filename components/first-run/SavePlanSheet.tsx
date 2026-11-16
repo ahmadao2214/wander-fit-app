@@ -61,7 +61,22 @@ function ErrorText({ children, testID }: { children?: string; testID?: string })
  * step, after the reveal. No skip, no role question. Closing the sheet keeps
  * the draft, so nothing is lost.
  */
-export function SavePlanSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+/** The Program tab's first-visit params after the plan is saved. */
+export function programWelcomeParams(kept: boolean, nextLabel?: string): Record<string, string> {
+  if (kept) return { welcome: '1', kept: '1' }
+  return nextLabel ? { welcome: '1', next: nextLabel } : { welcome: '1' }
+}
+
+export function SavePlanSheet({
+  open,
+  onOpenChange,
+  nextLabel,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  /** When Day 1 is ("Tomorrow"), for the Program tab's Up next card. */
+  nextLabel?: string
+}) {
   const router = useRouter()
   const { isLoaded, signUp, setActive } = useSignUp()
   const { startSSOFlow } = useSSO()
@@ -85,7 +100,8 @@ export function SavePlanSheet({ open, onOpenChange }: { open: boolean; onOpenCha
     setStep('saving')
     try {
       const { keptExistingProgram } = await savePlan(account)
-      router.replace({ pathname: '/ready', params: keptExistingProgram ? { kept: '1' } : {} })
+      // Land on the Program tab. Nothing starts by itself; Day 1 waits there.
+      router.replace({ pathname: '/(athlete)/program', params: programWelcomeParams(keptExistingProgram, nextLabel) })
       await clear()
     } catch (error) {
       console.error('Saving the plan failed:', error)

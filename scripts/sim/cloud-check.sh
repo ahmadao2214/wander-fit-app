@@ -4,7 +4,7 @@
 # is always stopped, even after a failure. See scripts/sim/README.md.
 #
 # Usage: scripts/sim/cloud-check.sh [--port 8081] [--name "Sign-in to Today self-check"] [--journey path.sh]
-#        scripts/sim/cloud-check.sh --first-run   # the First Run to Day 1, saved to a new +clerk_test account
+#        scripts/sim/cloud-check.sh --first-run   # the First Run to the Program tab, saved to a new +clerk_test account
 set -uo pipefail
 
 PORT=8081

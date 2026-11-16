@@ -48,7 +48,7 @@ const mockPush = jest.fn()
 jest.mock('expo-router', () => ({ useRouter: () => ({ replace: mockReplace, push: mockPush }) }))
 
 // eslint-disable-next-line import/first
-import { SavePlanSheet } from '../../components/first-run/SavePlanSheet'
+import { SavePlanSheet, programWelcomeParams } from '../../components/first-run/SavePlanSheet'
 
 const answers = {
   sportId: 'basketball',
@@ -59,7 +59,7 @@ const answers = {
 }
 
 async function show() {
-  render(<SavePlanSheet open onOpenChange={jest.fn()} />, { wrapper })
+  render(<SavePlanSheet open onOpenChange={jest.fn()} nextLabel="Tomorrow" />, { wrapper })
   await act(async () => {})
 }
 
@@ -117,16 +117,16 @@ describe('Save your plan', () => {
         firstLaunchAt: 1000,
       })
     )
-    expect(mockReplace).toHaveBeenCalledWith({ pathname: '/ready', params: {} })
+    expect(mockReplace).toHaveBeenCalledWith({ pathname: '/(athlete)/program', params: { welcome: '1', next: 'Tomorrow' } })
     expect(testDraft.current.current()).toBeNull()
     expect((await testDraft.reopen()).answers).toEqual({})
   })
 
-  it('tells the ready screen when an existing program was kept', async () => {
+  it('tells the Program tab when an existing program was kept', async () => {
     mockCompleteIntake.mockResolvedValueOnce({ keptExistingProgram: true })
     await show()
     await signUpWithEmail()
-    expect(mockReplace).toHaveBeenCalledWith({ pathname: '/ready', params: { kept: '1' } })
+    expect(mockReplace).toHaveBeenCalledWith({ pathname: '/(athlete)/program', params: { welcome: '1', kept: '1' } })
   })
 
   it('keeps the draft and says so when saving fails', async () => {
@@ -215,5 +215,13 @@ describe('Save your plan', () => {
     await press('save-plan-create')
     await press('save-plan-sign-in')
     expect(mockPush).toHaveBeenCalledWith('/(auth)/sign-in')
+  })
+})
+
+describe('programWelcomeParams', () => {
+  it('marks the first visit, with Day 1’s day or the kept-program note', () => {
+    expect(programWelcomeParams(false, 'Tomorrow')).toEqual({ welcome: '1', next: 'Tomorrow' })
+    expect(programWelcomeParams(false)).toEqual({ welcome: '1' })
+    expect(programWelcomeParams(true, 'Tomorrow')).toEqual({ welcome: '1', kept: '1' })
   })
 })

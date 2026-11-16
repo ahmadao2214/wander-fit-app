@@ -7,7 +7,6 @@ import * as WebBrowser from 'expo-web-browser'
 import * as AuthSession from 'expo-auth-session'
 import { PublicOnlyRoute } from '../../components/AuthGuard'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Zap } from '@tamagui/lucide-icons'
 import { GoogleIcon } from '../../components/GoogleIcon'
 import { FieldLabel } from '../../components/FieldLabel'
 
@@ -196,13 +195,19 @@ export default function SignInPage() {
             >
               {/* Logo/Brand */}
               <YStack items="center" gap="$4">
-                <YStack 
-                  bg="$brand2" 
-                  p="$4" 
-                  rounded="$10"
+                {/* A text wordmark until there's a final logo. */}
+                <Text
+                  fontFamily="$heading"
+                  fontSize={56}
+                  lineHeight={60}
+                  letterSpacing={2}
+                  color="$color12"
+                  accessibilityRole="header"
+                  accessibilityLabel="Wander Fit"
+                  testID="sign-in-wordmark"
                 >
-                  <Zap size={40} color="$primaryText" />
-                </YStack>
+                  WANDER<Text fontFamily="$heading" fontSize={56} lineHeight={60} letterSpacing={2} color="$primaryText">FIT</Text>
+                </Text>
                 <DisplayHeading>WELCOME BACK</DisplayHeading>
                 <Subtitle>
                   Sign in to continue your training journey

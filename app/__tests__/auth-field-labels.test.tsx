@@ -61,4 +61,9 @@ describe('Auth field labels', () => {
     expectLabeledField(screen, 'sign-in-password', 'Password')
   })
 
+  it('sign-in shows the Wander Fit wordmark instead of the lightning bolt', () => {
+    const screen = render(<SignInScreen />, { wrapper: AllTheProviders })
+    expect(screen.getByTestId('sign-in-wordmark').props.accessibilityLabel).toBe('Wander Fit')
+  })
+
 })

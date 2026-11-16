@@ -30,6 +30,6 @@ Checked with Maestro 2.12.1 and Chrome 157 on the old activation flow (since rep
 
 After every tap, long press, or swipe, Maestro waits for the page to settle. On web, `CdpWebDriver.waitForAppToSettle` passes `null` as the timeout, so `waitToSettleTimeoutMs` on the command is dropped (it shows in the log and has no effect). With no timeout, the wait fetches the hierarchy up to 10 times, 200 ms apart, until two fetches match. A spinner keeps the hierarchy changing. After the commitment tap, the wait ran 7 seconds, and after the long press it ran 8. The app had already moved from "You're Committed!" to Today before the next command ran.
 
-Assert screens that stay up, not a state that lasts only while a request is in flight. The First Run journey asserts `You're set.` and the warm-up, which stay up, and runs `persona inspect`.
+Assert screens that stay up, not a state that lasts only while a request is in flight. The First Run journey asserts the Program tab's Up next card, which stays up, and runs `persona inspect`.
 
 A screen that sits under a fixed bottom bar can still put its target below the 625px viewport. Tapping it fails with `move target out of bounds`. Swipe the inner list first, as on the First Run's about-you screen.

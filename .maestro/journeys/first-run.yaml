@@ -1,70 +1,97 @@
 url: ${VERIFY_URL}
 ---
-# The First Run, signed out: five questions, the reveal, Save your plan with
-# a new account, then Start Day 1 into the warm-up. See
+# The First Run (v2), signed out: four question screens, the two-part reveal
+# (Category, then Plan), Save my plan with a new account, then the Program
+# tab with Day 1 up next. Nothing starts by itself. See
 # .cursor/skills/verify-wander-fit/features/first-run.md.
 - runFlow: ../subflows/_evidence-start.yaml
 - extendedWaitUntil:
-    visible: "Let's build your plan for this season."
+    visible: "LET'S BUILD YOUR PLAN FOR THIS SEASON."
     timeout: 90000
 - assertNotVisible: "WELCOME BACK"
 - takeScreenshot: 01-promise
 - tapOn:
     id: first-run-start
 # Maestro web reports a pressable's accessibility label as its id, so labeled
-# tiles and rows are matched by that label. Inputs keep their testID
-# (see .maestro/flow-layout.md).
+# tiles and rows are matched by that label. Inputs and buttons keep their
+# testID (see .maestro/flow-layout.md).
 - extendedWaitUntil:
-    visible:
-      id: "Basketball"
+    visible: "PICK YOUR SPORT"
     timeout: 30000
+- assertVisible: "POPULAR"
 - tapOn:
     id: "Basketball"
-- extendedWaitUntil:
-    visible: "Basketball · Power"
-    timeout: 10000
 - takeScreenshot: 02-sport
 - tapOn:
     id: first-run-continue
-# No set season keeps the plan at the 12-week default whatever the date.
+# No set season keeps the plan at the 12-week default whatever the date. The
+# calendar pushes the row below the 625px viewport, so swipe the page first.
 - extendedWaitUntil:
-    visible: "No set season"
+    visible: "WHEN'S YOUR FIRST GAME?"
     timeout: 30000
+- swipe:
+    start: 50%, 80%
+    end: 50%, 20%
+    duration: 800
 - tapOn: "No set season"
 - takeScreenshot: 03-season
 - tapOn:
     id: first-run-continue
 # Mon, Wed and Fri come preselected.
 - extendedWaitUntil:
-    visible: "3 days a week"
+    visible: "3 SESSIONS A WEEK"
     timeout: 30000
+- assertVisible: "Mon / Wed / Fri"
 - takeScreenshot: 04-days
 - tapOn:
     id: first-run-continue
+# About you is a player card: one labeled question at a time, and the second
+# answer starts the reveal with no Continue button.
 - extendedWaitUntil:
-    visible: "Performance"
+    visible: "AGE GROUP"
     timeout: 30000
 - tapOn: "Performance"
-# The years choices start below the 625px web viewport, under the fixed
-# button. A touch swipe scrolls the inner list (see .maestro/flow-layout.md).
+- extendedWaitUntil:
+    visible: "YEARS TRAINING FOR YOUR SPORT"
+    timeout: 10000
+- tapOn: "New to training"
+- takeScreenshot: 05-about
+# The reveal opens on the category and moves on to the plan after 3 s. On web,
+# Maestro's settle wait after the tap can outlast that hold, so wait for the
+# plan, then go back to the category through the POWER chip, which is
+# deterministic and covers the way back.
+- extendedWaitUntil:
+    visible: "BASKETBALL PLAN"
+    timeout: 60000
+- tapOn:
+    id: "Power. See your category again"
+- extendedWaitUntil:
+    visible: "BASKETBALL TRAINS FOR"
+    timeout: 10000
+- assertVisible: "Tap to go back to your plan"
+- takeScreenshot: 06-category
+- tapOn: "Tap to go back to your plan"
+# The plan, from the real GPP week 1 templates for Basketball Novice.
+- extendedWaitUntil:
+    visible: "BASKETBALL PLAN"
+    timeout: 30000
+- assertVisible: "NO SET SEASON · 12-WEEK PLAN"
+- assertVisible: "Build the base"
+- extendedWaitUntil:
+    visible: "Day 1 · .* · Lower Body A · About \\d+ min"
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: first-run-save
+    timeout: 10000
+- assertVisible: "36"
+- takeScreenshot: 07-plan
+# The plan runs past the 625px viewport, leaving Save half below the fold
+# of its ScrollView; swipe it into view, as on the season screen.
 - swipe:
     start: 50%, 80%
     end: 50%, 20%
     duration: 800
-- extendedWaitUntil:
-    visible: "New to training"
-    timeout: 10000
-- tapOn: "New to training"
-- takeScreenshot: 05-about
-- tapOn:
-    id: first-run-see-plan
-# The reveal reads the real GPP week 1 day 1 template for Basketball Novice.
-- extendedWaitUntil:
-    visible: "Lower Body A - Foundation"
-    timeout: 60000
-- assertVisible: "36 sessions over 12 weeks"
-- assertVisible: "Basketball trains for Power."
-- takeScreenshot: 06-reveal
 - tapOn:
     id: first-run-save
 - extendedWaitUntil:
@@ -72,7 +99,7 @@ url: ${VERIFY_URL}
       id: save-plan-email
     timeout: 30000
 - assertNotVisible: "Skip"
-- takeScreenshot: 07-save-plan
+- takeScreenshot: 08-save-plan
 - tapOn:
     id: save-plan-email
 - extendedWaitUntil:
@@ -97,14 +124,11 @@ url: ${VERIFY_URL}
 - tapOn:
     id: save-plan-code
 - inputText: "424242"
+# The save lands on the Program tab with Day 1 up next. Nothing auto-starts.
 - extendedWaitUntil:
-    visible: "You're set."
+    visible: "Up next · .*"
     timeout: 90000
-- takeScreenshot: 08-ready
-- tapOn:
-    id: ready-start
-- extendedWaitUntil:
-    visible: "WARMUP"
-    timeout: 90000
-- takeScreenshot: 09-warmup
+- assertVisible: "Build the base"
+- assertNotVisible: "WARMUP"
+- takeScreenshot: 09-program
 - runFlow: ../subflows/_evidence-stop.yaml
