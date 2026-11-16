@@ -55,6 +55,9 @@ interface ExerciseQueueProps {
   onReorder: (fromIndex: number, toIndex: number) => void
   /** Training phase: colors the current exercise and the edge tab */
   trainingPhase?: Phase
+  /** Open state, when a control outside the queue (the header) opens it */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 const DRAWER_WIDTH = Dimensions.get('window').width * 0.85
@@ -79,9 +82,18 @@ export function ExerciseQueue({
   onExerciseSelect,
   onReorder,
   trainingPhase,
+  open: openProp,
+  onOpenChange,
 }: ExerciseQueueProps) {
   const phase = useMemo(() => phaseTokens(trainingPhase), [trainingPhase])
-  const [open, setOpen] = useState(false)
+  const [openState, setOpenState] = useState(false)
+  const open = openProp ?? openState
+  const onOpenChangeRef = useRef(onOpenChange)
+  onOpenChangeRef.current = onOpenChange
+  const setOpen = useCallback((next: boolean) => {
+    if (onOpenChangeRef.current) onOpenChangeRef.current(next)
+    else setOpenState(next)
+  }, [])
   const slideAnim = useRef(new Animated.Value(DRAWER_WIDTH)).current
   const insets = useSafeAreaInsets()
 

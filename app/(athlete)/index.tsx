@@ -52,15 +52,17 @@ function PhaseProgress({
           Week {Math.min(week, segments.length)} of {segments.length}
         </Supporting>
       </XStack>
-      <XStack gap="$1.5" accessibilityLabel={`Week ${week} of ${segments.length}`}>
+      {/* Done and current weeks are solid; the current one is taller, so it reads
+          by shape instead of a faded fill that disappeared in dark mode */}
+      <XStack gap="$1.5" items="center" accessibilityLabel={`Week ${week} of ${segments.length}`}>
         {segments.map((segment, index) => (
           <YStack
             key={index}
+            testID={`week-segment-${segment}`}
             flex={1}
-            height={6}
+            height={segment === 'current' ? 10 : 6}
             rounded="$10"
             bg={segment === 'upcoming' ? '$color4' : phaseTokens(phase).fill}
-            opacity={segment === 'current' ? 0.45 : 1}
           />
         ))}
       </XStack>
@@ -379,15 +381,11 @@ export default function AthleteDashboard() {
             borderColor="$borderColor"
             p="$5"
             rounded="$5"
-            elevation={isCompleted ? 0 : 3}
-            shadowColor="$primary"
-            shadowOpacity={isCompleted ? 0 : 0.1}
-            shadowRadius={20}
           >
             <YStack gap="$4">
               <YStack gap="$1.5">
                 <XStack justify="space-between" items="center">
-                  {/* $color11: $color10 is 4.4:1 on the card's $brand1 tint, under AA */}
+                  {/* $color11 for a little more weight on the card's $brand1 tint */}
                   <Supporting color="$color11" fontWeight="600">
                     {pausedElsewhere ? 'Paused workout' : "Today's workout"}
                   </Supporting>

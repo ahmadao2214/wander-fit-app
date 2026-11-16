@@ -58,8 +58,13 @@ jest.mock('react-native-safe-area-context', () => ({
 }))
 
 // The queue drawer pulls in Reanimated; it isn't what this test covers
+// It records its props so the header button can be checked
+let mockQueueProps: { open?: boolean } = {}
 jest.mock('../../components/workout/ExerciseQueue', () => ({
-  ExerciseQueue: () => null,
+  ExerciseQueue: (props: { open?: boolean }) => {
+    mockQueueProps = props
+    return null
+  },
 }))
 
 jest.mock('../../components/workout/ConfettiEffect', () => ({
@@ -176,4 +181,25 @@ describe('Workout execution after reordering', () => {
     expect(getAllByText(/Romanian Deadlift/).length).toBeGreaterThan(0)
     expect(getAllByText(/^Set \d( · Next)?$/)).toHaveLength(3)
   })
+
+  it('opens the exercise list from the progress dots in the header', () => {
+    const { getByTestId, getByLabelText } = renderSession({
+      _id: 'session_1',
+      startedAt: Date.now(),
+      status: 'in_progress',
+      template,
+      exercises: [
+        { exerciseId: 'cat_cow', completed: true, skipped: true, sets: [{ completed: true, skipped: true }] },
+        { exerciseId: 'goblet_squat', completed: false, skipped: false, sets: freshSets(6) },
+        { exerciseId: 'romanian_deadlift', completed: false, skipped: false, sets: freshSets(3) },
+      ],
+    })
+
+    expect(mockQueueProps.open).toBe(false)
+    const dots = getByTestId('exercise-progress')
+    expect(getByLabelText('Exercise 1 of 2, 0 done')).toBe(dots)
+    fireEvent.press(dots)
+    expect(mockQueueProps.open).toBe(true)
+  })
+
 })

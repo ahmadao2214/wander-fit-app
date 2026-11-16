@@ -22,6 +22,13 @@ describe('action color', () => {
       expect(contrastRatio(v('primaryText'), v('surface'))).toBeGreaterThanOrEqual(4.5)
     })
 
+    it(`${mode}: a $brand1 tinted card differs from the page and keeps its text readable`, () => {
+      expect(v('brand1')).not.toBe(v('background'))
+      for (const text of ['color10', 'color11', 'color12', 'primaryText']) {
+        expect({ text, ok: contrastRatio(v(text), v('brand1')) >= 4.5 }).toEqual({ text, ok: true })
+      }
+    })
+
     it(`${mode}: the button fill stands out from the background (3:1)`, () => {
       expect(contrastRatio(v('primary'), v('background'))).toBeGreaterThanOrEqual(3)
     })
