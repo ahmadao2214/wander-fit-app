@@ -361,7 +361,13 @@ export function ExerciseQueue({
                         {completedCount}/{exercises.length} done
                       </Supporting>
                     </YStack>
-                    <Pressable onPress={() => setOpen(false)} hitSlop={8}>
+                    <Pressable
+                      onPress={() => setOpen(false)}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel="Close exercise list"
+                      testID="exercise-queue-close"
+                    >
                       <ChevronRight size={28} color="$color" />
                     </Pressable>
                   </XStack>

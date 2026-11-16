@@ -21,6 +21,13 @@ appId: com.offseason.asrafit
     id: execute-exercise-name
 - copyTextFrom:
     id: execute-exercise-name
+# The progress dots open the exercise list, and its close button shuts it
+- tapOn:
+    id: exercise-progress
+- assertVisible: "Hold to reorder upcoming"
+- tapOn:
+    id: exercise-queue-close
+- assertNotVisible: "Hold to reorder upcoming"
 - tapOn:
     id: set-0
 - assertVisible: "Set 1, .*, done"
