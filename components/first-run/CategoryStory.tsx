@@ -26,9 +26,10 @@ const BEBAS_CAPS_EM: Record<string, number> = {
   A: 0.401, B: 0.404, C: 0.383, D: 0.406, E: 0.363, F: 0.344, G: 0.391, H: 0.42, I: 0.192,
   J: 0.265, K: 0.414, L: 0.344, M: 0.538, N: 0.427, O: 0.4, P: 0.386, Q: 0.4, R: 0.403,
   S: 0.372, T: 0.364, U: 0.402, V: 0.382, W: 0.557, X: 0.406, Y: 0.394, Z: 0.362,
+  ' ': 0.16, '(': 0.276, ')': 0.276, '/': 0.389,
 }
 
-/** How wide `text` sets in Bebas Neue, in em. Anything but A–Z counts as wide as W. */
+/** How wide `text` sets in Bebas Neue, in em. Anything not in the table counts as wide as W. */
 export function displayWidthEm(text: string): number {
   return [...text.toUpperCase()].reduce((sum, ch) => sum + (BEBAS_CAPS_EM[ch] ?? 0.557), 0)
 }

@@ -29,14 +29,30 @@ describe('categoryLayout', () => {
 })
 
 describe('bandTitleSize', () => {
-  it('keeps 50pt for most sports and steps down so a long name fits two lines', () => {
-    const { bandTitleSize } = jest.requireActual('../PlanView')
-    const { displayWidthEm } = jest.requireActual('../CategoryStory')
-    expect([bandTitleSize('Basketball', 230), bandTitleSize('Swimming', 230)]).toEqual([50, 50])
-    const track = bandTitleSize('Track (Sprints/Jumps)', 230)
-    expect(track).toBeLessThan(50)
-    // Its longest word fits one line.
-    expect(displayWidthEm('(SPRINTS/JUMPS)') * track).toBeLessThanOrEqual(230)
+  const { bandTitleSize, wrapLines } = jest.requireActual('../PlanView')
+  const { displayWidthEm } = jest.requireActual('../CategoryStory')
+
+  it('keeps 50pt for most sports', () => {
+    expect([bandTitleSize('Basketball', 230), bandTitleSize('Swimming', 230), bandTitleSize('Golf', 203)]).toEqual([50, 50, 50])
+  })
+
+  it('steps a long name down until it wraps to two lines that each fit, on web too', () => {
+    const bad = [230, 203].flatMap((w) =>
+      ['Track (Sprints/Jumps)', 'Cross Country', 'Ultimate Frisbee', 'Field Hockey'].filter((name) => {
+        const size = bandTitleSize(name, w)
+        const lines = wrapLines(`${name} PLAN`.toUpperCase(), size, w)
+        return lines.length > 2 || lines.some((l: string) => displayWidthEm(l) * size > w)
+      })
+    )
+    expect(bad).toEqual([])
+    expect(bandTitleSize('Track (Sprints/Jumps)', 230)).toBeLessThan(50)
+  })
+})
+
+describe('the band', () => {
+  it('holds its text stack at the largest text scale it follows', () => {
+    const { BAND_BELOW_INSET, bandStackHeight } = jest.requireActual('../PlanView')
+    expect([1, 1.2, 3].filter((scale) => bandStackHeight(scale) > BAND_BELOW_INSET)).toEqual([])
   })
 })
 
@@ -47,6 +63,13 @@ describe('bandIconFrame', () => {
     const swim = bandIconFrame('Swimming', 62)
     expect(swim.right).toBeGreaterThanOrEqual(0)
     expect(['Weightlifting', 'Tennis', 'Track (Sprints/Jumps)'].every((s) => bandIconFrame(s, 0).right >= 0)).toBe(true)
+  })
+})
+
+describe('spokenWeeks', () => {
+  it('says the range, or the single week', () => {
+    const { spokenWeeks } = jest.requireActual('../StoryPhaseBar')
+    expect([spokenWeeks(1, 4), spokenWeeks(2, 1)]).toEqual(['weeks 5 to 8', 'week 3'])
   })
 })
 
@@ -77,5 +100,12 @@ describe('weekTagSize', () => {
       return displayWidthEm('RECOVER') * weekTagSize(week(tags), w) > cell
     })
     expect(overflow).toEqual([])
+  })
+})
+
+describe('captionMinHeight', () => {
+  it('reserves a fourth line on a phone narrower than 360pt', () => {
+    const { captionMinHeight } = jest.requireActual('../PlanView')
+    expect([captionMinHeight(320), captionMinHeight(375), captionMinHeight(402)]).toEqual([80, 60, 60])
   })
 })

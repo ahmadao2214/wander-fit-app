@@ -23,26 +23,67 @@ import { StoryPhaseBar } from './StoryPhaseBar'
 import { PAGE_EASE } from './intakeMotion'
 
 /** The band's height below the safe area. The Program tab's header matches it. */
-export const BAND_BELOW_INSET = 182
+export const BAND_BELOW_INSET = 190
 
 export function bandHeight(insetTop: number): number {
   return insetTop + BAND_BELOW_INSET
+}
+
+/**
+ * The band is a fixed height, so its small text (the chip and the countdown)
+ * follows Dynamic Type only this far.
+ */
+const BAND_TEXT_SCALE = 1.2
+
+/** The band's text stack below the safe area, top to bottom, in points. */
+export const BAND_STACK = {
+  top: 28,
+  chipPadY: 6,
+  smallText: 12,
+  gap: 6,
+  /** Two lines of the 50pt title, plus its 6pt top padding. */
+  titleBox: 2 * Math.round(50 * 0.92) + 6,
+  countdownGap: 8,
+}
+
+/**
+ * How tall the stack is at a text scale. Plus Jakarta Sans sets a line at
+ * about 1.26 em, and only the chip and countdown follow Dynamic Type.
+ */
+export function bandStackHeight(fontScale: number): number {
+  const small = BAND_STACK.smallText * 1.26 * Math.min(fontScale, BAND_TEXT_SCALE)
+  const b = BAND_STACK
+  return b.top + (small + 2 * b.chipPadY) + b.gap + b.titleBox + b.countdownGap + small
 }
 
 /** The band title's largest size; its box always holds two lines at this size. */
 const BAND_TITLE_MAX = 50
 const bandLine = (size: number) => Math.round(size * 0.92)
 
+/** The lines `text` wraps to at `size` in `maxWidth`, breaking at spaces as Text does. */
+export function wrapLines(text: string, size: number, maxWidth: number): string[] {
+  const lines: string[] = []
+  for (const word of text.split(' ')) {
+    const last = lines[lines.length - 1]
+    if (last !== undefined && displayWidthEm(`${last} ${word}`) * size * 1.04 <= maxWidth) lines[lines.length - 1] = `${last} ${word}`
+    else lines.push(word)
+  }
+  return lines
+}
+
 /**
  * "BASKETBALL PLAN" at 50pt. A long name like "TRACK (SPRINTS/JUMPS) PLAN"
- * steps down so its longest word fits one line and the whole title fits two,
- * measured with Bebas Neue's own letter widths.
+ * steps down until it wraps to two lines with every line fitting, measured
+ * with Bebas Neue's own letter widths. (Web has no adjustsFontSizeToFit, so
+ * this has to be right on its own.)
  */
 export function bandTitleSize(sportName: string, maxWidth = 230): number {
   const title = `${sportName} PLAN`.toUpperCase()
-  const longest = Math.max(...title.split(' ').map(displayWidthEm))
-  const fit = Math.min(maxWidth / (longest * 1.06), (2 * maxWidth * 0.85) / (displayWidthEm(title) * 1.06))
-  return Math.floor(Math.min(BAND_TITLE_MAX, fit))
+  for (let size = BAND_TITLE_MAX; size > 16; size--) {
+    const lines = wrapLines(title, size, maxWidth)
+    if (lines.length <= 2 && lines.every((l) => displayWidthEm(l) * size * 1.04 <= maxWidth)) return size
+  }
+  return 16
 }
 
 export interface Rect {
@@ -60,6 +101,15 @@ export function weekTagSize(week: readonly { tag: string | null }[], screenWidth
   const cell = (Math.min(screenWidth, 560) - 48 - 6 * 4) / 7 - 6
   const widest = Math.max(displayWidthEm('LOWER'), ...week.map((d) => (d.tag ? displayWidthEm(d.tag) : 0)))
   return Math.floor(Math.min(19, cell / (widest * 1.06)))
+}
+
+/**
+ * Room for the longest phase caption, so tapping a phase doesn't move the
+ * strip below it at the default text size: three lines, or four on a phone
+ * narrower than 360pt.
+ */
+export function captionMinHeight(screenWidth: number): number {
+  return screenWidth < 360 ? 80 : 60
 }
 
 /** Icons that are a round ball still read as a ball when the band's edge cuts them. */
@@ -198,7 +248,7 @@ export function PlanView({
             >
               <BandIcon name={sportName} play={animate} size={icon.size} />
             </View>
-            <Animated.View style={[{ paddingTop: insets.top + 28, paddingHorizontal: 24 }, textStyle]}>
+            <Animated.View style={[{ paddingTop: insets.top + BAND_STACK.top, paddingHorizontal: 24 }, textStyle]}>
               <Pressable
                 onPress={onCategory}
                 accessibilityRole="button"
@@ -209,17 +259,17 @@ export function PlanView({
                   alignSelf: 'flex-start',
                   backgroundColor: 'rgba(255,255,255,0.18)',
                   borderRadius: 999,
-                  paddingVertical: 6,
+                  paddingVertical: BAND_STACK.chipPadY,
                   paddingHorizontal: 12,
                 }}
               >
-                <RNText style={{ fontFamily: BODY_BOLD, fontSize: 12, letterSpacing: 1.6, color: '#FFFFFF' }}>
+                <RNText style={{ fontFamily: BODY_BOLD, fontSize: BAND_STACK.smallText, letterSpacing: 1.6, color: '#FFFFFF' }} maxFontSizeMultiplier={BAND_TEXT_SCALE}>
                   {`${category.name.toUpperCase()} ›`}
                 </RNText>
               </Pressable>
               {/* Always two lines tall, so the countdown sits on the same row
                   for every sport, below where an inside icon ends. */}
-              <View style={{ height: 2 * bandLine(BAND_TITLE_MAX) + 6, marginTop: 6 }}>
+              <View style={{ height: BAND_STACK.titleBox, marginTop: BAND_STACK.gap }}>
                 <RNText
                   style={{
                     fontFamily: DISPLAY,
@@ -238,8 +288,12 @@ export function PlanView({
                   {`${sportName.toUpperCase()} PLAN`}
                 </RNText>
               </View>
+              {/* One line, shrinking to fit, so it never wraps out of the band. */}
               <RNText
-                style={{ fontFamily: BODY_BOLD, fontSize: 12, letterSpacing: 1.4, color: '#FFFFFF', opacity: 0.9, marginTop: 8 }}
+                style={{ fontFamily: BODY_BOLD, fontSize: BAND_STACK.smallText, letterSpacing: 1.4, color: '#FFFFFF', opacity: 0.9, marginTop: BAND_STACK.countdownGap }}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                maxFontSizeMultiplier={BAND_TEXT_SCALE}
                 testID="reveal-countdown"
               >
                 {countdown.toUpperCase()}
@@ -288,7 +342,7 @@ export function PlanView({
         </View>
         <Beat at={delay + PLAN_BEATS.phases} play={animate}>
           <RNText
-            style={{ fontFamily: BODY, fontSize: 14, lineHeight: 20, color: NIGHT.fg, minHeight: 60, marginTop: 8 }}
+            style={{ fontFamily: BODY, fontSize: 14, lineHeight: 20, color: NIGHT.fg, minHeight: captionMinHeight(W), marginTop: 8 }}
             accessibilityLiveRegion="polite"
             testID="phase-caption"
           >

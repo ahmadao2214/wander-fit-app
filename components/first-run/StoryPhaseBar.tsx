@@ -20,6 +20,13 @@ export function phaseDetail(phase: Phase, index: number, weeksPerPhase: number, 
   return `${phase} · Wk ${from}–${to}`
 }
 
+/** "weeks 1 to 4", or "week 1" for a one-week phase, for a screen reader. */
+export function spokenWeeks(index: number, weeksPerPhase: number): string {
+  const from = index * weeksPerPhase + 1
+  const to = (index + 1) * weeksPerPhase
+  return from === to ? `week ${from}` : `weeks ${from} to ${to}`
+}
+
 function Segment({
   phase,
   label,
@@ -121,7 +128,7 @@ export function StoryPhaseBar({
           phase={p.phase}
           label={p.label}
           detail={phaseDetail(p.phase, i, weeksPerPhase, ranges)}
-          spoken={`${p.label}, ${p.phase}, weeks ${i * weeksPerPhase + 1} to ${(i + 1) * weeksPerPhase}`}
+          spoken={`${p.label}, ${p.phase}, ${spokenWeeks(i, weeksPerPhase)}`}
           selected={selected === p.phase}
           onPress={onSelect ? () => onSelect(p.phase) : undefined}
           draw={draw}
