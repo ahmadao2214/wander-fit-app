@@ -6,11 +6,13 @@ import config from '../../../tamagui.config'
 const STATE = { phase: 'GPP', week: 1, day: 1, weeksPerPhase: 4, sportName: 'Basketball' }
 const NEXT = { _id: 'tpl1', name: 'Lower Body A - Foundation', day: 1, estimatedDurationMinutes: 28 }
 let mockNext: unknown = NEXT
+let mockSession: unknown = null
 jest.mock('convex/react', () => ({
   useQuery: (fn: unknown) => {
     const name = jest.requireActual('convex/server').getFunctionName(fn)
     if (name === 'userPrograms:getCurrentProgramState') return STATE
     if (name === 'scheduleOverrides:getTodayWorkout') return mockNext
+    if (name === 'gppWorkoutSessions:getSessionForTemplate') return mockSession
     return undefined
   },
 }))
@@ -23,12 +25,13 @@ jest.mock('react-native-reanimated', () => jest.requireActual('../../../jest/rea
 jest.mock('../../../hooks/useReducedMotion', () => ({ useReducedMotion: () => true }))
 
 // eslint-disable-next-line import/first
-import { ProgramSeasonHeader, seasonPosition, upNextLabel } from '../ProgramSeasonHeader'
+import { ProgramSeasonHeader, isUpNext, seasonPosition, upNextLabel, welcomeTitleHeight } from '../ProgramSeasonHeader'
 
 const wrapper = ({ children }: { children: React.ReactNode }) => <TamaguiProvider config={config}>{children}</TamaguiProvider>
 
 beforeEach(() => {
   mockNext = NEXT
+  mockSession = null
   mockPush.mockClear()
 })
 
@@ -59,6 +62,29 @@ describe('ProgramSeasonHeader', () => {
     mockNext = null
     render(<ProgramSeasonHeader welcome={false} kept={false} />, { wrapper })
     expect(screen.queryByTestId('program-up-next')).toBeNull()
+  })
+})
+
+describe('Up next and a finished workout', () => {
+  it('leaves out the card when today’s workout is already done', () => {
+    mockSession = { status: 'completed' }
+    render(<ProgramSeasonHeader welcome kept={false} next="Today" />, { wrapper })
+    expect(screen.queryByTestId('program-up-next')).toBeNull()
+  })
+
+  it('shows a workout that is started but not finished, and waits for its status first', () => {
+    expect(isUpNext(NEXT, { status: 'in_progress' })).toBe(true)
+    expect(isUpNext(NEXT, null)).toBe(true)
+    expect(isUpNext(NEXT, undefined)).toBe(false)
+    expect(isUpNext(null, null)).toBe(false)
+  })
+})
+
+describe('welcomeTitleHeight', () => {
+  it('matches the band on a tall phone and sizes to content on a short one, so the calendar stays whole', () => {
+    expect(welcomeTitleHeight(true, 874, 62)).toBeGreaterThan(150)
+    expect(welcomeTitleHeight(true, 667, 20)).toBeUndefined()
+    expect(welcomeTitleHeight(false, 874, 62)).toBeUndefined()
   })
 })
 

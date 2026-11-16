@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Pressable, View } from 'react-native'
+import { Pressable, View, useWindowDimensions } from 'react-native'
 import { useQuery } from 'convex/react'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -27,6 +27,25 @@ export function upNextLabel(next?: string): string {
   return next ? `Up next · ${next}` : 'Up next'
 }
 
+/** The shortest screen with room for the band-tall welcome header and both calendar rows. */
+export const WELCOME_TALL_MIN_HEIGHT = 800
+
+/**
+ * How tall the header's title block is. On the welcome visit it matches the
+ * reveal's band, so the phase bar stays put, but only on a phone tall enough
+ * to keep the calendar below it whole (its week pages don't scroll
+ * vertically). Otherwise it sizes to its content.
+ */
+export function welcomeTitleHeight(welcome: boolean, windowHeight: number, insetTop: number): number | undefined {
+  if (!welcome || windowHeight < WELCOME_TALL_MIN_HEIGHT) return undefined
+  return bandHeight(insetTop) - insetTop - 16
+}
+
+/** Up next is only for a workout still to do: today's pick can be one already finished. */
+export function isUpNext(workout: unknown, session: { status: string } | null | undefined): boolean {
+  return !!workout && session !== undefined && session?.status !== 'completed'
+}
+
 /**
  * The top of the Program tab: the season as the reveal's phase bar, today
  * marked, and an Up next card for the next workout. On the first visit after
@@ -40,12 +59,18 @@ export function ProgramSeasonHeader({ welcome, kept, next }: { welcome: boolean;
   const reduced = useReducedMotion()
   const state = useQuery(api.userPrograms.getCurrentProgramState, {})
   const upNext = useQuery(api.scheduleOverrides.getTodayWorkout, {})
+  const upNextSession = useQuery(
+    api.gppWorkoutSessions.getSessionForTemplate,
+    upNext ? { templateId: upNext._id } : 'skip'
+  )
+  const showUpNext = isUpNext(upNext, upNextSession)
+  const { height: windowHeight } = useWindowDimensions()
   const pulse = useSharedValue(0)
 
   useEffect(() => {
-    if (!welcome || reduced !== false || !upNext) return
+    if (!welcome || reduced !== false || !showUpNext) return
     pulse.value = withDelay(500, withSequence(withTiming(1, { duration: 420 }), withTiming(0, { duration: 980 })))
-  }, [welcome, reduced, upNext, pulse])
+  }, [welcome, reduced, showUpNext, pulse])
   const pulseStyle = useAnimatedStyle(() => ({ opacity: pulse.value }))
 
   if (!state) return null
@@ -55,7 +80,7 @@ export function ProgramSeasonHeader({ welcome, kept, next }: { welcome: boolean;
 
   return (
     <YStack px="$5" testID="program-season-header">
-      <YStack height={welcome ? bandHeight(insets.top) - insets.top - 16 : undefined} justify="flex-end" pb="$1">
+      <YStack height={welcomeTitleHeight(welcome, windowHeight, insets.top)} justify="flex-end" pb="$1">
         <Display accessibilityRole="header">Program</Display>
         <Supporting>
           {[state.sportName, `${totalWeeks} weeks`].filter(Boolean).join(' · ')}
@@ -85,7 +110,7 @@ export function ProgramSeasonHeader({ welcome, kept, next }: { welcome: boolean;
         </Supporting>
       ) : null}
 
-      {upNext ? (
+      {upNext && showUpNext ? (
         <Pressable
           onPress={() => router.push(`/(athlete)/workout/${upNext._id as Id<'program_templates'>}`)}
           accessibilityRole="button"
