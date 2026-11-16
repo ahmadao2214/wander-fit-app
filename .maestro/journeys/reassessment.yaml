@@ -32,10 +32,20 @@ url: ${VERIFY_URL}
 # Web reports the accessibility label as the id
 - tapOn:
     id: "Just right"
+# Continue sits below the 625px web viewport, inside the ScrollView
+# (.maestro/flow-layout.md): a touch swipe brings it up
+- swipe:
+    start: 50%, 80%
+    end: 50%, 20%
+    duration: 800
 - tapOn: "Continue"
 - extendedWaitUntil:
     visible: "Update your maxes"
     timeout: 30000
+- swipe:
+    start: 50%, 80%
+    end: 50%, 20%
+    duration: 800
 - tapOn: "Skip"
 
 # Decision: nothing is chosen for the athlete
@@ -44,8 +54,12 @@ url: ${VERIFY_URL}
     timeout: 30000
 - assertVisible: "Move on to SPP"
 - assertVisible: "Repeat GPP"
-- assertVisible: "Choose an option"
 - takeScreenshot: 03-decision
+- swipe:
+    start: 50%, 80%
+    end: 50%, 20%
+    duration: 800
+- assertVisible: "Choose an option"
 - tapOn:
     id: "Repeat GPP"
 - tapOn: "Start GPP again"
