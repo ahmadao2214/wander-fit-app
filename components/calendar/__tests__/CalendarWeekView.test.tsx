@@ -173,6 +173,32 @@ describe('CalendarWeekView', () => {
     expect(labels).toContain('Move to Tuesday')
   })
 
+  it('still offers a day where a different, rescheduled workout was finished', () => {
+    // Monday's workout was finished on Tuesday, so it shows on both days.
+    // Tuesday's own workout isn't done, so the server would swap with it.
+    const next = days.map((d) => addDays(d, 7))
+    const nextIso = next.map(formatDateISO)
+    const done = { ...workout('Lower Body Foundation', 1), isCompleted: true, completedOnDate: nextIso[2] }
+    const { getByTestId } = render(
+      <CalendarWeekView
+        {...props}
+        currentWeek={next[0]}
+        programStartDate={nextIso[0]}
+        programEndDate={nextIso[6]}
+        calendarData={{
+          [nextIso[1]]: { date: nextIso[1], workouts: [done] },
+          [nextIso[2]]: { date: nextIso[2], workouts: [workout('Mobility Reset', 4), done] },
+          [nextIso[3]]: { date: nextIso[3], workouts: [workout('Upper Push/Pull', 2)] },
+        }}
+        onMoveWorkout={jest.fn()}
+      />,
+      { wrapper: AllTheProviders }
+    )
+    const labels = getByTestId('card-Upper Push/Pull').props.accessibilityActions.map((a: { label: string }) => a.label)
+    expect(labels).toContain('Move to Tuesday')
+    expect(labels).not.toContain('Move to Monday')
+  })
+
   it('dims a day whose workout is done while dragging, since it takes no drop', () => {
     const next = days.map((d) => addDays(d, 7))
     const nextIso = next.map(formatDateISO)

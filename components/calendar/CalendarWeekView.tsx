@@ -33,6 +33,8 @@ export interface CalendarWorkout {
   isToday: boolean
   isInProgress: boolean
   isLocked?: boolean
+  /** ISO date the workout was finished, when done */
+  completedOnDate?: string
 }
 
 export interface CalendarWeekViewProps {
@@ -249,6 +251,15 @@ export function CalendarWeekView({
     }
   }, [currentIndex, weeks, onWeekChange])
 
+  // How many days each workout appears on (twice when finished off-schedule)
+  const daysShown = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const day of Object.values(calendarData)) {
+      for (const w of day.workouts) counts.set(w.templateId, (counts.get(w.templateId) ?? 0) + 1)
+    }
+    return counts
+  }, [calendarData])
+
   const renderWeek = useCallback(({ item: weekStart }: { item: Date }) => {
     const days = getWeekDays(weekStart)
 
@@ -272,9 +283,17 @@ export function CalendarWeekView({
     }
 
     // Days a workout can move to: this week, from today on, and not a day
-    // whose workout is done (the server won't swap with a finished one)
+    // whose scheduled workout is done (the server won't swap with it). A
+    // finished workout also shows as an extra card on the day it was done;
+    // that copy is the one dated on its completedOnDate while the same
+    // workout appears on another day, and it doesn't block the day.
     const isPast = (d: Date) => d < today && !isSameDay(d, today)
-    const holdsDone = (d: Date) => !!calendarData[formatDateISO(d)]?.workouts.some((w) => w.isCompleted)
+    const holdsDone = (d: Date) => {
+      const iso = formatDateISO(d)
+      return !!calendarData[iso]?.workouts.some(
+        (w) => w.isCompleted && !(w.completedOnDate === iso && (daysShown.get(w.templateId) ?? 0) > 1)
+      )
+    }
     const openDays = days.filter((d) => !isPast(d) && !holdsDone(d))
 
     const renderDay = (date: Date) => {
@@ -351,7 +370,7 @@ export function CalendarWeekView({
         <YStack gap="$1">{days.map(renderDay)}</YStack>
       </ScrollView>
     )
-  }, [calendarData, onWorkoutPress, onWorkoutLongPress, onDragStart, onDragEnd, onDragMove, dragTargetDate, dragSourceSlot, isDragging, gppCategoryId, handleDayLayout, onDropZoneUnregister, onMoveWorkout])
+  }, [calendarData, onWorkoutPress, onWorkoutLongPress, onDragStart, onDragEnd, onDragMove, dragTargetDate, dragSourceSlot, isDragging, gppCategoryId, handleDayLayout, onDropZoneUnregister, onMoveWorkout, daysShown])
 
   const keyExtractor = useCallback((item: Date) => formatDateISO(item), [])
 
