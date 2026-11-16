@@ -69,7 +69,7 @@ describe('CalendarWeekView', () => {
 
   it('lists all seven days as one week, Sunday to Saturday', () => {
     const { getAllByTestId } = render(<CalendarWeekView {...props} />, { wrapper: AllTheProviders })
-    const rows = getAllByTestId(/^week-day-/).map((row) => row.props.testID)
+    const rows = getAllByTestId(/^week-day-\d/).map((row) => row.props.testID)
     expect(rows).toEqual(iso.map((d) => `week-day-${d}`))
   })
 
@@ -149,6 +149,50 @@ describe('CalendarWeekView', () => {
     ])
     fireEvent(card, 'accessibilityAction', { nativeEvent: { actionName: nextIso[5] } })
     expect(onMoveWorkout).toHaveBeenCalledWith('GPP', 1, 2, nextIso[5])
+  })
+
+  it("doesn't offer a day whose workout is done, which the server won't swap with", () => {
+    const next = days.map((d) => addDays(d, 7))
+    const nextIso = next.map(formatDateISO)
+    const { getByTestId } = render(
+      <CalendarWeekView
+        {...props}
+        currentWeek={next[0]}
+        programStartDate={nextIso[0]}
+        programEndDate={nextIso[6]}
+        calendarData={{
+          [nextIso[1]]: { date: nextIso[1], workouts: [{ ...workout('Lower Body Foundation', 1), isCompleted: true }] },
+          [nextIso[3]]: { date: nextIso[3], workouts: [workout('Upper Push/Pull', 2)] },
+        }}
+        onMoveWorkout={jest.fn()}
+      />,
+      { wrapper: AllTheProviders }
+    )
+    const labels = getByTestId('card-Upper Push/Pull').props.accessibilityActions.map((a: { label: string }) => a.label)
+    expect(labels).not.toContain('Move to Monday')
+    expect(labels).toContain('Move to Tuesday')
+  })
+
+  it('dims a day whose workout is done while dragging, since it takes no drop', () => {
+    const next = days.map((d) => addDays(d, 7))
+    const nextIso = next.map(formatDateISO)
+    const { getByTestId } = render(
+      <CalendarWeekView
+        {...props}
+        currentWeek={next[0]}
+        programStartDate={nextIso[0]}
+        programEndDate={nextIso[6]}
+        calendarData={{
+          [nextIso[1]]: { date: nextIso[1], workouts: [{ ...workout('Lower Body Foundation', 1), isCompleted: true }] },
+          [nextIso[3]]: { date: nextIso[3], workouts: [workout('Upper Push/Pull', 2)] },
+        }}
+        dragSourceSlot={{ phase: 'GPP', week: 1, day: 2 }}
+      />,
+      { wrapper: AllTheProviders }
+    )
+    const row = (iso: string) => getByTestId(`week-day-row-${iso}`)
+    expect(row(nextIso[1])).toHaveStyle({ opacity: 0.4 })
+    expect(row(nextIso[2])).not.toHaveStyle({ opacity: 0.4 })
   })
 
   it('never offers a day that has already passed', () => {

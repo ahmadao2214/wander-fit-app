@@ -254,6 +254,7 @@ export function CalendarDayCell({
   return (
     <View ref={viewRef} onLayout={handleLayout} testID={`week-day-${dateISO}`}>
       <Stack
+        testID={`week-day-row-${dateISO}`}
         flexDirection={stacked ? 'column' : 'row'}
         gap={stacked ? '$1' : '$3'}
         px="$2"

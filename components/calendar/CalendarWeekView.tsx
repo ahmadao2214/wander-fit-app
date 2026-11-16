@@ -271,9 +271,11 @@ export function CalendarWeekView({
       }
     }
 
-    // Days a workout can move to: this week, from today on (the drag rule)
+    // Days a workout can move to: this week, from today on, and not a day
+    // whose workout is done (the server won't swap with a finished one)
     const isPast = (d: Date) => d < today && !isSameDay(d, today)
-    const openDays = days.filter((d) => !isPast(d))
+    const holdsDone = (d: Date) => !!calendarData[formatDateISO(d)]?.workouts.some((w) => w.isCompleted)
+    const openDays = days.filter((d) => !isPast(d) && !holdsDone(d))
 
     const renderDay = (date: Date) => {
       const dateISO = formatDateISO(date)
@@ -304,9 +306,9 @@ export function CalendarWeekView({
       // 1. Must be same week as source
       // 2. Cannot be in the past (before today)
       const isInPast = date < today && !isSameDay(date, today)
-      const isValidDropTarget = sourceEffectiveDate
+      const isValidDropTarget = (sourceEffectiveDate
         ? isSameWeek(date, sourceEffectiveDate) && !isInPast
-        : !isInPast
+        : !isInPast) && !holdsDone(date)
 
       return (
         <CalendarDayCell
