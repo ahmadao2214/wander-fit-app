@@ -1,4 +1,4 @@
-import { blockDates, blockOutcome, blockRecap, decisionCopy } from '../reassessment'
+import { blockDates, blockEnd, blockOutcome, blockRecap, decisionCopy } from '../reassessment'
 
 // Audit F04 acceptance: zero, partial and full completion are tested
 // separately, and the wording matches the evidence.
@@ -59,6 +59,18 @@ describe('blockOutcome', () => {
 describe('blockDates', () => {
   it('shows the start and end days', () => {
     expect(blockDates(new Date(2026, 9, 19).getTime(), new Date(2026, 10, 15).getTime())).toBe('Oct 19 – Nov 15')
+  })
+})
+
+describe('blockEnd', () => {
+  const start = new Date(2026, 9, 19).getTime()
+  it('ends on the last planned day, however long the check-in waits', () => {
+    const weekLater = new Date(2026, 10, 22).getTime()
+    expect(blockDates(start, blockEnd(start, 4, weekLater))).toBe('Oct 19 – Nov 15')
+  })
+  it('ends today when the block was cut short', () => {
+    const today = new Date(2026, 10, 1).getTime()
+    expect(blockEnd(start, 4, today)).toBe(today)
   })
 })
 

@@ -26,3 +26,23 @@ export function countsAsDone(session: BlockSession, program: BlockProgram): bool
   if (session.templateSnapshot?.phase !== program.currentPhase) return true;
   return (session.completedAt ?? session.startedAt) >= program.phaseStartDate;
 }
+
+const PHASES = ["GPP", "SPP", "SSP"];
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Where the program calendar starts counting slots from.
+ *
+ * The calendar lays the three phases end to end, weeksPerPhase weeks each.
+ * Counting from program.createdAt only matches while every block starts on
+ * time. A repeated block, a late check-in or a new cycle after SSP starts the
+ * current phase later, so the anchor is moved back from phaseStartDate by
+ * the phases before it: week 1 day 1 of the current phase then lands on the
+ * first training day on or after phaseStartDate. For a program that has run
+ * on time, this is createdAt.
+ */
+export function scheduleStart(program: BlockProgram & { weeksPerPhase?: number }): Date {
+  const phaseIndex = Math.max(0, PHASES.indexOf(program.currentPhase));
+  const weeks = program.weeksPerPhase ?? 4;
+  return new Date(program.phaseStartDate - phaseIndex * weeks * 7 * DAY_MS);
+}

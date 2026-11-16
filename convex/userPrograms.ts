@@ -1,6 +1,6 @@
 import { query, mutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
-import { DEFAULT_WEEKS_PER_PHASE } from "./weekMapping";
+import { DEFAULT_WEEKS_PER_PHASE, mapUserWeekToTemplateWeek } from "./weekMapping";
 import { programShape } from "./programShape";
 
 /**
@@ -917,16 +917,43 @@ function getNextPhase(phase: "GPP" | "SPP" | "SSP"): "GPP" | "SPP" | "SSP" {
  * the block started. A repeated block counts only its own sessions.
  */
 function completedInBlock(
-  sessions: { status: string; startedAt: number; completedAt?: number; templateSnapshot?: { phase?: string } }[],
+  sessions: {
+    templateId: string;
+    status: string;
+    startedAt: number;
+    completedAt?: number;
+    templateSnapshot?: { phase?: string; week?: number };
+  }[],
   phase: "GPP" | "SPP" | "SSP",
   blockStartedAt: number,
+  weeksPerPhase: number,
 ): number {
-  return sessions.filter(
-    (s) =>
+  // A workout counts as many times as the block plans it, no more: a redo
+  // doesn't stand in for a workout that was skipped. With more than four
+  // weeks a phase, some template weeks run twice (see weekMapping).
+  const plannedRuns = new Map<number, number>();
+  for (let week = 1; week <= weeksPerPhase; week++) {
+    const templateWeek = mapUserWeekToTemplateWeek(week, weeksPerPhase);
+    plannedRuns.set(templateWeek, (plannedRuns.get(templateWeek) ?? 0) + 1);
+  }
+  const done = new Map<string, number>();
+  for (const s of sessions) {
+    if (
       s.status === "completed" &&
       s.templateSnapshot?.phase === phase &&
       (s.completedAt ?? s.startedAt) >= blockStartedAt
-  ).length;
+    ) {
+      done.set(s.templateId, (done.get(s.templateId) ?? 0) + 1);
+    }
+  }
+  let count = 0;
+  for (const s of sessions) {
+    const runs = done.get(s.templateId);
+    if (runs === undefined) continue;
+    count += Math.min(runs, plannedRuns.get(s.templateSnapshot?.week ?? 0) ?? 1);
+    done.delete(s.templateId);
+  }
+  return count;
 }
 
 /**
@@ -982,7 +1009,7 @@ export const getReassessmentStatus = query({
       .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
       .collect();
 
-    const completedCount = completedInBlock(sessions, pendingPhase, program.phaseStartDate);
+    const completedCount = completedInBlock(sessions, pendingPhase, program.phaseStartDate, weeksPerPhase);
     const completionRate = expectedWorkouts > 0
       ? Math.min(1, completedCount / expectedWorkouts)
       : 0;
@@ -1090,7 +1117,7 @@ export const completeReassessment = mutation({
       .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
       .collect();
 
-    const completedCount = completedInBlock(sessions, completedPhase, program.phaseStartDate);
+    const completedCount = completedInBlock(sessions, completedPhase, program.phaseStartDate, weeksPerPhase);
 
     const completionRate = expectedWorkouts > 0
       ? Math.min(1, completedCount / expectedWorkouts)
@@ -1186,6 +1213,24 @@ export const completeReassessment = mutation({
     }
 
     await ctx.db.patch(program._id, programUpdate);
+
+    // The new block starts clean: drop a workout picked for today in the old
+    // block, and moved dates for this phase and later ones, which were placed
+    // against the old block's calendar
+    const override = await ctx.db
+      .query("user_schedule_overrides")
+      .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
+      .first();
+    if (override) {
+      const phases = ["GPP", "SPP", "SSP"];
+      const from = phases.indexOf(nextPhase);
+      await ctx.db.patch(override._id, {
+        todayFocusTemplateId: undefined,
+        todayFocusSetAt: undefined,
+        dateOverrides: override.dateOverrides?.filter((o) => phases.indexOf(o.phase) < from),
+        updatedAt: now,
+      });
+    }
 
     return {
       skillLevelChanged,

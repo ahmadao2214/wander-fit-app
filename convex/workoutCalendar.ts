@@ -1,5 +1,5 @@
 import { query, mutation } from "./_generated/server";
-import { countsAsDone } from "./blockCompletion";
+import { countsAsDone, scheduleStart } from "./blockCompletion";
 import { v } from "convex/values";
 import { mapUserWeekToTemplateWeek } from "./weekMapping";
 
@@ -8,7 +8,7 @@ import { mapUserWeekToTemplateWeek } from "./weekMapping";
  *
  * Provides calendar-based view of the workout program, mapping
  * workout slots (phase, week, day) to actual calendar dates based on:
- * - user_programs.createdAt (program start date)
+ * - scheduleStart(program): phaseStartDate, moved back by the phases before it
  * - intake_responses.selectedTrainingDays (which days user trains)
  *
  * UX Model: "Start = Swap"
@@ -381,7 +381,7 @@ export const getCalendarView = query({
     // Parse date range
     const start = parseDateISO(startDate);
     const end = parseDateISO(endDate);
-    const programStartDate = new Date(program.createdAt);
+    const programStartDate = scheduleStart(program);
 
     // Determine which phases are unlocked
     const unlockedPhases: Phase[] = ["GPP"];
@@ -601,7 +601,7 @@ export const cascadeWorkoutsToToday = mutation({
     // Get dynamic weeks per phase (fallback to 4 for existing users)
     const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
 
-    const programStartDate = new Date(program.createdAt);
+    const programStartDate = scheduleStart(program);
     const today = startOfDay(new Date());
 
     // Get today's scheduled slot
@@ -1106,7 +1106,7 @@ export const moveWorkoutToDate = mutation({
       DEFAULT_TRAINING_DAYS[3];
 
     const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
-    const programStartDate = new Date(program.createdAt);
+    const programStartDate = scheduleStart(program);
 
     // Validate source slot
     if (args.sourceWeek < 1 || args.sourceWeek > weeksPerPhase) {
@@ -1365,7 +1365,7 @@ export const getProgramCalendarMeta = query({
     // Get dynamic weeks per phase (fallback to 4 for existing users)
     const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
 
-    const programStartDate = new Date(program.createdAt);
+    const programStartDate = scheduleStart(program);
 
     // Calculate program end date
     const lastWorkoutSlot: WorkoutSlot = {
@@ -1467,7 +1467,7 @@ export const getFullProgramCalendar = query({
     // Get dynamic weeks per phase (fallback to 4 for existing users)
     const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
 
-    const programStartDate = new Date(program.createdAt);
+    const programStartDate = scheduleStart(program);
 
     // Calculate program end date (last workout of SSP)
     const lastWorkoutSlot: WorkoutSlot = {

@@ -8,7 +8,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ConfettiEffect } from '../../components/workout/ConfettiEffect'
 import { Display, Title, Body, Supporting, numeric } from '../../components/Typography'
-import { blockDates, blockRecap } from '../../lib/reassessment'
+import { blockDates, blockEnd, blockRecap } from '../../lib/reassessment'
 
 /**
  * Block recap, screen 1 of the end-of-block check-in.
@@ -74,7 +74,7 @@ export default function CelebrationScreen() {
           {stats && (
             <Supporting color="$color10" style={numeric}>
               {stats.weeksPerPhase} {stats.weeksPerPhase === 1 ? 'week' : 'weeks'}
-              {stats.blockStartedAt ? ` · ${blockDates(stats.blockStartedAt, Date.now())}` : ''}
+              {stats.blockStartedAt ? ` · ${blockDates(stats.blockStartedAt, blockEnd(stats.blockStartedAt, stats.weeksPerPhase))}` : ''}
             </Supporting>
           )}
         </YStack>

@@ -171,4 +171,68 @@ describe("end-of-block check-in", () => {
     expect(await asAthlete.query(api.gppWorkoutSessions.getCompletedTemplateIds, {})).toHaveLength(3);
   });
 
+  // Greptile review on #120
+  it("a redo doesn't stand in for a skipped workout", async () => {
+    const { t, ids, asAthlete } = await setup({ completedInBlock: 2 });
+    // Day 1 again, instead of day 3
+    await t.run(async (ctx) => {
+      const userId = (await ctx.db.get(ids.programId))!.userId;
+      const at = Date.now() - 60 * 60 * 1000;
+      await ctx.db.insert("gpp_workout_sessions", {
+        userId,
+        templateId: ids.templateIds[0],
+        userProgramId: ids.programId,
+        startedAt: at - 30 * 60 * 1000,
+        completedAt: at,
+        status: "completed",
+        templateSnapshot: { name: "GPP day 1", phase: "GPP", week: 1, day: 1, workoutDate: at },
+        exercises: [],
+      });
+    });
+    const status = await asAthlete.query(api.userPrograms.getReassessmentStatus, {});
+    expect(status?.completionStats).toMatchObject({ completed: 2, expected: 3 });
+  });
+
+  it("a new block drops today's pick and this phase's moved dates from the old block", async () => {
+    const { t, ids, asAthlete } = await setup({ completedInBlock: 3 });
+    const overrideId = await t.run(async (ctx) => {
+      const userId = (await ctx.db.get(ids.programId))!.userId;
+      return ctx.db.insert("user_schedule_overrides", {
+        userId,
+        userProgramId: ids.programId,
+        todayFocusTemplateId: ids.templateIds[2],
+        todayFocusSetAt: Date.now() - DAY,
+        slotOverrides: [],
+        dateOverrides: [{ phase: "GPP", week: 1, day: 3, dateISO: "2026-01-01" }],
+        createdAt: Date.now() - DAY,
+        updatedAt: Date.now() - DAY,
+      });
+    });
+    await asAthlete.mutation(api.userPrograms.completeReassessment, { ...checkIn, decision: "repeat" });
+
+    const override = await t.run((ctx) => ctx.db.get(overrideId));
+    expect(override?.todayFocusTemplateId).toBeUndefined();
+    expect(override?.dateOverrides).toEqual([]);
+    const today = await asAthlete.query(api.scheduleOverrides.getTodayWorkout, {});
+    expect(today?._id).toBe(ids.templateIds[0]);
+  });
+
+  it("after Repeat, the calendar runs the block again from its new start", async () => {
+    const { asAthlete } = await setup({ completedInBlock: 3 });
+    await asAthlete.mutation(api.userPrograms.completeReassessment, { ...checkIn, decision: "repeat" });
+
+    const calendar = await asAthlete.query(api.workoutCalendar.getFullProgramCalendar, {});
+    const firstDate = Object.values(calendar!.calendarData).find((d) =>
+      d.workouts.some((w) => w.phase === "GPP" && w.week === 1 && w.day === 1)
+    )?.date;
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const todayISO = startOfToday.toISOString().slice(0, 10);
+    // On or after today, within a week, and not marked done
+    expect(firstDate! >= todayISO || firstDate === todayISO).toBe(true);
+    const daysOut = (new Date(firstDate! + "T00:00:00").getTime() - startOfToday.getTime()) / DAY;
+    expect(daysOut).toBeLessThan(7);
+    const entry = calendar!.calendarData[firstDate!].workouts.find((w) => w.phase === "GPP" && w.week === 1 && w.day === 1);
+    expect(entry?.isCompleted).toBe(false);
+  });
 });

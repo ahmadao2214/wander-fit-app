@@ -61,6 +61,18 @@ export function blockRecap(phase: Phase, completed: number, expected: number): B
 }
 
 /** "Oct 19 – Nov 15", from the block's start to the given day. */
+/**
+ * The last day of a block: its planned length from the start, or today if
+ * the block was cut short. Fixed once the block has run its length, so the
+ * recap doesn't grow while a check-in waits.
+ */
+export function blockEnd(startedAt: number, weeks: number, now: number = Date.now()): number {
+  // Calendar days, so a clock change inside the block doesn't shift the day
+  const last = new Date(startedAt)
+  last.setDate(last.getDate() + weeks * 7 - 1)
+  return Math.min(now, last.getTime())
+}
+
 export function blockDates(startedAt: number, endedAt: number): string {
   const format = (ms: number) =>
     new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
