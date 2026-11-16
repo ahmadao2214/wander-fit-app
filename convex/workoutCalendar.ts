@@ -195,6 +195,23 @@ function getDateForWorkout(
 }
 
 /**
+ * Whether a slot's default date still belongs to it. When a phase starts
+ * early, a past phase's last dates fall inside it; the date belongs to the
+ * phase slotOnDate picks (the current phase first), so the calendar, moves
+ * and Today all agree on one workout per date.
+ */
+function ownsDefaultDate(
+  program: Parameters<typeof slotOnDate>[0],
+  trainingDays: number[],
+  slot: WorkoutSlot,
+  date: Date,
+  weeksPerPhase: number
+): boolean {
+  const owner = slotOnDate(program, (anchor) => getWorkoutForDate(anchor, trainingDays, date, weeksPerPhase));
+  return !owner || owner.phase === slot.phase;
+}
+
+/**
  * Get the workout slot for a given date
  * @param weeksPerPhase - Dynamic weeks per phase (defaults to 4 for backwards compatibility)
  */
@@ -1192,8 +1209,11 @@ export const moveWorkoutToDate = mutation({
           // Skip if this is the source slot
           if (slotKey === sourceKey) continue;
 
-          const slotDate = dateOverrideLookup.get(slotKey) ??
-            formatDateISO(getDateForWorkout(phaseAnchor(program, slot.phase), trainingDays, slot, weeksPerPhase));
+          const overrideDate = dateOverrideLookup.get(slotKey);
+          const defaultDate = getDateForWorkout(phaseAnchor(program, slot.phase), trainingDays, slot, weeksPerPhase);
+          // A default date a later phase holds isn't this slot's to give up
+          if (!overrideDate && !ownsDefaultDate(program, trainingDays, slot, defaultDate, weeksPerPhase)) continue;
+          const slotDate = overrideDate ?? formatDateISO(defaultDate);
 
           if (slotDate === args.targetDateISO) {
             targetSlot = slot;
@@ -1649,6 +1669,8 @@ export const getFullProgramCalendar = query({
             effectiveDate = parseDateISO(dateOverride);
           } else {
             effectiveDate = getDateForWorkout(phaseAnchor(program, slot.phase), trainingDays, slot, weeksPerPhase);
+            // A past phase's date that a later phase now holds isn't shown
+            if (!ownsDefaultDate(program, trainingDays, slot, effectiveDate, weeksPerPhase)) continue;
           }
           const effectiveDateISO = formatDateISO(effectiveDate);
 

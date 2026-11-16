@@ -278,6 +278,8 @@ describe("end-of-block check-in", () => {
 
   // Sol review on #120: a late phase keeps its dates once it is past
   it("a late SPP keeps its calendar dates after moving on to SSP", async () => {
+    jest.useFakeTimers({ doNotFake: ["nextTick", "setImmediate", "queueMicrotask"] });
+    jest.setSystemTime(new Date(2026, 10, 16, 9, 0));
     const { t, ids, asAthlete } = await setup({ completedInBlock: 3 });
     await t.run(async (ctx) => {
       await ctx.db.insert("program_templates", {
@@ -302,10 +304,46 @@ describe("end-of-block check-in", () => {
     const before = await sppDate();
     expect(before).toBeDefined();
 
-    // SPP ends and the athlete moves on to SSP
+    // SPP's week ends and the athlete moves on to SSP
+    jest.setSystemTime(new Date(2026, 10, 23, 9, 0));
     await t.run((ctx) => ctx.db.patch(ids.programId, { reassessmentPendingForPhase: "SPP" }));
     await asAthlete.mutation(api.userPrograms.completeReassessment, steady);
     expect(await sppDate()).toBe(before);
+    jest.useRealTimers();
+  });
+
+  // Sol review on #120: an early start puts one workout on each date
+  it("after an early Move on, no date holds both GPP and SPP", async () => {
+    const { t, ids, asAthlete } = await setup({ completedInBlock: 3 });
+    await t.run(async (ctx) => {
+      // The program began two days ago, so SPP starts early
+      await ctx.db.patch(ids.programId, { createdAt: Date.now() - 2 * DAY });
+      for (const day of [1, 2, 3]) {
+        await ctx.db.insert("program_templates", {
+          gppCategoryId: 2,
+          phase: "SPP",
+          skillLevel: "Novice",
+          week: 1,
+          day,
+          name: `SPP day ${day}`,
+          estimatedDurationMinutes: 30,
+          exercises: [],
+        });
+      }
+    });
+    await asAthlete.mutation(api.userPrograms.completeReassessment, {
+      phaseDifficulty: "challenging",
+      maxesUpdated: false,
+      decision: "move_on",
+    });
+    const calendar = await asAthlete.query(api.workoutCalendar.getFullProgramCalendar, {});
+    const shared = Object.values(calendar!.calendarData).filter(
+      (d) => d.workouts.some((w) => w.phase === "GPP") && d.workouts.some((w) => w.phase === "SPP")
+    );
+    expect(shared.map((d) => d.date)).toEqual([]);
+    // SPP still has all three workouts
+    const spp = Object.values(calendar!.calendarData).flatMap((d) => d.workouts.filter((w) => w.phase === "SPP"));
+    expect(spp.filter((w) => w.week === 1)).toHaveLength(3);
   });
 
   // Greptile review on #120: moving on late must not move past workouts
