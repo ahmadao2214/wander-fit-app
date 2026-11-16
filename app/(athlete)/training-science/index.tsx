@@ -131,7 +131,6 @@ const PHASES = PHASE_SPECS.map((spec) => {
   return {
     ...spec,
     title: phaseTitle(spec.key),
-    bg: colors.tint,
     accent: colors.fill,
     text: colors.text,
   }
@@ -222,11 +221,13 @@ export default function TrainingSciencePage() {
             </BodyText>
 
             {PHASES.map((phase) => (
-              <Card
+              // The phase stripe and title carry the phase color; the copy stays
+              // neutral, with no tinted card nested inside the section card
+              <YStack
                 key={phase.key}
-                bg={phase.bg}
-                p="$3"
-                rounded="$3"
+                testID={`phase-block-${phase.key}`}
+                pl="$3"
+                py="$1"
                 borderLeftWidth={3}
                 borderLeftColor={phase.accent}
               >
@@ -235,10 +236,10 @@ export default function TrainingSciencePage() {
                     <phase.icon size={16} color={phase.accent} />
                     <SubHeading flex={1} color={phase.text}>{phase.title}</SubHeading>
                   </XStack>
-                  <BodyText color={phase.text}>{phase.body}</BodyText>
-                  <PhaseSpecs specs={phase.specs} accent={phase.accent} text={phase.text} />
+                  <BodyText>{phase.body}</BodyText>
+                  <PhaseSpecs specs={phase.specs} accent={phase.accent} text="$color12" />
                 </YStack>
-              </Card>
+              </YStack>
             ))}
           </ScienceSection>
 
@@ -319,34 +320,34 @@ export default function TrainingSciencePage() {
               Your daily workout intensity varies between Low, Moderate, and High to optimize recovery and adaptation.
             </BodyText>
 
-            {/* Intensity Levels */}
-            <YStack gap="$2">
-              <Card bg="$intensityLow2" p="$3" rounded="$3" borderLeftWidth={3} borderLeftColor="$intensityLow6">
+            {/* Intensity levels: the same stripe-and-title cue as the phases */}
+            <YStack gap="$3">
+              <YStack pl="$3" py="$1" borderLeftWidth={3} borderLeftColor="$intensityLow6">
                 <YStack gap="$1">
                   <SubHeading color="$intensityLow9">Low intensity</SubHeading>
                   <BodyText>
                     Recovery focus. 60-70% effort with longer rest. You should feel like you have 4-5 reps left after each set.
                   </BodyText>
                 </YStack>
-              </Card>
+              </YStack>
 
-              <Card bg="$intensityMed2" p="$3" rounded="$3" borderLeftWidth={3} borderLeftColor="$intensityMed6">
+              <YStack pl="$3" py="$1" borderLeftWidth={3} borderLeftColor="$intensityMed6">
                 <YStack gap="$1">
                   <SubHeading color="$intensityMed9">Moderate intensity</SubHeading>
                   <BodyText>
                     Standard training. 75-80% effort with balanced rest. You should feel like you have 3-4 reps left.
                   </BodyText>
                 </YStack>
-              </Card>
+              </YStack>
 
-              <Card bg="$intensityHigh2" p="$3" rounded="$3" borderLeftWidth={3} borderLeftColor="$intensityHigh6">
+              <YStack pl="$3" py="$1" borderLeftWidth={3} borderLeftColor="$intensityHigh6">
                 <YStack gap="$1">
                   <SubHeading color="$intensityHigh9">High intensity</SubHeading>
                   <BodyText>
                     Pushing limits. 85-90% effort with shorter rest. You should feel like you have only 1-2 reps left.
                   </BodyText>
                 </YStack>
-              </Card>
+              </YStack>
             </YStack>
 
             {/* RPE */}

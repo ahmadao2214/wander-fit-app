@@ -103,6 +103,7 @@ export default function WorkoutExecutionScreen() {
   const [exerciseOrder, setExerciseOrder] = useState<number[]>([])
   const [elapsedTime, setElapsedTime] = useState(0)
   const [showExitDialog, setShowExitDialog] = useState(false)
+  const [queueOpen, setQueueOpen] = useState(false)
   const [showCompletionDialog, setShowCompletionDialog] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)
 
@@ -711,16 +712,19 @@ export default function WorkoutExecutionScreen() {
           {/* Dot Stepper Progress */}
           {/* Done = solid phase dot, current = wide pill, upcoming = hollow ring:
               the shape carries the state, so it never depends on color alone */}
-          <XStack
-            items="center"
-            gap="$1.5"
-            accessible
-            accessibilityRole="progressbar"
+          {/* The dots are also the visible way into the exercise list: a 44pt-tall
+              button in the header, instead of only the narrow edge tab */}
+          <Pressable
+            onPress={() => setQueueOpen(true)}
+            accessibilityRole="button"
             accessibilityLabel={`Exercise ${currentExerciseIndex + 1} of ${orderedExercises.length}, ${
               orderedExercises.filter((_, idx) => completionAt(idx)?.completed).length
             } done`}
+            accessibilityHint="Shows every exercise in this workout"
             testID="exercise-progress"
+            style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 }}
           >
+          <XStack items="center" gap="$1.5">
             {orderedExercises.map((_, idx) => {
               const isCompleted = completionAt(idx)?.completed
               const isCurrent = idx === currentExerciseIndex
@@ -737,6 +741,7 @@ export default function WorkoutExecutionScreen() {
               )
             })}
           </XStack>
+          </Pressable>
 
           <XStack items="center" gap="$1.5">
             <Timer size={16} color="$color10" />
@@ -876,6 +881,8 @@ export default function WorkoutExecutionScreen() {
         currentIndex={currentExerciseIndex}
         onExerciseSelect={handleExerciseSelect}
         onReorder={handleReorder}
+        open={queueOpen}
+        onOpenChange={setQueueOpen}
         trainingPhase={session?.template?.phase}
       />
 

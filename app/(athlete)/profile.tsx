@@ -222,21 +222,24 @@ export default function ProfilePage() {
             <YStack gap="$3">
               <SectionTitle>My maxes</SectionTitle>
 
+              {/* One card with divided rows, not a bordered card inside a bordered card */}
               <Card
-                p="$4"
                 bg="$surface"
                 rounded="$4"
                 borderWidth={1}
                 borderColor="$borderColor"
+                overflow="hidden"
               >
-                <YStack gap="$3">
+                <YStack>
                   {coreLiftExercises.map((exercise, index) => (
                     <Card
                       key={exercise.slug}
-                      p="$3"
-                      bg="$background"
-                      rounded="$3"
-                      borderWidth={1}
+                      testID={`max-row-${exercise.slug}`}
+                      px="$4"
+                      py="$3"
+                      bg="$surface"
+                      rounded={0}
+                      borderTopWidth={index === 0 ? 0 : 1}
                       borderColor="$borderColor"
                       pressStyle={{ bg: '$surfaceHover' }}
                       onPress={() => {

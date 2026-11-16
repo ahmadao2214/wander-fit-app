@@ -1,4 +1,5 @@
 import { defaultConfig } from '@tamagui/config/v4'
+import { RADIUS, spaceTokens } from './lib/spaceScale'
 import { createTamagui, createTokens, createFont } from 'tamagui'
 import { 
   blue, blueDark, 
@@ -139,8 +140,11 @@ const semanticColors = {
 // CUSTOM TOKENS
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Spacing on a 4pt grid and three radius roles, from lib/spaceScale.ts
 const customTokens = createTokens({
   ...defaultConfig.tokens,
+  space: spaceTokens(),
+  radius: { ...RADIUS, true: RADIUS[3] },
   color: {
     // Brand colors
     ...brandColors,
@@ -198,7 +202,7 @@ const lightTheme = {
   color7: '#475569',
   color8: '#334155',
   color9: '#1E293B',
-  color10: '#64748B',           // Secondary text shorthand
+  color10: '#5F6F86',           // Secondary text: 4.5:1 on the background, cards and $brand1
   color11: '#334155',           // Strong text
   color12: '#0F172A',           // Primary text
 
@@ -335,7 +339,8 @@ const darkTheme = {
   ...phaseThemeColors('dark'),
 
   // Brand colors (adjusted for dark mode)
-  brand1: '#0F172A',
+  // brand1 tints a card; it was the page background, so tinted cards vanished
+  brand1: '#172554',
   brand2: '#1E293B',
   brand3: '#1E3A8A',
   brand4: '#1E40AF',

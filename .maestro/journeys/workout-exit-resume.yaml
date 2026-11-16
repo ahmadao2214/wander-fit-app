@@ -35,6 +35,19 @@ url: ${VERIFY_URL}
     timeout: 30000
 - copyTextFrom:
     id: execute-exercise-name
+# The progress dots open the exercise list, and its close button shuts it
+# Web reports the accessibility label as the id when there is one
+- tapOn:
+    id: "exercise-progress|Exercise .* done"
+- extendedWaitUntil:
+    visible: "Hold to reorder upcoming"
+    timeout: 10000
+- takeScreenshot: 01a-exercise-list
+- tapOn:
+    id: "exercise-queue-close|Close exercise list"
+- extendedWaitUntil:
+    notVisible: "Hold to reorder upcoming"
+    timeout: 10000
 # On web the tile's testID is the inner card's (set-tile-next), not set-0
 - tapOn:
     id: set-tile-next

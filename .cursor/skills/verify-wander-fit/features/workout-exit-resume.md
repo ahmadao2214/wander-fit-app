@@ -9,17 +9,18 @@ Regression for X → Exit losing the session. Before this fix, Exit marked the s
 - **Discard** asks first (`today-discard-confirm`). It marks the session abandoned; the record and its sets stay in the database, but it can't be resumed.
 - **Starting another workout** while one is paused is refused with "You have a paused workout. Resume it or discard it from Today before starting another." The same workout's Start button reads Resume.
 - **Opening** a paused session calls `resumeSession`, which adds the pause to `pausedSeconds` and clears `pausedAt`.
+- **Exercise list**: the progress dots in the execution header (`exercise-progress`, read as "Exercise N of M, K done") are a button that opens the exercise list; its close button is `exercise-queue-close` ("Close exercise list"). The narrow edge tab still opens it by swipe.
 
 ## Preconditions and driving
 
 - Same setup as [workout reorder](./workout-reorder.md): the iPhone 17 simulator, a local build, the E2E Convex project, and an onboarded athlete on Today whose workout is unlocked, not completed, and not paused.
-- Run `.maestro/native/workout-exit-resume.yaml` with the project test runner. It does not launch or sign in. It starts the workout, logs set 1, exits through the X, checks Today shows the paused session with no Start, resumes, and checks set 1 is still logged on the same exercise.
+- Run `.maestro/native/workout-exit-resume.yaml` with the project test runner. It does not launch or sign in. It starts the workout, opens and closes the exercise list from the progress dots, logs set 1, exits through the X, checks Today shows the paused session with no Start, resumes, and checks set 1 is still logged on the same exercise.
 - Screenshots: `native-exit-paused-today`, `native-exit-resumed`.
 - The flow leaves a paused session behind. Discard it on Today, or complete it, before running flows that expect Start Workout. Use an E2E persona only, never the durable review account.
 
 ## Web flow
 
-`node scripts/verify/run.mjs all workout-exit-resume` runs `.maestro/web/workout-exit-resume.yaml` with an onboarded persona: it starts today's workout, logs set 1, exits through the X, checks Today shows the paused session with Resume and no Start, resumes, and checks the logged set is still there (`sets-logged` reads `1/…`). If Resume opens the next exercise because a one-set exercise was finished, it steps back with Previous. Web differences: the set tile's id is the inner card's `set-tile-next`, the X reports its label `Exit workout` as its id, and `AlertDialog.Action` drops the Pause button's testID, so the flow taps "Pause and exit". Screenshots: `01-set-logged`, `02-exit-dialog`, `03-today-paused`, `04-resumed`.
+`node scripts/verify/run.mjs all workout-exit-resume` runs `.maestro/web/workout-exit-resume.yaml` with an onboarded persona: it starts today's workout, opens and closes the exercise list from the progress dots, logs set 1, exits through the X, checks Today shows the paused session with Resume and no Start, resumes, and checks the logged set is still there (`sets-logged` reads `1/…`). If Resume opens the next exercise because a one-set exercise was finished, it steps back with Previous. Web differences: the set tile's id is the inner card's `set-tile-next`, the X reports its label `Exit workout` as its id (the dots and the list's close button match by label too), and `AlertDialog.Action` drops the Pause button's testID, so the flow taps "Pause and exit". Screenshots: `01a-exercise-list`, `01-set-logged`, `02-exit-dialog`, `03-today-paused`, `04-resumed`.
 
 ## Acceptance status
 
