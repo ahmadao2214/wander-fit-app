@@ -1,5 +1,6 @@
 import { YStack, Text, Spinner } from 'tamagui'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useCallback } from 'react'
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useAuth } from '../../hooks/useAuth'
@@ -31,6 +32,14 @@ export default function ProgramPage() {
   const insets = useSafeAreaInsets()
   // Set once, by the First Run's save: the first visit to the saved plan.
   const { welcome, kept, next } = useLocalSearchParams<{ welcome?: string; kept?: string; next?: string }>()
+  // One visit only: leaving the tab clears them, so a later "Up next" never
+  // keeps the first day's label.
+  useFocusEffect(
+    useCallback(() => {
+      if (!welcome) return
+      return () => router.setParams({ welcome: undefined, kept: undefined, next: undefined })
+    }, [welcome, router])
+  )
 
   // Handle workout press - navigate to workout details
   const handleWorkoutPress = (templateId: string) => {

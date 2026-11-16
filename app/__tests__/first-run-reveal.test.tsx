@@ -18,6 +18,7 @@ const WEEK_ONE = [
   { day: 4, name: 'Lower Body B - Foundation', estimatedDurationMinutes: 28 },
 ]
 const mockWeekArgs: unknown[] = []
+let mockWeek: unknown[] = WEEK_ONE
 jest.mock('convex/react', () => ({
   useQuery: (fn: unknown, args: unknown) => {
     const name = jest.requireActual('convex/server').getFunctionName(fn)
@@ -26,12 +27,13 @@ jest.mock('convex/react', () => ({
     if (name === 'programTemplates:getWeekOverview') {
       if (args === 'skip') return undefined
       mockWeekArgs.push(args)
-      return WEEK_ONE
+      return mockWeek
     }
     return undefined
   },
 }))
 
+const mockBack = jest.fn()
 let mockReduced: boolean | null = true
 jest.mock('../../hooks/useReducedMotion', () => ({ useReducedMotion: () => mockReduced }))
 jest.mock('react-native-reanimated', () => jest.requireActual('../../jest/reanimatedMock'))
@@ -48,7 +50,7 @@ jest.mock('../../components/first-run/SavePlanSheet', () => ({
 }))
 jest.mock('expo-router', () => ({
   useFocusEffect: (cb: () => void) => jest.requireActual('react').useEffect(cb, [cb]),
-  useRouter: () => ({ push: jest.fn(), back: jest.fn(), replace: jest.fn(), canGoBack: () => true }),
+  useRouter: () => ({ push: jest.fn(), back: mockBack, replace: jest.fn(), canGoBack: () => true }),
   Redirect: ({ href }: { href: string }) => {
     const { Text } = jest.requireActual('react-native')
     return <Text testID="redirect">{href}</Text>
@@ -78,6 +80,8 @@ beforeEach(async () => {
   testDraft.reset()
   mockReduced = true
   mockWeekArgs.length = 0
+  mockWeek = WEEK_ONE
+  mockBack.mockClear()
   await testDraft.seed({ answers })
 })
 
@@ -186,6 +190,26 @@ describe('First Run reveal: category, then plan', () => {
       fireEvent.press(screen.getByTestId('first-run-save'))
     })
     expect(screen.getByTestId('sheet-open').props.children).toMatch(/^(Today|Tomorrow|\w{3}, \w{3} \d+)$/)
+  })
+
+  it('keeps Save off and says why when the week has no workouts on the server', async () => {
+    mockWeek = []
+    await show()
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('reveal-category-page'))
+    })
+    expect(screen.getByTestId('first-run-save')).toBeDisabled()
+    expect(screen.getByTestId('reveal-save-blocked')).toHaveTextContent(/aren't ready yet/)
+  })
+
+  it('Change my answers goes back to the questions', async () => {
+    await show()
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('reveal-category-page'))
+    })
+    expect(screen.queryByTestId('reveal-save-blocked')).toBeNull()
+    fireEvent.press(screen.getByTestId('reveal-change-answers'))
+    expect(mockBack).toHaveBeenCalled()
   })
 
   it('waits for the Reduce Motion answer before starting', async () => {

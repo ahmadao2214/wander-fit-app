@@ -40,7 +40,7 @@ export default function FirstRunLayout() {
           <Stack.Screen name="season" />
           <Stack.Screen name="days" />
           <Stack.Screen name="about" />
-          <Stack.Screen name="reveal" options={{ gestureEnabled: false }} />
+          <Stack.Screen name="reveal" />
         </Stack>
       </FlowErrorBoundary>
     </Theme>

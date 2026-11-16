@@ -99,6 +99,26 @@ describe('First Run season (calendar)', () => {
     expect((await testDraft.reopen()).answers.seasonStart).toBe(seasonStartForWeeks(12, new Date()))
   })
 
+  it('turning No set season off brings back the date the athlete chose', async () => {
+    const chosen = seasonStartForWeeks(20, new Date())
+    await testDraft.seed({ answers: { seasonStart: chosen } })
+    await show(<FirstRunSeason />)
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('season-none'))
+    })
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('season-none'))
+    })
+    expect((await testDraft.reopen()).answers.seasonStart).toBe(chosen)
+  })
+
+  it('opens on the month of a saved date that loads after the first render', async () => {
+    const chosen = seasonStartForWeeks(30, new Date())
+    await testDraft.seed({ answers: { seasonStart: chosen } })
+    await show(<FirstRunSeason />)
+    expect(screen.getByTestId(`season-day-${chosen}`).props.accessibilityState.selected).toBe(true)
+  })
+
   it('keeps the months between now and a year out', () => {
     const b = monthBounds(new Date(2026, 10, 15))
     expect(b.first).toEqual({ y: 2026, m: 10 })

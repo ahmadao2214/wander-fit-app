@@ -75,6 +75,8 @@ export function PlanView({
   openFrom,
   onCategory,
   onSave,
+  saveBlocked,
+  onChangeAnswers,
 }: {
   sportName: string
   category: StoryCategory
@@ -89,6 +91,10 @@ export function PlanView({
   openFrom: Rect | null
   onCategory: () => void
   onSave: () => void
+  /** Why Save is off, e.g. the workouts aren't on the server yet. */
+  saveBlocked?: string | null
+  /** Back to the questions, to fix an answer before saving. */
+  onChangeAnswers: () => void
 }) {
   const insets = useSafeAreaInsets()
   const { width: W } = useWindowDimensions()
@@ -308,7 +314,24 @@ export function PlanView({
         </Beat>
 
         <Beat at={delay + PLAN_BEATS.save} play={animate} style={{ marginTop: 12 }}>
-          <NightButton label="Save my plan" onPress={onSave} testID="first-run-save" />
+          {saveBlocked ? (
+            <RNText
+              style={{ fontFamily: BODY, fontSize: 14, color: NIGHT.fg2, marginBottom: 8 }}
+              accessibilityLiveRegion="polite"
+              testID="reveal-save-blocked"
+            >
+              {saveBlocked}
+            </RNText>
+          ) : null}
+          <NightButton label="Save my plan" onPress={onSave} disabled={!!saveBlocked} testID="first-run-save" />
+          <Pressable
+            onPress={onChangeAnswers}
+            accessibilityRole="button"
+            testID="reveal-change-answers"
+            style={{ alignSelf: 'center', paddingVertical: 12, paddingHorizontal: 12 }}
+          >
+            <RNText style={{ fontFamily: BODY_BOLD, fontSize: 14, color: NIGHT.link }}>Change my answers</RNText>
+          </Pressable>
         </Beat>
       </ScrollView>
     </View>

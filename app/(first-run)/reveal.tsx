@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ComponentRef, type ReactNode } from 'react'
 import { Pressable, Text as RNText, View } from 'react-native'
-import { Redirect, type Href } from 'expo-router'
+import { Redirect, useRouter, type Href } from 'expo-router'
 import { useQuery } from 'convex/react'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Animated, { Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
@@ -74,6 +74,7 @@ function StoryBar({ part, hold, onCategory, onPlan }: { part: RevealPart; hold: 
  */
 export default function FirstRunReveal() {
   const insets = useSafeAreaInsets()
+  const router = useRouter()
   const motion = useIntakeMotion()
   const { draft } = useFirstRunDraft()
   const { sport, category } = useIntakeSport()
@@ -165,6 +166,10 @@ export default function FirstRunReveal() {
       openFrom={openFrom}
       onCategory={toCategory}
       onSave={() => setSaving(true)}
+      // Without the week's workouts there's nothing to save yet; the query
+      // is live, so Save turns on when they arrive.
+      saveBlocked={templates && templates.length > 0 ? null : "Your first workouts aren't ready yet. Try again in a moment."}
+      onChangeAnswers={() => (router.canGoBack() ? router.back() : router.replace(STEP_ROUTES.about as Href))}
     />
   )
 

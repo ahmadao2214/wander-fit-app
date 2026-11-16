@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Pressable, Text as RNText, View, useWindowDimensions } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { ChevronLeft, ChevronRight } from '@tamagui/lucide-icons'
@@ -41,6 +41,17 @@ export default function FirstRunSeason() {
   const picked = stored ?? seasonStartForWeeks(DEFAULT_SEASON_WEEKS, now)
   const weeks = weeksUntilSeason(picked, now)
   const [month, setMonth] = useState(() => monthOf(picked))
+  // The draft can load after the first render (a web refresh): show the
+  // saved date's month then, unless the athlete has already paged.
+  const paged = useRef(false)
+  const shownFor = useRef(draft ? picked : null)
+  useEffect(() => {
+    if (!draft || paged.current || shownFor.current) return
+    shownFor.current = picked
+    setMonth(monthOf(picked))
+  }, [draft, picked])
+  // The date chosen before No set season, so turning it off brings it back.
+  const [beforeNoSeason, setBeforeNoSeason] = useState<string | null>(null)
   const bounds = monthBounds(now)
   const canPrev = month.y * 12 + month.m > bounds.first.y * 12 + bounds.first.m
   const canNext = month.y * 12 + month.m < bounds.last.y * 12 + bounds.last.m
@@ -53,6 +64,7 @@ export default function FirstRunSeason() {
     void save({ seasonStart: iso })
   }
   const shift = (by: number) => {
+    paged.current = true
     const d = new Date(month.y, month.m + by, 1)
     setMonth({ y: d.getFullYear(), m: d.getMonth() })
   }
@@ -179,7 +191,8 @@ export default function FirstRunSeason() {
       <Pressable
         onPress={() => {
           selectionFeedback()
-          void save({ seasonStart: noSeason ? picked : null })
+          if (!noSeason) setBeforeNoSeason(picked)
+          void save({ seasonStart: noSeason ? (beforeNoSeason ?? picked) : null })
         }}
         accessibilityRole="checkbox"
         accessibilityState={{ checked: noSeason }}
