@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { calendarStart, countsAsDone, phaseAnchor, slotOnDate } from "./blockCompletion";
+import { countMainExercises } from "../lib/today";
 import { v } from "convex/values";
 import { mapUserWeekToTemplateWeek } from "./weekMapping";
 
@@ -474,7 +475,7 @@ export const getCalendarView = query({
             phase: slot.phase,
             week: slot.week,
             day: slot.day,
-            exerciseCount: template.exercises.length,
+            exerciseCount: countMainExercises(template.exercises),
             estimatedDurationMinutes: template.estimatedDurationMinutes,
             isCompleted,
             isToday: isTodayDate && (isCurrentSlot || isInProgress),
@@ -507,7 +508,7 @@ export const getCalendarView = query({
                   phase: template.phase as Phase,
                   week: template.week,
                   day: template.day,
-                  exerciseCount: template.exercises.length,
+                  exerciseCount: countMainExercises(template.exercises),
                   estimatedDurationMinutes: template.estimatedDurationMinutes,
                   isCompleted: true,
                   isToday: false,
@@ -1512,41 +1513,6 @@ export const getFullProgramCalendar = query({
       .filter((q) => q.eq(q.field("skillLevel"), program.skillLevel))
       .collect();
 
-    // Collect all unique exercise IDs from templates to fetch names
-    const exerciseIds = new Set<string>();
-    for (const template of templates) {
-      for (const ex of template.exercises) {
-        exerciseIds.add(ex.exerciseId.toString());
-      }
-    }
-
-    // Fetch exercise names in bulk
-    const exerciseNameLookup = new Map<string, string>();
-    for (const exId of exerciseIds) {
-      try {
-        const exercise = await ctx.db.get(exId as any);
-        if (exercise && 'name' in exercise) {
-          exerciseNameLookup.set(exId, exercise.name as string);
-        }
-      } catch {
-        // Exercise not found, skip
-      }
-    }
-
-    // Helper to get first N exercise names for a template
-    const getExercisePreview = (template: (typeof templates)[0], count: number = 3): string[] => {
-      const names: string[] = [];
-      const sortedExercises = [...template.exercises].sort((a, b) => a.orderIndex - b.orderIndex);
-      for (let i = 0; i < Math.min(count, sortedExercises.length); i++) {
-        const exId = sortedExercises[i].exerciseId.toString();
-        const name = exerciseNameLookup.get(exId);
-        if (name) {
-          names.push(name);
-        }
-      }
-      return names;
-    };
-
     // Build template lookup
     const templateLookup = new Map<string, (typeof templates)[0]>();
     for (const template of templates) {
@@ -1612,7 +1578,6 @@ export const getFullProgramCalendar = query({
           isInProgress: boolean;
           isLocked: boolean; // Phase not yet unlocked (visible but not draggable)
           completedOnDate?: string;
-          exercisePreview: string[]; // First 3 exercise names for preview
         }>;
       }
     > = {};
@@ -1682,7 +1647,7 @@ export const getFullProgramCalendar = query({
               phase: slot.phase,
               week: slot.week,
               day: slot.day,
-              exerciseCount: template.exercises.length,
+              exerciseCount: countMainExercises(template.exercises),
               estimatedDurationMinutes: template.estimatedDurationMinutes,
               isCompleted,
               // isToday follows the date, not the slot - gradient shows on today's workout
@@ -1690,7 +1655,6 @@ export const getFullProgramCalendar = query({
               isInProgress,
               isLocked,
               completedOnDate: completionDates.get(template._id.toString()),
-              exercisePreview: getExercisePreview(template, 5),
             });
           } else {
             // Template not found - this usually means templates need to be regenerated
@@ -1723,14 +1687,13 @@ export const getFullProgramCalendar = query({
                 phase: template.phase as Phase,
                 week: template.week,
                 day: template.day,
-                exerciseCount: template.exercises.length,
+                exerciseCount: countMainExercises(template.exercises),
                 estimatedDurationMinutes: template.estimatedDurationMinutes,
                 isCompleted: true,
                 isToday: false,
                 isInProgress: false,
                 isLocked: false, // Completed workouts are never locked
                 completedOnDate: completionDateISO,
-                exercisePreview: getExercisePreview(template, 5),
               });
             }
           }

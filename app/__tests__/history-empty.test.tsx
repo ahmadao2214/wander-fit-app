@@ -6,13 +6,17 @@ import config from '../../tamagui.config'
 const mockUseQuery = jest.fn()
 const mockNavigate = jest.fn()
 
+// The progress summary is answered on its own; mockUseQuery answers the rest
+let mockProgress: { daysCompleted: number; currentStreak: number } | null = null
 jest.mock('convex/react', () => ({
-  useQuery: (...args: any[]) => mockUseQuery(...args),
+  useQuery: (name: string, ...args: any[]) =>
+    name === 'userPrograms.getProgressSummary' ? mockProgress : mockUseQuery(name, ...args),
 }))
 
 jest.mock('../../convex/_generated/api', () => ({
   api: {
     gppWorkoutSessions: { getHistory: 'gppWorkoutSessions.getHistory' },
+    userPrograms: { getProgressSummary: 'userPrograms.getProgressSummary' },
     workoutSessions: { getHistory: 'workoutSessions.getHistory' },
   },
 }))

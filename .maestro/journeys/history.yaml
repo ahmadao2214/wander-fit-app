@@ -23,5 +23,7 @@ url: ${VERIFY_URL}
     id: "history-completed|Completed"
 - assertNotVisible: "Not finished"
 - assertNotVisible: "(?i)no workouts yet"
+# Progress lives on History as one line (design audit F06)
+- assertVisible: "1 workout done"
 - takeScreenshot: 02-history
 - runFlow: ../subflows/_evidence-stop.yaml

@@ -20,9 +20,12 @@ import {
   LogOut,
   Award,
   Clock,
+  CalendarDays,
+  TrendingUp,
+  ClipboardCheck,
 } from '@tamagui/lucide-icons'
 import { PHASE_NAMES } from '../../types'
-import { progressCaption } from '../../lib/today'
+import { experienceLabel, trainingDaysLabel } from '../../lib/profile'
 import { Title, SectionTitle, Body, Supporting, Caption, numeric } from '../../components/Typography'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -48,19 +51,11 @@ export default function ProfilePage() {
     user ? {} : "skip"
   )
 
-  const progress = useQuery(
-    api.userPrograms.getProgressSummary,
-    user ? {} : "skip"
-  )
-
   const intakeHistory = useQuery(
     api.userPrograms.getIntakeHistory,
     user ? {} : "skip"
   )
 
-  const progressLine = progress
-    ? progressCaption({ workoutsCompleted: progress.daysCompleted, currentStreak: progress.currentStreak })
-    : null
 
   // Core lift exercises with user's maxes
   const coreLiftExercises = useQuery(
@@ -135,14 +130,6 @@ export default function ProfilePage() {
             </XStack>
           </Card>
 
-          {/* Progress: one line once there is something to count, no 0/0/0 scoreboard */}
-          {progressLine && (
-            <YStack gap="$2" testID="profile-progress">
-              <SectionTitle>Progress</SectionTitle>
-              <Body>{progressLine}</Body>
-            </YStack>
-          )}
-
           {/* Training Info */}
           {programState && (
             <YStack gap="$3">
@@ -212,6 +199,37 @@ export default function ProfilePage() {
                       <Body fontWeight="600">{programState.skillLevel}</Body>
                     </YStack>
                   </XStack>
+
+                  {/* Baseline from the latest assessment, as words, not stat tiles */}
+                  {latestIntake && (
+                    <>
+                      <XStack items="center" gap="$3">
+                        <CalendarDays size={20} color="$color9" />
+                        <YStack flex={1}>
+                          <Caption>Training days</Caption>
+                          <Body fontWeight="600">{trainingDaysLabel(latestIntake.preferredTrainingDaysPerWeek)}</Body>
+                        </YStack>
+                      </XStack>
+
+                      <XStack items="center" gap="$3">
+                        <TrendingUp size={20} color="$color9" />
+                        <YStack flex={1}>
+                          <Caption>Experience</Caption>
+                          <Body fontWeight="600">{experienceLabel(latestIntake.yearsOfExperience)}</Body>
+                        </YStack>
+                      </XStack>
+
+                      <XStack items="center" gap="$3">
+                        <ClipboardCheck size={20} color="$color9" />
+                        <YStack flex={1}>
+                          <Caption>Last assessment</Caption>
+                          <Body fontWeight="600" style={numeric}>
+                            {new Date(latestIntake.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </Body>
+                        </YStack>
+                      </XStack>
+                    </>
+                  )}
                 </YStack>
               </Card>
             </YStack>
@@ -283,84 +301,6 @@ export default function ProfilePage() {
                   ))}
                 </YStack>
               </Card>
-            </YStack>
-          )}
-
-          {/* Assessment */}
-          {latestIntake && (
-            <YStack gap="$3">
-              <SectionTitle>Assessment</SectionTitle>
-
-              <XStack gap="$3" flexWrap="wrap">
-                {/* Training Days */}
-                <Card
-                  flex={1}
-                  minWidth={100}
-                  p="$4"
-                  bg="$surface"
-                  rounded="$4"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                >
-                  <YStack items="center" gap="$1">
-                    <Title color="$primaryText" style={numeric}>
-                      {latestIntake.preferredTrainingDaysPerWeek}
-                    </Title>
-                    <Caption
-                      text="center"
-                      fontWeight="500"
-                    >
-                      Days{'\n'}per week
-                    </Caption>
-                  </YStack>
-                </Card>
-
-                {/* Experience */}
-                <Card
-                  flex={1}
-                  minWidth={100}
-                  p="$4"
-                  bg="$surface"
-                  rounded="$4"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                >
-                  <YStack items="center" gap="$1">
-                    <Title color="$primaryText" style={numeric}>
-                      {latestIntake.yearsOfExperience}
-                    </Title>
-                    <Caption
-                      text="center"
-                      fontWeight="500"
-                    >
-                      Years{'\n'}experience
-                    </Caption>
-                  </YStack>
-                </Card>
-
-                {/* Last Assessment */}
-                <Card
-                  flex={1}
-                  minWidth={100}
-                  p="$4"
-                  bg="$surface"
-                  rounded="$4"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                >
-                  <YStack items="center" gap="$1">
-                    <Body fontWeight="700" color="$color11" style={numeric}>
-                      {new Date(latestIntake.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </Body>
-                    <Caption
-                      text="center"
-                      fontWeight="500"
-                    >
-                      Last{'\n'}assessment
-                    </Caption>
-                  </YStack>
-                </Card>
-              </XStack>
             </YStack>
           )}
 

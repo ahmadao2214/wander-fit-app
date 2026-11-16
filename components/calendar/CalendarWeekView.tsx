@@ -33,7 +33,6 @@ export interface CalendarWorkout {
   isToday: boolean
   isInProgress: boolean
   isLocked?: boolean
-  exercisePreview?: string[] // First 3 exercise names for preview
 }
 
 export interface CalendarWeekViewProps {
@@ -260,7 +259,6 @@ export function CalendarWeekView({
           isInProgress: w.isInProgress,
           isLocked: w.isLocked,
           gppCategoryId,
-          exercisePreview: w.exercisePreview,
           slotPhase: w.phase,
           slotWeek: w.week,
           slotDay: w.day,

@@ -5,13 +5,17 @@ import config from '../../tamagui.config'
 
 const mockUseQuery = jest.fn()
 
+// The progress summary is answered on its own; mockUseQuery answers the rest
+let mockProgress: { daysCompleted: number; currentStreak: number } | null = null
 jest.mock('convex/react', () => ({
-  useQuery: (...args: any[]) => mockUseQuery(...args),
+  useQuery: (name: string, ...args: any[]) =>
+    name === 'userPrograms.getProgressSummary' ? mockProgress : mockUseQuery(name, ...args),
 }))
 
 jest.mock('../../convex/_generated/api', () => ({
   api: {
     gppWorkoutSessions: { getHistory: 'gppWorkoutSessions.getHistory' },
+    userPrograms: { getProgressSummary: 'userPrograms.getProgressSummary' },
     workoutSessions: { getHistory: 'workoutSessions.getHistory' },
   },
 }))
@@ -47,12 +51,23 @@ const session = (overrides: Record<string, unknown>) => ({
 })
 
 describe('History tab', () => {
-  beforeEach(() => mockUseQuery.mockReset())
+  beforeEach(() => {
+    mockUseQuery.mockReset()
+    mockProgress = null
+  })
 
   it('reads GPP sessions, not the removed trainer-era sessions', () => {
     mockUseQuery.mockReturnValue([])
     render(<HistoryPage />, { wrapper: AllTheProviders })
     expect(mockUseQuery.mock.calls.map((call) => call[0])).toEqual(['gppWorkoutSessions.getHistory'])
+  })
+
+  // Design audit F06: progress lives on History, as one truthful line
+  it('says how many workouts are done once there are some', () => {
+    mockProgress = { daysCompleted: 5, currentStreak: 3 }
+    mockUseQuery.mockReturnValue([session({ totalDurationSeconds: 42 * 60 })])
+    const { getByTestId } = render(<HistoryPage />, { wrapper: AllTheProviders })
+    expect(getByTestId('history-progress').props.children).toBe('5 workouts done · 3-day streak')
   })
 
   it('lists finished GPP sessions with their name, phase slot and duration', () => {
