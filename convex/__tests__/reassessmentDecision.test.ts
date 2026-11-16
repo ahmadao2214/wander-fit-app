@@ -236,6 +236,25 @@ describe("end-of-block check-in", () => {
     expect(entry?.isCompleted).toBe(false);
   });
 
+  // Sol review on #120: starting a later workout on the repeated block's
+  // first day moves it to today, as the calendar shows that day
+  describe("on a Wednesday, the repeated block's first day", () => {
+    beforeEach(() => {
+      jest.useFakeTimers({ doNotFake: ["nextTick", "setImmediate", "queueMicrotask"] });
+      jest.setSystemTime(new Date(2026, 10, 18, 9, 0)); // Wednesday
+    });
+    afterEach(() => jest.useRealTimers());
+
+    it("starting day 3 moves it to today", async () => {
+      const { asAthlete, ids } = await setup({ completedInBlock: 3 });
+      await asAthlete.mutation(api.userPrograms.completeReassessment, { ...checkIn, decision: "repeat" });
+      const result = await asAthlete.mutation(api.gppWorkoutSessions.startSession, {
+        templateId: ids.templateIds[2],
+      });
+      expect(result).toMatchObject({ cascadeApplied: true });
+    });
+  });
+
   // Greptile review on #120: moving on late must not move past workouts
   it("after a late Move on, past GPP keeps its dates and SPP starts now", async () => {
     const { t, asAthlete } = await setup({ completedInBlock: 3 });

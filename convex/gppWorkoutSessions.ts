@@ -1,5 +1,7 @@
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { countsAsDone, slotOnDate } from "./blockCompletion";
+import { getWorkoutForDate } from "./workoutCalendar";
+import { DEFAULT_WEEKS_PER_PHASE } from "./weekMapping";
 import { v } from "convex/values";
 import { getCurrentUser } from "./authHelpers";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -47,7 +49,6 @@ interface WorkoutSlot {
 
 // Constants for calendar calculations
 const PHASE_ORDER: CalendarPhase[] = ["GPP", "SPP", "SSP"];
-const WEEKS_PER_PHASE = 4;
 
 const DEFAULT_TRAINING_DAYS: Record<number, number[]> = {
   1: [1],
@@ -66,94 +67,10 @@ function startOfDay(date: Date): Date {
   return result;
 }
 
-function addDays(date: Date, days: number): Date {
-  const result = new Date(date);
-  result.setDate(result.getDate() + days);
-  return result;
-}
-
-function isSameDay(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
-}
-
-function findNextDayOfWeek(startDate: Date, dayOfWeek: number): Date {
-  const result = startOfDay(startDate);
-  const currentDay = result.getDay();
-  const daysUntil = (dayOfWeek - currentDay + 7) % 7;
-  result.setDate(result.getDate() + daysUntil);
-  return result;
-}
-
-function getWorkoutForDate(
-  programStartDate: Date,
-  trainingDays: number[],
-  date: Date
-): WorkoutSlot | null {
-  const targetDate = startOfDay(date);
-  const targetDayOfWeek = targetDate.getDay();
-
-  const sortedDays = [...trainingDays].sort((a, b) => a - b);
-  if (!sortedDays.includes(targetDayOfWeek)) {
-    return null;
-  }
-
-  const start = startOfDay(programStartDate);
-  const firstTrainingDate = findNextDayOfWeek(start, sortedDays[0]);
-
-  if (targetDate < firstTrainingDate) {
-    return null;
-  }
-
-  let workoutIndex = 0;
-  let currentDate = firstTrainingDate;
-  let currentDayIndex = 0;
-
-  while (!isSameDay(currentDate, targetDate)) {
-    currentDayIndex = (currentDayIndex + 1) % sortedDays.length;
-    if (currentDayIndex === 0) {
-      currentDate = addDays(
-        currentDate,
-        7 - (sortedDays[sortedDays.length - 1] - sortedDays[0])
-      );
-      currentDate = findNextDayOfWeek(currentDate, sortedDays[0]);
-    } else {
-      const daysDiff = sortedDays[currentDayIndex] - sortedDays[currentDayIndex - 1];
-      currentDate = addDays(currentDate, daysDiff);
-    }
-    workoutIndex++;
-
-    if (workoutIndex > 100) {
-      return null;
-    }
-  }
-
-  const workoutsPerWeek = sortedDays.length;
-  const totalWorkoutsPerPhase = WEEKS_PER_PHASE * workoutsPerWeek;
-
-  const phaseIndex = Math.floor(workoutIndex / totalWorkoutsPerPhase);
-  if (phaseIndex >= PHASE_ORDER.length) {
-    return null;
-  }
-
-  const withinPhaseIndex = workoutIndex % totalWorkoutsPerPhase;
-  const week = Math.floor(withinPhaseIndex / workoutsPerWeek) + 1;
-  const day = (withinPhaseIndex % workoutsPerWeek) + 1;
-
-  return {
-    phase: PHASE_ORDER[phaseIndex],
-    week,
-    day,
-  };
-}
-
-function getAbsoluteIndex(slot: WorkoutSlot, workoutsPerWeek: number): number {
+function getAbsoluteIndex(slot: WorkoutSlot, workoutsPerWeek: number, weeksPerPhase: number): number {
   const phaseIdx = PHASE_ORDER.indexOf(slot.phase);
   return (
-    phaseIdx * WEEKS_PER_PHASE * workoutsPerWeek +
+    phaseIdx * weeksPerPhase * workoutsPerWeek +
     (slot.week - 1) * workoutsPerWeek +
     (slot.day - 1)
   );
@@ -924,9 +841,12 @@ export const startSession = mutation({
           DEFAULT_TRAINING_DAYS[3];
 
         const today = startOfDay(new Date());
+        const weeksPerPhase = userProgram.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
 
-        // Get today's scheduled slot
-        const todaySlot = slotOnDate(userProgram, (anchor) => getWorkoutForDate(anchor, trainingDays, today));
+        // Today's slot, with the calendar's own mapping
+        const todaySlot = slotOnDate(userProgram, (anchor) =>
+          getWorkoutForDate(anchor, trainingDays, today, weeksPerPhase)
+        );
 
         if (todaySlot) {
           const selectedSlot: WorkoutSlot = {
@@ -936,7 +856,7 @@ export const startSession = mutation({
           };
 
           const workoutsPerWeek = trainingDays.length;
-          const todayIndex = getAbsoluteIndex(todaySlot, workoutsPerWeek);
+          const todayIndex = getAbsoluteIndex(todaySlot, workoutsPerWeek, weeksPerPhase);
 
           // Get existing schedule overrides
           const existingOverride = await ctx.db
@@ -981,7 +901,7 @@ export const startSession = mutation({
           // Find which slot currently contains the selected template
           let selectedTemplateCurrentSlot: WorkoutSlot | null = null;
           for (const phase of PHASE_ORDER) {
-            for (let week = 1; week <= WEEKS_PER_PHASE; week++) {
+            for (let week = 1; week <= weeksPerPhase; week++) {
               for (let day = 1; day <= workoutsPerWeek; day++) {
                 const slot: WorkoutSlot = { phase, week, day };
                 const slotTemplate = getTemplateForSlot(slot);
@@ -996,14 +916,14 @@ export const startSession = mutation({
           }
 
           if (selectedTemplateCurrentSlot) {
-            const selectedIndex = getAbsoluteIndex(selectedTemplateCurrentSlot, workoutsPerWeek);
+            const selectedIndex = getAbsoluteIndex(selectedTemplateCurrentSlot, workoutsPerWeek, weeksPerPhase);
 
             // Only cascade if selected workout is in the future (not today or past)
             if (selectedIndex > todayIndex) {
               // Generate all slots in order
               const allSlots: WorkoutSlot[] = [];
               for (const phase of PHASE_ORDER) {
-                for (let week = 1; week <= WEEKS_PER_PHASE; week++) {
+                for (let week = 1; week <= weeksPerPhase; week++) {
                   for (let day = 1; day <= workoutsPerWeek; day++) {
                     allSlots.push({ phase, week, day });
                   }
@@ -1067,7 +987,8 @@ export const startSession = mutation({
                 const newSlotOverrides = slotOverrides.filter((o) => {
                   const oIndex = getAbsoluteIndex(
                     { phase: o.phase as CalendarPhase, week: o.week, day: o.day },
-                    workoutsPerWeek
+                    workoutsPerWeek,
+                    weeksPerPhase
                   );
                   return oIndex < todayIndex || oIndex > selectedIndex;
                 });

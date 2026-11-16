@@ -198,7 +198,7 @@ function getDateForWorkout(
  * Get the workout slot for a given date
  * @param weeksPerPhase - Dynamic weeks per phase (defaults to 4 for backwards compatibility)
  */
-function getWorkoutForDate(
+export function getWorkoutForDate(
   programStartDate: Date,
   trainingDays: number[],
   date: Date,
