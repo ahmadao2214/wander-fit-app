@@ -349,11 +349,11 @@ export default function AthleteDashboard() {
                   <Bell color="white" size={20} />
                 </YStack>
                 <YStack flex={1}>
-                  <Text fontFamily="$body" fontWeight="600" color="$brand9">
-                    Phase Assessment Ready
-                  </Text>
+                  <Body fontWeight="600" color="$brand9">
+                    Your {reassessmentStatus.pendingForPhase} block is over
+                  </Body>
                   <Supporting color="$brand8">
-                    Complete your check-in to unlock {reassessmentStatus.nextPhase}
+                    Check in to choose what's next
                   </Supporting>
                 </YStack>
                 <Button
@@ -367,7 +367,7 @@ export default function AthleteDashboard() {
                     router.push('/(reassessment)/celebration' as any)
                   }}
                 >
-                  Start Now
+                  Check in
                 </Button>
               </XStack>
             </Card>

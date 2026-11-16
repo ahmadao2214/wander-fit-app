@@ -16,7 +16,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { KeyboardAvoidingView, Platform } from 'react-native'
 import { ArrowLeft, ArrowUp, ArrowDown, Minus } from '@tamagui/lucide-icons'
-import Animated, { FadeInUp } from 'react-native-reanimated'
+import { Title, Body, Supporting, numeric } from '../../components/Typography'
 
 /**
  * Maxes Screen — Screen 3 of Reassessment Flow
@@ -49,7 +49,7 @@ export default function MaxesScreen() {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
         <Spinner size="large" color="$primaryText" />
-        <Text fontFamily="$body" color="$color10">Loading...</Text>
+        <Supporting color="$color10">Loading...</Supporting>
       </YStack>
     )
   }
@@ -160,26 +160,19 @@ export default function MaxesScreen() {
                 circular
               />
               <YStack flex={1}>
-                <Text fontFamily="$heading" fontSize={28} letterSpacing={0.5} color="$color12">
-                  UPDATE YOUR MAXES
-                </Text>
-                <Text fontFamily="$body" color="$color10" fontSize={14}>
-                  Enter new 1RM values or skip if unchanged
-                </Text>
+                <Title accessibilityRole="header">Update your maxes</Title>
+                <Supporting color="$color10">Enter a new 1RM, or skip if nothing changed.</Supporting>
               </YStack>
             </XStack>
 
             {/* Core Lifts */}
-            {(coreLifts ?? []).map((lift, index) => {
+            {(coreLifts ?? []).map((lift) => {
               const change = getChangeIndicator(lift.slug, lift.currentMax)
               const error = errors[lift.slug]
 
               return (
-                <Animated.View
-                  key={lift.slug}
-                  entering={FadeInUp.delay(index * 80).duration(250)}
-                >
                   <Card
+                    key={lift.slug}
                     p="$4"
                     bg="$surface"
                     borderWidth={1}
@@ -189,13 +182,11 @@ export default function MaxesScreen() {
                     gap="$3"
                   >
                     <XStack justify="space-between" items="center">
-                      <Text fontFamily="$body" fontWeight="700" fontSize={16} color="$color12">
-                        {lift.name}
-                      </Text>
+                      <Body fontWeight="700">{lift.name}</Body>
                       {lift.currentMax && (
-                        <Text fontFamily="$body" fontSize={13} color="$color10">
+                        <Supporting color="$color10" style={numeric}>
                           Current: {lift.currentMax} lbs
-                        </Text>
+                        </Supporting>
                       )}
                     </XStack>
 
@@ -214,26 +205,21 @@ export default function MaxesScreen() {
                         borderColor={error ? '$red6' : '$borderColor'}
                         rounded="$3"
                       />
-                      <Text fontFamily="$body" color="$color10" fontSize={14}>
-                        lbs
-                      </Text>
+                      <Supporting color="$color10">lbs</Supporting>
                       {change && (
                         <XStack items="center" gap="$1" minW={60}>
                           <change.icon size={16} color={change.color} />
-                          <Text fontFamily="$body" fontWeight="600" fontSize={13} color={change.color}>
+                          <Supporting fontWeight="600" color={change.color} style={numeric}>
                             {change.label}
-                          </Text>
+                          </Supporting>
                         </XStack>
                       )}
                     </XStack>
 
                     {error && (
-                      <Text fontFamily="$body" fontSize={12} color="$red10">
-                        {error}
-                      </Text>
+                      <Supporting color="$red10">{error}</Supporting>
                     )}
                   </Card>
-                </Animated.View>
               )
             })}
 
@@ -242,17 +228,16 @@ export default function MaxesScreen() {
               <Button
                 width="100%"
                 size="$5"
-                bg="$primary"
-                color="white"
+                bg={hasErrors ? '$color4' : '$primary'}
+                color={hasErrors ? '$color10' : 'white'}
                 fontFamily="$body"
                 fontWeight="700"
                 rounded="$4"
-                pressStyle={{ bg: '$primaryPress', scale: 0.98 }}
+                pressStyle={{ bg: hasErrors ? '$color4' : '$primaryPress', scale: 0.98 }}
                 disabled={hasErrors || isSaving}
-                opacity={hasErrors ? 0.5 : 1}
                 onPress={handleSave}
               >
-                {isSaving ? 'Saving...' : 'Save & Continue'}
+                {isSaving ? 'Saving...' : 'Save and continue'}
               </Button>
               <Button
                 width="100%"

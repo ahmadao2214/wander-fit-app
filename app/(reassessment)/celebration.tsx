@@ -1,24 +1,28 @@
 import { useEffect } from 'react'
-import { YStack, XStack, Text, Button, Card, Spinner } from 'tamagui'
+import { YStack, Button, Card, Spinner } from 'tamagui'
 import { useRouter } from 'expo-router'
 import { useQuery } from 'convex/react'
+import { useReducedMotion } from 'react-native-reanimated'
 import { api } from '../../convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Trophy, Dumbbell, Calendar, TrendingUp } from '@tamagui/lucide-icons'
 import { ConfettiEffect } from '../../components/workout/ConfettiEffect'
-import Animated, { FadeInUp, BounceIn } from 'react-native-reanimated'
+import { Display, Title, Body, Supporting, numeric } from '../../components/Typography'
+import { blockDates, blockEnd, blockRecap } from '../../lib/reassessment'
 
 /**
- * Celebration Screen — Screen 1 of Reassessment Flow
+ * Block recap, screen 1 of the end-of-block check-in.
  *
- * Shows phase completion congrats with stats.
- * Redirects to dashboard if no pending reassessment.
+ * Says what actually happened in the block: a finished block is celebrated
+ * once, and a block that ended with sessions missed is stated plainly
+ * (design audit F04). Everything is on screen at once, with no staged
+ * entrances (F11). Redirects to Today if no check-in is pending.
  */
 export default function CelebrationScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
+  const reduceMotion = useReducedMotion()
 
   const reassessmentStatus = useQuery(
     api.userPrograms.getReassessmentStatus,
@@ -36,140 +40,56 @@ export default function CelebrationScreen() {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
         <Spinner size="large" color="$primaryText" />
-        <Text fontFamily="$body" color="$color10">Loading...</Text>
+        <Supporting color="$color10">Loading...</Supporting>
       </YStack>
     )
   }
 
-  if (!reassessmentStatus?.reassessmentPending) {
+  if (!reassessmentStatus?.reassessmentPending || !reassessmentStatus.pendingForPhase) {
     return null
   }
 
+  const phase = reassessmentStatus.pendingForPhase
   const stats = reassessmentStatus.completionStats
-  const completionPercent = stats ? Math.round(stats.completionRate * 100) : 0
+  const recap = blockRecap(phase, stats?.completed ?? 0, stats?.expected ?? 0)
 
   return (
-    <YStack flex={1} bg="$background">
-      <ConfettiEffect trigger />
+    <YStack flex={1} bg="$background" testID={`block-recap-${recap.outcome}`}>
+      {/* One celebration, only for a finished block, and none with Reduce Motion on */}
+      {recap.celebrate && !reduceMotion && <ConfettiEffect trigger />}
 
       <YStack
         flex={1}
         px="$4"
         pt={insets.top + 24}
         pb={insets.bottom + 24}
-        items="center"
         justify="center"
         gap="$6"
         maxW={600}
         width="100%"
         self="center"
       >
-        {/* Trophy Icon */}
-        <Animated.View entering={BounceIn.delay(200)}>
-          <YStack
-            width={100}
-            height={100}
-            bg="$success"
-            rounded="$10"
-            items="center"
-            justify="center"
-          >
-            <Trophy size={52} color="white" />
-          </YStack>
-        </Animated.View>
+        <YStack gap="$2">
+          <Display accessibilityRole="header">{recap.title}</Display>
+          {stats && (
+            <Supporting color="$color10" style={numeric}>
+              {stats.weeksPerPhase} {stats.weeksPerPhase === 1 ? 'week' : 'weeks'}
+              {stats.blockStartedAt ? ` · ${blockDates(stats.blockStartedAt, blockEnd(stats.blockStartedAt, stats.weeksPerPhase))}` : ''}
+            </Supporting>
+          )}
+        </YStack>
 
-        {/* Heading */}
-        <Animated.View entering={FadeInUp.delay(400).duration(300)}>
-          <YStack items="center" gap="$2">
-            <Text
-              fontFamily="$heading"
-              fontSize={36}
-              letterSpacing={1}
-              color="$color12"
-              text="center"
-            >
-              YOU COMPLETED {reassessmentStatus.pendingForPhase}!
-            </Text>
-            <Text fontFamily="$body" color="$color10" text="center" maxW={280}>
-              Great work finishing this phase. Let's check in before moving on.
-            </Text>
-          </YStack>
-        </Animated.View>
+        <Card p="$4" bg="$surface" rounded="$4" borderWidth={1} borderColor="$borderColor" gap="$1">
+          <Title style={numeric} testID="block-recap-sessions">
+            {recap.sessions}
+          </Title>
+          <Body color="$color11">{recap.summary}</Body>
+        </Card>
 
-        {/* Stats Cards */}
-        {stats && (
-          <XStack gap="$3" flexWrap="wrap" justify="center">
-            <Animated.View entering={FadeInUp.delay(600).duration(300)}>
-              <Card
-                minW={100}
-                p="$4"
-                bg="$surface"
-                rounded="$4"
-                borderWidth={1}
-                borderColor="$borderColor"
-                borderCurve="continuous"
-                items="center"
-                gap="$2"
-              >
-                <Dumbbell size={20} color="$primaryText" />
-                <Text fontFamily="$body" fontWeight="700" fontSize={24} color="$primaryText">
-                  {stats.completed}
-                </Text>
-                <Text fontSize={11} color="$color10" fontFamily="$body" fontWeight="500">
-                  Workouts
-                </Text>
-              </Card>
-            </Animated.View>
-            <Animated.View entering={FadeInUp.delay(680).duration(300)}>
-              <Card
-                minW={100}
-                p="$4"
-                bg="$surface"
-                rounded="$4"
-                borderWidth={1}
-                borderColor="$borderColor"
-                borderCurve="continuous"
-                items="center"
-                gap="$2"
-              >
-                <TrendingUp size={20} color="$success" />
-                <Text fontFamily="$body" fontWeight="700" fontSize={24} color="$success">
-                  {completionPercent}%
-                </Text>
-                <Text fontSize={11} color="$color10" fontFamily="$body" fontWeight="500">
-                  Completion
-                </Text>
-              </Card>
-            </Animated.View>
-            <Animated.View entering={FadeInUp.delay(760).duration(300)}>
-              <Card
-                minW={100}
-                p="$4"
-                bg="$surface"
-                rounded="$4"
-                borderWidth={1}
-                borderColor="$borderColor"
-                borderCurve="continuous"
-                items="center"
-                gap="$2"
-              >
-                <Calendar size={20} color="$accent" />
-                <Text fontFamily="$body" fontWeight="700" fontSize={24} color="$accent">
-                  {stats.weeksPerPhase}
-                </Text>
-                <Text fontSize={11} color="$color10" fontFamily="$body" fontWeight="500">
-                  Weeks
-                </Text>
-              </Card>
-            </Animated.View>
-          </XStack>
-        )}
-
-        {/* Continue Button */}
-        <Animated.View
-          entering={FadeInUp.delay(900).duration(300)}
-          style={{ width: '100%' }}
-        >
+        <YStack gap="$3">
+          <Supporting color="$color11">
+            A short check-in, then you choose: move on to {reassessmentStatus.nextPhase} or repeat {phase}.
+          </Supporting>
           <Button
             width="100%"
             size="$5"
@@ -180,10 +100,11 @@ export default function CelebrationScreen() {
             rounded="$4"
             pressStyle={{ bg: '$primaryPress', scale: 0.98 }}
             onPress={() => router.push('/(reassessment)/self-assessment' as any)}
+            testID="block-recap-continue"
           >
-            Continue to Check-In
+            Start check-in
           </Button>
-        </Animated.View>
+        </YStack>
       </YStack>
     </YStack>
   )

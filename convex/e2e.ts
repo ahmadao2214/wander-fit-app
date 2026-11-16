@@ -122,7 +122,10 @@ export const provision = internalMutation({
       currentPhase: "GPP",
       currentWeek,
       currentDay,
-      phaseStartDate: now,
+      // phase-end: the GPP block ran its full length with nothing logged,
+      // and the check-in is pending, as advanceToNextDay leaves it
+      phaseStartDate: args.state === "phase-end" ? now - weeksPerPhase * 7 * 24 * 60 * 60 * 1000 : now,
+      ...(args.state === "phase-end" ? { reassessmentPendingForPhase: "GPP" as const } : {}),
       createdAt: now,
       updatedAt: now,
     });

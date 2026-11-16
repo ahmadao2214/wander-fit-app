@@ -1,7 +1,8 @@
 import { query, mutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
-import { DEFAULT_WEEKS_PER_PHASE } from "./weekMapping";
+import { DEFAULT_WEEKS_PER_PHASE, mapUserWeekToTemplateWeek } from "./weekMapping";
 import { programShape } from "./programShape";
+import { anchorsAfterCheckIn } from "./blockCompletion";
 
 /**
  * User Programs - Active State Management
@@ -725,6 +726,8 @@ export const resumeProgram = mutation({
         currentWeek: 1,
         currentDay: 1,
         phaseStartDate: now,
+        // The calendar starts over too
+        calendarAnchors: anchorsAfterCheckIn(program, "GPP", now, program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE),
         pausedAt: undefined,
         pauseReason: undefined,
         // Reset phase unlocks
@@ -787,6 +790,8 @@ export const resetProgram = mutation({
       currentWeek: 1,
       currentDay: 1,
       phaseStartDate: now,
+      // The calendar starts over too
+      calendarAnchors: anchorsAfterCheckIn(program, "GPP", now, program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE),
       lastWorkoutDate: undefined,
       pausedAt: undefined,
       pauseReason: undefined,
@@ -913,6 +918,50 @@ function getNextPhase(phase: "GPP" | "SPP" | "SSP"): "GPP" | "SPP" | "SSP" {
 }
 
 /**
+ * Completed sessions in the block that just ended: the pending phase, since
+ * the block started. A repeated block counts only its own sessions.
+ */
+function completedInBlock(
+  sessions: {
+    templateId: string;
+    status: string;
+    startedAt: number;
+    completedAt?: number;
+    templateSnapshot?: { phase?: string; week?: number };
+  }[],
+  phase: "GPP" | "SPP" | "SSP",
+  blockStartedAt: number,
+  weeksPerPhase: number,
+): number {
+  // A workout counts as many times as the block plans it, no more: a redo
+  // doesn't stand in for a workout that was skipped. With more than four
+  // weeks a phase, some template weeks run twice (see weekMapping).
+  const plannedRuns = new Map<number, number>();
+  for (let week = 1; week <= weeksPerPhase; week++) {
+    const templateWeek = mapUserWeekToTemplateWeek(week, weeksPerPhase);
+    plannedRuns.set(templateWeek, (plannedRuns.get(templateWeek) ?? 0) + 1);
+  }
+  const done = new Map<string, number>();
+  for (const s of sessions) {
+    if (
+      s.status === "completed" &&
+      s.templateSnapshot?.phase === phase &&
+      (s.completedAt ?? s.startedAt) >= blockStartedAt
+    ) {
+      done.set(s.templateId, (done.get(s.templateId) ?? 0) + 1);
+    }
+  }
+  let count = 0;
+  for (const s of sessions) {
+    const runs = done.get(s.templateId);
+    if (runs === undefined) continue;
+    count += Math.min(runs, plannedRuns.get(s.templateSnapshot?.week ?? 0) ?? 1);
+    done.delete(s.templateId);
+  }
+  return count;
+}
+
+/**
  * Get reassessment status for the current user
  * Returns whether a reassessment is pending, stats, and upgrade eligibility
  */
@@ -965,13 +1014,7 @@ export const getReassessmentStatus = query({
       .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
       .collect();
 
-    const phaseCompletedSessions = sessions.filter(
-      (s) =>
-        s.status === "completed" &&
-        s.templateSnapshot?.phase === pendingPhase
-    );
-
-    const completedCount = phaseCompletedSessions.length;
+    const completedCount = completedInBlock(sessions, pendingPhase, program.phaseStartDate, weeksPerPhase);
     const completionRate = expectedWorkouts > 0
       ? Math.min(1, completedCount / expectedWorkouts)
       : 0;
@@ -1007,6 +1050,7 @@ export const getReassessmentStatus = query({
         completed: completedCount,
         completionRate,
         weeksPerPhase,
+        blockStartedAt: program.phaseStartDate,
       },
       nextPhase,
       isFullCycleComplete,
@@ -1019,8 +1063,10 @@ export const getReassessmentStatus = query({
 });
 
 /**
- * Complete a reassessment after a phase
- * Advances to the next phase, optionally upgrades skill level
+ * Complete a reassessment after a phase.
+ * "move_on" (the default) starts the next phase and may raise the skill
+ * level. "repeat" runs the same phase again from week 1, with no unlock and
+ * no skill change.
  */
 export const completeReassessment = mutation({
   args: {
@@ -1028,6 +1074,7 @@ export const completeReassessment = mutation({
     energyLevel: v.optional(energyLevelValidator),
     notes: v.optional(v.string()),
     maxesUpdated: v.boolean(),
+    decision: v.optional(v.union(v.literal("move_on"), v.literal("repeat"))),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -1058,8 +1105,10 @@ export const completeReassessment = mutation({
     }
 
     const completedPhase = program.reassessmentPendingForPhase;
-    const nextPhase = getNextPhase(completedPhase);
-    const isFullCycleComplete = completedPhase === "SSP";
+    const decision = args.decision ?? "move_on";
+    const repeat = decision === "repeat";
+    const nextPhase = repeat ? completedPhase : getNextPhase(completedPhase);
+    const isFullCycleComplete = !repeat && completedPhase === "SSP";
     const now = Date.now();
 
     // Calculate completion stats for the intake record
@@ -1073,14 +1122,10 @@ export const completeReassessment = mutation({
       .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
       .collect();
 
-    const phaseCompletedSessions = sessions.filter(
-      (s) =>
-        s.status === "completed" &&
-        s.templateSnapshot?.phase === completedPhase
-    );
+    const completedCount = completedInBlock(sessions, completedPhase, program.phaseStartDate, weeksPerPhase);
 
     const completionRate = expectedWorkouts > 0
-      ? Math.min(1, phaseCompletedSessions.length / expectedWorkouts)
+      ? Math.min(1, completedCount / expectedWorkouts)
       : 0;
 
     // Count already-completed reassessments
@@ -1097,7 +1142,7 @@ export const completeReassessment = mutation({
 
     const isEasyOrRight = args.phaseDifficulty === "too_easy" || args.phaseDifficulty === "just_right";
 
-    if (isEasyOrRight) {
+    if (isEasyOrRight && !repeat) {
       if (previousSkillLevel === "Novice" && completionRate >= 0.75) {
         newSkillLevel = "Moderate";
         skillLevelChanged = true;
@@ -1133,6 +1178,7 @@ export const completeReassessment = mutation({
       skillLevelChanged,
       completedPhase,
       maxesUpdated: args.maxesUpdated,
+      reassessmentDecision: decision,
       completedAt: now,
     });
 
@@ -1149,13 +1195,16 @@ export const completeReassessment = mutation({
       currentWeek: 1,
       currentDay: 1,
       phaseStartDate: now,
+      calendarAnchors: anchorsAfterCheckIn(program, nextPhase, now, program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE),
       reassessmentPendingForPhase: undefined,
       [reassessmentTimestampField]: now,
       updatedAt: now,
     };
 
-    // Unlock next phase (unless full cycle wrapping)
-    if (!isFullCycleComplete) {
+    // Unlock next phase (unless repeating, or full cycle wrapping)
+    if (repeat) {
+      // Same phase again: nothing new unlocks
+    } else if (!isFullCycleComplete) {
       const unlockField = completedPhase === "GPP" ? "sppUnlockedAt" : "sspUnlockedAt";
       programUpdate[unlockField] = now;
     } else {
@@ -1171,6 +1220,24 @@ export const completeReassessment = mutation({
 
     await ctx.db.patch(program._id, programUpdate);
 
+    // The new block starts clean: drop a workout picked for today in the old
+    // block, and moved dates for this phase and later ones, which were placed
+    // against the old block's calendar
+    const override = await ctx.db
+      .query("user_schedule_overrides")
+      .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
+      .first();
+    if (override) {
+      const phases = ["GPP", "SPP", "SSP"];
+      const from = phases.indexOf(nextPhase);
+      await ctx.db.patch(override._id, {
+        todayFocusTemplateId: undefined,
+        todayFocusSetAt: undefined,
+        dateOverrides: override.dateOverrides?.filter((o) => phases.indexOf(o.phase) < from),
+        updatedAt: now,
+      });
+    }
+
     return {
       skillLevelChanged,
       previousSkillLevel,
@@ -1178,6 +1245,7 @@ export const completeReassessment = mutation({
       nextPhase,
       isFullCycleComplete,
       completionRate,
+      decision,
     };
   },
 });

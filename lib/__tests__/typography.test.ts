@@ -40,8 +40,8 @@ describe('type scale', () => {
 
 describe('athlete screens use the type roles', () => {
   const ROOT = join(__dirname, '..', '..')
-  // Reassessment gets its own pass (PR 3); First Run owns its new screens
-  const SKIP = /__tests__|\(reassessment\)|\(first-run\)|components\/first-run/
+  // First Run owns its new screens
+  const SKIP = /__tests__|\(first-run\)|components\/first-run/
 
   function files(dir: string): string[] {
     return readdirSync(dir).flatMap((name) => {
