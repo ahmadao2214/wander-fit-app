@@ -14,6 +14,7 @@ import {
   formatDateISO,
   startOfWeek,
   parseDateISO,
+  DAY_NAMES_FULL,
 } from '../../lib/calendarUtils'
 import type { Phase } from '../../types'
 
@@ -66,6 +67,8 @@ export interface CalendarWeekViewProps {
   programStartDate?: string
   /** Program end date (ISO format) - limits navigation */
   programEndDate?: string
+  /** Move a workout without dragging (VoiceOver actions) */
+  onMoveWorkout?: (phase: Phase, week: number, day: number, dateISO: string) => void
 }
 
 type Rect = { x: number; y: number; width: number; height: number }
@@ -137,6 +140,7 @@ export function CalendarWeekView({
   onDropZoneUnregister,
   programStartDate,
   programEndDate,
+  onMoveWorkout,
 }: CalendarWeekViewProps) {
   // Disable FlatList scrolling while dragging to prevent gesture conflicts
   const isDragging = dragSourceSlot !== null && dragSourceSlot !== undefined
@@ -267,6 +271,10 @@ export function CalendarWeekView({
       }
     }
 
+    // Days a workout can move to: this week, from today on (the drag rule)
+    const isPast = (d: Date) => d < today && !isSameDay(d, today)
+    const openDays = days.filter((d) => !isPast(d))
+
     const renderDay = (date: Date) => {
       const dateISO = formatDateISO(date)
       const isDateToday = isSameDay(date, today)
@@ -319,6 +327,10 @@ export function CalendarWeekView({
           gppCategoryId={gppCategoryId}
           onDropZoneLayout={handleDayLayout}
           onDropZoneUnregister={onDropZoneUnregister}
+          moveTargets={openDays
+            .filter((d) => !isSameDay(d, date))
+            .map((d) => ({ dateISO: formatDateISO(d), label: DAY_NAMES_FULL[d.getDay()] }))}
+          onMoveWorkout={onMoveWorkout}
         />
       )
     }
@@ -337,7 +349,7 @@ export function CalendarWeekView({
         <YStack gap="$1">{days.map(renderDay)}</YStack>
       </ScrollView>
     )
-  }, [calendarData, onWorkoutPress, onWorkoutLongPress, onDragStart, onDragEnd, onDragMove, dragTargetDate, dragSourceSlot, isDragging, gppCategoryId, handleDayLayout, onDropZoneUnregister])
+  }, [calendarData, onWorkoutPress, onWorkoutLongPress, onDragStart, onDragEnd, onDragMove, dragTargetDate, dragSourceSlot, isDragging, gppCategoryId, handleDayLayout, onDropZoneUnregister, onMoveWorkout])
 
   const keyExtractor = useCallback((item: Date) => formatDateISO(item), [])
 

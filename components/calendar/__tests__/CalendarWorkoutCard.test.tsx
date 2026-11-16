@@ -4,6 +4,13 @@ import { TamaguiProvider } from 'tamagui'
 import config from '../../../tamagui.config'
 import { CalendarWorkoutCard, CalendarWorkoutCardProps } from '../CalendarWorkoutCard'
 
+// Jest's mocked screen reports fontScale 2; phones default to 1
+const mockFontScale = { value: 1 }
+jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
+  __esModule: true,
+  default: () => ({ width: 402, height: 874, scale: 3, fontScale: mockFontScale.value }),
+}))
+
 // Wrapper for Tamagui components
 const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
   return <TamaguiProvider config={config}>{children}</TamaguiProvider>
@@ -29,6 +36,7 @@ describe('CalendarWorkoutCard', () => {
   }
 
   beforeEach(() => {
+    mockFontScale.value = 1
     mockOnPress.mockClear()
     mockOnLongPress.mockClear()
   })
@@ -63,7 +71,7 @@ describe('CalendarWorkoutCard', () => {
         <CalendarWorkoutCard {...defaultProps} />,
         { wrapper: AllTheProviders }
       )
-      expect(getByText('~45m · 8 exercises')).toBeTruthy()
+      expect(getByText('~45 min · 8 exercises')).toBeTruthy()
       expect(queryByText(/more$/)).toBeNull()
     })
 
@@ -72,7 +80,7 @@ describe('CalendarWorkoutCard', () => {
         <CalendarWorkoutCard {...defaultProps} exerciseCount={0} />,
         { wrapper: AllTheProviders }
       )
-      expect(getByText('~45m')).toBeTruthy()
+      expect(getByText('~45 min')).toBeTruthy()
     })
 
     it('says "1 exercise" in the singular', () => {
@@ -80,7 +88,47 @@ describe('CalendarWorkoutCard', () => {
         <CalendarWorkoutCard {...defaultProps} exerciseCount={1} />,
         { wrapper: AllTheProviders }
       )
-      expect(getByText('~45m · 1 exercise')).toBeTruthy()
+      expect(getByText('~45 min · 1 exercise')).toBeTruthy()
+    })
+
+    it('offers each open day to VoiceOver as a move, since dragging needs a held finger', () => {
+      const onMove = jest.fn()
+      const moveTargets = [
+        { dateISO: '2026-11-18', label: 'Wednesday' },
+        { dateISO: '2026-11-19', label: 'Thursday' },
+      ]
+      const { getByLabelText } = render(
+        <CalendarWorkoutCard {...defaultProps} moveTargets={moveTargets} onMove={onMove} />,
+        { wrapper: AllTheProviders }
+      )
+      const card = getByLabelText(/^GPP workout/)
+      expect(card.props.accessibilityActions).toEqual([
+        { name: '2026-11-18', label: 'Move to Wednesday' },
+        { name: '2026-11-19', label: 'Move to Thursday' },
+      ])
+      fireEvent(card, 'accessibilityAction', { nativeEvent: { actionName: '2026-11-19' } })
+      expect(onMove).toHaveBeenCalledWith('2026-11-19')
+    })
+
+    it('offers no moves for a done or locked workout, which can\'t be dragged either', () => {
+      const moveTargets = [{ dateISO: '2026-11-18', label: 'Wednesday' }]
+      for (const state of [{ isCompleted: true }, { isLocked: true }]) {
+        const { getByLabelText, unmount } = render(
+          <CalendarWorkoutCard {...defaultProps} {...state} moveTargets={moveTargets} onMove={jest.fn()} />,
+          { wrapper: AllTheProviders }
+        )
+        expect({ state, actions: getByLabelText(/^GPP workout/).props.accessibilityActions }).toEqual({ state, actions: undefined })
+        unmount()
+      }
+    })
+
+    it('clamps the name to three lines, but not at accessibility text sizes', () => {
+      const normal = render(<CalendarWorkoutCard {...defaultProps} />, { wrapper: AllTheProviders })
+      expect(normal.getByText('Lower Body Foundation').props.numberOfLines).toBe(3)
+      normal.unmount()
+      mockFontScale.value = 2
+      const large = render(<CalendarWorkoutCard {...defaultProps} />, { wrapper: AllTheProviders })
+      expect(large.getByText('Lower Body Foundation').props.numberOfLines).toBeUndefined()
     })
 
     it('is a button to screen readers', () => {

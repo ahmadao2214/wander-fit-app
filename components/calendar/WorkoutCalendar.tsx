@@ -284,6 +284,7 @@ export function WorkoutCalendar({
             onDropZoneUnregister={handleDropZoneUnregister}
             programStartDate={programStartDate}
             programEndDate={programEndDate}
+            onMoveWorkout={handleMoveToDate}
           />
         ) : (
           <CalendarMonthView

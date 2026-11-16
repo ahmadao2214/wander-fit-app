@@ -1,9 +1,20 @@
 import { YStack, XStack, Text, Card, type ColorTokens } from 'tamagui'
+import { useWindowDimensions } from 'react-native'
 import { Body, Supporting, numeric } from '../Typography'
+import { workoutMetaLine } from '../../lib/workoutMeta'
 import { CheckCircle, Play, Lock } from '@tamagui/lucide-icons'
 import type { Phase } from '../../types'
 import { phaseTokens } from '../../lib/phase'
 
+
+/** At accessibility text sizes the week view stacks the date and lets names wrap fully. */
+export const STACK_FONT_SCALE = 1.5
+
+/** A day this workout can move to, offered to VoiceOver as "Move to <label>". */
+export interface MoveTarget {
+  dateISO: string
+  label: string
+}
 
 export interface CalendarWorkoutCardProps {
   templateId: string
@@ -21,6 +32,9 @@ export interface CalendarWorkoutCardProps {
   gppCategoryId?: number // Category ID (not used for coloring, kept for data)
   onPress?: () => void
   onLongPress?: () => void
+  /** Days the workout can move to; the way to reschedule without dragging */
+  moveTargets?: MoveTarget[]
+  onMove?: (dateISO: string) => void
 }
 
 /**
@@ -44,7 +58,10 @@ export function CalendarWorkoutCard({
   gppCategoryId,
   onPress,
   onLongPress,
+  moveTargets,
+  onMove,
 }: CalendarWorkoutCardProps) {
+  const { fontScale } = useWindowDimensions()
   // Use phase colors for visual distinction
   const colors = { dot: phaseTokens(phase).fill }
 
@@ -115,7 +132,12 @@ export function CalendarWorkoutCard({
 
   // Week view: a full-width row in the day list. Name on the first line,
   // time and size on the second, status at the trailing edge.
-  const meta = [`~${estimatedDurationMinutes}m`, exercisesLabel].filter(Boolean).join(' · ')
+  const meta = workoutMetaLine({ minutes: estimatedDurationMinutes, exerciseCount })
+  // Dragging needs a held finger, so VoiceOver gets each day as an action
+  const movable = !isLocked && !isCompleted && !!onMove && !!moveTargets?.length
+  const accessibilityActions = movable
+    ? moveTargets!.map((t) => ({ name: t.dateISO, label: `Move to ${t.label}` }))
+    : undefined
   return (
     <Card
       pressStyle={isLocked ? undefined : { opacity: 0.8, scale: 0.98 }}
@@ -123,6 +145,8 @@ export function CalendarWorkoutCard({
       onLongPress={isLocked ? undefined : onLongPress}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
+      accessibilityActions={accessibilityActions}
+      onAccessibilityAction={movable ? (e) => onMove!(e.nativeEvent.actionName) : undefined}
       bg={getBgColor()}
       borderColor={getBorderColor()}
       borderWidth={isActive ? 2 : 1}
@@ -140,7 +164,8 @@ export function CalendarWorkoutCard({
           <Body
             fontWeight="600"
             color={isLocked || isCompleted ? '$color10' : '$color12'}
-            numberOfLines={3}
+            // Clamp at normal sizes; at accessibility sizes the row has room to grow
+            numberOfLines={fontScale >= STACK_FONT_SCALE ? undefined : 3}
           >
             {name}
           </Body>

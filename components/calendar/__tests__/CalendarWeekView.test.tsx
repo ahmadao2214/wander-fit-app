@@ -7,10 +7,18 @@ import { formatDateISO, startOfWeek, addDays } from '../../../lib/calendarUtils'
 
 // The day row is what's under test here, not the gesture-handler card
 jest.mock('../DraggableWorkoutCard', () => ({
-  DraggableWorkoutCard: ({ name }: { name: string }) => {
+  DraggableWorkoutCard: ({ name, moveTargets, onMove }: {
+    name: string
+    moveTargets?: { dateISO: string; label: string }[]
+    onMove?: (dateISO: string) => void
+  }) => {
     const React = require('react')
     const { Text } = require('react-native')
-    return React.createElement(Text, null, name)
+    return React.createElement(Text, {
+      testID: `card-${name}`,
+      accessibilityActions: moveTargets?.map((t) => ({ name: t.dateISO, label: `Move to ${t.label}` })),
+      onAccessibilityAction: (e: { nativeEvent: { actionName: string } }) => onMove?.(e.nativeEvent.actionName),
+    }, name)
   },
 }))
 
@@ -117,6 +125,38 @@ describe('CalendarWeekView', () => {
     expect(onDropZoneLayout).toHaveBeenCalledWith(iso[1], { x: 12, y: 200, width: 378, height: 26 })
     expect(onDropZoneLayout).toHaveBeenCalledWith(iso[2], { x: 12, y: 300, width: 378, height: 56 })
     expect(onDropZoneLayout.mock.calls.map(([d]) => d)).not.toContain(iso[0])
+  })
+
+  it('lets VoiceOver move a workout to any other day of a future week', () => {
+    // Next week, so no day is in the past
+    const next = days.map((d) => addDays(d, 7))
+    const nextIso = next.map(formatDateISO)
+    const onMoveWorkout = jest.fn()
+    const { getByTestId } = render(
+      <CalendarWeekView
+        {...props}
+        currentWeek={next[0]}
+        programStartDate={nextIso[0]}
+        programEndDate={nextIso[6]}
+        calendarData={{ [nextIso[3]]: { date: nextIso[3], workouts: [workout('Upper Push/Pull', 2)] } }}
+        onMoveWorkout={onMoveWorkout}
+      />,
+      { wrapper: AllTheProviders }
+    )
+    const card = getByTestId('card-Upper Push/Pull')
+    expect(card.props.accessibilityActions.map((a: { label: string }) => a.label)).toEqual([
+      'Move to Sunday', 'Move to Monday', 'Move to Tuesday', 'Move to Thursday', 'Move to Friday', 'Move to Saturday',
+    ])
+    fireEvent(card, 'accessibilityAction', { nativeEvent: { actionName: nextIso[5] } })
+    expect(onMoveWorkout).toHaveBeenCalledWith('GPP', 1, 2, nextIso[5])
+  })
+
+  it('never offers a day that has already passed', () => {
+    const { getByTestId } = render(<CalendarWeekView {...props} onMoveWorkout={jest.fn()} />, { wrapper: AllTheProviders })
+    const today = new Date()
+    const offered: string[] = getByTestId('card-Power & Conditioning').props.accessibilityActions?.map((a: { name: string }) => a.name) ?? []
+    const past = offered.filter((iso) => iso < formatDateISO(today))
+    expect(past).toEqual([])
   })
 
   it('labels the week arrows', () => {

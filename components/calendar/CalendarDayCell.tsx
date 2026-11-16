@@ -2,14 +2,14 @@ import { useCallback, useRef, useEffect, useMemo } from 'react'
 import { YStack, XStack, Stack, Text } from 'tamagui'
 import { Body, Caption, Supporting, numeric } from '../Typography'
 import { View, LayoutChangeEvent, useWindowDimensions, type ViewInstance } from 'react-native'
-import { CalendarWorkoutCard, CalendarWorkoutCardProps } from './CalendarWorkoutCard'
+import { CalendarWorkoutCard, CalendarWorkoutCardProps, STACK_FONT_SCALE, type MoveTarget } from './CalendarWorkoutCard'
 import { DraggableWorkoutCard } from './DraggableWorkoutCard'
 import type { Phase } from '../../types'
 import { phaseTokens } from '../../lib/phase'
 import { DAY_NAMES, DAY_NAMES_FULL } from '../../lib/calendarUtils'
 
-/** At accessibility text sizes the date goes above the cards, not beside them. */
-export const STACK_FONT_SCALE = 1.5
+// At accessibility text sizes the date goes above the cards, not beside them
+export { STACK_FONT_SCALE }
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
@@ -48,6 +48,10 @@ export interface CalendarDayCellProps {
   onDropZoneUnregister?: (dateISO: string) => void
   /** Category ID for color coding (1-4) */
   gppCategoryId?: number
+  /** Week view: days a workout here can move to, for VoiceOver */
+  moveTargets?: MoveTarget[]
+  /** Week view: move a workout without dragging */
+  onMoveWorkout?: (phase: Phase, week: number, day: number, dateISO: string) => void
 }
 
 /**
@@ -82,6 +86,8 @@ export function CalendarDayCell({
   onDropZoneLayout,
   onDropZoneUnregister,
   gppCategoryId,
+  moveTargets,
+  onMoveWorkout,
 }: CalendarDayCellProps) {
   const dayNumber = date.getDate()
   const { fontScale } = useWindowDimensions()
@@ -261,7 +267,7 @@ export function CalendarDayCell({
         // workout, a solid one on the day under your finger, and dimmed days
         // that can't (another week, or already past)
         borderColor={isHovered ? '$primary' : isDragActive && isValidDropTarget ? '$borderColorHover' : 'transparent'}
-        bg={isHovered ? '$surfaceHover' : 'transparent'}
+        bg={isHovered ? '$color3' : 'transparent'}
         opacity={isDragActive && !isValidDropTarget ? 0.4 : 1}
       >
         {stacked ? (
@@ -315,6 +321,12 @@ export function CalendarDayCell({
                   onDragMove={(_, x, y) => onDragMove?.(x, y)}
                   onDragEnd={() => onDragEnd?.()}
                   dragDisabled={workout.isLocked || workout.isCompleted}
+                  moveTargets={moveTargets}
+                  onMove={(target) => {
+                    if (workout.slotPhase && workout.slotWeek && workout.slotDay) {
+                      onMoveWorkout?.(workout.slotPhase, workout.slotWeek, workout.slotDay, target)
+                    }
+                  }}
                 />
               )
             })}
