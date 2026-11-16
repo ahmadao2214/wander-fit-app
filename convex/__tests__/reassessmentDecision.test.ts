@@ -245,6 +245,27 @@ describe("end-of-block check-in", () => {
     });
     afterEach(() => jest.useRealTimers());
 
+    // Greptile review on #120: in a two-week phase, week 2 runs template week 4
+    it("in a two-week phase, starting a week-2 workout moves it to today", async () => {
+      const { t, ids, asAthlete } = await setup({ completedInBlock: 3 });
+      const week4 = await t.run(async (ctx) => {
+        await ctx.db.patch(ids.programId, { weeksPerPhase: 2 });
+        return ctx.db.insert("program_templates", {
+          gppCategoryId: 2,
+          phase: "GPP",
+          skillLevel: "Novice",
+          week: 4,
+          day: 1,
+          name: "GPP deload day 1",
+          estimatedDurationMinutes: 30,
+          exercises: [],
+        });
+      });
+      await asAthlete.mutation(api.userPrograms.completeReassessment, { ...checkIn, decision: "repeat" });
+      const result = await asAthlete.mutation(api.gppWorkoutSessions.startSession, { templateId: week4 });
+      expect(result).toMatchObject({ cascadeApplied: true });
+    });
+
     it("starting day 3 moves it to today", async () => {
       const { asAthlete, ids } = await setup({ completedInBlock: 3 });
       await asAthlete.mutation(api.userPrograms.completeReassessment, { ...checkIn, decision: "repeat" });
@@ -253,6 +274,38 @@ describe("end-of-block check-in", () => {
       });
       expect(result).toMatchObject({ cascadeApplied: true });
     });
+  });
+
+  // Sol review on #120: a late phase keeps its dates once it is past
+  it("a late SPP keeps its calendar dates after moving on to SSP", async () => {
+    const { t, ids, asAthlete } = await setup({ completedInBlock: 3 });
+    await t.run(async (ctx) => {
+      await ctx.db.insert("program_templates", {
+        gppCategoryId: 2,
+        phase: "SPP",
+        skillLevel: "Novice",
+        week: 1,
+        day: 1,
+        name: "SPP day 1",
+        estimatedDurationMinutes: 30,
+        exercises: [],
+      });
+    });
+    const steady = { phaseDifficulty: "challenging" as const, maxesUpdated: false, decision: "move_on" as const };
+    await asAthlete.mutation(api.userPrograms.completeReassessment, steady);
+    const sppDate = async () => {
+      const calendar = await asAthlete.query(api.workoutCalendar.getFullProgramCalendar, {});
+      return Object.values(calendar!.calendarData).find((d) =>
+        d.workouts.some((w) => w.phase === "SPP" && w.week === 1 && w.day === 1)
+      )?.date;
+    };
+    const before = await sppDate();
+    expect(before).toBeDefined();
+
+    // SPP ends and the athlete moves on to SSP
+    await t.run((ctx) => ctx.db.patch(ids.programId, { reassessmentPendingForPhase: "SPP" }));
+    await asAthlete.mutation(api.userPrograms.completeReassessment, steady);
+    expect(await sppDate()).toBe(before);
   });
 
   // Greptile review on #120: moving on late must not move past workouts

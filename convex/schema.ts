@@ -374,6 +374,13 @@ export default defineSchema({
 
     // Phase tracking
     phaseStartDate: v.number(),
+    // Where the calendar counts each phase's slots from, set at each check-in
+    // (convex/blockCompletion.ts). Missing phases count from createdAt.
+    calendarAnchors: v.optional(v.object({
+      GPP: v.optional(v.number()),
+      SPP: v.optional(v.number()),
+      SSP: v.optional(v.number()),
+    })),
 
     // Pause/Freeze (2+ weeks absence = restart)
     pausedAt: v.optional(v.number()),

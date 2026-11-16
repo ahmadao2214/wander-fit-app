@@ -2,6 +2,7 @@ import { query, mutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { DEFAULT_WEEKS_PER_PHASE, mapUserWeekToTemplateWeek } from "./weekMapping";
 import { programShape } from "./programShape";
+import { anchorsAfterCheckIn } from "./blockCompletion";
 
 /**
  * User Programs - Active State Management
@@ -725,6 +726,8 @@ export const resumeProgram = mutation({
         currentWeek: 1,
         currentDay: 1,
         phaseStartDate: now,
+        // The calendar starts over too
+        calendarAnchors: anchorsAfterCheckIn(program, "GPP", now, program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE),
         pausedAt: undefined,
         pauseReason: undefined,
         // Reset phase unlocks
@@ -787,6 +790,8 @@ export const resetProgram = mutation({
       currentWeek: 1,
       currentDay: 1,
       phaseStartDate: now,
+      // The calendar starts over too
+      calendarAnchors: anchorsAfterCheckIn(program, "GPP", now, program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE),
       lastWorkoutDate: undefined,
       pausedAt: undefined,
       pauseReason: undefined,
@@ -1190,6 +1195,7 @@ export const completeReassessment = mutation({
       currentWeek: 1,
       currentDay: 1,
       phaseStartDate: now,
+      calendarAnchors: anchorsAfterCheckIn(program, nextPhase, now, program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE),
       reassessmentPendingForPhase: undefined,
       [reassessmentTimestampField]: now,
       updatedAt: now,

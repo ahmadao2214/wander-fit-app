@@ -1,36 +1,59 @@
-import { calendarStart, phaseAnchor, scheduleStart, slotOnDate } from "../blockCompletion";
+import { anchorsAfterCheckIn, calendarStart, phaseAnchor, slotOnDate } from "../blockCompletion";
 
 const DAY = 24 * 60 * 60 * 1000;
-const createdAt = new Date(2026, 8, 1).getTime();
+const createdAt = new Date(2026, 0, 5).getTime();
+const at = (phase: string, program: Parameters<typeof phaseAnchor>[0]) => phaseAnchor(program, phase).getTime();
 
 describe("calendar anchors", () => {
-  it("an on-time program counts every phase from createdAt", () => {
-    const program = { currentPhase: "SPP", phaseStartDate: createdAt + 28 * DAY, createdAt, weeksPerPhase: 4 };
+  it("a program with no check-in yet counts every phase from createdAt", () => {
+    const program = { currentPhase: "GPP", createdAt };
     for (const phase of ["GPP", "SPP", "SSP"]) {
-      expect({ phase, at: phaseAnchor(program, phase).getTime() }).toEqual({ phase, at: createdAt });
+      expect({ phase, at: at(phase, program) }).toEqual({ phase, at: createdAt });
     }
   });
 
-  it("a late phase moves itself and later phases, not past ones", () => {
-    const program = { currentPhase: "SPP", phaseStartDate: createdAt + 42 * DAY, createdAt, weeksPerPhase: 4 };
-    expect(phaseAnchor(program, "GPP").getTime()).toBe(createdAt);
-    expect(phaseAnchor(program, "SPP").getTime()).toBe(createdAt + 14 * DAY);
-    expect(phaseAnchor(program, "SSP").getTime()).toBe(createdAt + 14 * DAY);
-    expect(calendarStart(program).getTime()).toBe(createdAt);
+  it("an on-time check-in keeps every anchor at createdAt", () => {
+    const anchors = anchorsAfterCheckIn({ currentPhase: "GPP", createdAt }, "SPP", createdAt + 28 * DAY, 4);
+    expect(anchors).toEqual({ GPP: createdAt, SPP: createdAt, SSP: createdAt });
   });
 
-  it("an early phase pulls past phases back, so they don't overlap it", () => {
-    const program = { currentPhase: "SPP", phaseStartDate: createdAt + 21 * DAY, createdAt, weeksPerPhase: 4 };
-    expect(phaseAnchor(program, "GPP").getTime()).toBe(scheduleStart(program).getTime());
-    expect(calendarStart(program).getTime()).toBe(createdAt - 7 * DAY);
+  // Sol review on #120: a late phase keeps its dates once it is past
+  it("a late SPP keeps its dates after moving on to SSP", () => {
+    const gpp = { currentPhase: "GPP", createdAt };
+    // SPP starts two weeks late
+    const spp = { currentPhase: "SPP", createdAt, calendarAnchors: anchorsAfterCheckIn(gpp, "SPP", createdAt + 42 * DAY, 4) };
+    expect(at("GPP", spp)).toBe(createdAt);
+    expect(at("SPP", spp)).toBe(createdAt + 14 * DAY);
+    // SSP starts on time after SPP
+    const ssp = { currentPhase: "SSP", createdAt, calendarAnchors: anchorsAfterCheckIn(spp, "SSP", createdAt + 70 * DAY, 4) };
+    expect(at("GPP", ssp)).toBe(createdAt);
+    expect(at("SPP", ssp)).toBe(createdAt + 14 * DAY);
+    expect(at("SSP", ssp)).toBe(createdAt + 14 * DAY);
   });
 
-  it("reads a date with the anchor that owns its phase", () => {
-    const program = { currentPhase: "SPP", phaseStartDate: createdAt + 42 * DAY, createdAt, weeksPerPhase: 4 };
+  it("an early SPP doesn't move GPP before the program existed", () => {
+    const gpp = { currentPhase: "GPP", createdAt };
+    const spp = { currentPhase: "SPP", createdAt, calendarAnchors: anchorsAfterCheckIn(gpp, "SPP", createdAt + 21 * DAY, 4) };
+    expect(at("GPP", spp)).toBe(createdAt);
+    expect(at("SPP", spp)).toBe(createdAt - 7 * DAY);
+    expect(calendarStart(spp).getTime()).toBe(createdAt - 7 * DAY);
+  });
+
+  it("a new cycle after SSP moves every phase", () => {
+    const ssp = { currentPhase: "SSP", createdAt };
+    const anchors = anchorsAfterCheckIn(ssp, "GPP", createdAt + 90 * DAY, 4);
+    expect(anchors).toEqual({ GPP: createdAt + 90 * DAY, SPP: createdAt + 90 * DAY, SSP: createdAt + 90 * DAY });
+  });
+
+  it("reads a date with the anchor that owns its phase, current phase first", () => {
+    const program = { currentPhase: "SPP", createdAt, calendarAnchors: { GPP: createdAt, SPP: createdAt + 14 * DAY, SSP: createdAt + 14 * DAY } };
     // From the SPP anchor this date is still GPP; only the GPP anchor may answer
     const find = (anchor: Date) =>
       anchor.getTime() === createdAt ? { phase: "GPP", week: 4 } : { phase: "GPP", week: 2 };
     expect(slotOnDate(program, find)).toEqual({ phase: "GPP", week: 4 });
+    // Where both own the date, the current phase wins
+    const both = (anchor: Date) => (anchor.getTime() === createdAt ? { phase: "GPP" } : { phase: "SPP" });
+    expect(slotOnDate(program, both)).toEqual({ phase: "SPP" });
     expect(slotOnDate(program, () => null)).toBeNull();
   });
 });

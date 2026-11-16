@@ -1,7 +1,7 @@
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { countsAsDone, slotOnDate } from "./blockCompletion";
 import { getWorkoutForDate } from "./workoutCalendar";
-import { DEFAULT_WEEKS_PER_PHASE } from "./weekMapping";
+import { DEFAULT_WEEKS_PER_PHASE, mapUserWeekToTemplateWeek } from "./weekMapping";
 import { v } from "convex/values";
 import { getCurrentUser } from "./authHelpers";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -889,13 +889,19 @@ export const startSession = mutation({
           }
 
           // Get current template for a slot
+          // A slot's default workout, as the calendar maps it: with fewer or
+          // more than four weeks a phase, user weeks map to template weeks
+          const defaultTemplateForSlot = (slot: WorkoutSlot) =>
+            templateLookup.get(
+              `${slot.phase}-${mapUserWeekToTemplateWeek(slot.week, weeksPerPhase)}-${slot.day}`
+            );
           const getTemplateForSlot = (slot: WorkoutSlot) => {
             const key = `${slot.phase}-${slot.week}-${slot.day}`;
             const overrideId = overrideLookup.get(key);
             if (overrideId) {
               return allTemplates.find((t) => t._id.toString() === overrideId);
             }
-            return templateLookup.get(key);
+            return defaultTemplateForSlot(slot);
           };
 
           // Find which slot currently contains the selected template
@@ -995,9 +1001,7 @@ export const startSession = mutation({
 
                 // Add new cascade overrides
                 for (const assignment of newAssignments) {
-                  const defaultTemplate = templateLookup.get(
-                    `${assignment.slot.phase}-${assignment.slot.week}-${assignment.slot.day}`
-                  );
+                  const defaultTemplate = defaultTemplateForSlot(assignment.slot);
                   if (!defaultTemplate || defaultTemplate._id.toString() !== assignment.templateId) {
                     const assignedTemplate = allTemplates.find(
                       (t) => t._id.toString() === assignment.templateId
