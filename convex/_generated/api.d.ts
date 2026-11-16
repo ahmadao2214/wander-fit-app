@@ -15,6 +15,8 @@ import type {
 } from "convex/server";
 import type * as authHelpers from "../authHelpers.js";
 import type * as blockCompletion from "../blockCompletion.js";
+import type * as chatHands from "../chatHands.js";
+import type * as chatHandsVersion from "../chatHandsVersion.js";
 import type * as debug from "../debug.js";
 import type * as e2e from "../e2e.js";
 import type * as exercises from "../exercises.js";
@@ -50,6 +52,8 @@ import type * as workoutSessions from "../workoutSessions.js";
 declare const fullApi: ApiFromModules<{
   authHelpers: typeof authHelpers;
   blockCompletion: typeof blockCompletion;
+  chatHands: typeof chatHands;
+  chatHandsVersion: typeof chatHandsVersion;
   debug: typeof debug;
   e2e: typeof e2e;
   exercises: typeof exercises;

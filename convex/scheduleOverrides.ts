@@ -1,7 +1,8 @@
 import { query, mutation } from "./_generated/server";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { countsAsDone } from "./blockCompletion";
 import { v } from "convex/values";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import { mapUserWeekToTemplateWeek, DEFAULT_WEEKS_PER_PHASE } from "./weekMapping";
 
 /**
@@ -594,9 +595,145 @@ export const clearTodayFocus = mutation({
   },
 });
 
+export type WorkoutSlotRef = {
+  phase: "GPP" | "SPP" | "SSP";
+  week: number;
+  day: number;
+};
+
 /**
- * Swap two workout slots (same phase only)
- * When you swap A and B, A goes to B's slot and B goes to A's slot
+ * The templates currently sitting on two slots, including any swap already saved.
+ */
+export async function resolveSlotPair(
+  ctx: QueryCtx,
+  program: Doc<"user_programs">,
+  slotA: WorkoutSlotRef,
+  slotB: WorkoutSlotRef,
+) {
+  const existingOverride = await ctx.db
+    .query("user_schedule_overrides")
+    .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
+    .first();
+
+  const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
+
+  const getTemplateForSlot = async (slot: WorkoutSlotRef) => {
+    if (existingOverride) {
+      const existingSlotOverride = existingOverride.slotOverrides.find(
+        (o) => o.phase === slot.phase && o.week === slot.week && o.day === slot.day,
+      );
+      if (existingSlotOverride) {
+        return await ctx.db.get(existingSlotOverride.templateId);
+      }
+    }
+
+    const templateWeek = mapUserWeekToTemplateWeek(slot.week, weeksPerPhase);
+
+    return await ctx.db
+      .query("program_templates")
+      .withIndex("by_assignment", (q) =>
+        q
+          .eq("gppCategoryId", program.gppCategoryId)
+          .eq("phase", slot.phase)
+          .eq("skillLevel", program.skillLevel)
+          .eq("week", templateWeek)
+          .eq("day", slot.day),
+      )
+      .first();
+  };
+
+  return {
+    existingOverride,
+    templateA: await getTemplateForSlot(slotA),
+    templateB: await getTemplateForSlot(slotB),
+  };
+}
+
+/**
+ * Swap two workout slots (same phase only).
+ * Caller has already loaded the signed-in athlete and their program.
+ */
+export async function applyWorkoutSwap(
+  ctx: MutationCtx,
+  user: Doc<"users">,
+  program: Doc<"user_programs">,
+  slotA: WorkoutSlotRef,
+  slotB: WorkoutSlotRef,
+) {
+  if (slotA.phase !== slotB.phase) {
+    throw new Error("Swaps must be within the same phase");
+  }
+
+  const { existingOverride, templateA, templateB } = await resolveSlotPair(
+    ctx,
+    program,
+    slotA,
+    slotB,
+  );
+
+  if (!templateA || !templateB) {
+    throw new Error("One or both workout slots are empty (rest days)");
+  }
+
+  const completedSessions = (await ctx.db
+    .query("gpp_workout_sessions")
+    .withIndex("by_user", (q) => q.eq("userId", user._id))
+    .filter((q) => q.eq(q.field("status"), "completed"))
+    .collect()).filter((s) => countsAsDone(s, program));
+  const completedTemplateIds = new Set(completedSessions.map((s) => s.templateId));
+
+  if (completedTemplateIds.has(templateA._id) || completedTemplateIds.has(templateB._id)) {
+    throw new Error("Cannot swap: one or both workouts are already completed");
+  }
+
+  if (templateA.phase !== slotA.phase || templateB.phase !== slotB.phase) {
+    throw new Error("Template phase mismatch: override references template from different phase");
+  }
+
+  const now = Date.now();
+  let newSlotOverrides = existingOverride?.slotOverrides || [];
+
+  newSlotOverrides = newSlotOverrides.filter(
+    (o) =>
+      !(o.phase === slotA.phase && o.week === slotA.week && o.day === slotA.day) &&
+      !(o.phase === slotB.phase && o.week === slotB.week && o.day === slotB.day),
+  );
+
+  newSlotOverrides.push({
+    phase: slotA.phase,
+    week: slotA.week,
+    day: slotA.day,
+    templateId: templateB._id,
+  });
+
+  newSlotOverrides.push({
+    phase: slotB.phase,
+    week: slotB.week,
+    day: slotB.day,
+    templateId: templateA._id,
+  });
+
+  if (existingOverride) {
+    await ctx.db.patch(existingOverride._id, {
+      slotOverrides: newSlotOverrides,
+      updatedAt: now,
+    });
+  } else {
+    await ctx.db.insert("user_schedule_overrides", {
+      userId: user._id,
+      userProgramId: program._id,
+      slotOverrides: newSlotOverrides,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
+  return { success: true as const };
+}
+
+/**
+ * Swap two workout slots (same phase only).
+ * When you swap A and B, A goes to B's slot and B goes to A's slot.
  */
 export const swapWorkouts = mutation({
   args: {
@@ -617,11 +754,6 @@ export const swapWorkouts = mutation({
       throw new Error("Not authenticated");
     }
 
-    // Enforce same-phase only
-    if (args.slotA.phase !== args.slotB.phase) {
-      throw new Error("Swaps must be within the same phase");
-    }
-
     const user = await ctx.db
       .query("users")
       .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
@@ -640,112 +772,7 @@ export const swapWorkouts = mutation({
       throw new Error("No active program found");
     }
 
-    // Get current override record
-    const existingOverride = await ctx.db
-      .query("user_schedule_overrides")
-      .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
-      .first();
-
-    // Map user week to template week (templates only exist for weeks 1-4)
-    const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
-
-    // Helper to get the current template for a slot (considering existing overrides)
-    const getTemplateForSlot = async (slot: { phase: string; week: number; day: number }) => {
-      // Check if there's already an override for this slot
-      if (existingOverride) {
-        const existingSlotOverride = existingOverride.slotOverrides.find(
-          (o) => o.phase === slot.phase && o.week === slot.week && o.day === slot.day
-        );
-        if (existingSlotOverride) {
-          return await ctx.db.get(existingSlotOverride.templateId);
-        }
-      }
-
-      // Map user week to template week for database lookup
-      const templateWeek = mapUserWeekToTemplateWeek(slot.week, weeksPerPhase);
-
-      // Otherwise get the default template
-      return await ctx.db
-        .query("program_templates")
-        .withIndex("by_assignment", (q) =>
-          q
-            .eq("gppCategoryId", program.gppCategoryId)
-            .eq("phase", slot.phase as "GPP" | "SPP" | "SSP")
-            .eq("skillLevel", program.skillLevel)
-            .eq("week", templateWeek)
-            .eq("day", slot.day)
-        )
-        .first();
-    };
-
-    // Get templates currently in each slot
-    const templateA = await getTemplateForSlot(args.slotA);
-    const templateB = await getTemplateForSlot(args.slotB);
-
-    if (!templateA || !templateB) {
-      throw new Error("One or both workout slots are empty (rest days)");
-    }
-
-    // Backend validation: prevent swapping completed workouts
-    const completedSessions = (await ctx.db
-      .query("gpp_workout_sessions")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .filter((q) => q.eq(q.field("status"), "completed"))
-      .collect()).filter((s) => countsAsDone(s, program));
-    const completedTemplateIds = new Set(completedSessions.map((s) => s.templateId));
-
-    if (completedTemplateIds.has(templateA._id) || completedTemplateIds.has(templateB._id)) {
-      throw new Error("Cannot swap: one or both workouts are already completed");
-    }
-
-    // Validate templates belong to expected phase
-    if (templateA.phase !== args.slotA.phase || templateB.phase !== args.slotB.phase) {
-      throw new Error("Template phase mismatch: override references template from different phase");
-    }
-
-    const now = Date.now();
-
-    // Build new slot overrides
-    let newSlotOverrides = existingOverride?.slotOverrides || [];
-
-    // Remove any existing overrides for these slots
-    newSlotOverrides = newSlotOverrides.filter(
-      (o) =>
-        !(o.phase === args.slotA.phase && o.week === args.slotA.week && o.day === args.slotA.day) &&
-        !(o.phase === args.slotB.phase && o.week === args.slotB.week && o.day === args.slotB.day)
-    );
-
-    // Add new overrides: A's slot gets B's template, B's slot gets A's template
-    newSlotOverrides.push({
-      phase: args.slotA.phase,
-      week: args.slotA.week,
-      day: args.slotA.day,
-      templateId: templateB._id,
-    });
-
-    newSlotOverrides.push({
-      phase: args.slotB.phase,
-      week: args.slotB.week,
-      day: args.slotB.day,
-      templateId: templateA._id,
-    });
-
-    if (existingOverride) {
-      await ctx.db.patch(existingOverride._id, {
-        slotOverrides: newSlotOverrides,
-        updatedAt: now,
-      });
-    } else {
-      await ctx.db.insert("user_schedule_overrides", {
-        userId: user._id,
-        userProgramId: program._id,
-        slotOverrides: newSlotOverrides,
-        createdAt: now,
-        updatedAt: now,
-      });
-    }
-
-    return { success: true };
+    return await applyWorkoutSwap(ctx, user, program, args.slotA, args.slotB);
   },
 });
 
