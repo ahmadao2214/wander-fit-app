@@ -6,7 +6,7 @@ A signed-out athlete opens the app on the First Run (v2, "game night"; design br
 
 - `first-run-promise`: a cleared browser opens on `LET'S BUILD YOUR PLAN FOR THIS SEASON.`, not `WELCOME BACK`.
 - `first-run-intake`: `PICK YOUR SPORT` with a `POPULAR` row; Basketball; No set season; Mon/Wed/Fri preselected (`3 SESSIONS A WEEK`, `Mon / Wed / Fri`); `AGE GROUP` Performance, then `YEARS TRAINING FOR YOUR SPORT` New to training, which starts the reveal with no Continue.
-- `first-run-reveal`: `BASKETBALL TRAINS FOR` / `POWER` (a tap skips the 3 s hold), then `BASKETBALL PLAN`, `NO SET SEASON · 12-WEEK PLAN`, the phases in plain English (`Build the base`), the week line from the real GPP week 1 templates (`Day 1 · … · Lower Body A · About 28 min`) and the total `36`.
+- `first-run-reveal`: `BASKETBALL PLAN` (the category holds 3 s first; the journey reaches it again through the POWER chip: `BASKETBALL TRAINS FOR`, `Tap to go back to your plan`), `NO SET SEASON · 12-WEEK PLAN`, the phases in plain English (`Build the base`), the week line from the real GPP week 1 templates (`Day 1 · … · Lower Body A · About 28 min`) and the total `36`.
 - `first-run-save`: the sheet has no skip; email, password and Clerk's code `424242` create the account and save the program.
 - `first-run-program`: the save lands on the Program tab: `Up next · <day>` for Day 1 under the same phase bar, and no warm-up.
 - `first-run-inspect`: after Maestro passes, `persona inspect` must show `intakeCompleted`, `hasProgram`, GPP week 1 day 1 and `firstLaunchRecorded: true`.
@@ -24,6 +24,7 @@ Preconditions: `node scripts/verify/run.mjs doctor` passed; the e2e URL is set; 
 
 - Maestro web reports a pressable's accessibility label as its id, so sport tiles and choice rows are matched by their label (`id: "Basketball"`, `tapOn: "No set season"`), not their testID. Inputs and Tamagui buttons keep their testID (`save-plan-name`, `first-run-continue`).
 - The season calendar pushes `No set season` below the 625px viewport, so the journey swipes the inner list before tapping it.
+- Don't assert the category beat on arrival: Maestro web's settle wait after the last answer can outlast its 3 s hold. Revisit it through the POWER chip instead.
 - Headlines are uppercased in the string (not with `textTransform`), so Maestro matches them in caps on web and native alike.
 - No set season keeps the program at 12 weeks whatever the date, so the session count is stable. A season date would make it depend on the day the flow runs.
 - The shared wander-fit-e2e dev deployment is redeployed by other runs. If the save fails with `extra field firstLaunchAt`, the deployment is running older functions: run `deploy` again.

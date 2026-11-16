@@ -56,14 +56,22 @@ url: ${VERIFY_URL}
     timeout: 10000
 - tapOn: "New to training"
 - takeScreenshot: 05-about
-# Reveal, part one: the category. A tap skips the 3 s hold.
+# The reveal opens on the category and moves on to the plan after 3 s. On web,
+# Maestro's settle wait after the tap can outlast that hold, so wait for the
+# plan, then go back to the category through the POWER chip, which is
+# deterministic and covers the way back.
+- extendedWaitUntil:
+    visible: "BASKETBALL PLAN"
+    timeout: 60000
+- tapOn:
+    id: "Power. See your category again"
 - extendedWaitUntil:
     visible: "BASKETBALL TRAINS FOR"
-    timeout: 60000
-- assertVisible: "POWER"
+    timeout: 10000
+- assertVisible: "Tap to go back to your plan"
 - takeScreenshot: 06-category
-- tapOn: "Tap to see your plan"
-# Part two: the plan, from the real GPP week 1 templates for Basketball Novice.
+- tapOn: "Tap to go back to your plan"
+# The plan, from the real GPP week 1 templates for Basketball Novice.
 - extendedWaitUntil:
     visible: "BASKETBALL PLAN"
     timeout: 30000
