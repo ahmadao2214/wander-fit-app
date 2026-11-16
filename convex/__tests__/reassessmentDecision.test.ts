@@ -313,7 +313,7 @@ describe("end-of-block check-in", () => {
   });
 
   // Sol review on #120: an early start puts one workout on each date
-  it("after an early Move on, no date holds both GPP and SPP", async () => {
+  it("after an early Move on, SPP follows GPP: no shared dates, nothing hidden", async () => {
     const { t, ids, asAthlete } = await setup({ completedInBlock: 3 });
     await t.run(async (ctx) => {
       // The program began two days ago, so SPP starts early
@@ -341,9 +341,11 @@ describe("end-of-block check-in", () => {
       (d) => d.workouts.some((w) => w.phase === "GPP") && d.workouts.some((w) => w.phase === "SPP")
     );
     expect(shared.map((d) => d.date)).toEqual([]);
-    // SPP still has all three workouts
-    const spp = Object.values(calendar!.calendarData).flatMap((d) => d.workouts.filter((w) => w.phase === "SPP"));
-    expect(spp.filter((w) => w.week === 1)).toHaveLength(3);
+    // Neither phase loses a workout (completed ones also show on the day
+    // they were done, so count distinct days of the week)
+    const all = Object.values(calendar!.calendarData).flatMap((d) => d.workouts);
+    const days = (phase: string) => new Set(all.filter((w) => w.phase === phase && w.week === 1).map((w) => w.day)).size;
+    expect({ GPP: days("GPP"), SPP: days("SPP") }).toEqual({ GPP: 3, SPP: 3 });
   });
 
   // Greptile review on #120: moving on late must not move past workouts

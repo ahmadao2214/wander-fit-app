@@ -31,12 +31,13 @@ describe("calendar anchors", () => {
     expect(at("SSP", ssp)).toBe(createdAt + 14 * DAY);
   });
 
-  it("an early SPP doesn't move GPP before the program existed", () => {
+  // Sol review on #120: phases never share dates
+  it("an early SPP follows GPP instead of overlapping it", () => {
     const gpp = { currentPhase: "GPP", createdAt };
     const spp = { currentPhase: "SPP", createdAt, calendarAnchors: anchorsAfterCheckIn(gpp, "SPP", createdAt + 21 * DAY, 4) };
     expect(at("GPP", spp)).toBe(createdAt);
-    expect(at("SPP", spp)).toBe(createdAt - 7 * DAY);
-    expect(calendarStart(spp).getTime()).toBe(createdAt - 7 * DAY);
+    expect(at("SPP", spp)).toBe(createdAt);
+    expect(calendarStart(spp).getTime()).toBe(createdAt);
   });
 
   it("a new cycle after SSP moves every phase", () => {

@@ -64,6 +64,8 @@ export function calendarStart(program: ScheduleProgram): Date {
  * The anchors after a check-in that starts `nextPhase` at `startedAt`: week
  * 1 day 1 of that phase lands on the first training day on or after
  * startedAt, the phases after it follow on, and earlier phases keep theirs.
+ * A phase that starts early is placed right after the phase before it
+ * instead, so phases never share dates (Today still offers it right away).
  */
 export function anchorsAfterCheckIn(
   program: ScheduleProgram,
@@ -72,7 +74,8 @@ export function anchorsAfterCheckIn(
   weeksPerPhase: number,
 ): CalendarAnchors {
   const from = PHASES.indexOf(nextPhase);
-  const anchor = startedAt - from * weeksPerPhase * 7 * DAY_MS;
+  const previous = from > 0 ? phaseAnchor(program, PHASES[from - 1]).getTime() : -Infinity;
+  const anchor = Math.max(startedAt - from * weeksPerPhase * 7 * DAY_MS, previous);
   const anchors: CalendarAnchors = {};
   PHASES.forEach((phase, index) => {
     anchors[phase as keyof CalendarAnchors] =
