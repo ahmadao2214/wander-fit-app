@@ -51,9 +51,9 @@ const AllTheProviders = ({ children }: { children: React.ReactNode }) => (
   <TamaguiProvider config={config}>{children}</TamaguiProvider>
 )
 
-const summary = (daysCompleted: number, currentStreak: number) => ({
+const summary = (daysCompleted: number, weeksOnPlan: number) => ({
   daysCompleted,
-  currentStreak,
+  weeksOnPlan,
   uniqueExercisesPerformed: daysCompleted * 4,
 })
 
@@ -68,7 +68,7 @@ describe('Profile', () => {
     mockProgress = summary(5, 3)
     const { queryByTestId, queryByText } = render(<ProfilePage />, { wrapper: AllTheProviders })
     expect(queryByTestId('profile-progress')).toBeNull()
-    expect(queryByText('5 workouts done · 3-day streak')).toBeNull()
+    expect(queryByText(/workouts done|on plan/)).toBeNull()
     expect(queryByText(/Exercises\s+Tried/)).toBeNull()
   })
 

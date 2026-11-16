@@ -7,7 +7,7 @@ const mockUseQuery = jest.fn()
 const mockNavigate = jest.fn()
 
 // The progress summary is answered on its own; mockUseQuery answers the rest
-let mockProgress: { daysCompleted: number; currentStreak: number } | null = null
+let mockProgress: { daysCompleted: number; weeksOnPlan: number } | null = null
 jest.mock('convex/react', () => ({
   useQuery: (name: string, ...args: any[]) =>
     name === 'userPrograms.getProgressSummary' ? mockProgress : mockUseQuery(name, ...args),

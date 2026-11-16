@@ -24,6 +24,7 @@ const todayWorkout = {
 }
 
 let mockCurrentSession: any = null
+let mockProgress: any = { daysCompleted: 0, weeksOnPlan: 0 }
 const mockAbandon = jest.fn().mockResolvedValue({ success: true })
 const mockPush = jest.fn()
 
@@ -31,7 +32,7 @@ jest.mock('convex/react', () => ({
   useQuery: (name: string) =>
     ({
       getCurrentProgramState: programState,
-      getProgressSummary: { daysCompleted: 0, currentStreak: 0 },
+      getProgressSummary: mockProgress,
       getTodayWorkout: todayWorkout,
       getReassessmentStatus: null,
       getCurrentSession: mockCurrentSession,
@@ -74,6 +75,18 @@ const AllTheProviders = ({ children }: { children: React.ReactNode }) => (
 )
 
 describe('Today card', () => {
+  // Weeks on plan belongs to History; Today stays about the next session
+  it('counts workouts under the phase but leaves weeks on plan to History', () => {
+    mockProgress = { daysCompleted: 5, weeksOnPlan: 3 }
+    try {
+      const { getByText, queryByText } = render(<AthleteDashboard />, { wrapper: AllTheProviders })
+      expect(getByText('5 workouts done')).toBeTruthy()
+      expect(queryByText(/on plan/)).toBeNull()
+    } finally {
+      mockProgress = { daysCompleted: 0, weeksOnPlan: 0 }
+    }
+  })
+
   it("shows the athlete's scheduled week, not the template's lookup week", () => {
     const { getByTestId, getByText, queryByText } = render(<AthleteDashboard />, { wrapper: AllTheProviders })
     expect(getByTestId('today-workout-meta')).toBeTruthy()

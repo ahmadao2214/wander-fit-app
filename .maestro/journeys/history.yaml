@@ -1,7 +1,8 @@
 url: ${VERIFY_URL}
 ---
-# Regression for History reading the trainer-era table: a persona with one
-# completed GPP session (persona state with-history) must see it listed.
+# Regression for History reading the trainer-era table: a persona with
+# completed GPP sessions (persona state with-history: one today, plus every
+# day of the two weeks before this one) must see them listed.
 - runFlow: ../subflows/_evidence-start.yaml
 - runFlow: ../subflows/_open-sign-in.yaml
 - runFlow: ../subflows/_sign-in.yaml
@@ -23,7 +24,9 @@ url: ${VERIFY_URL}
     id: "history-completed|Completed"
 - assertNotVisible: "Not finished"
 - assertNotVisible: "(?i)no workouts yet"
-# Progress lives on History as one line (design audit F06)
-- assertVisible: "1 workout done"
+# Progress lives on History as one line (design audit F06), with weeks on
+# plan once there are two. The count of weeks can read 3 when the local week
+# and the UTC week the persona was seeded in differ, near midnight on Sunday.
+- assertVisible: "15 workouts done · [23] weeks on plan"
 - takeScreenshot: 02-history
 - runFlow: ../subflows/_evidence-stop.yaml

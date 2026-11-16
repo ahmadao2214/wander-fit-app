@@ -27,12 +27,14 @@ describe('phaseWeekSegments', () => {
 
 describe('progressCaption', () => {
   it('is null before the first workout, instead of a row of zeros', () => {
-    expect(progressCaption({ workoutsCompleted: 0, currentStreak: 0 })).toBeNull()
+    expect(progressCaption({ workoutsCompleted: 0, weeksOnPlan: 0 })).toBeNull()
   })
 
-  it('counts workouts and adds a streak only once it is longer than a day', () => {
-    expect(progressCaption({ workoutsCompleted: 1, currentStreak: 1 })).toBe('1 workout done')
-    expect(progressCaption({ workoutsCompleted: 5, currentStreak: 3 })).toBe('5 workouts done · 3-day streak')
+  it('counts workouts and adds weeks on plan only from 2 up', () => {
+    expect(progressCaption({ workoutsCompleted: 1 })).toBe('1 workout done')
+    expect(progressCaption({ workoutsCompleted: 3, weeksOnPlan: 0 })).toBe('3 workouts done')
+    expect(progressCaption({ workoutsCompleted: 3, weeksOnPlan: 1 })).toBe('3 workouts done')
+    expect(progressCaption({ workoutsCompleted: 5, weeksOnPlan: 2 })).toBe('5 workouts done · 2 weeks on plan')
   })
 })
 

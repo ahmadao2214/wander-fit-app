@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { DEFAULT_WEEKS_PER_PHASE, mapUserWeekToTemplateWeek } from "./weekMapping";
 import { programShape } from "./programShape";
 import { anchorsAfterCheckIn } from "./blockCompletion";
+import { weeksOnPlan, localDayArgs } from "../lib/weeksOnPlan";
 
 /**
  * User Programs - Active State Management
@@ -224,8 +225,13 @@ export const getWorkoutLookupParams = getCurrentProgramState;
  * PROGRESS METRICS: Completion (days/weeks/blocks), coverage, consistency
  */
 export const getProgressSummary = query({
-  args: {},
-  handler: async (ctx) => {
+  // The athlete's local date and UTC offset (lib/weeksOnPlan localDayArgs).
+  // Optional so builds that don't send them keep working, on UTC days.
+  args: {
+    today: v.optional(v.string()),
+    timezoneOffsetMinutes: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
 
@@ -250,6 +256,14 @@ export const getProgressSummary = query({
       .collect();
 
     const completedSessions = sessions.filter((s) => s.status === "completed");
+    const localDay =
+      args.today && /^\d{4}-\d{2}-\d{2}$/.test(args.today)
+        ? {
+            today: args.today,
+            // Real offsets run from UTC-12 to UTC+14
+            timezoneOffsetMinutes: Math.min(720, Math.max(-840, Number.isFinite(args.timezoneOffsetMinutes) ? args.timezoneOffsetMinutes ?? 0 : 0)),
+          }
+        : localDayArgs();
 
     // Determine unlocked phases (Sequential Access)
     const unlockedPhases: ("GPP" | "SPP" | "SSP")[] = ["GPP"];
@@ -265,12 +279,6 @@ export const getProgressSummary = query({
         }
       }
     }
-
-    // Get progress metrics if available
-    const progressRecord = await ctx.db
-      .query("user_progress")
-      .withIndex("by_program", (q) => q.eq("userProgramId", program._id))
-      .first();
 
     // Get intake record for training days per week
     const intake = program.intakeResponseId
@@ -304,10 +312,14 @@ export const getProgressSummary = query({
       // Coverage metrics
       uniqueExercisesPerformed: uniqueExerciseIds.size,
       
-      // Consistency (from progress record if available)
-      averageWorkoutsPerWeek: progressRecord?.averageWorkoutsPerWeek ?? 0,
-      currentStreak: progressRecord?.currentStreak ?? 0,
-      longestStreak: progressRecord?.longestStreak ?? 0,
+      // Consistency: consecutive weeks on plan, derived from the sessions
+      // (lib/weeksOnPlan). user_progress is never written, so it isn't read.
+      weeksOnPlan: weeksOnPlan({
+        completedAt: completedSessions.map((s) => s.completedAt ?? s.startedAt),
+        workoutsPerWeek: intake?.selectedTrainingDays?.length || trainingDaysPerWeek,
+        ...localDay,
+        pausedAt: program.pausedAt,
+      }),
       
       // Pause status
       isPaused: !!program.pausedAt,

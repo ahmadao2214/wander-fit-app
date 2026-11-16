@@ -6,10 +6,14 @@ import config from '../../tamagui.config'
 const mockUseQuery = jest.fn()
 
 // The progress summary is answered on its own; mockUseQuery answers the rest
-let mockProgress: { daysCompleted: number; currentStreak: number } | null = null
+let mockProgress: { daysCompleted: number; weeksOnPlan: number } | null = null
+const mockProgressArgs: unknown[] = []
 jest.mock('convex/react', () => ({
-  useQuery: (name: string, ...args: any[]) =>
-    name === 'userPrograms.getProgressSummary' ? mockProgress : mockUseQuery(name, ...args),
+  useQuery: (name: string, ...args: any[]) => {
+    if (name !== 'userPrograms.getProgressSummary') return mockUseQuery(name, ...args)
+    mockProgressArgs.push(args[0])
+    return mockProgress
+  },
 }))
 
 jest.mock('../../convex/_generated/api', () => ({
@@ -63,11 +67,29 @@ describe('History tab', () => {
   })
 
   // Design audit F06: progress lives on History, as one truthful line
-  it('says how many workouts are done once there are some', () => {
-    mockProgress = { daysCompleted: 5, currentStreak: 3 }
+  it('says how many workouts are done and how many weeks in a row were on plan', () => {
+    mockProgress = { daysCompleted: 5, weeksOnPlan: 3 }
     mockUseQuery.mockReturnValue([session({ totalDurationSeconds: 42 * 60 })])
     const { getByTestId } = render(<HistoryPage />, { wrapper: AllTheProviders })
-    expect(getByTestId('history-progress').props.children).toBe('5 workouts done · 3-day streak')
+    expect(getByTestId('history-progress').props.children).toBe('5 workouts done · 3 weeks on plan')
+  })
+
+  it('leaves weeks on plan out until there are two, with no zero or lost-streak copy', () => {
+    mockProgress = { daysCompleted: 4, weeksOnPlan: 1 }
+    mockUseQuery.mockReturnValue([session({ totalDurationSeconds: 42 * 60 })])
+    const { getByTestId, queryByText } = render(<HistoryPage />, { wrapper: AllTheProviders })
+    expect(getByTestId('history-progress').props.children).toBe('4 workouts done')
+    expect(queryByText(/streak|on plan/i)).toBeNull()
+  })
+
+  it("asks for weeks on plan by the athlete's local day", () => {
+    mockProgressArgs.length = 0
+    mockUseQuery.mockReturnValue([])
+    render(<HistoryPage />, { wrapper: AllTheProviders })
+    expect(mockProgressArgs[0]).toEqual({
+      today: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      timezoneOffsetMinutes: new Date().getTimezoneOffset(),
+    })
   })
 
   it('lists finished GPP sessions with their name, phase slot and duration', () => {
