@@ -43,11 +43,12 @@ describe('athleteShapes', () => {
   })
 
   it('mirrors the Endurance athlete inside the frame after the cut', () => {
-    const before = athleteShapes(1, poseAt(1, 0), true, '#14B8A6')
-    const after = athleteShapes(1, poseAt(1, 1), true, '#14B8A6')
-    const mean = (ss: { x1: number }[]) => ss.reduce((a, s) => a + s.x1, 0) / ss.length
-    expect(mean(before) < 60 && mean(after) > 40).toBe(true)
-      })
+    const pose = poseAt(1, 0)
+    const flipped = Object.assign([...pose], { flip: true })
+    const plain = athleteShapes(1, pose, true, '#14B8A6')
+    const mirrored = athleteShapes(1, flipped, true, '#14B8A6')
+    expect(mirrored.map((s) => [s.x1, s.x2, s.y1])).toEqual(plain.map((s) => [100 - s.x1, 100 - s.x2, s.y1]))
+  })
 
   // Tiles are never narrower than square, and the viewBox is drawn centered and
   // bottom-aligned, so a tile shows x from -21 to 121 and y from -22 to 122.

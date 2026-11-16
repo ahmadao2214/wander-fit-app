@@ -121,7 +121,7 @@ export function StoryPhaseBar({
           phase={p.phase}
           label={p.label}
           detail={phaseDetail(p.phase, i, weeksPerPhase, ranges)}
-          spoken={`${p.label}, ${phaseDetail(p.phase, i, weeksPerPhase, true)}`}
+          spoken={`${p.label}, ${p.phase}, weeks ${i * weeksPerPhase + 1} to ${(i + 1) * weeksPerPhase}`}
           selected={selected === p.phase}
           onPress={onSelect ? () => onSelect(p.phase) : undefined}
           draw={draw}

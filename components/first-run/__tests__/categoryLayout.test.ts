@@ -17,8 +17,10 @@ describe('categoryLayout', () => {
     expect(overflow).toEqual([])
   })
 
-  it('measures with the font\'s own letter widths, so STRENGTH gets the room it needs', () => {
-    // The old 0.44 em average guessed 3.52 em; the font sets it at 3.10 em.
+  it('measures with the font\'s own letter widths', () => {
+    // The width cap is what keeps STRENGTH on one line (it used to set at
+    // 128pt, about 397pt wide). Real widths size it a little larger than the
+    // old 0.44 em average did (3.52 em guessed; the font sets 3.10 em).
     expect(displayWidthEm('STRENGTH')).toBeCloseTo(3.104, 3)
     expect(displayWidthEm('WM')).toBeGreaterThan(displayWidthEm('II') * 2.5)
     expect(categoryLayout(722, 354, 'POWER').name).toBe(122)
@@ -27,9 +29,14 @@ describe('categoryLayout', () => {
 })
 
 describe('bandTitleSize', () => {
-  it('steps down for long sport names', () => {
+  it('keeps 50pt for most sports and steps down so a long name fits two lines', () => {
     const { bandTitleSize } = jest.requireActual('../PlanView')
-    expect([bandTitleSize('Basketball'), bandTitleSize('Track (Sprints/Jumps)')]).toEqual([50, 38])
+    const { displayWidthEm } = jest.requireActual('../CategoryStory')
+    expect([bandTitleSize('Basketball', 230), bandTitleSize('Swimming', 230)]).toEqual([50, 50])
+    const track = bandTitleSize('Track (Sprints/Jumps)', 230)
+    expect(track).toBeLessThan(50)
+    // Its longest word fits one line.
+    expect(displayWidthEm('(SPRINTS/JUMPS)') * track).toBeLessThanOrEqual(230)
   })
 })
 
@@ -48,5 +55,27 @@ describe('phaseDetail', () => {
     const { phaseDetail } = jest.requireActual('../StoryPhaseBar')
     expect(phaseDetail('SPP', 1, 4, false)).toBe('SPP')
     expect(phaseDetail('SPP', 1, 4, true)).toBe('SPP · Wk 5–8')
+  })
+})
+
+describe('weekTagSize', () => {
+  const { weekTagSize } = jest.requireActual('../PlanView')
+  const { displayWidthEm } = jest.requireActual('../CategoryStory')
+  const week = (tags: (string | null)[]) => tags.map((tag) => ({ tag }))
+
+  it('sets every label at one size, from the widest, so RECOVER matches LOWER', () => {
+    const plain = weekTagSize(week(['LOWER', null, 'UPPER', null, 'POWER', null, null]), 402)
+    const withRecover = weekTagSize(week(['LOWER', null, 'RECOVER', null, 'POWER', null, null]), 402)
+    expect(plain).toBe(18)
+    expect(withRecover).toBeLessThan(plain)
+  })
+
+  it('fits the widest label in its cell, down to a 320-wide phone', () => {
+    const tags = ['LOWER', 'RECOVER', 'UPPER', null, 'POWER', 'FULL', null]
+    const overflow = [320, 375, 402].filter((w) => {
+      const cell = (w - 48 - 24) / 7 - 6
+      return displayWidthEm('RECOVER') * weekTagSize(week(tags), w) > cell
+    })
+    expect(overflow).toEqual([])
   })
 })

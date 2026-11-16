@@ -17,7 +17,7 @@ import { getSportAnimation } from '../../lib/sportAnimations'
 import { getSportSlug } from '../../lib/intakeUI'
 import { selectionFeedback } from '../../lib/haptics'
 import type { Phase } from '../../types'
-import { Beat } from './CategoryStory'
+import { Beat, displayWidthEm } from './CategoryStory'
 import { BODY, BODY_BOLD, DISPLAY, Label, NightButton } from './Night'
 import { StoryPhaseBar } from './StoryPhaseBar'
 import { PAGE_EASE } from './intakeMotion'
@@ -29,9 +29,20 @@ export function bandHeight(insetTop: number): number {
   return insetTop + BAND_BELOW_INSET
 }
 
-/** "BASKETBALL PLAN" at 50pt; a long name like "TRACK (SPRINTS/JUMPS) PLAN" steps down to stay on two lines. */
-export function bandTitleSize(sportName: string): number {
-  return sportName.length <= 12 ? 50 : 38
+/** The band title's largest size; its box always holds two lines at this size. */
+const BAND_TITLE_MAX = 50
+const bandLine = (size: number) => Math.round(size * 0.92)
+
+/**
+ * "BASKETBALL PLAN" at 50pt. A long name like "TRACK (SPRINTS/JUMPS) PLAN"
+ * steps down so its longest word fits one line and the whole title fits two,
+ * measured with Bebas Neue's own letter widths.
+ */
+export function bandTitleSize(sportName: string, maxWidth = 230): number {
+  const title = `${sportName} PLAN`.toUpperCase()
+  const longest = Math.max(...title.split(' ').map(displayWidthEm))
+  const fit = Math.min(maxWidth / (longest * 1.06), (2 * maxWidth * 0.85) / (displayWidthEm(title) * 1.06))
+  return Math.floor(Math.min(BAND_TITLE_MAX, fit))
 }
 
 export interface Rect {
@@ -39,6 +50,16 @@ export interface Rect {
   y: number
   width: number
   height: number
+}
+
+/**
+ * One size for every label in the week strip (LOWER, UPPER, RECOVER…), set
+ * by the widest so they all match: up to 19pt, smaller on narrow phones.
+ */
+export function weekTagSize(week: readonly { tag: string | null }[], screenWidth: number): number {
+  const cell = (Math.min(screenWidth, 560) - 48 - 6 * 4) / 7 - 6
+  const widest = Math.max(displayWidthEm('LOWER'), ...week.map((d) => (d.tag ? displayWidthEm(d.tag) : 0)))
+  return Math.floor(Math.min(19, cell / (widest * 1.06)))
 }
 
 /** Icons that are a round ball still read as a ball when the band's edge cuts them. */
@@ -51,7 +72,8 @@ const BLEED_ICONS = new Set(['basketball', 'soccer', 'volleyball', 'baseball', '
  */
 export function bandIconFrame(sportName: string, insetTop: number): { size: number; right: number; top: number } {
   if (BLEED_ICONS.has(getSportSlug(sportName))) return { size: 190, right: -46, top: insetTop }
-  return { size: 132, right: 16, top: insetTop + 24 }
+  // Ends above the countdown's row (see the band's title box).
+  return { size: 128, right: 16, top: insetTop + 20 }
 }
 
 /** The sport icon in the band plays a short action (0.8 s) and holds its pose. */
@@ -114,12 +136,16 @@ export function PlanView({
   const { width: W } = useWindowDimensions()
   const H = bandHeight(insets.top)
   const icon = bandIconFrame(sportName, insets.top)
+  // Clear of the icon, so the title never runs under it.
+  const titleMax = Math.min(240, W - 24 - icon.size - icon.right - 4)
+  const titleSize = bandTitleSize(sportName, titleMax)
   const delay = openFrom ? 550 : 0
   const now = new Date()
   const [phase, setPhase] = useState<Phase>('GPP')
   const firstDay = week.find((d) => d.programDay === 1) ?? week[0]
   const [dow, setDow] = useState(firstDay.dow)
   const day = week.find((d) => d.dow === dow) ?? firstDay
+  const tagSize = weekTagSize(week, W)
 
   // ── The handoff clip ──
   const open = useSharedValue(openFrom ? 0 : 1)
@@ -191,24 +217,27 @@ export function PlanView({
                   {`${category.name.toUpperCase()} ›`}
                 </RNText>
               </Pressable>
-              <RNText
-                style={{
-                  fontFamily: DISPLAY,
-                  fontSize: bandTitleSize(sportName),
-                  lineHeight: Math.round(bandTitleSize(sportName) * 0.92),
-                  paddingTop: 6,
-                  marginTop: 6,
-                  color: '#FFFFFF',
-                  // Clear of the icon, so the title never runs under it.
-                  maxWidth: Math.min(240, W - 24 - icon.size - icon.right - 4),
-                }}
-                numberOfLines={2}
-                adjustsFontSizeToFit
-                accessibilityRole="header"
-                testID="reveal-title"
-              >
-                {`${sportName.toUpperCase()} PLAN`}
-              </RNText>
+              {/* Always two lines tall, so the countdown sits on the same row
+                  for every sport, below where an inside icon ends. */}
+              <View style={{ height: 2 * bandLine(BAND_TITLE_MAX) + 6, marginTop: 6 }}>
+                <RNText
+                  style={{
+                    fontFamily: DISPLAY,
+                    fontSize: titleSize,
+                    lineHeight: bandLine(titleSize),
+                    paddingTop: 6,
+                    color: '#FFFFFF',
+                    maxWidth: titleMax,
+                  }}
+                  numberOfLines={2}
+                  adjustsFontSizeToFit
+                  maxFontSizeMultiplier={1}
+                  accessibilityRole="header"
+                  testID="reveal-title"
+                >
+                  {`${sportName.toUpperCase()} PLAN`}
+                </RNText>
+              </View>
               <RNText
                 style={{ fontFamily: BODY_BOLD, fontSize: 12, letterSpacing: 1.4, color: '#FFFFFF', opacity: 0.9, marginTop: 8 }}
                 testID="reveal-countdown"
@@ -259,7 +288,7 @@ export function PlanView({
         </View>
         <Beat at={delay + PLAN_BEATS.phases} play={animate}>
           <RNText
-            style={{ fontFamily: BODY, fontSize: 14, lineHeight: 20, color: NIGHT.fg, minHeight: 40, marginTop: 8 }}
+            style={{ fontFamily: BODY, fontSize: 14, lineHeight: 20, color: NIGHT.fg, minHeight: 60, marginTop: 8 }}
             accessibilityLiveRegion="polite"
             testID="phase-caption"
           >
@@ -299,9 +328,8 @@ export function PlanView({
                   <RNText style={{ fontFamily: BODY_BOLD, fontSize: 12, color: on ? '#FFFFFF' : NIGHT.fg2 }}>{d.short.slice(0, 1)}</RNText>
                   <RNText
                     numberOfLines={1}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.8}
-                    style={{ fontFamily: DISPLAY, fontSize: 19, lineHeight: 20, color: on ? '#FFFFFF' : d.tag ? NIGHT.fg : NIGHT.line }}
+                    maxFontSizeMultiplier={1}
+                    style={{ fontFamily: DISPLAY, fontSize: tagSize, lineHeight: tagSize + 1, color: on ? '#FFFFFF' : d.tag ? NIGHT.fg : NIGHT.line }}
                   >
                     {d.tag ?? '—'}
                   </RNText>

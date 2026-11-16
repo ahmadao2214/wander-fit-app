@@ -192,6 +192,9 @@ export function CategoryStory({
             numberOfLines={1}
             adjustsFontSizeToFit
             minimumFontScale={0.8}
+            // Its size is already worked out from the screen; Dynamic Type
+            // scaling on top would push it past the edge.
+            maxFontSizeMultiplier={1}
             testID="reveal-category-name"
           >
             {category.name.toUpperCase()}
