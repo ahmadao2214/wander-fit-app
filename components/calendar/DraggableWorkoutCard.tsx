@@ -5,6 +5,7 @@ import Animated, {
   useSharedValue,
   withSpring,
   runOnJS,
+  useReducedMotion,
 } from 'react-native-reanimated'
 import {
   Gesture,
@@ -12,6 +13,7 @@ import {
   GestureHandlerRootView,
 } from 'react-native-gesture-handler'
 import { CalendarWorkoutCard, CalendarWorkoutCardProps } from './CalendarWorkoutCard'
+import { selectionFeedback } from '../../lib/haptics'
 
 export interface DraggableWorkoutCardProps extends CalendarWorkoutCardProps {
   /** Unique identifier for this workout slot */
@@ -60,7 +62,12 @@ export function DraggableWorkoutCard({
   const zIndex = useSharedValue(1)
   const opacity = useSharedValue(1)
 
+  // Reduce Motion: the card still fades while lifted, but doesn't grow or spring back
+  const reduceMotion = useReducedMotion()
+
   const onDragStartJS = useCallback(() => {
+    // The finger can't see the card lift under it; this says the hold worked
+    selectionFeedback()
     onDragStart?.(slotKey)
   }, [onDragStart, slotKey])
 
@@ -78,7 +85,7 @@ export function DraggableWorkoutCard({
     .activateAfterLongPress(300)
     .onStart(() => {
       'worklet'
-      scale.value = withSpring(1.08, { damping: 12 })
+      scale.value = reduceMotion ? 1 : withSpring(1.08, { damping: 12 })
       zIndex.value = 100
       opacity.value = 0.85
       runOnJS(onDragStartJS)()
@@ -91,9 +98,9 @@ export function DraggableWorkoutCard({
     })
     .onEnd(() => {
       'worklet'
-      translateX.value = withSpring(0, { damping: 15 })
-      translateY.value = withSpring(0, { damping: 15 })
-      scale.value = withSpring(1, { damping: 15 })
+      translateX.value = reduceMotion ? 0 : withSpring(0, { damping: 15 })
+      translateY.value = reduceMotion ? 0 : withSpring(0, { damping: 15 })
+      scale.value = reduceMotion ? 1 : withSpring(1, { damping: 15 })
       zIndex.value = 1
       opacity.value = 1
       runOnJS(onDragEndJS)()

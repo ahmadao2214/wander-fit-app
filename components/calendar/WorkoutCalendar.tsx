@@ -219,6 +219,7 @@ export function WorkoutCalendar({
         isToday: boolean
         isInProgress: boolean
         isLocked: boolean // Phase not yet unlocked (visible but not draggable)
+        completedOnDate?: string
       }>
     }
   >
@@ -284,6 +285,7 @@ export function WorkoutCalendar({
             onDropZoneUnregister={handleDropZoneUnregister}
             programStartDate={programStartDate}
             programEndDate={programEndDate}
+            onMoveWorkout={handleMoveToDate}
           />
         ) : (
           <CalendarMonthView

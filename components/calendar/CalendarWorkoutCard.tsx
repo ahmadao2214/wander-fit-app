@@ -1,9 +1,20 @@
 import { YStack, XStack, Text, Card, type ColorTokens } from 'tamagui'
-import { Caption } from '../Typography'
+import { useWindowDimensions } from 'react-native'
+import { Body, Supporting, numeric } from '../Typography'
+import { workoutMetaLine } from '../../lib/workoutMeta'
 import { CheckCircle, Play, Lock } from '@tamagui/lucide-icons'
 import type { Phase } from '../../types'
 import { phaseTokens } from '../../lib/phase'
 
+
+/** At accessibility text sizes the week view stacks the date and lets names wrap fully. */
+export const STACK_FONT_SCALE = 1.5
+
+/** A day this workout can move to, offered to VoiceOver as "Move to <label>". */
+export interface MoveTarget {
+  dateISO: string
+  label: string
+}
 
 export interface CalendarWorkoutCardProps {
   templateId: string
@@ -21,6 +32,9 @@ export interface CalendarWorkoutCardProps {
   gppCategoryId?: number // Category ID (not used for coloring, kept for data)
   onPress?: () => void
   onLongPress?: () => void
+  /** Days the workout can move to; the way to reschedule without dragging */
+  moveTargets?: MoveTarget[]
+  onMove?: (dateISO: string) => void
 }
 
 /**
@@ -44,7 +58,10 @@ export function CalendarWorkoutCard({
   gppCategoryId,
   onPress,
   onLongPress,
+  moveTargets,
+  onMove,
 }: CalendarWorkoutCardProps) {
+  const { fontScale } = useWindowDimensions()
   // Use phase colors for visual distinction
   const colors = { dot: phaseTokens(phase).fill }
 
@@ -55,10 +72,10 @@ export function CalendarWorkoutCard({
   const getBorderColor = (): ColorTokens => (isActive ? '$primary' : '$gray5')
 
   // Determine status icon
-  const getStatusIcon = () => {
-    if (isLocked) return <Lock size={10} color="$color10" />
-    if (isCompleted) return <CheckCircle size={10} color="$color10" />
-    if (isInProgress) return <Play size={10} color="$primaryText" />
+  const getStatusIcon = (size: number) => {
+    if (isLocked) return <Lock size={size} color="$color10" />
+    if (isCompleted) return <CheckCircle size={size} color="$color10" />
+    if (isInProgress) return <Play size={size} color="$primaryText" />
     return null
   }
 
@@ -107,57 +124,55 @@ export function CalendarWorkoutCard({
           >
             {name}
           </Text>
-          {getStatusIcon()}
+          {getStatusIcon(12)}
         </XStack>
       </Card>
     )
   }
 
+  // Week view: a full-width row in the day list. Name on the first line,
+  // time and size on the second, status at the trailing edge.
+  const meta = workoutMetaLine({ minutes: estimatedDurationMinutes, exerciseCount })
+  // Dragging needs a held finger, so VoiceOver gets each day as an action
+  const movable = !isLocked && !isCompleted && !!onMove && !!moveTargets?.length
+  const accessibilityActions = movable
+    ? moveTargets!.map((t) => ({ name: t.dateISO, label: `Move to ${t.label}` }))
+    : undefined
   return (
     <Card
       pressStyle={isLocked ? undefined : { opacity: 0.8, scale: 0.98 }}
       onPress={isLocked ? undefined : onPress}
       onLongPress={isLocked ? undefined : onLongPress}
+      accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      backgroundColor={getBgColor()}
+      accessibilityActions={accessibilityActions}
+      onAccessibilityAction={movable ? (e) => onMove!(e.nativeEvent.actionName) : undefined}
+      bg={getBgColor()}
       borderColor={getBorderColor()}
       borderWidth={isActive ? 2 : 1}
-      borderLeftWidth={3}
+      borderLeftWidth={4}
       borderLeftColor={isLocked ? '$gray6' : colors.dot}
-      borderRadius="$3"
+      rounded="$4"
       opacity={isLocked ? 0.5 : isCompleted ? 0.7 : 1}
       overflow="hidden"
-      padding={0}
+      p={0}
+      minH={56}
+      justify="center"
     >
-      <YStack gap="$1.5" px="$1.5" py="$1.5">
-        {/* Duration and status icon */}
-        <XStack items="center" justify="space-between">
-          <Caption fontWeight="600">~{estimatedDurationMinutes}m</Caption>
-          {getStatusIcon()}
-        </XStack>
-
-        {/* Workout name */}
-        <Text
-          fontSize={12}
-          fontWeight="600"
-          lineHeight={16}
-          // A touch tighter, so long words like "Conditioning" fit the
-          // narrow week column without breaking mid-word
-          letterSpacing={-0.3}
-          color={isLocked || isCompleted ? '$color10' : '$color12'}
-          numberOfLines={3}
-          // @ts-ignore - Android prop to prevent mid-word breaks
-          textBreakStrategy="simple"
-        >
-          {name}
-        </Text>
-
-        {/* How much is in it. The narrow week column can't fit exercise
-            names, and the first ones are warmup. */}
-        {exerciseCount > 0 && (
-          <Caption>{exercisesLabel}</Caption>
-        )}
-      </YStack>
+      <XStack items="center" gap="$2" px="$3" py="$2">
+        <YStack flex={1} minW={0} gap="$0.5">
+          <Body
+            fontWeight="600"
+            color={isLocked || isCompleted ? '$color10' : '$color12'}
+            // Clamp at normal sizes; at accessibility sizes the row has room to grow
+            numberOfLines={fontScale >= STACK_FONT_SCALE ? undefined : 3}
+          >
+            {name}
+          </Body>
+          <Supporting style={numeric}>{meta}</Supporting>
+        </YStack>
+        {getStatusIcon(16)}
+      </XStack>
     </Card>
   )
 }

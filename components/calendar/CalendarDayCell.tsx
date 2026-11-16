@@ -1,14 +1,17 @@
 import { useCallback, useRef, useEffect, useMemo } from 'react'
-import { YStack, XStack, Text } from 'tamagui'
-import { Caption } from '../Typography'
-import { View, LayoutChangeEvent, type ViewInstance } from 'react-native'
-import { CalendarWorkoutCard, CalendarWorkoutCardProps } from './CalendarWorkoutCard'
+import { YStack, XStack, Stack, Text } from 'tamagui'
+import { Body, Caption, Supporting, numeric } from '../Typography'
+import { View, LayoutChangeEvent, useWindowDimensions, type ViewInstance } from 'react-native'
+import { CalendarWorkoutCard, CalendarWorkoutCardProps, STACK_FONT_SCALE, type MoveTarget } from './CalendarWorkoutCard'
 import { DraggableWorkoutCard } from './DraggableWorkoutCard'
 import type { Phase } from '../../types'
 import { phaseTokens } from '../../lib/phase'
+import { DAY_NAMES, DAY_NAMES_FULL } from '../../lib/calendarUtils'
 
-/** Height an empty week-view day keeps while a workout is dragged, so it can take the drop. */
-const WEEK_DROP_MIN_HEIGHT = 96
+// At accessibility text sizes the date goes above the cards, not beside them
+export { STACK_FONT_SCALE }
+
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 
 export interface WorkoutWithSlot extends Omit<CalendarWorkoutCardProps, 'onPress' | 'onLongPress' | 'compact'> {
@@ -45,6 +48,10 @@ export interface CalendarDayCellProps {
   onDropZoneUnregister?: (dateISO: string) => void
   /** Category ID for color coding (1-4) */
   gppCategoryId?: number
+  /** Week view: days a workout here can move to, for VoiceOver */
+  moveTargets?: MoveTarget[]
+  /** Week view: move a workout without dragging */
+  onMoveWorkout?: (phase: Phase, week: number, day: number, dateISO: string) => void
 }
 
 /**
@@ -79,17 +86,27 @@ export function CalendarDayCell({
   onDropZoneLayout,
   onDropZoneUnregister,
   gppCategoryId,
+  moveTargets,
+  onMoveWorkout,
 }: CalendarDayCellProps) {
   const dayNumber = date.getDate()
+  const { fontScale } = useWindowDimensions()
   const dateISO = dateISOProp ?? formatDateISO(date)
   const viewRef = useRef<ViewInstance>(null)
 
-  // Handle layout for drop zone registration (all days are drop zones now)
-  const handleLayout = useCallback((event: LayoutChangeEvent) => {
+  // Register where this day sits on screen, so a drag can find it
+  const measure = useCallback(() => {
     viewRef.current?.measureInWindow((x, y, width, height) => {
       onDropZoneLayout?.(dateISO, { x, y, width, height })
     })
   }, [dateISO, onDropZoneLayout])
+  const handleLayout = useCallback((_event: LayoutChangeEvent) => measure(), [measure])
+
+  // Measure again when a drag starts. onLayout doesn't fire when the day
+  // list scrolls or the week pages sideways, so the first numbers go stale.
+  useEffect(() => {
+    if (isDragActive) measure()
+  }, [isDragActive, measure])
 
   // Cleanup: unregister drop zone when component unmounts
   useEffect(() => {
@@ -226,90 +243,101 @@ export function CalendarDayCell({
     )
   }
 
-  // Week view - workout cards
+  // Week view: one row of the day list. Date on the left, the day's cards
+  // (or "Rest") filling the width. The whole row is the drop zone.
   const hasWorkouts = workouts.length > 0
-
-  // Determine background color based on drag state
-  // Priority: Blue (hovering) > Green (valid target) > Red (invalid)
-  const getWeekViewBackground = () => {
-    if (isDropTarget && isValidDropTarget) {
-      return '#dbeafe' // Blue highlight - hovering and about to drop
-    }
-    if (isDragActive && !isValidDropTarget) {
-      return '#fee2e2' // Red tint - invalid drop target
-    }
-    if (isDragActive && isValidDropTarget) {
-      return '#f0fdf4' // Light green tint - valid drop target (any cell)
-    }
-    return 'transparent'
-  }
-
-  const getBorderColor = () => {
-    if (isDropTarget && isValidDropTarget) {
-      return '#3b82f6' // Blue - hovering and about to drop
-    }
-    if (isDragActive && !isValidDropTarget) {
-      return '#ef4444' // Red - invalid
-    }
-    if (isDragActive && isValidDropTarget) {
-      return '#22c55e' // Green - valid drop target (any cell)
-    }
-    return 'transparent'
-  }
-
-  // During drag, empty cells should expand to match cells with workouts
-  const shouldExpand = hasWorkouts || isDragActive
+  const isHovered = isDropTarget && isValidDropTarget
+  const dateLabel = `${DAY_NAMES_FULL[date.getDay()]}, ${MONTH_NAMES[date.getMonth()]} ${dayNumber}`
+  const dayA11yLabel = [dateLabel, isToday ? 'today' : null, hasWorkouts ? null : 'rest day'].filter(Boolean).join(', ')
+  const stacked = fontScale >= STACK_FONT_SCALE
 
   return (
-    <View
-      ref={viewRef}
-      onLayout={handleLayout}
-      style={{
-        // Grow to the row's height but keep the cards' own height as the basis
-        // (flex: 1 would set the basis to 0 now that rows size to content)
-        flexGrow: shouldExpand ? 1 : 0,
-        minWidth: 0,
-        // Rows size to content, so an empty day needs height to stay a drop target
-        minHeight: isDragActive ? WEEK_DROP_MIN_HEIGHT : 0,
-        backgroundColor: getWeekViewBackground(),
-        borderRadius: 8,
-        padding: 2,
-        borderWidth: isDragActive || isDropTarget ? 2 : 0,
-        borderColor: getBorderColor(),
-        borderStyle: 'dashed',
-        overflow: 'hidden',
-      }}
-    >
-      {/* Workout cards */}
-      {hasWorkouts ? (
-        <YStack gap="$1">
-          {workouts.map((workout, idx) => {
-            const slotKey = workout.slotPhase && workout.slotWeek && workout.slotDay
-              ? `${workout.slotPhase}-${workout.slotWeek}-${workout.slotDay}`
-              : workout.templateId
+    <View ref={viewRef} onLayout={handleLayout} testID={`week-day-${dateISO}`}>
+      <Stack
+        testID={`week-day-row-${dateISO}`}
+        flexDirection={stacked ? 'column' : 'row'}
+        gap={stacked ? '$1' : '$3'}
+        px="$2"
+        py="$2"
+        minH={56}
+        items={hasWorkouts || stacked ? 'stretch' : 'center'}
+        rounded="$4"
+        borderWidth={2}
+        borderStyle={isHovered ? 'solid' : 'dashed'}
+        // Only during a drag: dashed outline on days that can take the
+        // workout, a solid one on the day under your finger, and dimmed days
+        // that can't (another week, or already past)
+        borderColor={isHovered ? '$primary' : isDragActive && isValidDropTarget ? '$borderColorHover' : 'transparent'}
+        bg={isHovered ? '$color3' : 'transparent'}
+        opacity={isDragActive && !isValidDropTarget ? 0.4 : 1}
+      >
+        {stacked ? (
+          // Large text: one line, "Sun 15", so the cards keep the full width
+          <XStack gap="$2" items="center" accessible accessibilityLabel={dayA11yLabel}>
+            <Body fontWeight="600" color={isToday ? '$primaryText' : '$color12'} style={numeric}>
+              {DAY_NAMES[date.getDay()]} {dayNumber}
+            </Body>
+            {isToday && <Supporting color="$primaryText">Today</Supporting>}
+          </XStack>
+        ) : (
+          <YStack width={40} items="center" accessible accessibilityLabel={dayA11yLabel}>
+            <Caption color={isToday ? '$primaryText' : '$color10'} fontWeight={isToday ? '600' : '400'}>
+              {DAY_NAMES[date.getDay()]}
+            </Caption>
+            <YStack
+              width={32}
+              height={32}
+              rounded={16}
+              bg={isToday ? '$primary' : 'transparent'}
+              items="center"
+              justify="center"
+            >
+              <Body fontWeight="600" color={isToday ? 'white' : '$color12'} style={numeric}>
+                {dayNumber}
+              </Body>
+            </YStack>
+          </YStack>
+        )}
 
-            return (
-              <DraggableWorkoutCard
-                key={`${workout.templateId}-${idx}`}
-                {...workout}
-                slotKey={slotKey}
-                compact={false}
-                onPress={() => onWorkoutPress?.(workout.templateId)}
-                onLongPress={() => handleWorkoutLongPress(workout)}
-                onDragStart={() => {
-                  if (workout.slotPhase && workout.slotWeek && workout.slotDay) {
-                    onDragStart?.(workout.slotPhase, workout.slotWeek, workout.slotDay)
-                  }
-                }}
-                onDragMove={(_, x, y) => onDragMove?.(x, y)}
-                onDragEnd={() => onDragEnd?.()}
-                dragDisabled={workout.isLocked || workout.isCompleted}
-                isDropTarget={isDropTarget}
-              />
-            )
-          })}
-        </YStack>
-      ) : null}
+        {hasWorkouts ? (
+          <YStack flex={1} minW={0} gap="$2">
+            {workouts.map((workout, idx) => {
+              const slotKey = workout.slotPhase && workout.slotWeek && workout.slotDay
+                ? `${workout.slotPhase}-${workout.slotWeek}-${workout.slotDay}`
+                : workout.templateId
+
+              return (
+                <DraggableWorkoutCard
+                  key={`${workout.templateId}-${idx}`}
+                  {...workout}
+                  slotKey={slotKey}
+                  compact={false}
+                  onPress={() => onWorkoutPress?.(workout.templateId)}
+                  onLongPress={() => handleWorkoutLongPress(workout)}
+                  onDragStart={() => {
+                    if (workout.slotPhase && workout.slotWeek && workout.slotDay) {
+                      onDragStart?.(workout.slotPhase, workout.slotWeek, workout.slotDay)
+                    }
+                  }}
+                  onDragMove={(_, x, y) => onDragMove?.(x, y)}
+                  onDragEnd={() => onDragEnd?.()}
+                  dragDisabled={workout.isLocked || workout.isCompleted}
+                  moveTargets={moveTargets}
+                  onMove={(target) => {
+                    if (workout.slotPhase && workout.slotWeek && workout.slotDay) {
+                      onMoveWorkout?.(workout.slotPhase, workout.slotWeek, workout.slotDay, target)
+                    }
+                  }}
+                />
+              )
+            })}
+          </YStack>
+        ) : (
+          <Supporting flex={stacked ? undefined : 1} color="$color10" importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+            Rest
+          </Supporting>
+        )}
+      </Stack>
     </View>
   )
 }

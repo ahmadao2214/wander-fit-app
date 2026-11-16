@@ -1,8 +1,8 @@
 import { useState, useRef, useCallback, useMemo } from 'react'
-import { YStack, XStack, Text, Button, ScrollView } from 'tamagui'
+import { YStack, XStack, Button, ScrollView } from 'tamagui'
 import { Body } from '../Typography'
 import { ChevronLeft, ChevronRight } from '@tamagui/lucide-icons'
-import { FlatList, Dimensions, NativeScrollEvent, NativeSyntheticEvent, View } from 'react-native'
+import { FlatList, Dimensions, NativeScrollEvent, NativeSyntheticEvent, View, type ViewInstance } from 'react-native'
 import { CalendarDayCell, WorkoutWithSlot } from './CalendarDayCell'
 import { CalendarWorkoutCardProps } from './CalendarWorkoutCard'
 import {
@@ -14,11 +14,11 @@ import {
   formatDateISO,
   startOfWeek,
   parseDateISO,
+  DAY_NAMES_FULL,
 } from '../../lib/calendarUtils'
 import type { Phase } from '../../types'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
-const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const LAST_WEEK_BUFFER_DAYS = 7 // Allow last week workouts to be moved up to 7 days forward
 
 export interface CalendarWorkout {
@@ -33,6 +33,8 @@ export interface CalendarWorkout {
   isToday: boolean
   isInProgress: boolean
   isLocked?: boolean
+  /** ISO date the workout was finished, when done */
+  completedOnDate?: string
 }
 
 export interface CalendarWeekViewProps {
@@ -67,6 +69,23 @@ export interface CalendarWeekViewProps {
   programStartDate?: string
   /** Program end date (ISO format) - limits navigation */
   programEndDate?: string
+  /** Move a workout without dragging (VoiceOver actions) */
+  onMoveWorkout?: (phase: Phase, week: number, day: number, dateISO: string) => void
+}
+
+type Rect = { x: number; y: number; width: number; height: number }
+
+/**
+ * The part of a day row you can see in the scrolling day list. A row scrolled
+ * out of view would otherwise sit under the header or tab bar and take a drop
+ * meant for neither. Returns null when none of the row is visible.
+ */
+export function clipToViewport(row: Rect, viewport: Pick<Rect, 'y' | 'height'> | null): Rect | null {
+  if (!viewport) return row
+  const top = Math.max(row.y, viewport.y)
+  const bottom = Math.min(row.y + row.height, viewport.y + viewport.height)
+  if (bottom <= top) return null
+  return { ...row, y: top, height: bottom - top }
 }
 
 /**
@@ -123,10 +142,26 @@ export function CalendarWeekView({
   onDropZoneUnregister,
   programStartDate,
   programEndDate,
+  onMoveWorkout,
 }: CalendarWeekViewProps) {
   // Disable FlatList scrolling while dragging to prevent gesture conflicts
   const isDragging = dragSourceSlot !== null && dragSourceSlot !== undefined
   const flatListRef = useRef<FlatList>(null)
+
+  // Where the day list shows on screen. Paging sideways doesn't move it
+  // up or down, so measuring on layout is enough.
+  const viewportRef = useRef<Pick<Rect, 'y' | 'height'> | null>(null)
+  const listFrameRef = useRef<ViewInstance>(null)
+  const handleListLayout = useCallback(() => {
+    listFrameRef.current?.measureInWindow((_x, y, _w, height) => {
+      viewportRef.current = { y, height }
+    })
+  }, [])
+  const handleDayLayout = useCallback((dateISO: string, layout: Rect) => {
+    const visible = clipToViewport(layout, viewportRef.current)
+    if (visible) onDropZoneLayout?.(dateISO, visible)
+    else onDropZoneUnregister?.(dateISO)
+  }, [onDropZoneLayout, onDropZoneUnregister])
   const today = new Date()
 
   // Generate weeks within program bounds (memoized)
@@ -216,14 +251,20 @@ export function CalendarWeekView({
     }
   }, [currentIndex, weeks, onWeekChange])
 
+  // How many days each workout appears on (twice when finished off-schedule)
+  const daysShown = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const day of Object.values(calendarData)) {
+      for (const w of day.workouts) counts.set(w.templateId, (counts.get(w.templateId) ?? 0) + 1)
+    }
+    return counts
+  }, [calendarData])
+
   const renderWeek = useCallback(({ item: weekStart }: { item: Date }) => {
     const days = getWeekDays(weekStart)
-    // Split into two rows: Sun-Wed (0-3) and Thu-Sat (4-6)
-    const firstRowDays = days.slice(0, 4)
-    const secondRowDays = days.slice(4, 7)
 
     // Find the source workout's effective date when dragging
-    const isDragActive = dragSourceSlot !== null
+    const isDragActive = isDragging
     let sourceEffectiveDate: Date | null = null
 
     if (isDragActive && dragSourceSlot) {
@@ -241,7 +282,21 @@ export function CalendarWeekView({
       }
     }
 
-    const renderDayColumn = (date: Date) => {
+    // Days a workout can move to: this week, from today on, and not a day
+    // whose scheduled workout is done (the server won't swap with it). A
+    // finished workout also shows as an extra card on the day it was done;
+    // that copy is the one dated on its completedOnDate while the same
+    // workout appears on another day, and it doesn't block the day.
+    const isPast = (d: Date) => d < today && !isSameDay(d, today)
+    const holdsDone = (d: Date) => {
+      const iso = formatDateISO(d)
+      return !!calendarData[iso]?.workouts.some(
+        (w) => w.isCompleted && !(w.completedOnDate === iso && (daysShown.get(w.templateId) ?? 0) > 1)
+      )
+    }
+    const openDays = days.filter((d) => !isPast(d) && !holdsDone(d))
+
+    const renderDay = (date: Date) => {
       const dateISO = formatDateISO(date)
       const isDateToday = isSameDay(date, today)
       const dayData = calendarData[dateISO]
@@ -270,81 +325,52 @@ export function CalendarWeekView({
       // 1. Must be same week as source
       // 2. Cannot be in the past (before today)
       const isInPast = date < today && !isSameDay(date, today)
-      const isValidDropTarget = sourceEffectiveDate
+      const isValidDropTarget = (sourceEffectiveDate
         ? isSameWeek(date, sourceEffectiveDate) && !isInPast
-        : !isInPast
+        : !isInPast) && !holdsDone(date)
 
       return (
-        <YStack key={dateISO} flex={1} gap="$1" minW={0}>
-          {/* Day header */}
-          <YStack items="center" gap="$0.5">
-            <Text
-              fontSize={12}
-              lineHeight={16}
-              fontWeight="500"
-              color={isDateToday ? '$primaryText' : '$color9'}
-            >
-              {DAY_NAMES[date.getDay()]}
-            </Text>
-            <YStack
-              width={28}
-              height={28}
-              rounded={14}
-              bg={isDateToday ? '$primary' : 'transparent'}
-              items="center"
-              justify="center"
-            >
-              <Text
-                fontSize={14}
-                lineHeight={20}
-                fontWeight={isDateToday ? '700' : '500'}
-                color={isDateToday ? 'white' : '$color12'}
-              >
-                {date.getDate()}
-              </Text>
-            </YStack>
-          </YStack>
-
-          {/* Workout cell */}
-          <CalendarDayCell
-            date={date}
-            dateISO={dateISO}
-            isToday={isDateToday}
-            workouts={workouts}
-            compact={false}
-            onWorkoutPress={onWorkoutPress}
-            onWorkoutLongPress={onWorkoutLongPress}
-            onDragStart={onDragStart}
-            onDragEnd={onDragEnd}
-            onDragMove={onDragMove}
-            isDropTarget={isDropTarget}
-            isDragActive={isDragActive}
-            isValidDropTarget={isValidDropTarget}
-            gppCategoryId={gppCategoryId}
-            onDropZoneLayout={onDropZoneLayout}
-            onDropZoneUnregister={onDropZoneUnregister}
-          />
-        </YStack>
+        <CalendarDayCell
+          key={dateISO}
+          date={date}
+          dateISO={dateISO}
+          isToday={isDateToday}
+          workouts={workouts}
+          compact={false}
+          onWorkoutPress={onWorkoutPress}
+          onWorkoutLongPress={onWorkoutLongPress}
+          onDragStart={onDragStart}
+          onDragEnd={onDragEnd}
+          onDragMove={onDragMove}
+          isDropTarget={isDropTarget}
+          isDragActive={isDragActive}
+          isValidDropTarget={isValidDropTarget}
+          gppCategoryId={gppCategoryId}
+          onDropZoneLayout={handleDayLayout}
+          onDropZoneUnregister={onDropZoneUnregister}
+          moveTargets={openDays
+            .filter((d) => !isSameDay(d, date))
+            .map((d) => ({ dateISO: formatDateISO(d), label: DAY_NAMES_FULL[d.getDay()] }))}
+          onMoveWorkout={onMoveWorkout}
+        />
       )
     }
 
-    // Rows size to their tallest day. With flex={1} each row took half the
-    // page, so an empty Sun–Wed row pushed Thu–Sat far down the screen.
+    // One day per row, Sunday to Saturday, so the week reads as one list
+    // (design audit F01). At large text sizes the list scrolls; it holds
+    // still while a workout is dragged so the drop zones stay put.
     return (
-      <YStack width={SCREEN_WIDTH} flex={1} px="$1.5" gap="$3">
-        {/* First row: Sun, Mon, Tue, Wed */}
-        <XStack gap="$1.5">
-          {firstRowDays.map(renderDayColumn)}
-        </XStack>
-
-        {/* Second row: Thu, Fri, Sat (+ empty spacer for alignment) */}
-        <XStack gap="$1.5">
-          {secondRowDays.map(renderDayColumn)}
-          <YStack flex={1} minW={0} />
-        </XStack>
-      </YStack>
+      <ScrollView
+        width={SCREEN_WIDTH}
+        flex={1}
+        scrollEnabled={!isDragActive}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ px: "$3", pb: "$4" }}
+      >
+        <YStack gap="$1">{days.map(renderDay)}</YStack>
+      </ScrollView>
     )
-  }, [calendarData, onWorkoutPress, onWorkoutLongPress, onDragStart, onDragEnd, onDragMove, dragTargetDate, dragSourceSlot, gppCategoryId, onDropZoneLayout, onDropZoneUnregister])
+  }, [calendarData, onWorkoutPress, onWorkoutLongPress, onDragStart, onDragEnd, onDragMove, dragTargetDate, dragSourceSlot, isDragging, gppCategoryId, handleDayLayout, onDropZoneUnregister, onMoveWorkout, daysShown])
 
   const keyExtractor = useCallback((item: Date) => formatDateISO(item), [])
 
@@ -361,12 +387,15 @@ export function CalendarWeekView({
             circular
             chromeless
             icon={ChevronLeft}
+            // A 28pt circle, 44pt to the finger
+            hitSlop={8}
+            accessibilityLabel="Previous week"
             onPress={handlePreviousWeek}
           />
         )}
 
-        <XStack items="center" gap="$2">
-          <Body fontWeight="600">{formatWeekRange(displayedWeek)}</Body>
+        <XStack flex={1} minW={0} items="center" justify="center" gap="$2" flexWrap="wrap">
+          <Body fontWeight="600" text="center" shrink={1}>{formatWeekRange(displayedWeek)}</Body>
           {!isCurrentWeekVisible && isTodayInProgram && (
             <Button
               size="$2"
@@ -388,6 +417,9 @@ export function CalendarWeekView({
             circular
             chromeless
             icon={ChevronRight}
+            // A 28pt circle, 44pt to the finger
+            hitSlop={8}
+            accessibilityLabel="Next week"
             onPress={handleNextWeek}
           />
         )}
@@ -395,29 +427,31 @@ export function CalendarWeekView({
 
 
       {/* Swipeable week view - scrolling disabled during drag to prevent gesture conflicts */}
-      <FlatList
-        ref={flatListRef}
-        data={weeks}
-        renderItem={renderWeek}
-        keyExtractor={keyExtractor}
-        extraData={{ dragSourceSlot, dragTargetDate, calendarData }}
-        horizontal
-        pagingEnabled
-        scrollEnabled={!isDragging}
-        showsHorizontalScrollIndicator={false}
-        initialScrollIndex={currentIndex}
-        getItemLayout={(_, index) => ({
-          length: SCREEN_WIDTH,
-          offset: SCREEN_WIDTH * index,
-          index,
-        })}
-        onMomentumScrollEnd={handleMomentumScrollEnd}
-        decelerationRate="fast"
-        snapToInterval={SCREEN_WIDTH}
-        snapToAlignment="start"
-        style={{ flex: 1 }}
-        contentContainerStyle={{ alignItems: 'stretch' }}
-      />
+      <View ref={listFrameRef} onLayout={handleListLayout} testID="week-pages" style={{ flex: 1 }}>
+        <FlatList
+          ref={flatListRef}
+          data={weeks}
+          renderItem={renderWeek}
+          keyExtractor={keyExtractor}
+          extraData={{ dragSourceSlot, dragTargetDate, calendarData }}
+          horizontal
+          pagingEnabled
+          scrollEnabled={!isDragging}
+          showsHorizontalScrollIndicator={false}
+          initialScrollIndex={currentIndex}
+          getItemLayout={(_, index) => ({
+            length: SCREEN_WIDTH,
+            offset: SCREEN_WIDTH * index,
+            index,
+          })}
+          onMomentumScrollEnd={handleMomentumScrollEnd}
+          decelerationRate="fast"
+          snapToInterval={SCREEN_WIDTH}
+          snapToAlignment="start"
+          style={{ flex: 1 }}
+          contentContainerStyle={{ alignItems: 'stretch' }}
+        />
+      </View>
     </YStack>
   )
 }

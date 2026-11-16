@@ -2,7 +2,7 @@ import React from 'react'
 import { render } from '@testing-library/react-native'
 import { TamaguiProvider } from 'tamagui'
 import config from '../../../tamagui.config'
-import { CalendarDayCell, CalendarDayCellProps, WorkoutWithSlot } from '../CalendarDayCell'
+import { CalendarDayCell, CalendarDayCellProps, WorkoutWithSlot, STACK_FONT_SCALE } from '../CalendarDayCell'
 
 // Mock DraggableWorkoutCard to avoid gesture handler complexities
 jest.mock('../DraggableWorkoutCard', () => ({
@@ -16,6 +16,13 @@ jest.mock('../DraggableWorkoutCard', () => ({
       !compact && React.createElement(Text, null, phase)
     )
   },
+}))
+
+// Jest's mocked screen reports fontScale 2; phones default to 1
+const mockFontScale = { value: 1 }
+jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
+  __esModule: true,
+  default: () => ({ width: 402, height: 874, scale: 3, fontScale: mockFontScale.value }),
 }))
 
 // Wrapper for Tamagui components
@@ -59,6 +66,7 @@ describe('CalendarDayCell', () => {
   }
 
   beforeEach(() => {
+    mockFontScale.value = 1
     mockOnWorkoutPress.mockClear()
     mockOnDragStart.mockClear()
     mockOnDragEnd.mockClear()
@@ -67,12 +75,43 @@ describe('CalendarDayCell', () => {
   })
 
   describe('week view (compact=false)', () => {
-    it('renders without workouts', () => {
-      const { root } = render(
+    it('shows the weekday and date beside the day', () => {
+      const { getByText } = render(
+        <CalendarDayCell {...defaultProps} workouts={[sampleWorkout]} />,
+        { wrapper: AllTheProviders }
+      )
+      expect(getByText('Mon')).toBeTruthy()
+      expect(getByText('2')).toBeTruthy()
+    })
+
+    it('says Rest on a day with no workout, and names it for screen readers', () => {
+      const { getByText, getByLabelText } = render(
         <CalendarDayCell {...defaultProps} />,
         { wrapper: AllTheProviders }
       )
-      expect(root).toBeTruthy()
+      // The row's label already says "rest day", so the word itself is hidden
+      expect(getByText('Rest', { includeHiddenElements: true })).toBeTruthy()
+      expect(getByLabelText('Monday, February 2, rest day')).toBeTruthy()
+    })
+
+    it('names today for screen readers and drops Rest on a workout day', () => {
+      const { getByLabelText, queryByText } = render(
+        <CalendarDayCell {...defaultProps} isToday workouts={[sampleWorkout]} />,
+        { wrapper: AllTheProviders }
+      )
+      expect(getByLabelText('Monday, February 2, today')).toBeTruthy()
+      expect(queryByText('Rest')).toBeNull()
+    })
+
+    it('puts the date on one line above the cards at accessibility text sizes', () => {
+      mockFontScale.value = STACK_FONT_SCALE
+      const { getByText, queryByText } = render(
+        <CalendarDayCell {...defaultProps} isToday workouts={[sampleWorkout]} />,
+        { wrapper: AllTheProviders }
+      )
+      expect(getByText('Mon 2')).toBeTruthy()
+      expect(getByText('Today')).toBeTruthy()
+      expect(queryByText('Mon')).toBeNull()
     })
 
     it('renders with a single workout', () => {
