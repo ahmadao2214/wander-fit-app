@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useMemo } from 'react'
 import { YStack, XStack, Button, ScrollView } from 'tamagui'
 import { Body } from '../Typography'
 import { ChevronLeft, ChevronRight } from '@tamagui/lucide-icons'
-import { FlatList, Dimensions, NativeScrollEvent, NativeSyntheticEvent } from 'react-native'
+import { FlatList, Dimensions, NativeScrollEvent, NativeSyntheticEvent, View, type ViewInstance } from 'react-native'
 import { CalendarDayCell, WorkoutWithSlot } from './CalendarDayCell'
 import { CalendarWorkoutCardProps } from './CalendarWorkoutCard'
 import {
@@ -145,8 +145,9 @@ export function CalendarWeekView({
   // Where the day list shows on screen. Paging sideways doesn't move it
   // up or down, so measuring on layout is enough.
   const viewportRef = useRef<Pick<Rect, 'y' | 'height'> | null>(null)
+  const listFrameRef = useRef<ViewInstance>(null)
   const handleListLayout = useCallback(() => {
-    flatListRef.current?.getNativeScrollRef()?.measureInWindow?.((_x: number, y: number, _w: number, height: number) => {
+    listFrameRef.current?.measureInWindow((_x, y, _w, height) => {
       viewportRef.current = { y, height }
     })
   }, [])
@@ -393,30 +394,31 @@ export function CalendarWeekView({
 
 
       {/* Swipeable week view - scrolling disabled during drag to prevent gesture conflicts */}
-      <FlatList
-        ref={flatListRef}
-        data={weeks}
-        renderItem={renderWeek}
-        keyExtractor={keyExtractor}
-        extraData={{ dragSourceSlot, dragTargetDate, calendarData }}
-        horizontal
-        pagingEnabled
-        scrollEnabled={!isDragging}
-        showsHorizontalScrollIndicator={false}
-        initialScrollIndex={currentIndex}
-        getItemLayout={(_, index) => ({
-          length: SCREEN_WIDTH,
-          offset: SCREEN_WIDTH * index,
-          index,
-        })}
-        onMomentumScrollEnd={handleMomentumScrollEnd}
-        decelerationRate="fast"
-        snapToInterval={SCREEN_WIDTH}
-        snapToAlignment="start"
-        style={{ flex: 1 }}
-        onLayout={handleListLayout}
-        contentContainerStyle={{ alignItems: 'stretch' }}
-      />
+      <View ref={listFrameRef} onLayout={handleListLayout} testID="week-pages" style={{ flex: 1 }}>
+        <FlatList
+          ref={flatListRef}
+          data={weeks}
+          renderItem={renderWeek}
+          keyExtractor={keyExtractor}
+          extraData={{ dragSourceSlot, dragTargetDate, calendarData }}
+          horizontal
+          pagingEnabled
+          scrollEnabled={!isDragging}
+          showsHorizontalScrollIndicator={false}
+          initialScrollIndex={currentIndex}
+          getItemLayout={(_, index) => ({
+            length: SCREEN_WIDTH,
+            offset: SCREEN_WIDTH * index,
+            index,
+          })}
+          onMomentumScrollEnd={handleMomentumScrollEnd}
+          decelerationRate="fast"
+          snapToInterval={SCREEN_WIDTH}
+          snapToAlignment="start"
+          style={{ flex: 1 }}
+          contentContainerStyle={{ alignItems: 'stretch' }}
+        />
+      </View>
     </YStack>
   )
 }

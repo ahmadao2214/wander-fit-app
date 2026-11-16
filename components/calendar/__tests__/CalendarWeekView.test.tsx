@@ -1,5 +1,5 @@
 import React from 'react'
-import { render } from '@testing-library/react-native'
+import { render, fireEvent } from '@testing-library/react-native'
 import { TamaguiProvider } from 'tamagui'
 import config from '../../../tamagui.config'
 import { CalendarWeekView, CalendarWeekViewProps, CalendarWorkout, clipToViewport } from '../CalendarWeekView'
@@ -79,6 +79,44 @@ describe('CalendarWeekView', () => {
     const todays = getAllByLabelText(/, today/)
     expect(todays).toHaveLength(1)
     expect(todays[0].props.accessibilityLabel).toContain(`${today.getDate()}`)
+  })
+
+  it('re-measures days when a drag starts, and only the visible part of each takes a drop', () => {
+    // The list shows from y=200 to y=700. It has scrolled, so Sunday sits
+    // above it, Monday is cut off at the top, and Tuesday is in full view.
+    const rects: Record<string, [number, number, number, number]> = {
+      'week-pages': [0, 200, 402, 500],
+      [`week-day-${iso[0]}`]: [12, 100, 378, 56],
+      [`week-day-${iso[1]}`]: [12, 170, 378, 56],
+      [`week-day-${iso[2]}`]: [12, 300, 378, 56],
+    }
+    // React Native's Jest View keeps measureInWindow on its prototype
+    const { View } = require('react-native')
+    const measure = jest
+      .spyOn(View.prototype, 'measureInWindow')
+      .mockImplementation(function (this: { props: { testID?: string } }, ...args: unknown[]) {
+        const cb = args[0] as (x: number, y: number, w: number, h: number) => void
+        const r = this.props.testID ? rects[this.props.testID] : undefined
+        if (r) cb(...r)
+      })
+    const onDropZoneLayout = jest.fn()
+    const onDropZoneUnregister = jest.fn()
+    const dragProps = { ...props, onDropZoneLayout, onDropZoneUnregister }
+    try {
+      const { getByTestId, rerender } = render(<CalendarWeekView {...dragProps} />, { wrapper: AllTheProviders })
+      fireEvent(getByTestId('week-pages'), 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 402, height: 500 } } })
+      onDropZoneLayout.mockClear()
+      onDropZoneUnregister.mockClear()
+
+      rerender(<CalendarWeekView {...dragProps} dragSourceSlot={{ phase: 'GPP', week: 1, day: 1 }} />)
+    } finally {
+      measure.mockRestore()
+    }
+
+    expect(onDropZoneUnregister).toHaveBeenCalledWith(iso[0])
+    expect(onDropZoneLayout).toHaveBeenCalledWith(iso[1], { x: 12, y: 200, width: 378, height: 26 })
+    expect(onDropZoneLayout).toHaveBeenCalledWith(iso[2], { x: 12, y: 300, width: 378, height: 56 })
+    expect(onDropZoneLayout.mock.calls.map(([d]) => d)).not.toContain(iso[0])
   })
 
   it('labels the week arrows', () => {
