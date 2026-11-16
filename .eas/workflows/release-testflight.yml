@@ -1,0 +1,38 @@
+# Build one iOS release and send it to TestFlight internal testers.
+#
+# Builds are deliberate: merging to main does NOT build. Each run uses one
+# iOS build from the EAS plan (Free: 15/month, resets on the 13th), so
+# releases are batched — see docs/BUILDS.md.
+#
+# Start a release either way:
+#   git tag testflight-2026-11-20 origin/main && git push origin testflight-2026-11-20
+#   npx eas-cli workflow:run .eas/workflows/release-testflight.yml --ref main
+# `--ref <branch>` also builds a PR branch, which replaces the old
+# `testflight` PR label.
+name: Release → TestFlight
+
+on:
+  push:
+    tags: ['testflight-*']
+  workflow_dispatch: {}
+
+jobs:
+  build_ios:
+    name: Build iOS (production)
+    type: build
+    params:
+      platform: ios
+      profile: production
+
+  # `submit` rather than `testflight`: the testflight job needs a paid EAS
+  # plan to upload an EAS build. No `groups`: "Offseason Asrafit Testers" has
+  # automatic distribution on, and Apple rejects adding such a group by hand.
+  # If only this job fails, resubmit the same build instead of rerunning the
+  # workflow: `npx eas-cli submit -p ios --id <build id> --profile production`.
+  submit_ios:
+    name: Upload to TestFlight
+    needs: [build_ios]
+    type: submit
+    params:
+      build_id: ${{ needs.build_ios.outputs.build_id }}
+      profile: production
