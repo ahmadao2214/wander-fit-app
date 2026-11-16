@@ -89,21 +89,30 @@ export function weeksOnPlan({
     perWeek.set(week, (perWeek.get(week) ?? 0) + 1)
   }
 
-  const weeks = [...perWeek.keys()]
-  const firstWeek = Math.min(...weeks)
+  // Walk only the weeks with sessions, so the work is bounded by the session
+  // count whatever dates the caller sends
+  const weeks = [...perWeek.keys()].sort((a, b) => a - b)
+  const firstWeek = weeks[0]
   const currentWeek = weekOf(dateToDayNumber(today))
-  // Sessions dated after "today" (clock skew) still count
-  const lastWeek = Math.max(currentWeek, ...weeks)
   const pausedWeek =
     pausedAt === undefined ? Infinity : weekOf(toLocalDayNumber(pausedAt, timezoneOffsetMinutes))
+  // A short week ends the run once it's over, unless the program was paused.
+  // Sessions dated after "today" (clock skew) still count.
+  const ends = (week: number) => week < currentWeek && week < pausedWeek
 
   let run = 0
-  for (let week = firstWeek; week <= lastWeek; week++) {
+  let previous = firstWeek - 1
+  for (const week of weeks) {
+    // An empty week between two trained ones
+    if (week - previous > 1 && ends(previous + 1)) run = 0
     if ((perWeek.get(week) ?? 0) >= target) {
       run++
-    } else if (week !== firstWeek && week < currentWeek && week < pausedWeek) {
+    } else if (week !== firstWeek && ends(week)) {
       run = 0
     }
+    previous = week
   }
+  // An empty week since the last trained one
+  if (ends(previous + 1)) run = 0
   return run
 }

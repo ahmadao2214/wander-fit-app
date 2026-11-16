@@ -258,7 +258,11 @@ export const getProgressSummary = query({
     const completedSessions = sessions.filter((s) => s.status === "completed");
     const localDay =
       args.today && /^\d{4}-\d{2}-\d{2}$/.test(args.today)
-        ? { today: args.today, timezoneOffsetMinutes: args.timezoneOffsetMinutes ?? 0 }
+        ? {
+            today: args.today,
+            // Real offsets run from UTC-12 to UTC+14
+            timezoneOffsetMinutes: Math.min(720, Math.max(-840, Number.isFinite(args.timezoneOffsetMinutes) ? args.timezoneOffsetMinutes ?? 0 : 0)),
+          }
         : localDayArgs();
 
     // Determine unlocked phases (Sequential Access)

@@ -147,6 +147,16 @@ describe("getProgressSummary weeks on plan", () => {
     expect(utc?.weeksOnPlan).toBe(1);
   });
 
+  it("treats an impossible offset as the nearest real one (Greptile P1)", async () => {
+    const athlete = await setup(done([...weekOf2nd, ...weekOf9th]));
+    const summary = await athlete.query(api.userPrograms.getProgressSummary, {
+      today: "2026-11-16",
+      timezoneOffsetMinutes: 1e12,
+    });
+    // Clamped to UTC-12: noon UTC sessions stay on their days
+    expect(summary?.weeksOnPlan).toBe(2);
+  });
+
   it("keeps the streak while the program is paused", async () => {
     const athlete = await setup(done([...weekOf2nd, ...weekOf9th]), { pausedAt: at("2026-11-15") });
     const summary = await athlete.query(api.userPrograms.getProgressSummary, {

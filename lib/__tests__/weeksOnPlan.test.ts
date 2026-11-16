@@ -95,6 +95,19 @@ describe('weeksOnPlan', () => {
     expect(weeksOnPlan({ completedAt, workoutsPerWeek: 2, today: '2026-11-13', ...newYork })).toBe(2)
   })
 
+  it('ends the run on an empty finished week between two trained ones', () => {
+    const completedAt = [...monWedFri('2026-10-26'), ...monWedFri('2026-11-09'), ...monWedFri('2026-11-16')]
+    expect(weeksOnPlan({ completedAt, workoutsPerWeek: 3, today: '2026-11-21', ...utc })).toBe(2)
+  })
+
+  it('does work per session, not per week, whatever dates it is given (Greptile P1)', () => {
+    const completedAt = [...monWedFri('2026-11-02'), ...monWedFri('2026-11-09')]
+    const started = Date.now()
+    expect(weeksOnPlan({ completedAt, workoutsPerWeek: 3, today: '9999-12-31', ...utc })).toBe(0)
+    expect(weeksOnPlan({ completedAt, workoutsPerWeek: 3, today: '2026-11-16', timezoneOffsetMinutes: 1e12 })).toBe(0)
+    expect(Date.now() - started).toBeLessThan(1000)
+  })
+
   it('counts sessions dated after today (clock skew)', () => {
     const completedAt = [...monWedFri('2026-11-02'), ...monWedFri('2026-11-09')]
     expect(weeksOnPlan({ completedAt, workoutsPerWeek: 3, today: '2026-11-08', ...utc })).toBe(2)
