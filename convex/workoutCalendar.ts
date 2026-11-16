@@ -1,4 +1,5 @@
 import { query, mutation } from "./_generated/server";
+import { countsAsDone } from "./blockCompletion";
 import { v } from "convex/values";
 import { mapUserWeekToTemplateWeek } from "./weekMapping";
 
@@ -335,11 +336,11 @@ export const getCalendarView = query({
       .first();
 
     // Get completed sessions
-    const completedSessions = await ctx.db
+    const completedSessions = (await ctx.db
       .query("gpp_workout_sessions")
       .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
       .filter((q) => q.eq(q.field("status"), "completed"))
-      .collect();
+      .collect()).filter((s) => countsAsDone(s, program));
 
     // Build set of completed template IDs and completion dates
     const completedTemplateIds = new Set(
@@ -726,11 +727,11 @@ export const cascadeWorkoutsToToday = mutation({
     }
 
     // Get completed template IDs
-    const completedSessions = await ctx.db
+    const completedSessions = (await ctx.db
       .query("gpp_workout_sessions")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .filter((q) => q.eq(q.field("status"), "completed"))
-      .collect();
+      .collect()).filter((s) => countsAsDone(s, program));
     const completedTemplateIds = new Set(completedSessions.map((s) => s.templateId.toString()));
 
     // Check if any workout in the cascade range is completed
@@ -973,11 +974,11 @@ export const swapWorkouts = mutation({
     }
 
     // Check neither workout is completed
-    const completedSessions = await ctx.db
+    const completedSessions = (await ctx.db
       .query("gpp_workout_sessions")
       .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
       .filter((q) => q.eq(q.field("status"), "completed"))
-      .collect();
+      .collect()).filter((s) => countsAsDone(s, program));
     const completedTemplateIds = new Set(completedSessions.map((s) => s.templateId.toString()));
 
     if (completedTemplateIds.has(sourceTemplate._id.toString())) {
@@ -1207,11 +1208,11 @@ export const moveWorkoutToDate = mutation({
     }
 
     // Check completed workouts
-    const completedSessions = await ctx.db
+    const completedSessions = (await ctx.db
       .query("gpp_workout_sessions")
       .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
       .filter((q) => q.eq(q.field("status"), "completed"))
-      .collect();
+      .collect()).filter((s) => countsAsDone(s, program));
 
     // Get templates to check completion
     const templates = await ctx.db
@@ -1488,11 +1489,11 @@ export const getFullProgramCalendar = query({
       .first();
 
     // Get completed sessions
-    const completedSessions = await ctx.db
+    const completedSessions = (await ctx.db
       .query("gpp_workout_sessions")
       .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
       .filter((q) => q.eq(q.field("status"), "completed"))
-      .collect();
+      .collect()).filter((s) => countsAsDone(s, program));
 
     // Build set of completed template IDs and completion dates
     const completedTemplateIds = new Set(

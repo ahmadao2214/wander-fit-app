@@ -1,4 +1,5 @@
 import { query, mutation } from "./_generated/server";
+import { countsAsDone } from "./blockCompletion";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { mapUserWeekToTemplateWeek, DEFAULT_WEEKS_PER_PHASE } from "./weekMapping";
@@ -217,11 +218,11 @@ export const getTodayWorkout = query({
       .first();
 
     // Get all completed template IDs for this user
-    const completedSessions = await ctx.db
+    const completedSessions = (await ctx.db
       .query("gpp_workout_sessions")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .filter((q) => q.eq(q.field("status"), "completed"))
-      .collect();
+      .collect()).filter((s) => countsAsDone(s, program));
     const completedTemplateIds = new Set(completedSessions.map((s) => s.templateId));
 
     // Helper to get template with exercise details
@@ -501,8 +502,8 @@ export const setTodayFocus = mutation({
       throw new Error("Template does not belong to your program category");
     }
 
-    // Prevent setting completed workout as today's focus
-    const completedSession = await ctx.db
+    // Prevent setting completed workout as today's focus (done in this block)
+    const completedSessions = await ctx.db
       .query("gpp_workout_sessions")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .filter((q) =>
@@ -511,9 +512,9 @@ export const setTodayFocus = mutation({
           q.eq(q.field("status"), "completed")
         )
       )
-      .first();
+      .collect();
 
-    if (completedSession) {
+    if (completedSessions.some((s) => countsAsDone(s, program))) {
       throw new Error("Cannot set completed workout as today's focus");
     }
 
@@ -686,11 +687,11 @@ export const swapWorkouts = mutation({
     }
 
     // Backend validation: prevent swapping completed workouts
-    const completedSessions = await ctx.db
+    const completedSessions = (await ctx.db
       .query("gpp_workout_sessions")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .filter((q) => q.eq(q.field("status"), "completed"))
-      .collect();
+      .collect()).filter((s) => countsAsDone(s, program));
     const completedTemplateIds = new Set(completedSessions.map((s) => s.templateId));
 
     if (completedTemplateIds.has(templateA._id) || completedTemplateIds.has(templateB._id)) {
@@ -798,11 +799,11 @@ export const setTodayFocusWithSwap = mutation({
     }
 
     // Get all completed sessions for validation
-    const completedSessions = await ctx.db
+    const completedSessions = (await ctx.db
       .query("gpp_workout_sessions")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .filter((q) => q.eq(q.field("status"), "completed"))
-      .collect();
+      .collect()).filter((s) => countsAsDone(s, program));
     const completedTemplateIds = new Set(completedSessions.map((s) => s.templateId));
 
     // Prevent setting completed workout as today's focus

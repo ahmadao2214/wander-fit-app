@@ -27,9 +27,11 @@ url: ${VERIFY_URL}
 
 # Check-in, then skip the maxes
 - extendedWaitUntil:
-    visible: "How did GPP go?"
+    visible: "How did GPP go[?]"
     timeout: 30000
-- tapOn: "Just right"
+# Web reports the accessibility label as the id
+- tapOn:
+    id: "Just right"
 - tapOn: "Continue"
 - extendedWaitUntil:
     visible: "Update your maxes"
@@ -44,7 +46,8 @@ url: ${VERIFY_URL}
 - assertVisible: "Repeat GPP"
 - assertVisible: "Choose an option"
 - takeScreenshot: 03-decision
-- tapOn: "Repeat GPP"
+- tapOn:
+    id: "Repeat GPP"
 - tapOn: "Start GPP again"
 
 # Today: GPP again from week 1, and the check-in is gone

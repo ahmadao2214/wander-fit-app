@@ -1,4 +1,5 @@
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { countsAsDone } from "./blockCompletion";
 import { v } from "convex/values";
 import { getCurrentUser } from "./authHelpers";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -383,6 +384,18 @@ export const getSessionForTemplate = query({
         return null;
       }
 
+      // A completed session from an earlier run of the current phase (a
+      // repeated block, or a new cycle) doesn't make this workout done now
+      if (userSession.status === "completed") {
+        const program = await ctx.db
+          .query("user_programs")
+          .withIndex("by_user", (q) => q.eq("userId", user._id))
+          .first();
+        if (program && !countsAsDone(userSession, program)) {
+          return null;
+        }
+      }
+
       // Get the template for context (may be null if deleted)
       const template = await ctx.db.get(userSession.templateId);
 
@@ -709,12 +722,17 @@ export const getCompletedTemplateIds = query({
       return [];
     }
 
-    // Get all completed sessions for this user
-    const completedSessions = await ctx.db
+    const program = await ctx.db
+      .query("user_programs")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .first();
+
+    // Completed sessions, minus ones from an earlier run of the current phase
+    const completedSessions = (await ctx.db
       .query("gpp_workout_sessions")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .filter((q) => q.eq(q.field("status"), "completed"))
-      .collect();
+      .collect()).filter((s) => !program || countsAsDone(s, program));
 
     // Return unique template IDs
     const templateIds = Array.from(new Set(completedSessions.map((s) => s.templateId)));
@@ -994,11 +1012,11 @@ export const startSession = mutation({
               }
 
               // Get completed template IDs
-              const completedSessions = await ctx.db
+              const completedSessions = (await ctx.db
                 .query("gpp_workout_sessions")
                 .withIndex("by_user", (q) => q.eq("userId", user._id))
                 .filter((q) => q.eq(q.field("status"), "completed"))
-                .collect();
+                .collect()).filter((s) => countsAsDone(s, userProgram));
               const completedTemplateIds = new Set(
                 completedSessions.map((s) => s.templateId.toString())
               );
