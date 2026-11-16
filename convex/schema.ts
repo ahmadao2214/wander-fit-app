@@ -328,6 +328,9 @@ export default defineSchema({
     skillLevelChanged: v.optional(v.boolean()),
     completedPhase: v.optional(phaseValidator),
     maxesUpdated: v.optional(v.boolean()),
+    // What the athlete chose after the check-in: start the next phase or run
+    // the same block again. Missing on older records, which always moved on.
+    reassessmentDecision: v.optional(v.union(v.literal("move_on"), v.literal("repeat"))),
 
     // Meta
     completedAt: v.number(),

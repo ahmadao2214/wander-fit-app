@@ -1136,22 +1136,13 @@ export default function WorkoutExecutionScreen() {
             rounded="$5"
           >
             <YStack gap="$5" items="center">
-              <YStack
-                width={80}
-                height={80}
-                bg="$success"
-                rounded="$10"
-                items="center"
-                justify="center"
-              >
-                <Trophy size={40} color="white" />
-              </YStack>
-
-              <YStack items="center" gap="$1">
-                <Display text="center">{reassessmentPhase} phase complete!</Display>
-                <Text fontFamily="$body" color="$color10" text="center">
-                  Complete a quick check-in to unlock the next phase.
-                </Text>
+              {/* The block's time is up, which is not the same as every session
+                  done, so no trophy here; the recap screen tells which it was */}
+              <YStack items="center" gap="$2">
+                <Title text="center">Your {reassessmentPhase} block is over</Title>
+                <Body color="$color11" text="center">
+                  A short check-in, then you choose: move on or repeat {reassessmentPhase}.
+                </Body>
               </YStack>
 
               <Button
@@ -1167,7 +1158,7 @@ export default function WorkoutExecutionScreen() {
                   router.replace('/(reassessment)/celebration' as any)
                 }}
               >
-                Start Check-In
+                Start check-in
               </Button>
               <Button
                 width="100%"

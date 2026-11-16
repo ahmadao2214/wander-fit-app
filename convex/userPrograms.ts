@@ -913,6 +913,23 @@ function getNextPhase(phase: "GPP" | "SPP" | "SSP"): "GPP" | "SPP" | "SSP" {
 }
 
 /**
+ * Completed sessions in the block that just ended: the pending phase, since
+ * the block started. A repeated block counts only its own sessions.
+ */
+function completedInBlock(
+  sessions: { status: string; startedAt: number; completedAt?: number; templateSnapshot?: { phase?: string } }[],
+  phase: "GPP" | "SPP" | "SSP",
+  blockStartedAt: number,
+): number {
+  return sessions.filter(
+    (s) =>
+      s.status === "completed" &&
+      s.templateSnapshot?.phase === phase &&
+      (s.completedAt ?? s.startedAt) >= blockStartedAt
+  ).length;
+}
+
+/**
  * Get reassessment status for the current user
  * Returns whether a reassessment is pending, stats, and upgrade eligibility
  */
@@ -965,13 +982,7 @@ export const getReassessmentStatus = query({
       .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
       .collect();
 
-    const phaseCompletedSessions = sessions.filter(
-      (s) =>
-        s.status === "completed" &&
-        s.templateSnapshot?.phase === pendingPhase
-    );
-
-    const completedCount = phaseCompletedSessions.length;
+    const completedCount = completedInBlock(sessions, pendingPhase, program.phaseStartDate);
     const completionRate = expectedWorkouts > 0
       ? Math.min(1, completedCount / expectedWorkouts)
       : 0;
@@ -1007,6 +1018,7 @@ export const getReassessmentStatus = query({
         completed: completedCount,
         completionRate,
         weeksPerPhase,
+        blockStartedAt: program.phaseStartDate,
       },
       nextPhase,
       isFullCycleComplete,
@@ -1019,8 +1031,10 @@ export const getReassessmentStatus = query({
 });
 
 /**
- * Complete a reassessment after a phase
- * Advances to the next phase, optionally upgrades skill level
+ * Complete a reassessment after a phase.
+ * "move_on" (the default) starts the next phase and may raise the skill
+ * level. "repeat" runs the same phase again from week 1, with no unlock and
+ * no skill change.
  */
 export const completeReassessment = mutation({
   args: {
@@ -1028,6 +1042,7 @@ export const completeReassessment = mutation({
     energyLevel: v.optional(energyLevelValidator),
     notes: v.optional(v.string()),
     maxesUpdated: v.boolean(),
+    decision: v.optional(v.union(v.literal("move_on"), v.literal("repeat"))),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -1058,8 +1073,10 @@ export const completeReassessment = mutation({
     }
 
     const completedPhase = program.reassessmentPendingForPhase;
-    const nextPhase = getNextPhase(completedPhase);
-    const isFullCycleComplete = completedPhase === "SSP";
+    const decision = args.decision ?? "move_on";
+    const repeat = decision === "repeat";
+    const nextPhase = repeat ? completedPhase : getNextPhase(completedPhase);
+    const isFullCycleComplete = !repeat && completedPhase === "SSP";
     const now = Date.now();
 
     // Calculate completion stats for the intake record
@@ -1073,14 +1090,10 @@ export const completeReassessment = mutation({
       .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
       .collect();
 
-    const phaseCompletedSessions = sessions.filter(
-      (s) =>
-        s.status === "completed" &&
-        s.templateSnapshot?.phase === completedPhase
-    );
+    const completedCount = completedInBlock(sessions, completedPhase, program.phaseStartDate);
 
     const completionRate = expectedWorkouts > 0
-      ? Math.min(1, phaseCompletedSessions.length / expectedWorkouts)
+      ? Math.min(1, completedCount / expectedWorkouts)
       : 0;
 
     // Count already-completed reassessments
@@ -1097,7 +1110,7 @@ export const completeReassessment = mutation({
 
     const isEasyOrRight = args.phaseDifficulty === "too_easy" || args.phaseDifficulty === "just_right";
 
-    if (isEasyOrRight) {
+    if (isEasyOrRight && !repeat) {
       if (previousSkillLevel === "Novice" && completionRate >= 0.75) {
         newSkillLevel = "Moderate";
         skillLevelChanged = true;
@@ -1133,6 +1146,7 @@ export const completeReassessment = mutation({
       skillLevelChanged,
       completedPhase,
       maxesUpdated: args.maxesUpdated,
+      reassessmentDecision: decision,
       completedAt: now,
     });
 
@@ -1154,8 +1168,10 @@ export const completeReassessment = mutation({
       updatedAt: now,
     };
 
-    // Unlock next phase (unless full cycle wrapping)
-    if (!isFullCycleComplete) {
+    // Unlock next phase (unless repeating, or full cycle wrapping)
+    if (repeat) {
+      // Same phase again: nothing new unlocks
+    } else if (!isFullCycleComplete) {
       const unlockField = completedPhase === "GPP" ? "sppUnlockedAt" : "sspUnlockedAt";
       programUpdate[unlockField] = now;
     } else {
@@ -1178,6 +1194,7 @@ export const completeReassessment = mutation({
       nextPhase,
       isFullCycleComplete,
       completionRate,
+      decision,
     };
   },
 });

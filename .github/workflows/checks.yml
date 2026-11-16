@@ -128,6 +128,14 @@ jobs:
           path: e2e-artifacts/first-run/web/
           if-no-files-found: warn
           retention-days: 14
+      - name: Upload reassessment evidence
+        if: always() && hashFiles('e2e-artifacts/reassessment/web/.scrubbed') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-web-reassessment
+          path: e2e-artifacts/reassessment/web/
+          if-no-files-found: warn
+          retention-days: 14
       - name: Upload history evidence
         if: always() && hashFiles('e2e-artifacts/history/web/.scrubbed') != ''
         uses: actions/upload-artifact@v4

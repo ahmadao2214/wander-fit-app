@@ -16,7 +16,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { KeyboardAvoidingView, Platform } from 'react-native'
 import { ArrowLeft, TrendingUp } from '@tamagui/lucide-icons'
-import Animated, { FadeInUp } from 'react-native-reanimated'
+import { Title, Body, Supporting } from '../../components/Typography'
 
 type Difficulty = 'too_easy' | 'just_right' | 'challenging' | 'too_hard'
 type EnergyLevel = 'low' | 'moderate' | 'high'
@@ -24,14 +24,14 @@ type EnergyLevel = 'low' | 'moderate' | 'high'
 const DIFFICULTY_OPTIONS = [
   {
     value: 'too_easy' as Difficulty,
-    label: 'Too Easy',
+    label: 'Too easy',
     description: 'I could have done much more',
     color: '$green10' as const,
     bgColor: '$green2' as const,
   },
   {
     value: 'just_right' as Difficulty,
-    label: 'Just Right',
+    label: 'Just right',
     description: 'The workouts were appropriately challenging',
     color: '$blue10' as const,
     bgColor: '$blue2' as const,
@@ -45,7 +45,7 @@ const DIFFICULTY_OPTIONS = [
   },
   {
     value: 'too_hard' as Difficulty,
-    label: 'Too Hard',
+    label: 'Too hard',
     description: "I couldn't complete many workouts",
     color: '$red10' as const,
     bgColor: '$red2' as const,
@@ -82,7 +82,7 @@ export default function SelfAssessmentScreen() {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
         <Spinner size="large" color="$primaryText" />
-        <Text fontFamily="$body" color="$color10">Loading...</Text>
+        <Supporting color="$color10">Loading...</Supporting>
       </YStack>
     )
   }
@@ -124,26 +124,16 @@ export default function SelfAssessmentScreen() {
                 circular
               />
               <YStack flex={1}>
-                <Text fontFamily="$heading" fontSize={28} letterSpacing={0.5} color="$color12">
-                  HOW DID IT GO?
-                </Text>
-                <Text fontFamily="$body" color="$color10" fontSize={14}>
-                  Tell us about your {reassessmentStatus?.pendingForPhase} experience
-                </Text>
+                <Title accessibilityRole="header">How did {reassessmentStatus?.pendingForPhase} go?</Title>
               </YStack>
             </XStack>
 
             {/* Difficulty Section */}
             <YStack gap="$3">
-              <Text fontFamily="$body" fontWeight="600" fontSize={16} color="$color12">
-                How did this phase feel?
-              </Text>
-              {DIFFICULTY_OPTIONS.map((option, index) => (
-                <Animated.View
-                  key={option.value}
-                  entering={FadeInUp.delay(index * 50).duration(250)}
-                >
+              <Body fontWeight="600">How did this block feel?</Body>
+              {DIFFICULTY_OPTIONS.map((option) => (
                   <Card
+                    key={option.value}
                     p="$4"
                     bg={difficulty === option.value ? option.bgColor : '$surface'}
                     borderWidth={2}
@@ -152,36 +142,27 @@ export default function SelfAssessmentScreen() {
                     rounded="$4"
                     pressStyle={{ scale: 0.98 }}
                     onPress={() => setDifficulty(option.value)}
-                    role="button"
+                    accessible
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: difficulty === option.value }}
                     accessibilityLabel={option.label}
+                    accessibilityHint={option.description}
                   >
                     <YStack gap="$1">
-                      <Text
-                        fontFamily="$body"
-                        fontWeight="700"
-                        fontSize={16}
-                        color={difficulty === option.value ? option.color : '$color12'}
-                      >
+                      <Body fontWeight="700" color={difficulty === option.value ? option.color : '$color12'}>
                         {option.label}
-                      </Text>
-                      <Text
-                        fontFamily="$body"
-                        fontSize={13}
-                        color={difficulty === option.value ? option.color : '$color10'}
-                      >
+                      </Body>
+                      <Supporting color={difficulty === option.value ? option.color : '$color10'}>
                         {option.description}
-                      </Text>
+                      </Supporting>
                     </YStack>
                   </Card>
-                </Animated.View>
               ))}
             </YStack>
 
             {/* Energy Section */}
             <YStack gap="$3">
-              <Text fontFamily="$body" fontWeight="600" fontSize={16} color="$color12">
-                Energy level throughout the phase?
-              </Text>
+              <Body fontWeight="600">Your energy through the block (optional)</Body>
               <XStack gap="$2">
                 {ENERGY_OPTIONS.map((option) => (
                   <Button
@@ -203,18 +184,13 @@ export default function SelfAssessmentScreen() {
                   </Button>
                 ))}
               </XStack>
-              <Text fontFamily="$body" fontSize={12} color="$color9">
-                Optional
-              </Text>
             </YStack>
 
             {/* Notes */}
             <YStack gap="$2">
-              <Text fontFamily="$body" fontWeight="600" fontSize={16} color="$color12">
-                Any notes?
-              </Text>
+              <Body fontWeight="600">Notes (optional)</Body>
               <TextArea
-                placeholder="Optional — injuries, schedule changes, etc."
+                placeholder="Injuries, schedule changes, anything else"
                 value={notes}
                 onChangeText={setNotes}
                 numberOfLines={3}
@@ -223,7 +199,7 @@ export default function SelfAssessmentScreen() {
                 borderColor="$borderColor"
                 rounded="$3"
                 fontFamily="$body"
-                fontSize={14}
+                fontSize={16}
               />
             </YStack>
 
@@ -233,12 +209,12 @@ export default function SelfAssessmentScreen() {
                 <XStack items="center" gap="$3">
                   <TrendingUp size={24} color="$primaryText" />
                   <YStack flex={1}>
-                    <Text fontFamily="$body" fontWeight="700" color="$brand9">
-                      Skill Level Upgrade Available
-                    </Text>
-                    <Text fontFamily="$body" fontSize={13} color="$brand8">
-                      {reassessmentStatus.currentSkillLevel} → {reassessmentStatus.nextSkillLevel}
-                    </Text>
+                    <Body fontWeight="700" color="$brand9">
+                      Skill level can go up
+                    </Body>
+                    <Supporting color="$brand8">
+                      {reassessmentStatus.currentSkillLevel} → {reassessmentStatus.nextSkillLevel} if you move on
+                    </Supporting>
                   </YStack>
                 </XStack>
               </Card>
@@ -248,14 +224,13 @@ export default function SelfAssessmentScreen() {
             <Button
               width="100%"
               size="$5"
-              bg="$primary"
-              color="white"
+              bg={difficulty ? '$primary' : '$color4'}
+              color={difficulty ? 'white' : '$color10'}
               fontFamily="$body"
               fontWeight="700"
               rounded="$4"
-              pressStyle={{ bg: '$primaryPress', scale: 0.98 }}
+              pressStyle={{ bg: difficulty ? '$primaryPress' : '$color4', scale: 0.98 }}
               disabled={!difficulty}
-              opacity={difficulty ? 1 : 0.5}
               onPress={() => {
                 router.push({
                   pathname: '/(reassessment)/maxes' as any,

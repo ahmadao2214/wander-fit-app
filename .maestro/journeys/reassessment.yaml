@@ -1,0 +1,58 @@
+url: ${VERIFY_URL}
+---
+# The end-of-block check-in tells the truth (design audit F04, F11).
+# Persona state phase-end: a GPP block ran its full length with no sessions
+# logged, and the check-in is pending. The recap must not congratulate, and
+# the athlete chooses Repeat or Move on; nothing advances on a timer.
+- runFlow: ../subflows/_evidence-start.yaml
+- runFlow: ../subflows/_open-sign-in.yaml
+- runFlow: ../subflows/_sign-in.yaml
+- extendedWaitUntil:
+    visible: "Your GPP block is over"
+    timeout: 90000
+- takeScreenshot: 01-today-check-in
+- tapOn: "Check in"
+
+# Recap: zero sessions, stated plainly, no celebration
+- extendedWaitUntil:
+    visible:
+      id: block-recap-none
+    timeout: 30000
+- assertVisible: "0 of .* sessions"
+- assertVisible: "No sessions were logged in this block."
+- assertNotVisible: "You finished GPP"
+- assertNotVisible: "(?i).*completed.*"
+- takeScreenshot: 02-recap
+- tapOn: "Start check-in"
+
+# Check-in, then skip the maxes
+- extendedWaitUntil:
+    visible: "How did GPP go?"
+    timeout: 30000
+- tapOn: "Just right"
+- tapOn: "Continue"
+- extendedWaitUntil:
+    visible: "Update your maxes"
+    timeout: 30000
+- tapOn: "Skip"
+
+# Decision: nothing is chosen for the athlete
+- extendedWaitUntil:
+    visible: "What's next"
+    timeout: 30000
+- assertVisible: "Move on to SPP"
+- assertVisible: "Repeat GPP"
+- assertVisible: "Choose an option"
+- takeScreenshot: 03-decision
+- tapOn: "Repeat GPP"
+- tapOn: "Start GPP again"
+
+# Today: GPP again from week 1, and the check-in is gone
+- extendedWaitUntil:
+    visible:
+      id: today-workout-card
+    timeout: 30000
+- assertNotVisible: "Your GPP block is over"
+- assertVisible: "GPP W1 D1.*"
+- takeScreenshot: 04-today-repeated
+- runFlow: ../subflows/_evidence-stop.yaml

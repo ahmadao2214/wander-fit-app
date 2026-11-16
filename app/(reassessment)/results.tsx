@@ -1,41 +1,27 @@
-import { useState, useEffect, useRef } from 'react'
-import {
-  YStack,
-  XStack,
-  Text,
-  Button,
-  Card,
-  ScrollView,
-  Spinner,
-} from 'tamagui'
+import { useState } from 'react'
+import { YStack, XStack, Button, Card, ScrollView, Spinner } from 'tamagui'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import {
-  ArrowLeft,
-  CheckCircle,
-  TrendingUp,
-  ArrowRight,
-  Rocket,
-  Dumbbell,
-} from '@tamagui/lucide-icons'
-import { ConfettiEffect } from '../../components/workout/ConfettiEffect'
-import Animated, { FadeInUp, ZoomIn, BounceIn } from 'react-native-reanimated'
+import { ArrowLeft, Check } from '@tamagui/lucide-icons'
+import { Title, Body, Supporting, Caption, numeric } from '../../components/Typography'
+import { blockRecap, decisionCopy, type ReassessmentDecision } from '../../lib/reassessment'
 
 const DIFFICULTY_LABELS: Record<string, string> = {
-  too_easy: 'Too Easy',
-  just_right: 'Just Right',
+  too_easy: 'Too easy',
+  just_right: 'Just right',
   challenging: 'Challenging',
-  too_hard: 'Too Hard',
+  too_hard: 'Too hard',
 }
 
 /**
- * Results Screen — Screen 4 of Reassessment Flow
+ * Decision screen, the last step of the end-of-block check-in.
  *
- * Shows summary of the reassessment and confirms phase advancement.
- * Calls completeReassessment mutation on button press.
+ * Recaps the check-in, then the athlete chooses to move on to the next
+ * phase or repeat this one. Nothing advances on its own: there is no timed
+ * redirect, and confirming goes straight to Today (design audit F04, F11).
  */
 export default function ResultsScreen() {
   const router = useRouter()
@@ -48,9 +34,9 @@ export default function ResultsScreen() {
     maxesUpdated: string
   }>()
 
+  const [decision, setDecision] = useState<ReassessmentDecision | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isSuccess, setIsSuccess] = useState(false)
-  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const reassessmentStatus = useQuery(
     api.userPrograms.getReassessmentStatus,
@@ -59,126 +45,63 @@ export default function ResultsScreen() {
 
   const completeReassessment = useMutation(api.userPrograms.completeReassessment)
 
-  // Clean up redirect timer
-  useEffect(() => {
-    return () => {
-      if (redirectTimerRef.current) {
-        clearTimeout(redirectTimerRef.current)
-      }
-    }
-  }, [])
-
   if (reassessmentStatus === undefined) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
         <Spinner size="large" color="$primaryText" />
-        <Text fontFamily="$body" color="$color10">Loading...</Text>
+        <Supporting color="$color10">Loading...</Supporting>
       </YStack>
     )
   }
+
+  const phase = reassessmentStatus?.pendingForPhase
+  const nextPhase = reassessmentStatus?.nextPhase
+  if (!phase || !nextPhase) return null
 
   const difficulty = params.difficulty as string
   const energy = params.energy || undefined
   const notes = params.notes || undefined
   const maxesUpdated = params.maxesUpdated === 'true'
 
+  const stats = reassessmentStatus.completionStats
+  const recap = blockRecap(phase, stats?.completed ?? 0, stats?.expected ?? 0)
+
+  // A skill-level raise only comes with moving on
   const canUpgrade =
-    reassessmentStatus?.canUpgradeSkillLevel &&
+    reassessmentStatus.canUpgradeSkillLevel &&
     (difficulty === 'too_easy' || difficulty === 'just_right')
 
-  const handleComplete = async () => {
+  const options: ReassessmentDecision[] = ['move_on', 'repeat']
+
+  const handleConfirm = async () => {
+    if (!decision) return
     setIsSubmitting(true)
+    setError(null)
     try {
-      const result = await completeReassessment({
+      await completeReassessment({
         phaseDifficulty: difficulty as any,
         energyLevel: energy as any,
         notes,
         maxesUpdated,
+        decision,
       })
-
-      setIsSuccess(true)
-
-      // Auto-redirect after 4 seconds
-      redirectTimerRef.current = setTimeout(() => {
-        router.replace('/(athlete)')
-      }, 4000)
-    } catch (error) {
-      console.error('Failed to complete reassessment:', error)
+      router.replace('/(athlete)')
+    } catch (e) {
+      console.error('Failed to complete reassessment:', e)
+      setError("That didn't save. Check your connection and try again.")
       setIsSubmitting(false)
     }
   }
 
-  // Success state
-  if (isSuccess) {
-    return (
-      <YStack flex={1} bg="$background">
-        <ConfettiEffect trigger />
-        <YStack
-          flex={1}
-          px="$4"
-          pt={insets.top + 24}
-          pb={insets.bottom + 24}
-          items="center"
-          justify="center"
-          gap="$6"
-        >
-          <Animated.View entering={BounceIn.delay(200)}>
-            <YStack
-              width={100}
-              height={100}
-              bg="$success"
-              rounded="$10"
-              items="center"
-              justify="center"
-            >
-              <Rocket size={52} color="white" />
-            </YStack>
-          </Animated.View>
-
-          <Animated.View entering={FadeInUp.delay(400).duration(300)}>
-            <YStack items="center" gap="$2">
-              <Text
-                fontFamily="$heading"
-                fontSize={32}
-                letterSpacing={1}
-                color="$color12"
-                text="center"
-              >
-                {reassessmentStatus?.nextPhase} UNLOCKED!
-              </Text>
-              <Text fontFamily="$body" color="$color10" text="center">
-                Your next phase is ready. Let's keep going!
-              </Text>
-            </YStack>
-          </Animated.View>
-
-          <Animated.View
-            entering={FadeInUp.delay(600).duration(300)}
-            style={{ width: '100%', maxWidth: 400 }}
-          >
-            <Button
-              width="100%"
-              size="$5"
-              bg="$primary"
-              color="white"
-              fontFamily="$body"
-              fontWeight="700"
-              rounded="$4"
-              pressStyle={{ bg: '$primaryPress', scale: 0.98 }}
-              onPress={() => {
-                if (redirectTimerRef.current) {
-                  clearTimeout(redirectTimerRef.current)
-                }
-                router.replace('/(athlete)')
-              }}
-            >
-              Continue to Dashboard
-            </Button>
-          </Animated.View>
-        </YStack>
-      </YStack>
-    )
-  }
+  const summaryRows: { label: string; value: string }[] = [
+    { label: `${phase} block`, value: recap.sessions },
+    {
+      label: 'How it felt',
+      value: `${DIFFICULTY_LABELS[difficulty] ?? difficulty}${energy ? ` · ${energy} energy` : ''}`,
+    },
+    { label: 'Maxes', value: maxesUpdated ? 'Updated' : 'No changes' },
+    ...(notes ? [{ label: 'Notes', value: notes }] : []),
+  ]
 
   return (
     <YStack flex={1} bg="$background">
@@ -204,185 +127,110 @@ export default function ResultsScreen() {
               icon={ArrowLeft}
               onPress={() => router.back()}
               circular
+              accessibilityLabel="Back"
             />
-            <YStack flex={1}>
-              <Text fontFamily="$heading" fontSize={28} letterSpacing={0.5} color="$color12">
-                REVIEW & CONFIRM
-              </Text>
-              <Text fontFamily="$body" color="$color10" fontSize={14}>
-                Ready to move on to {reassessmentStatus?.nextPhase}
-              </Text>
-            </YStack>
+            <Title flex={1} accessibilityRole="header">
+              What's next
+            </Title>
           </XStack>
 
-          {/* Summary Cards */}
-          <YStack gap="$3">
-            {/* Phase Completed */}
-            <Animated.View entering={FadeInUp.delay(100).duration(250)}>
-              <Card
-                p="$4"
-                bg="$surface"
-                borderWidth={1}
-                borderColor="$borderColor"
-                borderCurve="continuous"
-                rounded="$4"
-              >
-                <XStack items="center" gap="$3">
-                  <CheckCircle size={24} color="$success" />
-                  <YStack flex={1}>
-                    <Text fontFamily="$body" fontWeight="600" color="$color12">
-                      Phase Completed
-                    </Text>
-                    <Text fontFamily="$body" fontSize={13} color="$color10">
-                      {reassessmentStatus?.pendingForPhase}
-                      {reassessmentStatus?.completionStats &&
-                        ` — ${Math.round(reassessmentStatus.completionStats.completionRate * 100)}% completion rate`}
-                    </Text>
-                  </YStack>
-                </XStack>
-              </Card>
-            </Animated.View>
-
-            {/* Difficulty Rating */}
-            <Animated.View entering={FadeInUp.delay(180).duration(250)}>
-              <Card
-                p="$4"
-                bg="$surface"
-                borderWidth={1}
-                borderColor="$borderColor"
-                borderCurve="continuous"
-                rounded="$4"
-              >
-                <XStack items="center" gap="$3">
-                  <Text fontSize={20}>
-                    {difficulty === 'too_easy' ? '🟢' :
-                     difficulty === 'just_right' ? '🔵' :
-                     difficulty === 'challenging' ? '🟠' : '🔴'}
-                  </Text>
-                  <YStack flex={1}>
-                    <Text fontFamily="$body" fontWeight="600" color="$color12">
-                      Difficulty Rating
-                    </Text>
-                    <Text fontFamily="$body" fontSize={13} color="$color10">
-                      {DIFFICULTY_LABELS[difficulty] ?? difficulty}
-                      {energy ? ` • ${energy} energy` : ''}
-                    </Text>
-                  </YStack>
-                </XStack>
-              </Card>
-            </Animated.View>
-
-            {/* Maxes Status */}
-            <Animated.View entering={FadeInUp.delay(260).duration(250)}>
-              <Card
-                p="$4"
-                bg="$surface"
-                borderWidth={1}
-                borderColor="$borderColor"
-                borderCurve="continuous"
-                rounded="$4"
-              >
-                <XStack items="center" gap="$3">
-                  <Dumbbell size={24} color="$primaryText" />
-                  <YStack flex={1}>
-                    <Text fontFamily="$body" fontWeight="600" color="$color12">
-                      1RM Maxes
-                    </Text>
-                    <Text fontFamily="$body" fontSize={13} color="$color10">
-                      {maxesUpdated ? 'Updated' : 'No changes'}
-                    </Text>
-                  </YStack>
-                </XStack>
-              </Card>
-            </Animated.View>
-
-            {/* Notes */}
-            {notes && (
-              <Animated.View entering={FadeInUp.delay(340).duration(250)}>
-                <Card
-                  p="$4"
-                  bg="$surface"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                  borderCurve="continuous"
-                  rounded="$4"
-                >
-                  <YStack gap="$1">
-                    <Text fontFamily="$body" fontWeight="600" color="$color12">
-                      Notes
-                    </Text>
-                    <Text fontFamily="$body" fontSize={13} color="$color10">
-                      {notes}
-                    </Text>
-                  </YStack>
-                </Card>
-              </Animated.View>
-            )}
-          </YStack>
-
-          {/* Skill Upgrade Section */}
-          {canUpgrade && reassessmentStatus?.nextSkillLevel && (
-            <Animated.View entering={ZoomIn.delay(500).duration(300)}>
-              <Card
-                p="$5"
-                bg="$brand1"
-                borderWidth={2}
-                borderColor="$primary"
-                borderCurve="continuous"
-                rounded="$5"
-                items="center"
+          {/* Check-in summary: one card, divided rows */}
+          <Card bg="$surface" rounded="$4" borderWidth={1} borderColor="$borderColor" overflow="hidden">
+            {summaryRows.map((row, index) => (
+              <XStack
+                key={row.label}
+                px="$4"
+                py="$3"
                 gap="$3"
+                justify="space-between"
+                borderTopWidth={index === 0 ? 0 : 1}
+                borderColor="$borderColor"
               >
-                <TrendingUp size={32} color="$primaryText" />
-                <Text fontFamily="$heading" fontSize={24} letterSpacing={0.5} color="$primaryText">
-                  SKILL UPGRADE
-                </Text>
-                <Text fontFamily="$body" fontWeight="700" fontSize={18} color="$color12">
-                  {reassessmentStatus.currentSkillLevel} → {reassessmentStatus.nextSkillLevel}
-                </Text>
-                <Text fontFamily="$body" fontSize={13} color="$color10" text="center">
-                  Based on your performance and self-assessment
-                </Text>
-              </Card>
-            </Animated.View>
-          )}
-
-          {/* Next Phase Info */}
-          <Card
-            p="$4"
-            bg="$brand1"
-            borderCurve="continuous"
-            rounded="$4"
-          >
-            <XStack items="center" gap="$3">
-              <ArrowRight size={24} color="$primaryText" />
-              <YStack flex={1}>
-                <Text fontFamily="$body" fontWeight="700" color="$brand9">
-                  Next up: {reassessmentStatus?.nextPhase}
-                </Text>
-                <Text fontFamily="$body" fontSize={13} color="$brand8">
-                  {reassessmentStatus?.isFullCycleComplete
-                    ? 'Full cycle complete! Starting fresh.'
-                    : 'Your new phase will start at Week 1, Day 1'}
-                </Text>
-              </YStack>
-            </XStack>
+                <Supporting color="$color10">{row.label}</Supporting>
+                <Supporting color="$color12" fontWeight="600" flex={1} text="right" style={numeric}>
+                  {row.value}
+                </Supporting>
+              </XStack>
+            ))}
           </Card>
 
-          {/* Confirm Button */}
+          {/* The choice */}
+          <YStack gap="$3" accessibilityRole="radiogroup">
+            {options.map((option) => {
+              const copy = decisionCopy(option, phase, nextPhase, reassessmentStatus.isFullCycleComplete)
+              const selected = decision === option
+              return (
+                <Card
+                  key={option}
+                  testID={`decision-${option}`}
+                  p="$4"
+                  bg={selected ? '$brand1' : '$surface'}
+                  rounded="$4"
+                  borderWidth={2}
+                  borderColor={selected ? '$primary' : '$borderColor'}
+                  pressStyle={{ bg: selected ? '$brand1' : '$surfaceHover' }}
+                  onPress={() => setDecision(option)}
+                  accessible
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: selected }}
+                  accessibilityLabel={copy.label}
+                  accessibilityHint={copy.detail}
+                >
+                  <XStack items="center" gap="$3">
+                    <YStack flex={1} gap="$1">
+                      <Body fontWeight="700">{copy.label}</Body>
+                      <Supporting color="$color11">{copy.detail}</Supporting>
+                      {option === 'move_on' && canUpgrade && reassessmentStatus.nextSkillLevel && (
+                        <Supporting color="$color11">
+                          Your skill level goes up to {reassessmentStatus.nextSkillLevel}.
+                        </Supporting>
+                      )}
+                    </YStack>
+                    <YStack
+                      width={24}
+                      height={24}
+                      rounded="$10"
+                      borderWidth={2}
+                      borderColor={selected ? '$primary' : '$color8'}
+                      bg={selected ? '$primary' : 'transparent'}
+                      items="center"
+                      justify="center"
+                    >
+                      {selected && <Check size={14} color="white" strokeWidth={3} />}
+                    </YStack>
+                  </XStack>
+                </Card>
+              )
+            })}
+            <Caption>You can't change this later in the app.</Caption>
+          </YStack>
+
+          {error && (
+            <Supporting color="$red10" accessibilityLiveRegion="polite">
+              {error}
+            </Supporting>
+          )}
+
           <Button
             width="100%"
             size="$5"
-            bg="$primary"
-            color="white"
+            bg={decision ? '$primary' : '$color4'}
+            color={decision ? 'white' : '$color10'}
             fontFamily="$body"
             fontWeight="700"
             rounded="$4"
-            pressStyle={{ bg: '$primaryPress', scale: 0.98 }}
-            disabled={isSubmitting}
-            onPress={handleComplete}
+            pressStyle={{ bg: decision ? '$primaryPress' : '$color4', scale: 0.98 }}
+            disabled={!decision || isSubmitting}
+            onPress={handleConfirm}
+            testID="decision-confirm"
           >
-            {isSubmitting ? 'Processing...' : `Start ${reassessmentStatus?.nextPhase}`}
+            {isSubmitting
+              ? 'Saving...'
+              : decision === 'repeat'
+                ? `Start ${phase} again`
+                : decision === 'move_on'
+                  ? `Start ${nextPhase}`
+                  : 'Choose an option'}
           </Button>
         </YStack>
       </ScrollView>
