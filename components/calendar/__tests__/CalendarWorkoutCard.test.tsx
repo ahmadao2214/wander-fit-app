@@ -24,7 +24,6 @@ describe('CalendarWorkoutCard', () => {
     isCompleted: false,
     isToday: false,
     isInProgress: false,
-    exercisePreview: ['Back Squat', 'Romanian Deadlift', 'Leg Press', 'Lunges', 'Calf Raises'],
     onPress: mockOnPress,
     onLongPress: mockOnLongPress,
   }
@@ -59,18 +58,13 @@ describe('CalendarWorkoutCard', () => {
       expect(getByLabelText('GPP workout, Lower Body Foundation, about 45 minutes, today')).toBeTruthy()
     })
 
-    it('renders exercise preview', () => {
-      const { getByText } = render(
+    it('shows how many main exercises, not a cut-off list of names', () => {
+      const { getByText, queryByText } = render(
         <CalendarWorkoutCard {...defaultProps} />,
         { wrapper: AllTheProviders }
       )
-      // Exercise preview shows first 5 exercises (no bullets to save space)
-      expect(getByText('Back Squat')).toBeTruthy()
-      expect(getByText('Romanian Deadlift')).toBeTruthy()
-      expect(getByText('Leg Press')).toBeTruthy()
-      expect(getByText('Lunges')).toBeTruthy()
-      expect(getByText('Calf Raises')).toBeTruthy()
-      expect(getByText('+3 more')).toBeTruthy() // 8 - 5 = 3 remaining
+      expect(getByText('8 exercises')).toBeTruthy()
+      expect(queryByText(/more$/)).toBeNull()
     })
 
     it('renders duration', () => {

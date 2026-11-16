@@ -11,7 +11,7 @@ export interface CalendarWorkoutCardProps {
   phase: Phase
   week: number
   day: number
-  exerciseCount: number
+  exerciseCount: number // Main exercises, warmup not counted
   estimatedDurationMinutes: number
   isCompleted: boolean
   isToday: boolean
@@ -19,7 +19,6 @@ export interface CalendarWorkoutCardProps {
   isLocked?: boolean // Phase not yet unlocked (visible but not draggable)
   compact?: boolean
   gppCategoryId?: number // Category ID (not used for coloring, kept for data)
-  exercisePreview?: string[] // First 3 exercise names for preview
   onPress?: () => void
   onLongPress?: () => void
 }
@@ -43,7 +42,6 @@ export function CalendarWorkoutCard({
   isLocked = false,
   compact = false,
   gppCategoryId,
-  exercisePreview = [],
   onPress,
   onLongPress,
 }: CalendarWorkoutCardProps) {
@@ -113,9 +111,6 @@ export function CalendarWorkoutCard({
     )
   }
 
-  // Calculate remaining exercises for "+N more" text
-  const remainingExercises = exerciseCount - exercisePreview.length
-
   return (
     <Card
       pressStyle={isLocked ? undefined : { opacity: 0.8, scale: 0.98 }}
@@ -132,7 +127,7 @@ export function CalendarWorkoutCard({
       overflow="hidden"
       padding={0}
     >
-      <YStack gap="$1.5" px="$2" py="$1.5">
+      <YStack gap="$1.5" px="$1.5" py="$1.5">
         {/* Duration and status icon */}
         <XStack items="center" justify="space-between">
           <Caption fontWeight="600">~{estimatedDurationMinutes}m</Caption>
@@ -144,32 +139,23 @@ export function CalendarWorkoutCard({
           fontSize={12}
           fontWeight="600"
           lineHeight={16}
+          // A touch tighter, so long words like "Conditioning" fit the
+          // narrow week column without breaking mid-word
+          letterSpacing={-0.3}
           color={isLocked || isCompleted ? '$color10' : '$color12'}
-          numberOfLines={2}
+          numberOfLines={3}
           // @ts-ignore - Android prop to prevent mid-word breaks
           textBreakStrategy="simple"
         >
           {name}
         </Text>
 
-        {/* Exercise preview list - no bullets to save space */}
-        {exercisePreview.length > 0 && (
-          <YStack gap="$0.5" pt="$1" borderTopWidth={1} borderTopColor="$gray4">
-            {exercisePreview.map((exerciseName, idx) => (
-              <Text
-                key={idx}
-                fontSize={12}
-                lineHeight={16}
-                color="$color10"
-                numberOfLines={1}
-              >
-                {exerciseName}
-              </Text>
-            ))}
-            {remainingExercises > 0 && (
-              <Caption>+{remainingExercises} more</Caption>
-            )}
-          </YStack>
+        {/* How much is in it. The narrow week column can't fit exercise
+            names, and the first ones are warmup. */}
+        {exerciseCount > 0 && (
+          <Caption>
+            {exerciseCount} {exerciseCount === 1 ? 'exercise' : 'exercises'}
+          </Caption>
         )}
       </YStack>
     </Card>

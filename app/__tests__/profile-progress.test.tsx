@@ -4,6 +4,7 @@ import { TamaguiProvider } from 'tamagui'
 import config from '../../tamagui.config'
 
 let mockProgress: any
+let mockIntakes: any[] = []
 
 jest.mock('convex/react', () => ({
   useQuery: (name: string) => {
@@ -11,7 +12,7 @@ jest.mock('convex/react', () => ({
     if (name === 'getCurrentProgramState') {
       return { phase: 'GPP', week: 1, day: 1, skillLevel: 'Novice', gppCategoryId: 2, sportName: 'Basketball' }
     }
-    if (name === 'getIntakeHistory') return []
+    if (name === 'getIntakeHistory') return mockIntakes
     if (name === 'getCoreLiftExercises') return []
     return undefined
   },
@@ -56,18 +57,29 @@ const summary = (daysCompleted: number, currentStreak: number) => ({
   uniqueExercisesPerformed: daysCompleted * 4,
 })
 
-describe('Profile progress', () => {
-  it('shows no scoreboard before the first workout', () => {
-    mockProgress = summary(0, 0)
+// Design audit F06: Profile holds settings and baseline facts, not a
+// dashboard. Progress lives on History.
+describe('Profile', () => {
+  beforeEach(() => {
+    mockIntakes = []
+  })
+
+  it('shows no progress scoreboard, even with workouts done', () => {
+    mockProgress = summary(5, 3)
     const { queryByTestId, queryByText } = render(<ProfilePage />, { wrapper: AllTheProviders })
     expect(queryByTestId('profile-progress')).toBeNull()
-    expect(queryByText('PROGRESS STATS')).toBeNull()
+    expect(queryByText('5 workouts done · 3-day streak')).toBeNull()
     expect(queryByText(/Exercises\s+Tried/)).toBeNull()
   })
 
-  it('shows one line of real progress once there is some', () => {
-    mockProgress = summary(5, 3)
-    const { getByText } = render(<ProfilePage />, { wrapper: AllTheProviders })
-    expect(getByText('5 workouts done · 3-day streak')).toBeTruthy()
+  it('states the assessment baseline in words, not a 0 tile', () => {
+    mockProgress = summary(0, 0)
+    mockIntakes = [{ preferredTrainingDaysPerWeek: 3, yearsOfExperience: 0, completedAt: new Date(2026, 10, 15).getTime() }]
+    const { getByText, queryByText } = render(<ProfilePage />, { wrapper: AllTheProviders })
+    expect(getByText('3 a week')).toBeTruthy()
+    expect(getByText('New to training')).toBeTruthy()
+    expect(getByText('Nov 15')).toBeTruthy()
+    expect(queryByText(/Years\s+experience/)).toBeNull()
+    expect(queryByText('0')).toBeNull()
   })
 })

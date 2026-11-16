@@ -31,7 +31,6 @@ export interface CalendarWorkout {
   isCompleted: boolean
   isToday: boolean
   isInProgress: boolean
-  exercisePreview?: string[] // First 3 exercise names for preview
 }
 
 const LAST_WEEK_BUFFER_DAYS = 7 // Allow last week workouts to be moved up to 7 days forward

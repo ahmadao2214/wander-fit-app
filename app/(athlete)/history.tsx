@@ -12,6 +12,7 @@ import {
   Dumbbell,
 } from '@tamagui/lucide-icons'
 import { Display, Body, Supporting, Caption, numeric } from '../../components/Typography'
+import { progressCaption } from '../../lib/today'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN COMPONENT
@@ -33,6 +34,14 @@ export default function HistoryPage() {
     api.gppWorkoutSessions.getHistory,
     user ? {} : "skip"
   )
+  // How much has been done: History is where progress lives (design audit F06)
+  const progress = useQuery(
+    api.userPrograms.getProgressSummary,
+    user ? {} : "skip"
+  )
+  const progressLine = progress
+    ? progressCaption({ workoutsCompleted: progress.daysCompleted, currentStreak: progress.currentStreak })
+    : null
   // A session still in progress belongs on Today, not in the log
   const finishedSessions = sessions?.filter((session) => session.status !== 'in_progress')
 
@@ -81,7 +90,9 @@ export default function HistoryPage() {
           {/* Header */}
           <YStack gap="$1">
             <Display>Workout history</Display>
-            <Supporting color="$color10">Your completed training sessions</Supporting>
+            <Supporting color="$color10" style={numeric} testID="history-progress">
+              {progressLine ?? 'Your completed training sessions'}
+            </Supporting>
           </YStack>
 
           {/* Sessions List */}
