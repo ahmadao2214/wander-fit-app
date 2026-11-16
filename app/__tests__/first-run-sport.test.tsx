@@ -26,12 +26,13 @@ jest.mock('expo-router', () => ({
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }))
-jest.mock('../../components/sport-icon/SportIcon', () => ({
-  SportIcon: ({ mode }: { mode: string }) => {
-    const { View } = jest.requireActual('react-native')
-    return <View testID={`sport-icon-${mode}`} />
-  },
-}))
+jest.mock('lottie-react-native', () => {
+  const { View } = jest.requireActual('react-native')
+  return ({ autoPlay }: { autoPlay?: boolean }) => <View testID={autoPlay ? 'sport-icon-playing' : 'sport-icon-still'} />
+})
+jest.mock('react-native-reanimated', () => jest.requireActual('../../jest/reanimatedMock'))
+let mockReduced: boolean | null = false
+jest.mock('../../hooks/useReducedMotion', () => ({ useReducedMotion: () => mockReduced }))
 
 // eslint-disable-next-line import/first
 import FirstRunSport, { matchesSearch } from '../(first-run)/sport'
@@ -47,40 +48,51 @@ beforeEach(() => {
 })
 
 describe('First Run sport', () => {
-  it('shows every sport as a still icon, and Continue waits for a choice', async () => {
+  beforeEach(() => {
+    mockReduced = false
+  })
+
+  it('shows a Popular row first, then all sports, every icon still until a tap', async () => {
     await renderSport()
+    expect(screen.getByText('POPULAR')).toBeTruthy()
+    expect(screen.getByText('ALL SPORTS')).toBeTruthy()
     for (const sport of SPORTS) expect(screen.getByTestId(`sport-${sport.name}`)).toBeTruthy()
     expect(screen.getAllByTestId('sport-icon-still')).toHaveLength(SPORTS.length)
-    expect(screen.queryByTestId('sport-icon-once')).toBeNull()
+    expect(screen.queryByTestId('sport-icon-playing')).toBeNull()
     expect(screen.getByTestId('first-run-continue')).toBeDisabled()
-    expect(screen.getByTestId('program-bar-empty')).toBeTruthy()
   })
 
-  it('narrows the grid as the athlete searches', async () => {
+  it('search narrows All sports and leaves the Popular row alone', async () => {
     await renderSport()
-    fireEvent.changeText(screen.getByTestId('sport-search'), 'bas')
+    fireEvent.changeText(screen.getByTestId('sport-search'), 'fit')
+    expect(screen.getByTestId('sport-General Fitness')).toBeTruthy()
+    // Popular sports stay put while searching.
     expect(screen.getByTestId('sport-Basketball')).toBeTruthy()
-    expect(screen.getByTestId('sport-Baseball')).toBeTruthy()
-    expect(screen.queryByTestId('sport-Soccer')).toBeNull()
-  })
-
-  it('points to General Fitness when nothing matches', async () => {
-    await renderSport()
     fireEvent.changeText(screen.getByTestId('sport-search'), 'curling')
+    expect(screen.queryByTestId('sport-General Fitness')).toBeNull()
     expect(screen.getByText(/General Fitness if yours isn't listed/)).toBeTruthy()
   })
 
-  it('selecting stores the sport, shows it in Your program, and enables Continue', async () => {
+  it('a tap stores the sport, plays only its icon once, and Continue turns to Season', async () => {
     await renderSport()
     await act(async () => {
       fireEvent.press(screen.getByTestId('sport-Basketball'))
     })
-    expect(screen.getByTestId('program-bar-text').props.children).toBe('Basketball · Power')
     expect(screen.getByTestId('sport-Basketball').props.accessibilityState.selected).toBe(true)
+    expect(screen.getAllByTestId('sport-icon-playing')).toHaveLength(1)
     expect((await testDraft.reopen()).answers.sportId).toBe('basketball')
 
     fireEvent.press(screen.getByTestId('first-run-continue'))
-    expect(mockPush).toHaveBeenCalledWith('/(first-run)/season')
+    expect(mockPush).toHaveBeenCalledWith({ pathname: '/(first-run)/season', params: { fly: '1' } })
+  })
+
+  it('with Reduce Motion the tapped icon stays still', async () => {
+    mockReduced = true
+    await renderSport()
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('sport-Soccer'))
+    })
+    expect(screen.queryByTestId('sport-icon-playing')).toBeNull()
   })
 
   it('records the step so a relaunch resumes on it', async () => {

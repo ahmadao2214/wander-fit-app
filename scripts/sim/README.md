@@ -17,13 +17,13 @@ How an agent shows a changed journey working before review. The rule is in `AGEN
 npm run sim:tunnel -- --port 8081     # terminal 1: Metro on dev, behind Expo's ngrok tunnel
 npm run sim:cloud-check               # terminal 2: one session, capped at 5 minutes, always stopped
 npm run sim:cloud-check -- --journey path/to/steps.sh --name "Workout logging for PR 123"
-npm run sim:cloud-check -- --first-run   # the First Run to Day 1, saved to a new +clerk_test account
+npm run sim:cloud-check -- --first-run   # the First Run to the Program tab, saved to a new +clerk_test account
 ```
 
 `cloud-check` prints the screenshot folder, the minutes used and the recording link. Put the link in the pull request description.
 
 - **What it does:** it starts Expo Go in an EAS cloud session and loads your Metro. The app opens on the First Run, so the script taps "I have an account", signs in and waits for Today. It then runs your `--journey` script, if you pass one.
-- **`--first-run`:** instead of signing in, `first-run.sh` answers the five questions, saves the plan to a new `e2e-<ms>-signup+clerk_test@example.com` account (code 424242) and starts Day 1. It prints the address; delete that account afterwards. To dry-run it on a local dev client, pass `SIM_APP_ID=<bundle id>`.
+- **`--first-run`:** instead of signing in, `first-run.sh` answers the five questions, saves the plan to a new `e2e-<ms>-signup+clerk_test@example.com` account (code 424242) and lands on the Program tab with Day 1 up next. It prints the address; delete that account afterwards. To dry-run it on a local dev client, pass `SIM_APP_ID=<bundle id>`.
 - **Writing a journey script:** it runs with `$A`, the path to the agent-device binary, and `$SHOTS`, the screenshot folder. Pass `--platform ios` on every command.
 - **Typical run:** about 3 minutes. Loading the bundle takes 60–120 s of that, depending on ngrok.
 

@@ -1,23 +1,15 @@
-import { Pressable } from 'react-native'
+import { Text as RNText, View, useWindowDimensions } from 'react-native'
 import { useRouter } from 'expo-router'
-import { Text, XStack, YStack } from 'tamagui'
-import { FirstRunScreen } from '../../components/first-run/FirstRunScreen'
-import { ProgramBar } from '../../components/first-run/ProgramBar'
+import { IntakeFrame } from '../../components/first-run/IntakeFrame'
+import { DayTile } from '../../components/first-run/DayTile'
+import { BODY_SEMI, DISPLAY, Headline, headlineSize } from '../../components/first-run/Night'
+import { useIntakeMotion } from '../../components/first-run/useIntakeMotion'
+import { useIntakeSport } from '../../components/first-run/useIntakeSport'
 import { useReachStep } from '../../components/first-run/useReachStep'
 import { useFirstRunDraft } from '../../hooks/useFirstRunDraft'
 import { DEFAULT_TRAINING_DAYS, normalizeTrainingDays } from '../../lib/firstRun'
+import { DAY_FULL, DAY_SHORT, NIGHT, WEEK_ORDER, daysSummary, movementFamily } from '../../lib/firstRunStory'
 import { selectionFeedback } from '../../lib/haptics'
-
-/** Monday first, as athletes plan their week. Index 0 = Sunday. */
-const WEEK = [
-  { index: 1, short: 'Mon', full: 'Monday' },
-  { index: 2, short: 'Tue', full: 'Tuesday' },
-  { index: 3, short: 'Wed', full: 'Wednesday' },
-  { index: 4, short: 'Thu', full: 'Thursday' },
-  { index: 5, short: 'Fri', full: 'Friday' },
-  { index: 6, short: 'Sat', full: 'Saturday' },
-  { index: 0, short: 'Sun', full: 'Sunday' },
-]
 
 /** Adds or removes a day, never leaving zero. */
 export function toggleDay(days: readonly number[], day: number): number[] {
@@ -27,14 +19,22 @@ export function toggleDay(days: readonly number[], day: number): number[] {
   return normalizeTrainingDays([...days, day])
 }
 
-/** Question 3: which days the athlete can train. Mon/Wed/Fri to start. */
+/**
+ * Question 3: which days the athlete can train, centered on the screen. Mon,
+ * Wed and Fri come preselected and fill one after another as the page arrives.
+ */
 export default function FirstRunDays() {
   const router = useRouter()
+  const motion = useIntakeMotion()
+  const { width } = useWindowDimensions()
   const { draft, save } = useFirstRunDraft()
+  const { sport, ground } = useIntakeSport()
   useReachStep('days')
 
   const days = normalizeTrainingDays(draft?.answers.trainingDays ?? DEFAULT_TRAINING_DAYS)
-  const count = `${days.length} ${days.length === 1 ? 'day' : 'days'} a week`
+  const family = movementFamily(sport?.name)
+  const summary = daysSummary(days)
+  const preselected = WEEK_ORDER.filter((d) => days.includes(d))
 
   const toggle = (day: number) => {
     const next = toggleDay(days, day)
@@ -43,64 +43,61 @@ export default function FirstRunDays() {
     void save({ trainingDays: next })
   }
 
-  const onContinue = async () => {
-    // Store the preselected days too, if the athlete kept them.
-    await save({ trainingDays: days })
-    router.push('/(first-run)/about')
-  }
-
   return (
-    <FirstRunScreen
+    <IntakeFrame
       step="days"
-      title="Which days can you train?"
-      above={draft ? <ProgramBar answers={{ ...draft.answers, trainingDays: days }} /> : null}
-      primaryLabel="Continue"
-      onPrimary={onContinue}
-      primaryDisabled={!draft}
-      primaryTestID="first-run-continue"
+      ground={ground}
+      moving={motion.moving}
+      backdrop={sport ? { name: sport.name } : null}
+      primary={{
+        label: 'Continue',
+        disabled: !draft,
+        onPress: async () => {
+          // Store the preselected days too, if the athlete kept them.
+          await save({ trainingDays: days })
+          router.push('/(first-run)/about')
+        },
+        testID: 'first-run-continue',
+      }}
     >
-      <XStack justify="space-between" gap="$1.5">
-        {WEEK.map((d) => {
-          const on = days.includes(d.index)
-          const last = on && days.length === 1
-          return (
-            <Pressable
-              key={d.index}
-              onPress={() => toggle(d.index)}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: on }}
-              accessibilityLabel={d.full}
-              accessibilityHint={last ? 'Keep at least one day' : undefined}
-              testID={`day-${d.short}`}
-              style={({ pressed }) => ({ flex: 1, transform: [{ scale: pressed ? 0.95 : 1 }] })}
-            >
-              <YStack
-                height={56}
-                items="center"
-                justify="center"
-                rounded="$4"
-                borderWidth={2}
-                borderColor={on ? '$primary' : '$borderColor'}
-                bg={on ? '$primary' : '$surface'}
-              >
-                <Text fontFamily="$body" fontSize={14} fontWeight="700" color={on ? 'white' : '$color11'}>
-                  {d.short}
-                </Text>
-              </YStack>
-            </Pressable>
-          )
-        })}
-      </XStack>
-      <Text
-        fontFamily="$body"
-        fontSize={20}
-        fontWeight="700"
-        color="$color12"
-        testID="days-count"
-        accessibilityLiveRegion="polite"
-      >
-        {count}
-      </Text>
-    </FirstRunScreen>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', gap: 24 }}>
+        <Headline size={headlineSize(58, width)} moving={motion.moving} align="center">
+          Which days can you train?
+        </Headline>
+        {/* Rendered once the draft is in, so the arrival fill plays for the real days. */}
+        {draft ? (
+          <View style={{ flexDirection: 'row', gap: 6, width: '100%' }}>
+            {WEEK_ORDER.map((d) => {
+              const on = days.includes(d)
+              return (
+                <DayTile
+                  key={d}
+                  label={DAY_SHORT[d].slice(0, 1)}
+                  full={DAY_FULL[d]}
+                  on={on}
+                  family={family}
+                  sportName={sport?.name}
+                  moving={motion.moving}
+                  enterDelay={420 + Math.max(0, preselected.indexOf(d)) * 260}
+                  onPress={() => toggle(d)}
+                  hint={on && days.length === 1 ? 'Keep at least one day' : undefined}
+                  testID={`day-${DAY_SHORT[d]}`}
+                />
+              )
+            })}
+          </View>
+        ) : (
+          <View style={{ height: 132 }} />
+        )}
+        <View style={{ alignItems: 'center' }} accessibilityLiveRegion="polite">
+          <RNText style={{ fontFamily: DISPLAY, fontSize: 26, lineHeight: 28, color: NIGHT.fg, letterSpacing: 1 }} testID="days-count">
+            {summary.count.toUpperCase()}
+          </RNText>
+          <RNText style={{ fontFamily: BODY_SEMI, fontSize: 14, color: NIGHT.fg2, marginTop: 6 }} testID="days-list">
+            {summary.list}
+          </RNText>
+        </View>
+      </View>
+    </IntakeFrame>
   )
 }

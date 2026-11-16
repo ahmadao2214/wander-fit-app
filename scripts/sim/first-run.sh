@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Device steps for an EAS cloud session: load the app in Expo Go and walk the First Run, from the
-# promise screen to Day 1's warm-up, saving the plan to a new +clerk_test account (code 424242).
+# promise screen to the Program tab, saving the plan to a new +clerk_test account (code 424242).
 # Run by cloud-check.sh --first-run inside ONE `eas simulator:exec`.
 # Usage: first-run.sh <agent-device-binary> <exp-host> <shots-dir>
 # Reads FIRST_RUN_EMAIL / FIRST_RUN_PASSWORD from the environment. Never prints the password.
@@ -40,20 +40,25 @@ shot 01-promise
 tap 'id=first-run-start'
 
 ad wait 'id=sport-Basketball' 15000 || fail "sport picker"
-tap 'id=sport-Basketball'
+tap 'id=sport-Basketball' 3000   # the icon plays once and the world tints
 shot 02-sport
 tap 'id=first-run-continue'
-ad wait 'id=season-slider' 5000 || fail "season"
+ad wait 'id=season-calendar' 5000 || fail "season"
 shot 03-season
 tap 'id=first-run-continue'
-tap 'id=day-Tue'
+ad wait 2000                      # Mon/Wed/Fri fill one after another
+tap 'id=day-Tue' 1600             # the basketball dribbles three times
 shot 04-days
 tap 'id=first-run-continue'
 tap 'id=age-14-17'
-tap 'id=years-new'
 shot 05-about
-tap 'id=first-run-see-plan' 6000
-shot 06-reveal
+tap 'id=years-new'                # the second answer starts the reveal
+ad wait 'id=reveal-category' 20000 || fail "reveal never started"
+ad wait 1600
+shot 06-category
+ad wait 'id=reveal-plan' 8000 || fail "the plan never followed the category"
+ad wait 3400                      # the plan builds in beats
+shot 07-plan
 tap 'id=first-run-save' 2000
 tap 'id=save-plan-email' 1500
 ad fill 'id=save-plan-name' "Riley" || fail "name"
@@ -68,16 +73,13 @@ ad wait 'role=cell label="Paste"' 2000 || { ad longpress 'id=save-plan-password'
   || { ad clipboard write cleared; fail "Paste menu never appeared"; }
 ad press 'role=cell label="Paste"' || { ad clipboard write cleared; fail "paste"; }
 ad clipboard write cleared
-shot 07-account
+shot 08-account
 tap 'id=save-plan-create' 6000
 ad press 'role=button label="Not Now"'; ad wait 800
 ad press 'id=save-plan-code'; ad wait 800
 ad type 424242 --delay-ms 300 || fail "code"
-ad wait 'id=ready-start' 30000 || fail "ready screen never appeared"
+# The save lands on the Program tab with Day 1 up next; nothing starts by itself.
+ad wait 'id=program-up-next' 30000 || fail "Program tab never appeared"
 ad wait 1500
-shot 08-ready
-tap 'id=ready-start' 2000
-ad wait 'id=warmup-skip' 30000 || fail "Day 1 warm-up never appeared"
-ad wait 1000
-shot 09-day-1
-ts "reached Day 1"
+shot 09-program
+ts "reached the Program tab"

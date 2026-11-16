@@ -1,9 +1,10 @@
 import { YStack, Text, Spinner } from 'tamagui'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useAuth } from '../../hooks/useAuth'
 import { WorkoutCalendar } from '../../components/calendar'
+import { ProgramSeasonHeader } from '../../components/program/ProgramSeasonHeader'
 import type { Id } from 'convex/_generated/dataModel'
 
 /**
@@ -28,6 +29,8 @@ export default function ProgramPage() {
   const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
   const insets = useSafeAreaInsets()
+  // Set once, by the First Run's save: the first visit to the saved plan.
+  const { welcome, kept, next } = useLocalSearchParams<{ welcome?: string; kept?: string; next?: string }>()
 
   // Handle workout press - navigate to workout details
   const handleWorkoutPress = (templateId: string) => {
@@ -61,6 +64,7 @@ export default function ProgramPage() {
         pt={insets.top + 16}
         pb={insets.bottom}
       >
+        <ProgramSeasonHeader welcome={welcome === '1'} kept={kept === '1'} next={next} />
         <WorkoutCalendar
           onWorkoutPress={handleWorkoutPress}
           initialViewMode="week"

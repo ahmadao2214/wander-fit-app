@@ -1,7 +1,8 @@
 import React from 'react'
 import { act, fireEvent, render, screen } from '@testing-library/react-native'
 import { testDraft, Wrapper as wrapper } from '../../jest/firstRunTestUtils'
-import { revealProgram, seasonStartForWeeks, type CompleteFirstRunAnswers } from '../../lib/firstRun'
+import { formatSeasonDate, revealProgram, seasonStartForWeeks, type CompleteFirstRunAnswers } from '../../lib/firstRun'
+import { CATEGORY_HOLD_MS } from '../../lib/firstRunStory'
 
 jest.mock('../../lib/firstRunStorage', () => ({
   get firstRunDraft() {
@@ -9,28 +10,23 @@ jest.mock('../../lib/firstRunStorage', () => ({
   },
 }))
 
-const DAY_ONE = {
-  _id: 't1',
-  name: 'Lower Body A - Foundation',
-  estimatedDurationMinutes: 28,
-  exercises: [
-    { section: 'warmup', exercise: { name: "World's Greatest Stretch" } },
-    { section: 'main', exercise: { name: 'Goblet Squat' } },
-    { section: 'main', exercise: { name: 'Romanian Deadlift' } },
-  ],
-}
-const mockWorkoutArgs: unknown[] = []
-let mockWorkout: unknown = DAY_ONE
+/** GPP week 1 for Power, Novice: the real names and minutes. */
+const WEEK_ONE = [
+  { day: 1, name: 'Lower Body A - Foundation', estimatedDurationMinutes: 28 },
+  { day: 2, name: 'Upper Body A - Foundation', estimatedDurationMinutes: 28 },
+  { day: 3, name: 'Power & Conditioning', estimatedDurationMinutes: 28 },
+  { day: 4, name: 'Lower Body B - Foundation', estimatedDurationMinutes: 28 },
+]
+const mockWeekArgs: unknown[] = []
 jest.mock('convex/react', () => ({
   useQuery: (fn: unknown, args: unknown) => {
     const name = jest.requireActual('convex/server').getFunctionName(fn)
     const utils = jest.requireActual('../../jest/firstRunTestUtils')
     if (name === 'sports:list') return utils.SPORTS
-    if (name === 'sports:getCategories') return utils.CATEGORIES
-    if (name === 'programTemplates:getWorkout') {
+    if (name === 'programTemplates:getWeekOverview') {
       if (args === 'skip') return undefined
-      mockWorkoutArgs.push(args)
-      return mockWorkout
+      mockWeekArgs.push(args)
+      return WEEK_ONE
     }
     return undefined
   },
@@ -38,31 +34,16 @@ jest.mock('convex/react', () => ({
 
 let mockReduced: boolean | null = true
 jest.mock('../../hooks/useReducedMotion', () => ({ useReducedMotion: () => mockReduced }))
-
-const mockEntering: unknown[] = []
-jest.mock('react-native-reanimated', () => {
+jest.mock('react-native-reanimated', () => jest.requireActual('../../jest/reanimatedMock'))
+jest.mock('lottie-react-native', () => {
+  const { forwardRef } = jest.requireActual('react')
   const { View } = jest.requireActual('react-native')
-  return {
-    __esModule: true,
-    default: {
-      View: ({ entering, children }: { entering?: unknown; children: React.ReactNode }) => {
-        mockEntering.push(entering)
-        return <View>{children}</View>
-      },
-    },
-    FadeInUp: { delay: () => ({ duration: () => 'fade' }) },
-  }
+  return forwardRef(() => <View />)
 })
-jest.mock('../../components/sport-icon/SportIcon', () => ({
-  SportIcon: ({ mode }: { mode: string }) => {
-    const { View } = jest.requireActual('react-native')
-    return <View testID={`sport-icon-${mode}`} />
-  },
-}))
 jest.mock('../../components/first-run/SavePlanSheet', () => ({
-  SavePlanSheet: ({ open }: { open: boolean }) => {
+  SavePlanSheet: ({ open, nextLabel }: { open: boolean; nextLabel?: string }) => {
     const { Text } = jest.requireActual('react-native')
-    return open ? <Text testID="sheet-open">open</Text> : null
+    return open ? <Text testID="sheet-open">{nextLabel}</Text> : null
   },
 }))
 jest.mock('expo-router', () => ({
@@ -78,7 +59,7 @@ jest.mock('react-native-safe-area-context', () => ({
 }))
 
 // eslint-disable-next-line import/first
-import FirstRunReveal from '../(first-run)/reveal'
+import FirstRunReveal, { firstUnanswered } from '../(first-run)/reveal'
 
 const answers: CompleteFirstRunAnswers = {
   sportId: 'basketball',
@@ -96,82 +77,136 @@ async function show() {
 beforeEach(async () => {
   testDraft.reset()
   mockReduced = true
-  mockWorkout = DAY_ONE
-  mockWorkoutArgs.length = 0
-  mockEntering.length = 0
-  await testDraft.seed({ answers, lastStep: 'about' })
+  mockWeekArgs.length = 0
+  await testDraft.seed({ answers })
 })
 
-describe('First Run reveal', () => {
-  it("shows the athlete's real Day 1 for GPP week 1 day 1 at their level", async () => {
+describe('First Run reveal: category, then plan', () => {
+  it('opens on the category: the sport trains for Power, with all four tiles', async () => {
     await show()
-    expect(screen.getByTestId('day-one-name').props.children).toBe('Lower Body A - Foundation')
-    expect(screen.getByText('About 28 min')).toBeTruthy()
-    expect(screen.getByText('Goblet Squat')).toBeTruthy()
-    expect(screen.queryByText("World's Greatest Stretch")).toBeNull()
-    expect(mockWorkoutArgs[mockWorkoutArgs.length - 1]).toEqual({
-      gppCategoryId: 2,
-      phase: 'GPP',
-      skillLevel: 'Novice',
-      week: 1,
-      day: 1,
-    })
+    expect(screen.getByTestId('reveal-category')).toBeTruthy()
+    expect(screen.getByText('BASKETBALL TRAINS FOR')).toBeTruthy()
+    expect(screen.getByTestId('reveal-category-name').props.children).toBe('POWER')
+    for (const id of [1, 2, 3, 4]) expect(screen.getByTestId(`category-tile-${id}`)).toBeTruthy()
+    expect(screen.getByTestId('category-tile-2').props.accessibilityLabel).toBe('Power, your category')
+    expect(screen.getByText('Tap to see your plan')).toBeTruthy()
   })
 
-  it('shows the same phase weeks and session count the saved program will have', async () => {
+  it('a tap skips to the plan', async () => {
     await show()
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('reveal-category-page'))
+    })
+    expect(screen.getByTestId('reveal-plan')).toBeTruthy()
+    expect(screen.queryByTestId('reveal-category')).toBeNull()
+  })
+
+  it('moves on to the plan by itself after the hold', async () => {
+    jest.useFakeTimers()
+    try {
+      await show()
+      await act(async () => {
+        jest.advanceTimersByTime(CATEGORY_HOLD_MS + 900)
+      })
+      expect(screen.getByTestId('reveal-plan')).toBeTruthy()
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
+  it('the plan shows the band, the plain-English phases, the week and the total', async () => {
+    await show()
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('reveal-category-page'))
+    })
     const program = revealProgram(answers, new Date())
-    expect(screen.getByTestId('reveal-sessions').props.children.join('')).toBe(
+    expect(screen.getByTestId('reveal-title').props.children).toBe('BASKETBALL PLAN')
+    expect(screen.getByTestId('reveal-countdown').props.children).toBe(
+      `FIRST GAME ${formatSeasonDate(answers.seasonStart!).toUpperCase()} · 15 WEEKS`
+    )
+    expect(screen.getByText('Build the base')).toBeTruthy()
+    expect(screen.getByText('Train for your sport')).toBeTruthy()
+    expect(screen.getByText('Sharpen for the season')).toBeTruthy()
+    expect(screen.getByTestId('reveal-sessions').props.accessibilityLabel).toBe(
       `${program.sessionCount} sessions over ${program.programWeeks} weeks`
     )
-    expect(screen.getByTestId('phase-GPP').props.accessibilityLabel).toContain(`${program.weeksPerPhase} weeks`)
-    expect(screen.getByTestId('reveal-category').props.children.join('')).toBe('Basketball trains for Power.')
+    // The real week 1 templates for the athlete's category and level.
+    expect(mockWeekArgs[mockWeekArgs.length - 1]).toEqual({ gppCategoryId: 2, phase: 'GPP', skillLevel: 'Novice', week: 1 })
+    expect(screen.getByTestId('week-day-line').props.children).toMatch(/^Day 1 · .+ · Lower Body A · About 28 min$/)
   })
 
-  it('names each phase as text, and tapping one shows its full name', async () => {
+  it('tapping a phase changes the caption; tapping a day changes the line', async () => {
     await show()
-    expect(screen.getByTestId('phase-name')).toHaveTextContent('GPP: General Physical Preparedness')
-    fireEvent.press(screen.getByTestId('phase-SSP'))
-    expect(screen.getByTestId('phase-name')).toHaveTextContent('SSP: Sport-Specific Preparedness')
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('reveal-category-page'))
+    })
+    expect(screen.getByTestId('phase-caption')).toHaveTextContent(/General fitness and how you move/)
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('phase-SPP'))
+    })
+    expect(screen.getByTestId('phase-caption')).toHaveTextContent(/jumping, landing and stopping fast for basketball/)
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('week-Tue'))
+    })
+    expect(screen.getByTestId('week-day-line').props.children).toBe('Tue · Rest day')
   })
 
-  it('renders with no animation when Reduce Motion is on', async () => {
+  it('the POWER chip goes back to the category, and a tap returns to the plan', async () => {
     await show()
-    expect(mockEntering.length).toBeGreaterThan(0)
-    expect(mockEntering.every((e) => e === undefined)).toBe(true)
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('reveal-category-page'))
+    })
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('reveal-category-chip'))
+    })
+    expect(screen.getByText('Tap to go back to your plan')).toBeTruthy()
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('reveal-category-page'))
+    })
+    expect(screen.getByTestId('reveal-plan')).toBeTruthy()
   })
 
-  it('animates the one moment when Reduce Motion is off', async () => {
-    mockReduced = false
+  it('the first story segment also returns to the category', async () => {
     await show()
-    expect(screen.getByTestId('sport-icon-once')).toBeTruthy()
-    expect(mockEntering).toContain('fade')
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('reveal-category-page'))
+    })
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('story-category'))
+    })
+    expect(screen.getByTestId('reveal-category')).toBeTruthy()
   })
 
-  it('waits while Reduce Motion is unknown, so nothing starts and stops', async () => {
+  it('Save my plan opens the account sheet with Day 1’s day', async () => {
+    await show()
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('reveal-category-page'))
+    })
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('first-run-save'))
+    })
+    expect(screen.getByTestId('sheet-open').props.children).toMatch(/^(Today|Tomorrow|\w{3}, \w{3} \d+)$/)
+  })
+
+  it('waits for the Reduce Motion answer before starting', async () => {
     mockReduced = null
     await show()
     expect(screen.getByTestId('reveal-loading')).toBeTruthy()
   })
 
-  it('shows a loading state while the template loads', async () => {
-    mockWorkout = undefined
-    await show()
-    expect(screen.getByTestId('reveal-loading')).toBeTruthy()
-    expect(screen.getByTestId('first-run-save')).toBeDisabled()
-  })
-
-  it('Save my plan opens the account sheet', async () => {
-    await show()
-    expect(screen.queryByTestId('sheet-open')).toBeNull()
-    fireEvent.press(screen.getByTestId('first-run-save'))
-    expect(screen.getByTestId('sheet-open')).toBeTruthy()
-  })
-
-  it('sends an incomplete draft back to the first unanswered step', async () => {
+  it('sends an incomplete draft back to the first unanswered question', async () => {
     testDraft.reset()
     await testDraft.seed({ answers: { sportId: 'basketball' } })
     await show()
     expect(screen.getByTestId('redirect').props.children).toBe('/(first-run)/season')
+  })
+})
+
+describe('firstUnanswered', () => {
+  it('walks the questions in order', () => {
+    expect(firstUnanswered({})).toBe('/(first-run)/sport')
+    expect(firstUnanswered({ sportId: 's' })).toBe('/(first-run)/season')
+    expect(firstUnanswered({ sportId: 's', seasonStart: null })).toBe('/(first-run)/days')
+    expect(firstUnanswered({ sportId: 's', seasonStart: null, trainingDays: [1] })).toBe('/(first-run)/about')
   })
 })

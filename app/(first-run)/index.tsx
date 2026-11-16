@@ -1,39 +1,47 @@
+import { Pressable, Text as RNText, View, useWindowDimensions } from 'react-native'
 import { useRouter } from 'expo-router'
-import { Text } from 'tamagui'
-import { FirstRunScreen } from '../../components/first-run/FirstRunScreen'
+import { IntakeFrame } from '../../components/first-run/IntakeFrame'
+import { BODY_SEMI, Headline, PromiseDrift, headlineSize } from '../../components/first-run/Night'
+import { useIntakeMotion } from '../../components/first-run/useIntakeMotion'
 import { useReachStep } from '../../components/first-run/useReachStep'
+import { DRIFT_SPORTS, NIGHT } from '../../lib/firstRunStory'
 
-/** The promise: what the athlete gets, and how long it takes. */
+/**
+ * The promise. It's already there at launch, with no entrance: one huge
+ * headline, sport icons drifting faintly behind it, and one button.
+ */
 export default function FirstRunPromise() {
   const router = useRouter()
+  const motion = useIntakeMotion()
+  const { width } = useWindowDimensions()
   useReachStep('promise')
 
   return (
-    <FirstRunScreen
+    <IntakeFrame
       step="promise"
-      centered
-      title="Let's build your plan for this season."
-      subtitle="Five questions, then your first workout."
-      primaryLabel="Choose your sport"
-      onPrimary={() => router.push('/(first-run)/sport')}
-      primaryTestID="first-run-start"
+      ground={NIGHT.ink}
+      moving={motion.moving}
+      showTop={false}
+      scroll={false}
+      behind={<PromiseDrift sports={DRIFT_SPORTS} moving={motion.moving} />}
+      primary={{ label: 'Choose your sport', onPress: () => router.push('/(first-run)/sport'), testID: 'first-run-start' }}
       secondary={
-        <Text
-          fontFamily="$body"
-          fontSize={15}
-          fontWeight="600"
-          color="$primaryText"
-          text="center"
-          py="$2"
-          accessibilityRole="link"
+        <Pressable
           onPress={() => router.push('/(auth)/sign-in')}
+          accessibilityRole="link"
           testID="first-run-sign-in"
+          style={{ alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 12 }}
         >
-          I have an account
-        </Text>
+          <RNText style={{ fontFamily: BODY_SEMI, fontSize: 15, color: NIGHT.link }}>I have an account</RNText>
+        </Pressable>
       }
     >
-      {null}
-    </FirstRunScreen>
+      <View style={{ flex: 1, justifyContent: 'flex-end', paddingBottom: 24 }}>
+        {/* Already there at launch: no wipe. */}
+        <Headline size={headlineSize(92, width)} moving={false}>
+          Let's build your plan for this season.
+        </Headline>
+      </View>
+    </IntakeFrame>
   )
 }

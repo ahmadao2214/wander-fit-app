@@ -118,7 +118,7 @@ describe("web flows", () => {
     expect(journey).not.toMatch(/^env:/m)
   })
 
-  it("records the First Run from the promise through sign-up to the Day 1 warm-up", () => {
+  it("records the First Run from the promise through sign-up to the Program tab", () => {
     const flow = expandFlow(path.join(root, ".maestro/web/first-run.yaml"))
     const read = (file) => fs.readFileSync(path.join(root, file), "utf8")
     const screens = [
@@ -128,9 +128,10 @@ describe("web flows", () => {
       read("app/(first-run)/days.tsx"),
       read("app/(first-run)/about.tsx"),
       read("app/(first-run)/reveal.tsx"),
-      read("components/first-run/FirstRunScreen.tsx"),
+      read("components/first-run/IntakeFrame.tsx"),
+      read("components/first-run/PlanView.tsx"),
       read("components/first-run/SavePlanSheet.tsx"),
-      read("app/ready.tsx"),
+      read("components/program/ProgramSeasonHeader.tsx"),
     ].join("\n")
     // Every testID the journey taps exists in the screens. (Quoted ids are
     // accessibility labels, which Maestro web reports as the id.)
@@ -139,17 +140,17 @@ describe("web flows", () => {
     expect(missing).toEqual([])
     const order = [
       "startRecording: recording",
-      `visible: "Let's build your plan for this season."`,
+      `visible: "LET'S BUILD YOUR PLAN FOR THIS SEASON."`,
       'assertNotVisible: "WELCOME BACK"',
       'id: "Basketball"',
-      'visible: "Basketball · Power"',
       'tapOn: "No set season"',
-      'visible: "3 days a week"',
+      'visible: "3 SESSIONS A WEEK"',
       'tapOn: "Performance"',
       'tapOn: "New to training"',
-      "id: first-run-see-plan",
-      'visible: "Lower Body A - Foundation"',
-      'assertVisible: "36 sessions over 12 weeks"',
+      'visible: "BASKETBALL TRAINS FOR"',
+      'tapOn: "Tap to see your plan"',
+      'visible: "BASKETBALL PLAN"',
+      "Lower Body A",
       "id: first-run-save",
       "id: save-plan-email",
       'assertNotVisible: "Skip"',
@@ -159,10 +160,9 @@ describe("web flows", () => {
       "id: save-plan-create",
       'visible: "Check your email"',
       'inputText: "424242"',
-      `visible: "You're set."`,
-      "id: ready-start",
-      'visible: "WARMUP"',
-      "takeScreenshot: 09-warmup",
+      'visible: "Up next · .*"',
+      'assertNotVisible: "WARMUP"',
+      "takeScreenshot: 09-program",
       "stopRecording",
     ]
     // Jest's expect takes no message, so failures name the steps in the diff.

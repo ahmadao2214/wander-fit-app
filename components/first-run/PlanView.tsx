@@ -1,0 +1,316 @@
+import { useEffect, useRef, useState } from 'react'
+import { Pressable, ScrollView, Text as RNText, View, useWindowDimensions } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated'
+import LottieView from 'lottie-react-native'
+import {
+  HANDOFF_MS,
+  NIGHT,
+  PLAN_BEATS,
+  STORY_PHASES,
+  phaseCaption,
+  weekDayLine,
+  type StoryCategory,
+  type WeekStripDay,
+} from '../../lib/firstRunStory'
+import { getSportAnimation } from '../../lib/sportAnimations'
+import { selectionFeedback } from '../../lib/haptics'
+import type { Phase } from '../../types'
+import { Beat } from './CategoryStory'
+import { BODY, BODY_BOLD, DISPLAY, Label, NightButton } from './Night'
+import { StoryPhaseBar } from './StoryPhaseBar'
+import { PAGE_EASE } from './intakeMotion'
+
+/** The band's height below the safe area. The Program tab's header matches it. */
+export const BAND_BELOW_INSET = 182
+
+export function bandHeight(insetTop: number): number {
+  return insetTop + BAND_BELOW_INSET
+}
+
+/** "BASKETBALL PLAN" at 50pt; a long name like "TRACK (SPRINTS/JUMPS) PLAN" steps down to stay on two lines. */
+export function bandTitleSize(sportName: string): number {
+  return sportName.length <= 12 ? 50 : 38
+}
+
+export interface Rect {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/** The sport icon in the band plays a short action (0.8 s) and holds its pose. */
+function BandIcon({ name, play, size }: { name: string; play: boolean; size: number }) {
+  const ref = useRef<LottieView>(null)
+  const source = getSportAnimation(name)
+  useEffect(() => {
+    if (!play) return
+    const t = setTimeout(() => ref.current?.play(0, 36), 0)
+    return () => clearTimeout(t)
+  }, [play])
+  if (!source) return null
+  return <LottieView ref={ref} source={source} autoPlay={false} loop={false} speed={1.5} style={{ width: size, height: size }} />
+}
+
+/**
+ * The reveal's second part: the band (category chip, "BASKETBALL PLAN" and
+ * the game-day countdown), the phase bar drawing one phase at a time, the
+ * tappable "Your week" strip, the session total set big, and Save my plan.
+ *
+ * `openFrom` is the lit category tile's frame: the band starts clipped to it
+ * and opens to full width, so the tile becomes the band without stretching.
+ */
+export function PlanView({
+  sportName,
+  category,
+  countdown,
+  weeksPerPhase,
+  programWeeks,
+  sessionCount,
+  noSeason,
+  week,
+  trainingDays,
+  animate,
+  openFrom,
+  onCategory,
+  onSave,
+}: {
+  sportName: string
+  category: StoryCategory
+  countdown: string
+  weeksPerPhase: number
+  programWeeks: number
+  sessionCount: number
+  noSeason: boolean
+  week: WeekStripDay[]
+  trainingDays: readonly number[]
+  animate: boolean
+  openFrom: Rect | null
+  onCategory: () => void
+  onSave: () => void
+}) {
+  const insets = useSafeAreaInsets()
+  const { width: W } = useWindowDimensions()
+  const H = bandHeight(insets.top)
+  const delay = openFrom ? 550 : 0
+  const now = new Date()
+  const [phase, setPhase] = useState<Phase>('GPP')
+  const firstDay = week.find((d) => d.programDay === 1) ?? week[0]
+  const [dow, setDow] = useState(firstDay.dow)
+  const day = week.find((d) => d.dow === dow) ?? firstDay
+
+  // ── The handoff clip ──
+  const open = useSharedValue(openFrom ? 0 : 1)
+  const textIn = useSharedValue(openFrom ? 0 : 1)
+  const tagOut = useSharedValue(openFrom ? 1 : 0)
+  useEffect(() => {
+    if (!openFrom) return
+    open.value = withTiming(1, { duration: HANDOFF_MS, easing: PAGE_EASE })
+    textIn.value = withDelay(300, withTiming(1, { duration: 260 }))
+    tagOut.value = withDelay(300, withTiming(0, { duration: 220 }))
+    // The frame is captured once, when the handoff starts.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const from = openFrom ?? { x: 0, y: 0, width: W, height: H }
+  const clipStyle = useAnimatedStyle(() => {
+    const k = open.value
+    return {
+      left: from.x * (1 - k),
+      top: from.y * (1 - k),
+      width: from.width + (W - from.width) * k,
+      height: from.height + (H - from.height) * k,
+      borderRadius: 16 * (1 - k),
+    }
+  })
+  const innerStyle = useAnimatedStyle(() => {
+    const k = open.value
+    return { transform: [{ translateX: -from.x * (1 - k) }, { translateY: -from.y * (1 - k) }] }
+  })
+  const textStyle = useAnimatedStyle(() => ({ opacity: textIn.value }))
+  const tagStyle = useAnimatedStyle(() => ({ opacity: tagOut.value }))
+
+  // The total lands with a haptic.
+  useEffect(() => {
+    if (!animate) return
+    const t = setTimeout(selectionFeedback, delay + PLAN_BEATS.total)
+    return () => clearTimeout(t)
+  }, [animate, delay])
+
+  return (
+    <View style={{ flex: 1 }} testID="reveal-plan">
+      {/* The band. Inside a clip that opens from the lit tile. */}
+      <View style={{ height: H }}>
+        <Animated.View style={[{ position: 'absolute', overflow: 'hidden' }, clipStyle]}>
+          <Animated.View style={[{ width: W, height: H, backgroundColor: category.color }, innerStyle]}>
+            <View
+              pointerEvents="none"
+              style={{ position: 'absolute', right: -46, top: insets.top, width: 190, height: 190 }}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            >
+              <BandIcon name={sportName} play={animate} size={190} />
+            </View>
+            <Animated.View style={[{ paddingTop: insets.top + 28, paddingHorizontal: 24 }, textStyle]}>
+              <Pressable
+                onPress={onCategory}
+                accessibilityRole="button"
+                accessibilityLabel={`${category.name}. See your category again`}
+                testID="reveal-category-chip"
+                hitSlop={10}
+                style={{
+                  alignSelf: 'flex-start',
+                  backgroundColor: 'rgba(255,255,255,0.18)',
+                  borderRadius: 999,
+                  paddingVertical: 6,
+                  paddingHorizontal: 12,
+                }}
+              >
+                <RNText style={{ fontFamily: BODY_BOLD, fontSize: 12, letterSpacing: 1.6, color: '#FFFFFF' }}>
+                  {`${category.name.toUpperCase()} ›`}
+                </RNText>
+              </Pressable>
+              <RNText
+                style={{
+                  fontFamily: DISPLAY,
+                  fontSize: bandTitleSize(sportName),
+                  lineHeight: Math.round(bandTitleSize(sportName) * 0.92),
+                  paddingTop: 6,
+                  marginTop: 6,
+                  color: '#FFFFFF',
+                  maxWidth: 240,
+                }}
+                numberOfLines={2}
+                adjustsFontSizeToFit
+                accessibilityRole="header"
+                testID="reveal-title"
+              >
+                {`${sportName.toUpperCase()} PLAN`}
+              </RNText>
+              <RNText
+                style={{ fontFamily: BODY_BOLD, fontSize: 12, letterSpacing: 1.4, color: '#FFFFFF', opacity: 0.9, marginTop: 8 }}
+                testID="reveal-countdown"
+              >
+                {countdown.toUpperCase()}
+              </RNText>
+            </Animated.View>
+            {openFrom ? (
+              // The tile's name stays until the band's own text takes over.
+              <Animated.Text
+                style={[
+                  {
+                    position: 'absolute',
+                    left: from.x + 14,
+                    top: from.y + from.height - 42,
+                    fontFamily: DISPLAY,
+                    fontSize: 30,
+                    lineHeight: 30,
+                    color: '#FFFFFF',
+                  },
+                  tagStyle,
+                ]}
+              >
+                {category.name.toUpperCase()}
+              </Animated.Text>
+            ) : null}
+          </Animated.View>
+        </Animated.View>
+      </View>
+
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingBottom: insets.bottom + 16 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={{ marginTop: 16 }}>
+          <StoryPhaseBar
+            weeksPerPhase={weeksPerPhase}
+            selected={phase}
+            onSelect={(p) => {
+              selectionFeedback()
+              setPhase(p)
+            }}
+            draw={animate}
+            drawAt={delay + PLAN_BEATS.phases}
+            drawGap={PLAN_BEATS.phaseGap}
+          />
+        </View>
+        <Beat at={delay + PLAN_BEATS.phases} play={animate}>
+          <RNText
+            style={{ fontFamily: BODY, fontSize: 14, lineHeight: 20, color: NIGHT.fg, minHeight: 40, marginTop: 8 }}
+            accessibilityLiveRegion="polite"
+            testID="phase-caption"
+          >
+            <RNText style={{ fontFamily: BODY_BOLD }}>
+              {`${STORY_PHASES.find((p) => p.phase === phase)?.label}. `}
+            </RNText>
+            {phaseCaption(phase, sportName, category, noSeason)}
+          </RNText>
+        </Beat>
+
+        <Beat at={delay + PLAN_BEATS.week} play={animate} style={{ marginTop: 8 }}>
+          <Label style={{ marginBottom: 8 }}>Your week · tap a day</Label>
+          <View style={{ flexDirection: 'row', gap: 4 }}>
+            {week.map((d) => {
+              const on = d.dow === dow
+              return (
+                <Pressable
+                  key={d.dow}
+                  onPress={() => {
+                    selectionFeedback()
+                    setDow(d.dow)
+                  }}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: on }}
+                  accessibilityLabel={weekDayLine(d, trainingDays, now)}
+                  testID={`week-${d.short}`}
+                  style={{
+                    flex: 1,
+                    height: 52,
+                    borderRadius: 8,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 3,
+                    backgroundColor: on ? category.color : NIGHT.ink2,
+                  }}
+                >
+                  <RNText style={{ fontFamily: BODY_BOLD, fontSize: 12, color: on ? '#FFFFFF' : NIGHT.fg2 }}>{d.short.slice(0, 1)}</RNText>
+                  <RNText
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    style={{ fontFamily: DISPLAY, fontSize: 15, lineHeight: 16, color: on ? '#FFFFFF' : d.tag ? NIGHT.fg : NIGHT.line }}
+                  >
+                    {d.tag ?? '—'}
+                  </RNText>
+                </Pressable>
+              )
+            })}
+          </View>
+          <RNText style={{ fontFamily: BODY, fontSize: 14, color: NIGHT.fg2, marginTop: 8 }} testID="week-day-line" accessibilityLiveRegion="polite">
+            {weekDayLine(day, trainingDays, now)}
+          </RNText>
+        </Beat>
+
+        <Beat at={delay + PLAN_BEATS.total} play={animate} style={{ marginTop: 'auto', paddingTop: 12 }}>
+          <View
+            style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 12 }}
+            accessible
+            accessibilityLabel={`${sessionCount} sessions over ${programWeeks} weeks`}
+            testID="reveal-sessions"
+          >
+            <RNText style={{ fontFamily: DISPLAY, fontSize: 112, lineHeight: 96, paddingTop: 14, color: NIGHT.fg, fontVariant: ['tabular-nums'] }}>
+              {String(sessionCount)}
+            </RNText>
+            <RNText style={{ fontFamily: DISPLAY, fontSize: 26, lineHeight: 26, color: NIGHT.fg2, paddingBottom: 8, letterSpacing: 1 }}>
+              {`SESSIONS\nOVER ${programWeeks} WEEKS`}
+            </RNText>
+          </View>
+        </Beat>
+
+        <Beat at={delay + PLAN_BEATS.save} play={animate} style={{ marginTop: 12 }}>
+          <NightButton label="Save my plan" onPress={onSave} testID="first-run-save" />
+        </Beat>
+      </ScrollView>
+    </View>
+  )
+}

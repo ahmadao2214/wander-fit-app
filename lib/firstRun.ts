@@ -5,7 +5,7 @@
  * `lib/firstRunDraft.ts`.
  */
 import type { AgeGroup } from '../types'
-import { programShape, type ProgramShape } from '../convex/programShape'
+import { programShape, skillLevelFromYears, type ProgramShape, type SkillLevel } from '../convex/programShape'
 
 // ─── Choices ────────────────────────────────────────────────────────────────
 
@@ -34,6 +34,11 @@ export function yearsForChoice(choice: YearsChoice): number {
   const match = YEARS_CHOICES.find((c) => c.value === choice)
   if (!match) throw new Error(`Unknown years choice: ${choice}`)
   return match.years
+}
+
+/** The level a years choice trains at: Novice, Moderate or Advanced. */
+export function skillLevelLabel(choice: YearsChoice): SkillLevel {
+  return skillLevelFromYears(yearsForChoice(choice))
 }
 
 // ─── Answers ────────────────────────────────────────────────────────────────
