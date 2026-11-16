@@ -63,16 +63,32 @@ describe('CalendarWorkoutCard', () => {
         <CalendarWorkoutCard {...defaultProps} />,
         { wrapper: AllTheProviders }
       )
-      expect(getByText('8 exercises')).toBeTruthy()
+      expect(getByText('~45m · 8 exercises')).toBeTruthy()
       expect(queryByText(/more$/)).toBeNull()
     })
 
-    it('renders duration', () => {
+    it('shows the time alone when there is no exercise count', () => {
       const { getByText } = render(
-        <CalendarWorkoutCard {...defaultProps} />,
+        <CalendarWorkoutCard {...defaultProps} exerciseCount={0} />,
         { wrapper: AllTheProviders }
       )
       expect(getByText('~45m')).toBeTruthy()
+    })
+
+    it('says "1 exercise" in the singular', () => {
+      const { getByText } = render(
+        <CalendarWorkoutCard {...defaultProps} exerciseCount={1} />,
+        { wrapper: AllTheProviders }
+      )
+      expect(getByText('~45m · 1 exercise')).toBeTruthy()
+    })
+
+    it('is a button to screen readers', () => {
+      const { getByLabelText } = render(
+        <CalendarWorkoutCard {...defaultProps} />,
+        { wrapper: AllTheProviders }
+      )
+      expect(getByLabelText(/^GPP workout/).props.accessibilityRole).toBe('button')
     })
 
     it('puts SPP and SSP in the accessibility label', () => {
