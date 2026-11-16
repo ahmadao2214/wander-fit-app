@@ -72,7 +72,9 @@ export function CalendarWorkoutCard({
           ? 'today'
           : null
   // Phase is shown by color, so screen readers get it in words
-  const accessibilityLabel = [`${phase} workout`, name, `about ${estimatedDurationMinutes} minutes`, stateLabel]
+  const exercisesLabel =
+    exerciseCount > 0 ? `${exerciseCount} ${exerciseCount === 1 ? 'exercise' : 'exercises'}` : null
+  const accessibilityLabel = [`${phase} workout`, name, `about ${estimatedDurationMinutes} minutes`, exercisesLabel, stateLabel]
     .filter(Boolean)
     .join(', ')
 
@@ -153,9 +155,7 @@ export function CalendarWorkoutCard({
         {/* How much is in it. The narrow week column can't fit exercise
             names, and the first ones are warmup. */}
         {exerciseCount > 0 && (
-          <Caption>
-            {exerciseCount} {exerciseCount === 1 ? 'exercise' : 'exercises'}
-          </Caption>
+          <Caption>{exercisesLabel}</Caption>
         )}
       </YStack>
     </Card>

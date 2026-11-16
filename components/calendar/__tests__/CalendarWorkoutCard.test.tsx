@@ -55,7 +55,7 @@ describe('CalendarWorkoutCard', () => {
         <CalendarWorkoutCard {...defaultProps} isToday />,
         { wrapper: AllTheProviders }
       )
-      expect(getByLabelText('GPP workout, Lower Body Foundation, about 45 minutes, today')).toBeTruthy()
+      expect(getByLabelText('GPP workout, Lower Body Foundation, about 45 minutes, 8 exercises, today')).toBeTruthy()
     })
 
     it('shows how many main exercises, not a cut-off list of names', () => {

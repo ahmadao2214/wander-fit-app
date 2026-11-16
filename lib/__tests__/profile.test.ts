@@ -16,6 +16,7 @@ describe('experienceLabel', () => {
   })
 
   it('buckets older exact answers the same way', () => {
+    expect(experienceLabel(0.5)).toBe('Under a year')
     expect(experienceLabel(2)).toBe('1–2 years')
     expect(experienceLabel(7)).toBe('3+ years')
   })
