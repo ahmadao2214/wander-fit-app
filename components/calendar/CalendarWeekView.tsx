@@ -68,6 +68,21 @@ export interface CalendarWeekViewProps {
   programEndDate?: string
 }
 
+type Rect = { x: number; y: number; width: number; height: number }
+
+/**
+ * The part of a day row you can see in the scrolling day list. A row scrolled
+ * out of view would otherwise sit under the header or tab bar and take a drop
+ * meant for neither. Returns null when none of the row is visible.
+ */
+export function clipToViewport(row: Rect, viewport: Pick<Rect, 'y' | 'height'> | null): Rect | null {
+  if (!viewport) return row
+  const top = Math.max(row.y, viewport.y)
+  const bottom = Math.min(row.y + row.height, viewport.y + viewport.height)
+  if (bottom <= top) return null
+  return { ...row, y: top, height: bottom - top }
+}
+
 /**
  * Generate array of weeks within program bounds
  * Only includes weeks from program start to program end + buffer
@@ -126,6 +141,20 @@ export function CalendarWeekView({
   // Disable FlatList scrolling while dragging to prevent gesture conflicts
   const isDragging = dragSourceSlot !== null && dragSourceSlot !== undefined
   const flatListRef = useRef<FlatList>(null)
+
+  // Where the day list shows on screen. Paging sideways doesn't move it
+  // up or down, so measuring on layout is enough.
+  const viewportRef = useRef<Pick<Rect, 'y' | 'height'> | null>(null)
+  const handleListLayout = useCallback(() => {
+    flatListRef.current?.getNativeScrollRef()?.measureInWindow?.((_x: number, y: number, _w: number, height: number) => {
+      viewportRef.current = { y, height }
+    })
+  }, [])
+  const handleDayLayout = useCallback((dateISO: string, layout: Rect) => {
+    const visible = clipToViewport(layout, viewportRef.current)
+    if (visible) onDropZoneLayout?.(dateISO, visible)
+    else onDropZoneUnregister?.(dateISO)
+  }, [onDropZoneLayout, onDropZoneUnregister])
   const today = new Date()
 
   // Generate weeks within program bounds (memoized)
@@ -287,7 +316,7 @@ export function CalendarWeekView({
           isDragActive={isDragActive}
           isValidDropTarget={isValidDropTarget}
           gppCategoryId={gppCategoryId}
-          onDropZoneLayout={onDropZoneLayout}
+          onDropZoneLayout={handleDayLayout}
           onDropZoneUnregister={onDropZoneUnregister}
         />
       )
@@ -307,7 +336,7 @@ export function CalendarWeekView({
         <YStack gap="$1">{days.map(renderDay)}</YStack>
       </ScrollView>
     )
-  }, [calendarData, onWorkoutPress, onWorkoutLongPress, onDragStart, onDragEnd, onDragMove, dragTargetDate, dragSourceSlot, isDragging, gppCategoryId, onDropZoneLayout, onDropZoneUnregister])
+  }, [calendarData, onWorkoutPress, onWorkoutLongPress, onDragStart, onDragEnd, onDragMove, dragTargetDate, dragSourceSlot, isDragging, gppCategoryId, handleDayLayout, onDropZoneUnregister])
 
   const keyExtractor = useCallback((item: Date) => formatDateISO(item), [])
 
@@ -385,6 +414,7 @@ export function CalendarWeekView({
         snapToInterval={SCREEN_WIDTH}
         snapToAlignment="start"
         style={{ flex: 1 }}
+        onLayout={handleListLayout}
         contentContainerStyle={{ alignItems: 'stretch' }}
       />
     </YStack>

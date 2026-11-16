@@ -2,7 +2,7 @@ import React from 'react'
 import { render } from '@testing-library/react-native'
 import { TamaguiProvider } from 'tamagui'
 import config from '../../../tamagui.config'
-import { CalendarWeekView, CalendarWeekViewProps, CalendarWorkout } from '../CalendarWeekView'
+import { CalendarWeekView, CalendarWeekViewProps, CalendarWorkout, clipToViewport } from '../CalendarWeekView'
 import { formatDateISO, startOfWeek, addDays } from '../../../lib/calendarUtils'
 
 // The day row is what's under test here, not the gesture-handler card
@@ -92,5 +92,29 @@ describe('CalendarWeekView', () => {
     )
     expect(queryByLabelText('Next week')).toBeTruthy()
     expect(queryByLabelText('Previous week')).toBeNull()
+  })
+})
+
+describe('clipToViewport', () => {
+  // The day list on screen: below the header, above the tab bar
+  const viewport = { y: 200, height: 500 }
+
+  it('keeps a row that is fully in view', () => {
+    const row = { x: 12, y: 300, width: 378, height: 56 }
+    expect(clipToViewport(row, viewport)).toEqual(row)
+  })
+
+  it('trims a row cut off at the top, so the header above takes no drop', () => {
+    expect(clipToViewport({ x: 12, y: 170, width: 378, height: 56 }, viewport)).toEqual({ x: 12, y: 200, width: 378, height: 26 })
+  })
+
+  it('drops a row scrolled out of view, which would sit under the header or tab bar', () => {
+    expect(clipToViewport({ x: 12, y: 100, width: 378, height: 56 }, viewport)).toBeNull()
+    expect(clipToViewport({ x: 12, y: 760, width: 378, height: 56 }, viewport)).toBeNull()
+  })
+
+  it('passes the row through before the list has been measured', () => {
+    const row = { x: 12, y: 100, width: 378, height: 56 }
+    expect(clipToViewport(row, null)).toEqual(row)
   })
 })
