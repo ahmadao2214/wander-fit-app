@@ -21,18 +21,25 @@ tap() { ad press "$1" || fail "tap $1"; ad wait "${2:-1200}"; }
 # A freshly installed Expo Go drops the launch URL; type it into "Enter URL manually" (see sign-in-to-today.sh).
 if ad wait 'id=first-run-start' 8000; then
   ts "launch URL loaded the app"
-else
-  ad wait text "Enter URL manually" 5000 || fail "neither the app nor Expo Go home is showing"
+elif ad wait text "Enter URL manually" 5000; then
   ad press 201 311; ad press 201 358; ad type "exp://$HOST"; ad press 201 411
   ad wait 'id=first-run-start' 120000 || fail "First Run never appeared"
   ts "app loaded via Enter URL manually"
+else
+  # The launch URL did arrive and Expo Go is still loading the bundle ("Loading project...").
+  ad wait 'id=first-run-start' 120000 || fail "neither the app nor Expo Go home is showing"
+  ts "launch URL loaded the app (slow bundle)"
 fi
 
 # Expo Go's dev-menu onboarding sheet, then the dev menu: tap Continue, then the menu's X.
-# If the sheet didn't show, the first tap lands on "I have an account"; Sign up comes back.
+# If the sheet didn't show, the first tap lands on the promise screen; both cases come back to it.
 ad wait 2000; ad press 201 799; ad wait 1500; ad press 376 290; ad wait 1500
 if ad wait 'id=sign-in-email' 1500; then
   ad press 'label="Sign up"' || fail "back to the First Run"
+fi
+# On the v2 promise that first tap lands on "Choose your sport" instead; go back.
+if ad wait 'id=first-run-back' 1500; then
+  ad press 'id=first-run-back' || fail "back to the promise"
 fi
 ad wait 'id=first-run-start' 10000 || fail "promise screen"
 ad wait 1000
