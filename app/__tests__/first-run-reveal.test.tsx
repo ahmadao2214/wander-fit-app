@@ -145,6 +145,8 @@ describe('First Run reveal: category, then plan', () => {
       fireEvent.press(screen.getByTestId('reveal-category-page'))
     })
     expect(screen.getByTestId('phase-caption')).toHaveTextContent(/General fitness and how you move/)
+    // The bar shows just the acronym; the caption says how long the phase runs.
+    expect(screen.getByTestId('phase-caption')).toHaveTextContent(/^Build the base · \d+ weeks\./)
     await act(async () => {
       fireEvent.press(screen.getByTestId('phase-SPP'))
     })

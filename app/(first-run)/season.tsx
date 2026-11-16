@@ -13,6 +13,8 @@ import { NIGHT, monthGrid } from '../../lib/firstRunStory'
 import { selectionFeedback } from '../../lib/haptics'
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+/** Calendar rows are shorter than they are wide, so No set season stays above the fold. */
+const DAY_ROW = 40
 
 function monthOf(iso: string): { y: number; m: number } {
   const [y, m] = iso.split('-').map(Number)
@@ -92,7 +94,7 @@ export default function FirstRunSeason() {
       <View style={{ opacity: noSeason ? 0.35 : 1, marginTop: 12 }}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 12 }}>
           <RNText
-            style={{ fontFamily: DISPLAY, fontSize: 96, lineHeight: 88, paddingTop: 10, color: NIGHT.fg, fontVariant: ['tabular-nums'] }}
+            style={{ fontFamily: DISPLAY, fontSize: 88, lineHeight: 80, paddingTop: 9, color: NIGHT.fg, fontVariant: ['tabular-nums'] }}
             testID="season-weeks"
             accessibilityLabel={`${weeks} ${weeks === 1 ? 'week' : 'weeks'} away`}
             accessibilityLiveRegion="polite"
@@ -104,7 +106,7 @@ export default function FirstRunSeason() {
           </RNText>
         </View>
 
-        <View style={{ marginTop: 16 }} testID="season-calendar">
+        <View style={{ marginTop: 8 }} testID="season-calendar">
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <Pressable
               onPress={() => canPrev && shift(-1)}
@@ -134,7 +136,7 @@ export default function FirstRunSeason() {
             {WEEKDAYS.map((d, i) => (
               <RNText
                 key={i}
-                style={{ flex: 1, textAlign: 'center', fontFamily: BODY_BOLD, fontSize: 12, color: NIGHT.fg2, paddingVertical: 8 }}
+                style={{ flex: 1, textAlign: 'center', fontFamily: BODY_BOLD, fontSize: 12, color: NIGHT.fg2, paddingVertical: 6 }}
               >
                 {d}
               </RNText>
@@ -142,7 +144,7 @@ export default function FirstRunSeason() {
           </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
             {cells.map((c, i) => {
-              if (!c) return <View key={`e${i}`} style={{ width: `${100 / 7}%`, aspectRatio: 1 }} />
+              if (!c) return <View key={`e${i}`} style={{ width: `${100 / 7}%`, height: DAY_ROW }} />
               const disabled = c.disabled || c.iso > latest
               const on = !noSeason && c.iso === picked
               const label = new Date(month.y, month.m, c.day).toLocaleDateString('en-US', {
@@ -159,11 +161,12 @@ export default function FirstRunSeason() {
                   accessibilityState={{ selected: on, disabled }}
                   accessibilityLabel={label}
                   testID={`season-day-${c.iso}`}
-                  style={{ width: `${100 / 7}%`, aspectRatio: 1, padding: 2 }}
+                  style={{ width: `${100 / 7}%`, height: DAY_ROW, alignItems: 'center', justifyContent: 'center' }}
                 >
                   <View
                     style={{
-                      flex: 1,
+                      width: DAY_ROW - 2,
+                      height: DAY_ROW - 2,
                       borderRadius: 999,
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -199,7 +202,7 @@ export default function FirstRunSeason() {
         accessibilityLabel="No set season, we'll build a 12-week plan"
         testID="season-none"
         style={({ pressed }) => ({
-          marginTop: 16,
+          marginTop: 12,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',

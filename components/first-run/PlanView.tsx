@@ -14,6 +14,7 @@ import {
   type WeekStripDay,
 } from '../../lib/firstRunStory'
 import { getSportAnimation } from '../../lib/sportAnimations'
+import { getSportSlug } from '../../lib/intakeUI'
 import { selectionFeedback } from '../../lib/haptics'
 import type { Phase } from '../../types'
 import { Beat } from './CategoryStory'
@@ -38,6 +39,19 @@ export interface Rect {
   y: number
   width: number
   height: number
+}
+
+/** Icons that are a round ball still read as a ball when the band's edge cuts them. */
+const BLEED_ICONS = new Set(['basketball', 'soccer', 'volleyball', 'baseball', 'softball'])
+
+/**
+ * Where the band's sport icon sits. A round ball bleeds off the right edge;
+ * any other icon (goggles, a racket, a barbell) sits whole inside the band,
+ * since half of it reads as a blob.
+ */
+export function bandIconFrame(sportName: string, insetTop: number): { size: number; right: number; top: number } {
+  if (BLEED_ICONS.has(getSportSlug(sportName))) return { size: 190, right: -46, top: insetTop }
+  return { size: 132, right: 16, top: insetTop + 24 }
 }
 
 /** The sport icon in the band plays a short action (0.8 s) and holds its pose. */
@@ -99,6 +113,7 @@ export function PlanView({
   const insets = useSafeAreaInsets()
   const { width: W } = useWindowDimensions()
   const H = bandHeight(insets.top)
+  const icon = bandIconFrame(sportName, insets.top)
   const delay = openFrom ? 550 : 0
   const now = new Date()
   const [phase, setPhase] = useState<Phase>('GPP')
@@ -151,11 +166,11 @@ export function PlanView({
           <Animated.View style={[{ width: W, height: H, backgroundColor: category.color }, innerStyle]}>
             <View
               pointerEvents="none"
-              style={{ position: 'absolute', right: -46, top: insets.top, width: 190, height: 190 }}
+              style={{ position: 'absolute', right: icon.right, top: icon.top, width: icon.size, height: icon.size }}
               accessibilityElementsHidden
               importantForAccessibility="no-hide-descendants"
             >
-              <BandIcon name={sportName} play={animate} size={190} />
+              <BandIcon name={sportName} play={animate} size={icon.size} />
             </View>
             <Animated.View style={[{ paddingTop: insets.top + 28, paddingHorizontal: 24 }, textStyle]}>
               <Pressable
@@ -184,7 +199,8 @@ export function PlanView({
                   paddingTop: 6,
                   marginTop: 6,
                   color: '#FFFFFF',
-                  maxWidth: 240,
+                  // Clear of the icon, so the title never runs under it.
+                  maxWidth: Math.min(240, W - 24 - icon.size - icon.right - 4),
                 }}
                 numberOfLines={2}
                 adjustsFontSizeToFit
@@ -248,7 +264,7 @@ export function PlanView({
             testID="phase-caption"
           >
             <RNText style={{ fontFamily: BODY_BOLD }}>
-              {`${STORY_PHASES.find((p) => p.phase === phase)?.label}. `}
+              {`${STORY_PHASES.find((p) => p.phase === phase)?.label} · ${weeksPerPhase} ${weeksPerPhase === 1 ? 'week' : 'weeks'}. `}
             </RNText>
             {phaseCaption(phase, sportName, category, noSeason)}
           </RNText>
@@ -272,7 +288,7 @@ export function PlanView({
                   testID={`week-${d.short}`}
                   style={{
                     flex: 1,
-                    height: 52,
+                    height: 60,
                     borderRadius: 8,
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -284,7 +300,8 @@ export function PlanView({
                   <RNText
                     numberOfLines={1}
                     adjustsFontSizeToFit
-                    style={{ fontFamily: DISPLAY, fontSize: 15, lineHeight: 16, color: on ? '#FFFFFF' : d.tag ? NIGHT.fg : NIGHT.line }}
+                    minimumFontScale={0.8}
+                    style={{ fontFamily: DISPLAY, fontSize: 19, lineHeight: 20, color: on ? '#FFFFFF' : d.tag ? NIGHT.fg : NIGHT.line }}
                   >
                     {d.tag ?? '—'}
                   </RNText>
@@ -297,7 +314,7 @@ export function PlanView({
           </RNText>
         </Beat>
 
-        <Beat at={delay + PLAN_BEATS.total} play={animate} style={{ marginTop: 'auto', paddingTop: 12 }}>
+        <Beat at={delay + PLAN_BEATS.total} play={animate} style={{ marginTop: 28 }}>
           <View
             style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 12 }}
             accessible
@@ -313,7 +330,8 @@ export function PlanView({
           </View>
         </Beat>
 
-        <Beat at={delay + PLAN_BEATS.save} play={animate} style={{ marginTop: 12 }}>
+        {/* Save holds the bottom; the plan reads top to bottom with no gap in it. */}
+        <Beat at={delay + PLAN_BEATS.save} play={animate} style={{ marginTop: 'auto', paddingTop: 24 }}>
           {saveBlocked ? (
             <RNText
               style={{ fontFamily: BODY, fontSize: 14, color: NIGHT.fg2, marginBottom: 8 }}

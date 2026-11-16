@@ -17,6 +17,22 @@ import { PAGE_EASE } from './intakeMotion'
 
 export const CATEGORY_TILE_HEIGHT = 168
 
+/**
+ * Bebas Neue's advance widths for A–Z, in em, read from the font file
+ * (BebasNeue_400Regular.ttf, 1000 units per em). M and W run nearly three
+ * times as wide as I, so a per-letter sum beats one average width.
+ */
+const BEBAS_CAPS_EM: Record<string, number> = {
+  A: 0.401, B: 0.404, C: 0.383, D: 0.406, E: 0.363, F: 0.344, G: 0.391, H: 0.42, I: 0.192,
+  J: 0.265, K: 0.414, L: 0.344, M: 0.538, N: 0.427, O: 0.4, P: 0.386, Q: 0.4, R: 0.403,
+  S: 0.372, T: 0.364, U: 0.402, V: 0.382, W: 0.557, X: 0.406, Y: 0.394, Z: 0.362,
+}
+
+/** How wide `text` sets in Bebas Neue, in em. Anything but A–Z counts as wide as W. */
+export function displayWidthEm(text: string): number {
+  return [...text.toUpperCase()].reduce((sum, ch) => sum + (BEBAS_CAPS_EM[ch] ?? 0.557), 0)
+}
+
 /** Tiles and the name shrink on short screens so the whole story fits without scrolling. */
 export function categoryLayout(
   usableHeight: number,
@@ -24,8 +40,8 @@ export function categoryLayout(
   name = 'ENDURANCE'
 ): { tile: number; name: number } {
   const tile = Math.round(Math.min(CATEGORY_TILE_HEIGHT, Math.max(112, (usableHeight - 360) / 2)))
-  // Bebas Neue caps run about 0.44 em wide, so the longest name still fits on one line.
-  const fitsWidth = usableWidth / (Math.max(1, name.length) * 0.44)
+  // The name stays on one line, with 6% to spare for rendering differences.
+  const fitsWidth = usableWidth / (displayWidthEm(name) * 1.06)
   return { tile, name: Math.floor(Math.min(128, usableHeight * 0.17, fitsWidth)) }
 }
 
@@ -174,6 +190,8 @@ export function CategoryStory({
             style={{ fontFamily: DISPLAY, fontSize: size.name, lineHeight: Math.round(size.name * 0.88), paddingTop: Math.round(size.name * 0.1), color: category.color }}
             accessibilityRole="header"
             numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.8}
             testID="reveal-category-name"
           >
             {category.name.toUpperCase()}

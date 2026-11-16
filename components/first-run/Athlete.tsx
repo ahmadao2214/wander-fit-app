@@ -1,26 +1,24 @@
-import { useEffect, useState } from 'react'
-import Svg, { Circle, Ellipse, G, Polygon, Rect } from 'react-native-svg'
-import { ATHLETES, ATHLETE_VIEWBOX, athleteShapes, poseAt, type Shape } from '../../lib/athletePose'
+import { useEffect, useMemo } from 'react'
+import Svg, { Line } from 'react-native-svg'
+import Animated, { Easing, useAnimatedProps, useDerivedValue, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated'
+import { ATHLETES, ATHLETE_VIEWBOX, athleteColors, athleteStrokes, poseFrom, type Stroke } from '../../lib/athletePose'
 import type { CategoryId } from '../../lib/firstRunStory'
 
-function ShapeEl({ s }: { s: Shape }) {
-  switch (s.kind) {
-    case 'polygon':
-      return <Polygon points={s.points} fill={s.fill} />
-    case 'circle':
-      return <Circle cx={s.cx} cy={s.cy} r={s.r} fill={s.fill} />
-    case 'ellipse':
-      return <Ellipse cx={s.cx} cy={s.cy} rx={s.rx} ry={s.ry} fill={s.fill} rotation={s.rotate} origin={`${s.cx}, ${s.cy}`} />
-    case 'rect':
-      return <Rect x={s.x} y={s.y} width={s.width} height={s.height} rx={s.r} fill={s.fill} />
-  }
+const AnimatedLine = Animated.createAnimatedComponent(Line)
+
+function StrokeLine({ strokes, i }: { strokes: SharedValue<Stroke[]>; i: number }) {
+  const props = useAnimatedProps(() => {
+    const s = strokes.value[i]
+    return { x1: s.x1, y1: s.y1, x2: s.x2, y2: s.y2, strokeWidth: s.w, stroke: s.color }
+  })
+  return <AnimatedLine animatedProps={props} strokeLinecap="round" />
 }
 
 /**
  * A faceless silhouette athlete for a category tile. Still, it holds its
- * first pose. With `play`, it runs its move once (under a second) and holds
- * the last pose. `settled` shows the last pose with no motion (Reduce Motion,
- * or a revisit).
+ * first pose. With `play`, it runs its move once (under a second) on the UI
+ * thread and holds the last pose. `settled` shows the last pose with no
+ * motion (Reduce Motion, or a revisit).
  */
 export function Athlete({
   cat,
@@ -35,35 +33,27 @@ export function Athlete({
   play: boolean
   settled: boolean
 }) {
-  const [k, setK] = useState(settled ? 1 : 0)
-
+  const def = ATHLETES[cat]
+  const k = useSharedValue(settled ? 1 : 0)
   useEffect(() => {
     if (settled) {
-      setK(1)
+      k.value = 1
       return
     }
-    if (!play) return
-    const ms = ATHLETES[cat].ms
-    let raf = 0
-    const t0 = Date.now()
-    const tick = () => {
-      const next = Math.min(1, (Date.now() - t0) / ms)
-      setK(next)
-      if (next < 1) raf = requestAnimationFrame(tick)
-    }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [play, settled, cat])
+    if (play) k.value = withTiming(1, { duration: def.ms, easing: Easing.linear })
+  }, [play, settled, def.ms, k])
 
-  const pose = poseAt(cat, k)
-  const shapes = athleteShapes(cat, pose, lit, tile)
+  const colors = useMemo(() => athleteColors(lit, tile), [lit, tile])
+  const { frames, female, tool } = def
+  const strokes = useDerivedValue(() => athleteStrokes(poseFrom(frames, k.value), !!female, tool, colors))
+  // The stroke count is fixed per category, so each stroke keeps its line.
+  const count = useMemo(() => athleteStrokes(poseFrom(frames, 0), !!female, tool, colors).length, [frames, female, tool, colors])
+
   return (
     <Svg width="100%" height="100%" viewBox={ATHLETE_VIEWBOX} preserveAspectRatio="xMidYMax meet" accessible={false}>
-      <G transform={pose.flip ? 'translate(100 0) scale(-1 1)' : undefined}>
-        {shapes.map((s, i) => (
-          <ShapeEl key={i} s={s} />
-        ))}
-      </G>
+      {Array.from({ length: count }, (_, i) => (
+        <StrokeLine key={i} strokes={strokes} i={i} />
+      ))}
     </Svg>
   )
 }

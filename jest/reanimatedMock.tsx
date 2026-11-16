@@ -5,7 +5,7 @@
  *
  *   jest.mock('react-native-reanimated', () => jest.requireActual('../../jest/reanimatedMock'))
  */
-import { useRef } from 'react'
+import { createElement, useRef, type ComponentType } from 'react'
 import { Text, View } from 'react-native'
 
 const identity = (t: number) => t
@@ -26,6 +26,12 @@ export function useSharedValue<T>(initial: T) {
 export function useAnimatedStyle<T>(fn: () => T): T {
   return fn()
 }
+export function useAnimatedProps<T>(fn: () => T): T {
+  return fn()
+}
+export function useDerivedValue<T>(fn: () => T) {
+  return { value: fn() }
+}
 export const withTiming = <T,>(to: T) => to
 export const withDelay = <T,>(_ms: number, to: T) => to
 export const withRepeat = <T,>(to: T) => to
@@ -33,5 +39,11 @@ export const withSequence = <T,>(...steps: T[]) => steps[steps.length - 1]
 export const cancelAnimation = () => {}
 export const interpolateColor = (_v: number, _i: number[], out: string[]) => out[out.length - 1]
 
-const Animated = { View, Text, createAnimatedComponent: <C,>(c: C) => c }
+// Animated props land on the component as plain props.
+function createAnimatedComponent<P extends object>(C: ComponentType<P>) {
+  return function AnimatedComponent({ animatedProps, ...rest }: P & { animatedProps?: Partial<P> }) {
+    return createElement(C, { ...(rest as P), ...animatedProps })
+  }
+}
+const Animated = { View, Text, createAnimatedComponent }
 export default Animated

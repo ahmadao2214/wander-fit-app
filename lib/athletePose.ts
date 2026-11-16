@@ -3,25 +3,27 @@
  * (ported from docs/first-run-v2/prototype/athlete.js).
  *
  * A 2D skeleton with absolute joint angles (0° points straight down, 90° the
- * way the athlete faces, 180° straight up). Bodies are shaped masses: a
- * tapered torso, limbs that narrow joint to joint, a head and neck, and feet.
- * Each category has keyframed poses; the lit tile plays its move once and the
- * others hold a still. This file only computes shapes; `Athlete.tsx` draws them.
+ * way the athlete faces, 180° straight up), drawn pictogram-style: every part
+ * is a round-capped stroke (torso, limbs, feet, a head set slightly apart,
+ * the bat and the sled), so joints read smooth at any pose. Each category has
+ * keyframed poses; the lit tile plays its move once and the others hold a
+ * still. This file only computes the strokes; `Athlete.tsx` draws them. The
+ * pose math runs as worklets, so the move plays on the UI thread.
  */
 import { mixHex, type CategoryId } from './firstRunStory'
 
 const L = { torso: 30, neck: 5, head: 7.2, upper: 16, fore: 15, thigh: 21, shin: 21, foot: 9 }
-const rad = (a: number) => (a * Math.PI) / 180
 type Pt = [number, number]
-const step = (x: number, y: number, ang: number, len: number): Pt => [
-  x + Math.sin(rad(ang)) * len,
-  y + Math.cos(rad(ang)) * len,
-]
+function step(x: number, y: number, ang: number, len: number): Pt {
+  'worklet'
+  const r = (ang * Math.PI) / 180
+  return [x + Math.sin(r) * len, y + Math.cos(r) * len]
+}
 
 /** [rootX, rootY, torso, farUpper, farFore, nearUpper, nearFore, farThigh, farShin, nearThigh, nearShin, tool] */
 export type Pose = number[] & { flip?: boolean }
 
-interface Frame {
+export interface Frame {
   t: number
   p: number[]
   /** The athlete faces the other way from this key on (Endurance's cut). */
@@ -83,132 +85,129 @@ export const ATHLETES: Record<CategoryId, AthleteDef> = {
 }
 
 /** The SVG viewBox holds each athlete's whole motion, so nothing clips at the tile edges. */
-export const ATHLETE_VIEWBOX = '-8 -22 116 142'
+export const ATHLETE_VIEWBOX = '-8 -22 116 144'
 
-const lerp = (a: number, b: number, k: number) => a + (b - a) * k
-const ease = (k: number) => (k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2)
-
-/** The pose `k` (0 → 1) of the way through the athlete's move. */
-export function poseAt(cat: CategoryId, k: number): Pose {
-  const f = ATHLETES[cat].frames
+/** The pose `k` (0 → 1) of the way through a move's keyframes. */
+export function poseFrom(frames: readonly Frame[], k: number): Pose {
+  'worklet'
   let i = 0
-  while (i < f.length - 2 && k > f[i + 1].t) i++
-  const a = f[i]
-  const b = f[i + 1]
-  const local = ease(Math.min(1, Math.max(0, (k - a.t) / (b.t - a.t))))
-  const p = a.p.map((v, j) => lerp(v, b.p[j], local)) as Pose
+  while (i < frames.length - 2 && k > frames[i + 1].t) i++
+  const a = frames[i]
+  const b = frames[i + 1]
+  const x = Math.min(1, Math.max(0, (k - a.t) / (b.t - a.t)))
+  const local = x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2
+  const p = a.p.map((v, j) => v + (b.p[j] - v) * local) as Pose
   p.flip = local >= 0.5 ? !!b.flip : !!a.flip
   return p
 }
 
-export type Shape =
-  | { kind: 'polygon'; points: string; fill: string }
-  | { kind: 'circle'; cx: number; cy: number; r: number; fill: string }
-  | { kind: 'ellipse'; cx: number; cy: number; rx: number; ry: number; rotate: number; fill: string }
-  | { kind: 'rect'; x: number; y: number; width: number; height: number; r: number; fill: string }
+/** The pose `k` (0 → 1) of the way through the athlete's move. */
+export function poseAt(cat: CategoryId, k: number): Pose {
+  return poseFrom(ATHLETES[cat].frames, k)
+}
+
+/** One round-capped stroke. A dot (the head) is a stroke with no length. */
+export interface Stroke {
+  x1: number
+  y1: number
+  x2: number
+  y2: number
+  /** Stroke width, in viewBox units. */
+  w: number
+  color: string
+}
+
+export interface AthleteColors {
+  body: string
+  far: string
+  tool: string
+}
 
 /** Opaque colors mixed against the tile, so overlapping limbs don't show seams. */
-export function athleteColors(lit: boolean, tile: string) {
+export function athleteColors(lit: boolean, tile: string): AthleteColors {
   return lit
-    ? { body: '#FFFFFF', far: mixHex('#FFFFFF', tile, 0.66), kit: mixHex('#0B1220', tile, 0.28), tool: '#0B1220' }
-    : {
-        body: mixHex('#FFFFFF', tile, 0.24),
-        far: mixHex('#FFFFFF', tile, 0.15),
-        kit: mixHex('#FFFFFF', tile, 0.34),
-        tool: mixHex('#FFFFFF', tile, 0.22),
-      }
+    ? { body: '#FFFFFF', far: mixHex('#FFFFFF', tile, 0.62), tool: '#0B1220' }
+    : { body: mixHex('#FFFFFF', tile, 0.24), far: mixHex('#FFFFFF', tile, 0.14), tool: mixHex('#FFFFFF', tile, 0.2) }
 }
 
-const r1 = (v: number) => Math.round(v * 10) / 10
+/** Stroke widths: torso, upper arm, forearm, thigh, shin, foot. */
+const BUILD = {
+  male: { torso: 16, ua: 8, fa: 7, th: 12, sn: 9, ft: 6 },
+  female: { torso: 13.5, ua: 7, fa: 6, th: 11, sn: 8, ft: 5.5 },
+}
+const GROUND = 117
 
-/** A segment that narrows from w1 to w2, with rounded joints. */
-function taper(out: Shape[], x1: number, y1: number, x2: number, y2: number, w1: number, w2: number, fill: string, round = true) {
-  const dx = x2 - x1
-  const dy = y2 - y1
-  const len = Math.hypot(dx, dy) || 1
-  const nx = -dy / len
-  const ny = dx / len
-  const pts: Pt[] = [
-    [x1 + (nx * w1) / 2, y1 + (ny * w1) / 2],
-    [x2 + (nx * w2) / 2, y2 + (ny * w2) / 2],
-    [x2 - (nx * w2) / 2, y2 - (ny * w2) / 2],
-    [x1 - (nx * w1) / 2, y1 - (ny * w1) / 2],
-  ]
-  out.push({ kind: 'polygon', points: pts.map((p) => `${r1(p[0])},${r1(p[1])}`).join(' '), fill })
-  if (round) {
-    out.push({ kind: 'circle', cx: r1(x1), cy: r1(y1), r: r1(w1 / 2), fill })
-    out.push({ kind: 'circle', cx: r1(x2), cy: r1(y2), r: r1(w2 / 2), fill })
+/**
+ * Every stroke for one pose, back to front: the tool behind, the far arm and
+ * leg, the torso and head, the near leg and arm, then the bat. The count is
+ * fixed per category, so each stroke can be one animated SVG line.
+ */
+export function athleteStrokes(
+  pose: Pose,
+  female: boolean,
+  tool: 'bat' | 'sled' | undefined,
+  c: AthleteColors
+): Stroke[] {
+  'worklet'
+  const W = female ? BUILD.female : BUILD.male
+  const [rx, ry, tor, fu, ff, nu, nf, ft, fs, nt, ns, toolAng] = pose
+  const out: Stroke[] = []
+  const line = (x1: number, y1: number, x2: number, y2: number, w: number, color: string) => {
+    // The Endurance cut faces the other way: mirror inside the 100-wide frame.
+    out.push(pose.flip ? { x1: 100 - x1, y1, x2: 100 - x2, y2, w, color } : { x1, y1, x2, y2, w, color })
   }
-}
-
-/** Every shape for one frame, back to front. */
-export function athleteShapes(cat: CategoryId, pose: Pose, lit: boolean, tile: string): Shape[] {
-  const def = ATHLETES[cat]
-  const female = !!def.female
-  const [rx, ry, tor, fu, ff, nu, nf, ft, fs, nt, ns, tool] = pose
-  const c = athleteColors(lit, tile)
-  const W = female
-    ? { sh: 15, waist: 10, hip: 13, ua: [6.5, 5], fa: [5, 3.8], th: [11, 7], sn: [7, 4.6] }
-    : { sh: 19, waist: 12, hip: 14, ua: [8, 6], fa: [6, 4.4], th: [12.5, 8], sn: [8, 5] }
-  const out: Shape[] = []
   const [sx, sy] = step(rx, ry, tor, L.torso)
 
-  const arm = (u: number, f: number, color: string, kit?: string): Pt => {
+  const arm = (u: number, f: number, color: string): Pt => {
     const [ex, ey] = step(sx, sy, u, L.upper)
     const [hx, hy] = step(ex, ey, f, L.fore)
-    taper(out, sx, sy, ex, ey, W.ua[0], W.ua[1], color)
-    taper(out, ex, ey, hx, hy, W.fa[0], W.fa[1], color)
-    out.push({ kind: 'circle', cx: r1(hx), cy: r1(hy), r: r1(W.fa[1] * 0.75), fill: color })
-    if (kit) {
-      const [kx, ky] = step(sx, sy, u, L.upper * 0.45)
-      taper(out, sx, sy, kx, ky, W.ua[0] + 1.5, W.ua[0] + 1, kit, false)
-    }
+    line(sx, sy, ex, ey, W.ua, color)
+    line(ex, ey, hx, hy, W.fa, color)
     return [hx, hy]
   }
-  const leg = (t: number, s: number, color: string, kit?: string) => {
+  const leg = (t: number, s: number, color: string) => {
     const [kx, ky] = step(rx, ry, t, L.thigh)
     const [ax, ay] = step(kx, ky, s, L.shin)
-    const [tx, ty] = step(ax, ay, s + 90, L.foot)
-    taper(out, rx, ry, kx, ky, W.th[0], W.th[1], color)
-    taper(out, kx, ky, ax, ay, W.sn[0], W.sn[1], color)
-    taper(out, ax, ay, tx, ty, W.sn[1] + 1, 3.5, color)
-    if (kit) {
-      const [mx, my] = step(rx, ry, t, L.thigh * 0.55)
-      taper(out, rx, ry, mx, my, W.th[0] + 1.5, W.th[0] + 0.5, kit, false)
-    }
+    const [tx, ty] = step(ax, ay, s + 90, L.foot - W.ft / 2)
+    line(rx, ry, kx, ky, W.th, color)
+    line(kx, ky, ax, ay, W.sn, color)
+    line(ax, ay, tx, ty, W.ft, color)
   }
 
-  if (def.tool === 'sled') {
+  if (tool === 'sled') {
+    // A push sled seen side-on: the post the hands drive into, the runner
+    // along the ground, and a stack of plates on the back of it.
     const [ex, ey] = step(sx, sy, nu, L.upper)
     const [hx, hy] = step(ex, ey, nf, L.fore)
-    const g = 117 // ground
-    out.push({ kind: 'rect', x: r1(hx + 1), y: r1(hy - 4), width: 5, height: r1(g - hy), r: 2, fill: c.tool })
-    out.push({ kind: 'rect', x: r1(hx - 2), y: g - 5, width: 32, height: 5, r: 2.5, fill: c.tool })
-    out.push({ kind: 'rect', x: r1(hx + 11), y: g - 17, width: 13, height: 12, r: 2, fill: c.tool })
+    line(hx + 1, hy - 1, hx + 4, GROUND - 3, 4.5, c.tool)
+    line(hx - 4, GROUND - 2, hx + 15, GROUND - 2, 4.5, c.tool)
+    line(hx + 10, GROUND - 5, hx + 10, GROUND - 15, 10, c.tool)
   }
   arm(fu, ff, c.far)
   leg(ft, fs, c.far)
-  // torso: shoulders wider than the waist, then the hips
-  const [wx, wy] = step(rx, ry, tor, L.torso * 0.35)
-  taper(out, sx, sy, wx, wy, W.sh, W.waist, c.body)
-  taper(out, wx, wy, rx, ry, W.waist, W.hip, c.body)
-  const [k1x, k1y] = step(sx, sy, tor + 180, 1.5)
-  const [k2x, k2y] = step(sx, sy, tor + 180, L.torso * 0.66)
-  taper(out, k1x, k1y, k2x, k2y, W.sh, W.waist + 0.5, c.kit, false)
-  const [nx, ny] = step(sx, sy, tor, L.neck)
-  taper(out, sx, sy, nx, ny, 6, 5, c.body)
-  const [hx, hy] = step(sx, sy, tor, L.neck + L.head)
-  out.push({ kind: 'ellipse', cx: r1(hx), cy: r1(hy), rx: r1(L.head * 0.9), ry: L.head, rotate: r1(180 - tor), fill: c.body })
+  // The torso's round ends sit inside the shoulders and hips.
+  const [t1x, t1y] = step(rx, ry, tor, W.torso * 0.3)
+  const [t2x, t2y] = step(sx, sy, tor + 180, W.torso * 0.4)
+  line(t1x, t1y, t2x, t2y, W.torso, c.body)
+  // The head, set a little apart from the shoulders.
+  const [hx, hy] = step(sx, sy, tor, L.neck + L.head + 1.5)
+  line(hx, hy, hx + 0.01, hy, L.head * 2, c.body)
   if (female) {
-    const [px, py] = step(hx, hy, tor + 205, L.head)
-    const [qx, qy] = step(px, py, tor + 160, 9)
-    taper(out, px, py, qx, qy, 5, 2.5, c.body)
+    const [px, py] = step(hx, hy, tor + 205, L.head * 0.85)
+    const [qx, qy] = step(px, py, tor + 165, 8)
+    line(px, py, qx, qy, 4.5, c.body)
   }
-  leg(nt, ns, c.body, c.kit)
-  const [hx2, hy2] = arm(nu, nf, c.body, c.kit)
-  if (def.tool === 'bat') {
-    const [bx, by] = step(hx2, hy2, tool, 30)
-    taper(out, hx2, hy2, bx, by, 2.6, 4.2, c.tool)
+  leg(nt, ns, c.body)
+  const [hx2, hy2] = arm(nu, nf, c.body)
+  if (tool === 'bat') {
+    const [bx, by] = step(hx2, hy2, toolAng, 30)
+    line(hx2, hy2, bx, by, 3.6, c.tool)
   }
   return out
+}
+
+/** Every stroke for one frame of a category's athlete. */
+export function athleteShapes(cat: CategoryId, pose: Pose, lit: boolean, tile: string): Stroke[] {
+  const def = ATHLETES[cat]
+  return athleteStrokes(pose, !!def.female, def.tool, athleteColors(lit, tile))
 }

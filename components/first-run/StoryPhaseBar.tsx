@@ -8,9 +8,13 @@ import { PAGE_EASE } from './intakeMotion'
 
 export const PHASE_BAR_HEIGHT = 60
 
-/** "GPP · 4 wk", or with ranges "GPP · Wk 1–4". */
+/**
+ * The small line under a phase name: just "GPP" on the reveal, where the
+ * caption below says how long each phase runs, or "GPP · Wk 1–4" with ranges
+ * on the Program tab.
+ */
 export function phaseDetail(phase: Phase, index: number, weeksPerPhase: number, ranges: boolean): string {
-  if (!ranges) return `${phase} · ${weeksPerPhase} wk`
+  if (!ranges) return phase
   const from = index * weeksPerPhase + 1
   const to = (index + 1) * weeksPerPhase
   return `${phase} · Wk ${from}–${to}`
@@ -20,6 +24,7 @@ function Segment({
   phase,
   label,
   detail,
+  spoken,
   selected,
   onPress,
   draw,
@@ -30,6 +35,8 @@ function Segment({
   phase: Phase
   label: string
   detail: string
+  /** What a screen reader says, with the length even when the bar hides it. */
+  spoken: string
   selected: boolean
   onPress?: () => void
   draw: boolean
@@ -69,13 +76,13 @@ function Segment({
       <RNText style={{ fontFamily: BODY_BOLD, fontSize: 12, color: '#FFFFFF', opacity: 0.9 }}>{detail}</RNText>
     </Animated.View>
   )
-  if (!onPress) return <View style={{ flex: 1 }} accessible accessibilityLabel={`${label}, ${detail}`}>{body}</View>
+  if (!onPress) return <View style={{ flex: 1 }} accessible accessibilityLabel={spoken}>{body}</View>
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected }}
-      accessibilityLabel={`${label}, ${detail}`}
+      accessibilityLabel={spoken}
       testID={`phase-${phase}`}
       style={{ flex: 1 }}
     >
@@ -114,6 +121,7 @@ export function StoryPhaseBar({
           phase={p.phase}
           label={p.label}
           detail={phaseDetail(p.phase, i, weeksPerPhase, ranges)}
+          spoken={`${p.label}, ${phaseDetail(p.phase, i, weeksPerPhase, true)}`}
           selected={selected === p.phase}
           onPress={onSelect ? () => onSelect(p.phase) : undefined}
           draw={draw}
