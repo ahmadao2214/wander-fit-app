@@ -25,7 +25,7 @@ jest.mock('react-native-reanimated', () => jest.requireActual('../../../jest/rea
 jest.mock('../../../hooks/useReducedMotion', () => ({ useReducedMotion: () => true }))
 
 // eslint-disable-next-line import/first
-import { ProgramSeasonHeader, isUpNext, seasonPosition, upNextLabel, welcomeTitleHeight } from '../ProgramSeasonHeader'
+import { ProgramSeasonHeader, isUpNext, seasonPosition, upNextLabel, welcomeTitleHeight, youAreHere } from '../ProgramSeasonHeader'
 
 const wrapper = ({ children }: { children: React.ReactNode }) => <TamaguiProvider config={config}>{children}</TamaguiProvider>
 
@@ -93,6 +93,13 @@ describe('seasonPosition', () => {
     expect(seasonPosition('GPP', 1, 4)).toBeCloseTo(0.5 / 12)
     expect(seasonPosition('SPP', 1, 4)).toBeCloseTo(4.5 / 12)
     expect(seasonPosition('SSP', 4, 4)).toBeCloseTo(11.5 / 12)
+  })
+})
+
+describe('youAreHere', () => {
+  it('points from the left early in the season and from the right near the end, so it stays on screen', () => {
+    expect(youAreHere(0.5 / 12)).toEqual({ side: 'left', offset: '4%', text: '▲ You are here' })
+    expect(youAreHere(11.5 / 12)).toEqual({ side: 'right', offset: '4%', text: 'You are here ▲' })
   })
 })
 

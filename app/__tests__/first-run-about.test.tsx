@@ -14,8 +14,13 @@ jest.mock('convex/react', () => ({
   },
 }))
 const mockPush = jest.fn()
+// The latest focus callback, so a test can leave the screen and come back.
+let mockFocus: (() => void | (() => void)) | null = null
 jest.mock('expo-router', () => ({
-  useFocusEffect: (cb: () => void) => jest.requireActual('react').useEffect(cb, [cb]),
+  useFocusEffect: (cb: () => void | (() => void)) => {
+    mockFocus = cb
+    jest.requireActual('react').useEffect(cb, [cb])
+  },
   useRouter: () => ({ push: mockPush, back: jest.fn(), replace: jest.fn(), canGoBack: () => true }),
 }))
 jest.mock('react-native-safe-area-context', () => ({
@@ -83,6 +88,31 @@ describe('First Run about you (player card)', () => {
     await showAbout()
     expect(screen.getByTestId('about-question').props.children).toBe('YEARS TRAINING FOR YOUR SPORT')
     expect(screen.getByTestId('card-age').props.children).toBe('36+')
+  })
+})
+
+describe('First Run about you, back from the reveal', () => {
+  it('starts over at age, so a finished card can still be corrected', async () => {
+    await showAbout()
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('age-14-17'))
+    })
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('years-new'))
+    })
+    expect(mockPush).toHaveBeenCalledWith('/(first-run)/reveal')
+    expect(screen.getByTestId('about-question').props.children).toBe('YEARS TRAINING FOR YOUR SPORT')
+    // Leave for the reveal, then come back ("Change my answers").
+    await act(async () => {
+      const blur = mockFocus?.()
+      if (typeof blur === 'function') blur()
+      mockFocus?.()
+    })
+    expect(screen.getByTestId('about-question').props.children).toBe('AGE GROUP')
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('age-36+'))
+    })
+    expect((await testDraft.reopen()).answers.ageGroup).toBe('36+')
   })
 })
 

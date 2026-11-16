@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Pressable, Text as RNText, View, useWindowDimensions } from 'react-native'
-import { useRouter } from 'expo-router'
+import { useFocusEffect, useRouter } from 'expo-router'
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import { IntakeFrame } from '../../components/first-run/IntakeFrame'
 import { BODY_BOLD, DISPLAY, Headline, SportShape, headlineSize } from '../../components/first-run/Night'
@@ -108,6 +108,23 @@ export default function FirstRunAbout() {
   const color = category?.color ?? NIGHT.action
   const timers = useRef<ReturnType<typeof setTimeout>[]>([])
   useEffect(() => () => timers.current.forEach(clearTimeout), [])
+  // Back from the reveal ("Change my answers", or swipe-back), the card
+  // starts over at age so either answer can be fixed. Only a return resets
+  // it, never a save, so an answer's beat still plays out.
+  const left = useRef(false)
+  useFocusEffect(
+    useCallback(() => {
+      if (left.current) {
+        left.current = false
+        timers.current.forEach(clearTimeout)
+        timers.current = []
+        setQuestion(null)
+      }
+      return () => {
+        left.current = true
+      }
+    }, [])
+  )
   const later = (ms: number, fn: () => void) => {
     if (!motion.moving) return fn()
     timers.current.push(setTimeout(fn, ms))

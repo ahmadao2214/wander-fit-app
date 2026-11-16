@@ -22,6 +22,16 @@ export function seasonPosition(phase: Phase, week: number, weeksPerPhase: number
   return (i * weeksPerPhase + w - 0.5) / (PHASES.length * weeksPerPhase)
 }
 
+/**
+ * Where the "You are here" label sits. Its arrow always points at the week;
+ * past 60% of the bar the arrow goes on the text's right end, so the label
+ * reads leftward and stays on screen.
+ */
+export function youAreHere(at: number): { side: 'left' | 'right'; offset: `${number}%`; text: string } {
+  if (at <= 0.6) return { side: 'left', offset: `${Math.round(at * 100)}%`, text: '▲ You are here' }
+  return { side: 'right', offset: `${Math.round((1 - at) * 100)}%`, text: 'You are here ▲' }
+}
+
 /** "Up next · Tomorrow", or just "Up next" when the day isn't known. */
 export function upNextLabel(next?: string): string {
   return next ? `Up next · ${next}` : 'Up next'
@@ -77,6 +87,7 @@ export function ProgramSeasonHeader({ welcome, kept, next }: { welcome: boolean;
   const weeksPerPhase = state.weeksPerPhase ?? 4
   const totalWeeks = weeksPerPhase * PHASES.length
   const at = seasonPosition(state.phase as Phase, state.week, weeksPerPhase)
+  const here = youAreHere(at)
 
   return (
     <YStack px="$5" testID="program-season-header">
@@ -91,15 +102,14 @@ export function ProgramSeasonHeader({ welcome, kept, next }: { welcome: boolean;
         <View style={{ height: 20, marginTop: 4 }}>
           <Text
             position="absolute"
-            l={`${Math.round(at * 100)}%`}
-            ml={-6}
+            style={here.side === 'left' ? { left: here.offset, marginLeft: -6 } : { right: here.offset, marginRight: -6 }}
             fontFamily="$body"
             fontSize={12}
             fontWeight="700"
             color="$primaryText"
             testID="program-you-are-here"
           >
-            ▲ You are here
+            {here.text}
           </Text>
         </View>
       </View>
