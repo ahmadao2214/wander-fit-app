@@ -43,6 +43,9 @@ describe("MCP sign-in discovery", () => {
     expect(unauthorizedHeader({ CONVEX_SITE_URL: site })).toBe(
       `Bearer resource_metadata="${site}/.well-known/oauth-protected-resource/mcp", scope="openid profile email"`,
     );
+    expect(unauthorizedHeader({ CONVEX_SITE_URL: site }, "invalid_token")).toBe(
+      `Bearer error="invalid_token", resource_metadata="${site}/.well-known/oauth-protected-resource/mcp", scope="openid profile email"`,
+    );
   });
 
   it("serves the metadata and a 401 that links to it", async () => {

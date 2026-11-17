@@ -43,11 +43,14 @@ export function protectedResourceMetadata(env: McpEnv) {
   };
 }
 
-export function unauthorizedHeader(env: McpEnv): string {
+/** RFC 6750 challenge. `error` is set when a token was sent and refused. */
+export function unauthorizedHeader(env: McpEnv, error?: "invalid_token"): string {
   const resource = resourceUrl(env);
-  return resource
-    ? `Bearer resource_metadata="${resourceMetadataUrl(resource)}", scope="${SCOPES.join(" ")}"`
-    : 'Bearer realm="wander-fit"';
+  const params = resource
+    ? [`resource_metadata="${resourceMetadataUrl(resource)}"`, `scope="${SCOPES.join(" ")}"`]
+    : ['realm="wander-fit"'];
+  if (error) params.unshift(`error="${error}"`);
+  return `Bearer ${params.join(", ")}`;
 }
 
 export const CORS_HEADERS: Record<string, string> = {

@@ -75,12 +75,22 @@ const json = (body: unknown, status = 200, headers: Record<string, string> = {})
 const mcp = httpAction(async (ctx, request) => {
   // Convex has already checked the bearer token against auth.config.ts: either the
   // app's session token or a Clerk OAuth token whose audience is this endpoint.
-  const identity = await ctx.auth.getUserIdentity();
+  // A token Convex rejects throws rather than returning null; the client still needs a
+  // 401 so it signs the athlete in again. The reason is logged, never the token.
+  let identity: Awaited<ReturnType<typeof ctx.auth.getUserIdentity>>;
+  let rejected = false;
+  try {
+    identity = await ctx.auth.getUserIdentity();
+  } catch (error) {
+    console.warn("MCP token rejected:", error instanceof Error ? error.message : String(error));
+    identity = null;
+    rejected = true;
+  }
   if (!identity) {
     return json(
       { jsonrpc: "2.0", id: null, error: { code: -32001, message: "Sign in to Wander Fit first" } },
       401,
-      { "WWW-Authenticate": unauthorizedHeader(env()) },
+      { "WWW-Authenticate": unauthorizedHeader(env(), rejected ? "invalid_token" : undefined) },
     );
   }
 
