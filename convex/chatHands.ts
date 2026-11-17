@@ -1,11 +1,17 @@
-import { action, mutation, query } from "./_generated/server";
+/**
+ * The chat hands: what a chat connector may read and change on the athlete's
+ * own program (docs/adr/0001-chat-hands-stay-inside-the-program.md).
+ *
+ * Every function here is internal and takes the Clerk user id that
+ * convex/http.ts verified from a Clerk OAuth access token. Nothing here is
+ * callable from a client, so the app's own session token cannot reach it.
+ */
+import { internalMutation, internalQuery } from "./_generated/server";
 import type { QueryCtx } from "./_generated/server";
-import { makeFunctionReference } from "convex/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
-import { requireCurrentUser } from "./authHelpers";
 import { writeExerciseOrder } from "./gppWorkoutSessions";
-import { applyWorkoutSwap, resolveSlotPair } from "./scheduleOverrides";
+import { applyWorkoutSwap, resolveSlotPair, todayWorkoutFor } from "./scheduleOverrides";
 import type { WorkoutSlotRef } from "./scheduleOverrides";
 import {
   OMITTED_WRITES,
@@ -15,17 +21,15 @@ import {
   swapVersion,
 } from "./chatHandsVersion";
 
-const phaseValidator = v.union(
-  v.literal("GPP"),
-  v.literal("SPP"),
-  v.literal("SSP"),
-);
+const phaseValidator = v.union(v.literal("GPP"), v.literal("SPP"), v.literal("SSP"));
 
 const slotValidator = v.object({
   phase: phaseValidator,
   week: v.number(),
   day: v.number(),
 });
+
+const athlete = { clerkId: v.string() };
 
 const writeResult = v.object({
   written: v.boolean(),
@@ -46,11 +50,26 @@ function unlockedPhases(program: Doc<"user_programs">): Array<"GPP" | "SPP" | "S
   return phases;
 }
 
+async function userFor(ctx: QueryCtx, clerkId: string) {
+  return await ctx.db
+    .query("users")
+    .withIndex("by_clerk", (q) => q.eq("clerkId", clerkId))
+    .first();
+}
+
 async function programFor(ctx: QueryCtx, user: Doc<"users">) {
   return await ctx.db
     .query("user_programs")
     .withIndex("by_user", (q) => q.eq("userId", user._id))
     .first();
+}
+
+/** The athlete past intake and their program, or null. */
+async function athleteProgram(ctx: QueryCtx, clerkId: string) {
+  const user = await userFor(ctx, clerkId);
+  if (!user || !user.intakeCompletedAt) return null;
+  const program = await programFor(ctx, user);
+  return program ? { user, program } : null;
 }
 
 function exerciseIdsInOrder(
@@ -68,51 +87,48 @@ async function namesFor(ctx: QueryCtx, ids: Id<"exercises">[]): Promise<string[]
   return rows.map((row) => row?.name ?? "Unknown exercise");
 }
 
-export const listTools = query({
+async function inProgressSession(
+  ctx: QueryCtx,
+  user: Doc<"users">,
+  templateId: Id<"program_templates">,
+) {
+  const sessions = await ctx.db
+    .query("gpp_workout_sessions")
+    .withIndex("by_template", (q) => q.eq("templateId", templateId))
+    .order("desc")
+    .take(10);
+  return sessions.find((row) => row.userId === user._id && row.status === "in_progress") ?? null;
+}
+
+export const listTools = internalQuery({
   args: {},
   returns: v.object({
     tools: v.array(v.string()),
     omittedWrites: v.array(v.string()),
   }),
-  handler: async () => {
-    return {
-      tools: [...TOOL_NAMES],
-      omittedWrites: [...OMITTED_WRITES],
-    };
-  },
+  handler: async () => ({
+    tools: [...TOOL_NAMES],
+    omittedWrites: [...OMITTED_WRITES],
+  }),
 });
 
-export const readProgram = query({
-  args: {},
+export const readProgram = internalQuery({
+  args: athlete,
   returns: v.union(
     v.null(),
     v.object({
       phase: phaseValidator,
       week: v.number(),
       day: v.number(),
-      skillLevel: v.union(
-        v.literal("Novice"),
-        v.literal("Moderate"),
-        v.literal("Advanced"),
-      ),
+      skillLevel: v.union(v.literal("Novice"), v.literal("Moderate"), v.literal("Advanced")),
       categoryId: v.number(),
       unlockedPhases: v.array(phaseValidator),
     }),
   ),
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user || !user.intakeCompletedAt) return null;
-
-    const program = await programFor(ctx, user);
-    if (!program) return null;
-
+  handler: async (ctx, args) => {
+    const found = await athleteProgram(ctx, args.clerkId);
+    if (!found) return null;
+    const { program } = found;
     return {
       phase: program.currentPhase,
       week: program.currentWeek,
@@ -124,8 +140,8 @@ export const readProgram = query({
   },
 });
 
-export const readDay = query({
-  args: { slot: slotValidator },
+export const readDay = internalQuery({
+  args: { ...athlete, slot: slotValidator },
   returns: v.object({
     locked: v.boolean(),
     templateId: v.union(v.id("program_templates"), v.null()),
@@ -141,17 +157,9 @@ export const readDay = query({
       exerciseIds: [] as Id<"exercises">[],
       exerciseNames: [] as string[],
     };
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return empty;
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
-      .first();
-    if (!user || !user.intakeCompletedAt) return empty;
-
-    const program = await programFor(ctx, user);
-    if (!program) return empty;
+    const found = await athleteProgram(ctx, args.clerkId);
+    if (!found) return empty;
+    const { program } = found;
 
     if (!unlockedPhases(program).includes(args.slot.phase)) {
       return { ...empty, locked: true };
@@ -172,72 +180,9 @@ export const readDay = query({
   },
 });
 
-export const sessionOrder = query({
-  args: { templateId: v.id("program_templates") },
-  returns: v.union(
-    v.null(),
-    v.object({
-      sessionId: v.id("gpp_workout_sessions"),
-      version: v.string(),
-      exerciseOrder: v.array(v.number()),
-    }),
-  ),
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
-      .first();
-    if (!user) return null;
-
-    const sessions = await ctx.db
-      .query("gpp_workout_sessions")
-      .withIndex("by_template", (q) => q.eq("templateId", args.templateId))
-      .order("desc")
-      .take(10);
-
-    const session = sessions.find(
-      (row) => row.userId === user._id && row.status === "in_progress",
-    );
-    if (!session) return null;
-
-    const template = await ctx.db.get(session.templateId);
-    const length = template?.exercises.length ?? session.exerciseOrder?.length ?? 0;
-    const exerciseOrder =
-      session.exerciseOrder ?? Array.from({ length }, (_, index) => index);
-
-    return {
-      sessionId: session._id,
-      version: reorderVersion(session.exerciseOrder, session.startedAt),
-      exerciseOrder,
-    };
-  },
-});
-
-const getTodayWorkoutRef = makeFunctionReference<
-  "query",
-  Record<string, never>,
-  {
-    _id: Id<"program_templates">;
-    name: string;
-    exercises: { exerciseId: Id<"exercises">; exercise?: { name: string } | null }[];
-  } | null
->("scheduleOverrides:getTodayWorkout");
-
-const sessionOrderRef = makeFunctionReference<
-  "query",
-  { templateId: Id<"program_templates"> },
-  {
-    sessionId: Id<"gpp_workout_sessions">;
-    version: string;
-    exerciseOrder: number[];
-  } | null
->("chatHands:sessionOrder");
-
-export const readToday = action({
-  args: {},
+/** Today's workout through the app's own Today logic, in the athlete's saved order. */
+export const readToday = internalQuery({
+  args: athlete,
   returns: v.object({
     templateId: v.union(v.id("program_templates"), v.null()),
     name: v.union(v.string(), v.null()),
@@ -246,58 +191,62 @@ export const readToday = action({
     sessionId: v.union(v.id("gpp_workout_sessions"), v.null()),
     version: v.union(v.string(), v.null()),
   }),
-  handler: async (ctx) => {
-    const today = await ctx.runQuery(getTodayWorkoutRef, {});
-    if (!today) {
-      return {
-        templateId: null,
-        name: null,
-        exerciseIds: [],
-        exerciseNames: [],
-        sessionId: null,
-        version: null,
-      };
-    }
+  handler: async (ctx, args) => {
+    const none = {
+      templateId: null,
+      name: null,
+      exerciseIds: [] as Id<"exercises">[],
+      exerciseNames: [] as string[],
+      sessionId: null,
+      version: null,
+    };
+    const today = (await todayWorkoutFor(ctx, args.clerkId)) as
+      | (Doc<"program_templates"> & {
+          exercises: Array<{ exerciseId: Id<"exercises">; exercise?: { name: string } | null }>;
+        })
+      | null;
+    const user = await userFor(ctx, args.clerkId);
+    if (!today || !user) return none;
 
-    const order = await ctx.runQuery(sessionOrderRef, {
-      templateId: today._id,
-    });
-    const indexes = order?.exerciseOrder ?? today.exercises.map((_, index) => index);
-    const exerciseIds = indexes.map((index) => today.exercises[index].exerciseId);
-    const exerciseNames = indexes.map(
-      (index) => today.exercises[index].exercise?.name ?? "Unknown exercise",
-    );
+    const session = await inProgressSession(ctx, user, today._id);
+    const indexes =
+      session?.exerciseOrder && session.exerciseOrder.length === today.exercises.length
+        ? session.exerciseOrder
+        : today.exercises.map((_, index) => index);
 
     return {
       templateId: today._id,
       name: today.name,
-      exerciseIds,
-      exerciseNames,
-      sessionId: order?.sessionId ?? null,
-      version: order?.version ?? null,
+      exerciseIds: indexes.map((index) => today.exercises[index].exerciseId),
+      exerciseNames: indexes.map(
+        (index) => today.exercises[index].exercise?.name ?? "Unknown exercise",
+      ),
+      sessionId: session?._id ?? null,
+      version: session ? reorderVersion(session.exerciseOrder, session.startedAt) : null,
     };
   },
 });
 
-export const previewReorder = query({
+export const previewReorder = internalQuery({
   args: {
+    ...athlete,
     sessionId: v.id("gpp_workout_sessions"),
     exerciseOrder: v.array(v.number()),
   },
   returns: v.object({
     version: v.union(v.string(), v.null()),
     exerciseIds: v.array(v.id("exercises")),
+    exerciseNames: v.array(v.string()),
     valid: v.boolean(),
   }),
   handler: async (ctx, args) => {
-    const empty = { version: null, exerciseIds: [] as Id<"exercises">[], valid: false };
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return empty;
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
-      .first();
+    const empty = {
+      version: null,
+      exerciseIds: [] as Id<"exercises">[],
+      exerciseNames: [] as string[],
+      valid: false,
+    };
+    const user = await userFor(ctx, args.clerkId);
     if (!user) return empty;
 
     const session = await ctx.db.get(args.sessionId);
@@ -309,16 +258,19 @@ export const previewReorder = query({
     if (!template) return empty;
 
     const valid = isPermutation(args.exerciseOrder, template.exercises.length);
+    const exerciseIds = valid ? exerciseIdsInOrder(template, args.exerciseOrder) : [];
     return {
       version: reorderVersion(session.exerciseOrder, session.startedAt),
-      exerciseIds: valid ? exerciseIdsInOrder(template, args.exerciseOrder) : [],
+      exerciseIds,
+      exerciseNames: await namesFor(ctx, exerciseIds),
       valid,
     };
   },
 });
 
-export const commitReorder = mutation({
+export const commitReorder = internalMutation({
   args: {
+    ...athlete,
     sessionId: v.id("gpp_workout_sessions"),
     exerciseOrder: v.array(v.number()),
     version: v.string(),
@@ -326,9 +278,9 @@ export const commitReorder = mutation({
   },
   returns: writeResult,
   handler: async (ctx, args) => {
-    const user = await requireCurrentUser(ctx);
+    const user = await userFor(ctx, args.clerkId);
     const session = await ctx.db.get(args.sessionId);
-    if (!session || session.userId !== user._id || session.status !== "in_progress") {
+    if (!user || !session || session.userId !== user._id || session.status !== "in_progress") {
       return { written: false, reason: "no_session" as const };
     }
 
@@ -351,8 +303,8 @@ export const commitReorder = mutation({
   },
 });
 
-export const previewSwap = query({
-  args: { slotA: slotValidator, slotB: slotValidator },
+export const previewSwap = internalQuery({
+  args: { ...athlete, slotA: slotValidator, slotB: slotValidator },
   returns: v.object({
     version: v.union(v.string(), v.null()),
     dayA: v.union(v.string(), v.null()),
@@ -361,17 +313,9 @@ export const previewSwap = query({
   }),
   handler: async (ctx, args) => {
     const empty = { version: null, dayA: null, dayB: null, locked: false };
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return empty;
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
-      .first();
-    if (!user || !user.intakeCompletedAt) return empty;
-
-    const program = await programFor(ctx, user);
-    if (!program) return empty;
+    const found = await athleteProgram(ctx, args.clerkId);
+    if (!found) return empty;
+    const { program } = found;
 
     const open = unlockedPhases(program);
     if (!open.includes(args.slotA.phase) || !open.includes(args.slotB.phase)) {
@@ -387,11 +331,7 @@ export const previewSwap = query({
     if (!templateA || !templateB) return empty;
 
     return {
-      version: swapVersion(
-        existingOverride?.updatedAt ?? null,
-        templateA._id,
-        templateB._id,
-      ),
+      version: swapVersion(existingOverride?.updatedAt ?? null, templateA._id, templateB._id),
       dayA: templateB.name,
       dayB: templateA.name,
       locked: false,
@@ -399,8 +339,9 @@ export const previewSwap = query({
   },
 });
 
-export const commitSwap = mutation({
+export const commitSwap = internalMutation({
   args: {
+    ...athlete,
     slotA: slotValidator,
     slotB: slotValidator,
     version: v.string(),
@@ -408,15 +349,11 @@ export const commitSwap = mutation({
   },
   returns: writeResult,
   handler: async (ctx, args) => {
-    const user = await requireCurrentUser(ctx);
-    if (!user.intakeCompletedAt) {
+    const found = await athleteProgram(ctx, args.clerkId);
+    if (!found) {
       return { written: false, reason: "no_session" as const };
     }
-
-    const program = await programFor(ctx, user);
-    if (!program) {
-      return { written: false, reason: "no_session" as const };
-    }
+    const { user, program } = found;
 
     const open = unlockedPhases(program);
     if (!open.includes(args.slotA.phase) || !open.includes(args.slotB.phase)) {
@@ -427,32 +364,24 @@ export const commitSwap = mutation({
       return { written: false, reason: "not_accepted" as const };
     }
 
+    const slotA = args.slotA as WorkoutSlotRef;
+    const slotB = args.slotB as WorkoutSlotRef;
     const { existingOverride, templateA, templateB } = await resolveSlotPair(
       ctx,
       program,
-      args.slotA as WorkoutSlotRef,
-      args.slotB as WorkoutSlotRef,
+      slotA,
+      slotB,
     );
     if (!templateA || !templateB) {
       return { written: false, reason: "no_session" as const };
     }
 
-    const current = swapVersion(
-      existingOverride?.updatedAt ?? null,
-      templateA._id,
-      templateB._id,
-    );
+    const current = swapVersion(existingOverride?.updatedAt ?? null, templateA._id, templateB._id);
     if (current !== args.version) {
       return { written: false, reason: "stale" as const };
     }
 
-    await applyWorkoutSwap(
-      ctx,
-      user,
-      program,
-      args.slotA as WorkoutSlotRef,
-      args.slotB as WorkoutSlotRef,
-    );
+    await applyWorkoutSwap(ctx, user, program, slotA, slotB);
     return { written: true, reason: "ok" as const };
   },
 });

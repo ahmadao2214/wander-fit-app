@@ -1,20 +1,20 @@
 import { convexTest } from "convex-test";
 import schema from "../schema";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import { fixture, modules } from "../../jest/chatHandsFixture";
 
 describe("chat hands", () => {
   it("does not offer an easier or harder write", async () => {
-    const { asAthlete } = await fixture();
-    const listed = await asAthlete.query(api.chatHands.listTools, {});
+    const { t, asAthlete } = await fixture();
+    const listed = await t.query(internal.chatHands.listTools, {});
     expect(listed.omittedWrites).toEqual(["easier_or_harder"]);
     expect(listed.tools).not.toContain("easier_or_harder");
   });
 
   it("reads today as the same exercises the app returns", async () => {
-    const { asAthlete, dayOne, squat, hinge } = await fixture();
+    const { t, asAthlete, dayOne, squat, hinge } = await fixture();
     const screen = await asAthlete.query(api.scheduleOverrides.getTodayWorkout, {});
-    const tool = await asAthlete.action(api.chatHands.readToday, {});
+    const tool = await t.query(internal.chatHands.readToday, { clerkId: "clerk_athlete" });
 
     expect(screen?._id).toBe(dayOne);
     expect(tool.templateId).toBe(screen?._id);
@@ -25,8 +25,8 @@ describe("chat hands", () => {
   });
 
   it("writes a reorder only after acceptance, and refuses a stale one", async () => {
-    const { asAthlete, sessionId, squat, hinge } = await fixture();
-    const preview = await asAthlete.query(api.chatHands.previewReorder, {
+    const { t, asAthlete, sessionId, squat, hinge } = await fixture();
+    const preview = await t.query(internal.chatHands.previewReorder, { clerkId: "clerk_athlete",
       sessionId,
       exerciseOrder: [1, 0],
     });
@@ -38,7 +38,7 @@ describe("chat hands", () => {
     });
     expect(before?.exerciseOrder).toBeUndefined();
 
-    const declined = await asAthlete.mutation(api.chatHands.commitReorder, {
+    const declined = await t.mutation(internal.chatHands.commitReorder, { clerkId: "clerk_athlete",
       sessionId,
       exerciseOrder: [1, 0],
       version: preview.version!,
@@ -46,7 +46,7 @@ describe("chat hands", () => {
     });
     expect(declined).toEqual({ written: false, reason: "not_accepted" });
 
-    const accepted = await asAthlete.mutation(api.chatHands.commitReorder, {
+    const accepted = await t.mutation(internal.chatHands.commitReorder, { clerkId: "clerk_athlete",
       sessionId,
       exerciseOrder: [1, 0],
       version: preview.version!,
@@ -60,7 +60,7 @@ describe("chat hands", () => {
     });
     expect(screen?.exerciseOrder).toEqual([1, 0]);
 
-    const stale = await asAthlete.mutation(api.chatHands.commitReorder, {
+    const stale = await t.mutation(internal.chatHands.commitReorder, { clerkId: "clerk_athlete",
       sessionId,
       exerciseOrder: [0, 1],
       version: preview.version!,
@@ -74,14 +74,14 @@ describe("chat hands", () => {
   });
 
   it("swaps two days only after acceptance, and refuses a stale swap", async () => {
-    const { asAthlete } = await fixture();
+    const { t, asAthlete } = await fixture();
     const slotA = { phase: "GPP" as const, week: 1, day: 1 };
     const slotB = { phase: "GPP" as const, week: 1, day: 2 };
-    const preview = await asAthlete.query(api.chatHands.previewSwap, { slotA, slotB });
+    const preview = await t.query(internal.chatHands.previewSwap, { clerkId: "clerk_athlete", slotA, slotB });
     expect(preview.dayA).toBe("Upper Body");
     expect(preview.dayB).toBe("Lower Body");
 
-    const declined = await asAthlete.mutation(api.chatHands.commitSwap, {
+    const declined = await t.mutation(internal.chatHands.commitSwap, { clerkId: "clerk_athlete",
       slotA,
       slotB,
       version: preview.version!,
@@ -89,10 +89,10 @@ describe("chat hands", () => {
     });
     expect(declined.written).toBe(false);
 
-    const dayBefore = await asAthlete.query(api.chatHands.readDay, { slot: slotA });
+    const dayBefore = await t.query(internal.chatHands.readDay, { clerkId: "clerk_athlete", slot: slotA });
     expect(dayBefore.name).toBe("Lower Body");
 
-    const accepted = await asAthlete.mutation(api.chatHands.commitSwap, {
+    const accepted = await t.mutation(internal.chatHands.commitSwap, { clerkId: "clerk_athlete",
       slotA,
       slotB,
       version: preview.version!,
@@ -100,23 +100,23 @@ describe("chat hands", () => {
     });
     expect(accepted).toEqual({ written: true, reason: "ok" });
 
-    const dayAfter = await asAthlete.query(api.chatHands.readDay, { slot: slotA });
+    const dayAfter = await t.query(internal.chatHands.readDay, { clerkId: "clerk_athlete", slot: slotA });
     expect(dayAfter.name).toBe("Upper Body");
 
-    const stale = await asAthlete.mutation(api.chatHands.commitSwap, {
+    const stale = await t.mutation(internal.chatHands.commitSwap, { clerkId: "clerk_athlete",
       slotA,
       slotB,
       version: preview.version!,
       accepted: true,
     });
     expect(stale).toEqual({ written: false, reason: "stale" });
-    const still = await asAthlete.query(api.chatHands.readDay, { slot: slotA });
+    const still = await t.query(internal.chatHands.readDay, { clerkId: "clerk_athlete", slot: slotA });
     expect(still.name).toBe("Upper Body");
   });
 
   it("does not read a locked phase", async () => {
-    const { asAthlete } = await fixture();
-    const day = await asAthlete.query(api.chatHands.readDay, {
+    const { t, asAthlete } = await fixture();
+    const day = await t.query(internal.chatHands.readDay, { clerkId: "clerk_athlete",
       slot: { phase: "SPP", week: 1, day: 1 },
     });
     expect(day.locked).toBe(true);
@@ -133,9 +133,8 @@ describe("chat hands", () => {
         createdAt: Date.now(),
       });
     });
-    const asNew = t.withIdentity({ subject: "clerk_new", email: "new@example.com" });
-    expect(await asNew.query(api.chatHands.readProgram, {})).toBeNull();
-    const today = await asNew.action(api.chatHands.readToday, {});
+    expect(await t.query(internal.chatHands.readProgram, { clerkId: "clerk_new" })).toBeNull();
+    const today = await t.query(internal.chatHands.readToday, { clerkId: "clerk_new" });
     expect(today.templateId).toBeNull();
   });
 });

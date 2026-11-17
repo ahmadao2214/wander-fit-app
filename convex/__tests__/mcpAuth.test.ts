@@ -85,30 +85,4 @@ describe("MCP sign-in discovery", () => {
     expect(response.status).toBe(204);
     expect(response.headers.get("Access-Control-Allow-Headers")).toContain("Authorization");
   });
-
-  it("accepts Clerk OAuth tokens for this endpoint only when it has an address", () => {
-    const load = () => {
-      let config: { providers: Array<Record<string, unknown>> } = { providers: [] };
-      jest.isolateModules(() => {
-        config = require("../auth.config").default;
-      });
-      return config.providers;
-    };
-
-    process.env.CLERK_JWT_ISSUER_DOMAIN = issuer;
-    delete process.env.MCP_RESOURCE_URL;
-    expect(load()).toEqual([{ domain: issuer, applicationID: "convex" }]);
-
-    process.env.MCP_RESOURCE_URL = `${site}/mcp`;
-    expect(load()).toEqual([
-      { domain: issuer, applicationID: "convex" },
-      {
-        type: "customJwt",
-        issuer,
-        jwks: `${issuer}/.well-known/jwks.json`,
-        algorithm: "RS256",
-        applicationID: `${site}/mcp`,
-      },
-    ]);
-  });
 });
