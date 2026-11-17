@@ -39,14 +39,14 @@ export default function AthleteSettingsScreen() {
     <ScrollView
       flex={1}
       bg="$background"
-      contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
+      contentContainerStyle={{ pb: insets.bottom + 32 }}
     >
       <YStack px="$4" pt={insets.top + 12} gap="$4">
         <Button
           unstyled
           onPress={() => router.back()}
           icon={<ChevronLeft size={22} color="$color11" />}
-          alignSelf="flex-start"
+          self="flex-start"
           aria-label="Back"
         />
         <DisplayHeading>App Settings</DisplayHeading>

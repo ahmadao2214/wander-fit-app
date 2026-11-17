@@ -1,11 +1,9 @@
-// @vitest-environment edge-runtime
-/// <reference types="vite/client" />
-import { describe, expect, it } from "vitest";
 import { convexTest } from "convex-test";
 import schema from "../schema";
 import { api } from "../_generated/api";
+import { convexModules } from "../../jest/convexModules";
 
-const modules = import.meta.glob("../**/*.ts");
+const modules = convexModules();
 
 async function fixture() {
   const t = convexTest(schema, modules);
