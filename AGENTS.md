@@ -157,13 +157,18 @@ const handleAction = async () => {
 
 ### Journeys
 
-- A new journey ships with a new Maestro flow and a feature-map entry in `.cursor/skills/verify-wander-fit/features/`.
+- A new journey ships with a new Maestro flow and a feature-map entry in `.claude/skills/verify-wander-fit/features/`.
 - A changed journey updates its flow in the same PR.
 - Pure logic needs unit tests only.
 - An escaped bug gets a regression flow.
 - If the per-PR web suite goes over 10 minutes, the slowest flows move to nightly.
 
 The flow layout and the Maestro findings for this suite are in `.maestro/flow-layout.md`.
+
+### Verifying UI changes
+
+- To verify a UI change in the app, use the `verify-wander-fit` skill (`.claude/skills/verify-wander-fit/SKILL.md`; Cursor and Codex reach the same files through `.cursor/skills/` and `.agents/skills/`). It launches the web export against the E2E backend, runs doctor, drives the Maestro journeys with fresh personas, keeps the evidence and cleans up.
+- `/create-verification-skill` and `/maintain-verification-skill` are pstack's skills, vendored in `.claude/skills/`. A Codex agent that can't run a slash command reads the `SKILL.md` and follows it. Provenance, license and the nightly maintenance run: `.claude/docs/pstack/README.md`.
 
 ### One Test Runner: Jest
 

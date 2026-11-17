@@ -1,0 +1,138 @@
+import { clerkFrontendApi, evaluateDoctor, exportIsStale, sourceStamp } from "./run.mjs"
+
+const encode = (text) => Buffer.from(text, "utf8").toString("base64")
+
+function healthy(overrides = {}) {
+  return {
+    clerkKeyPresent: true,
+    clerkFrontendApi: "example-clerk.accounts.dev",
+    clerkStatus: 200,
+    maestro: "/usr/local/bin/maestro",
+    java: true,
+    convexHost: "modest-kudu-493.convex.cloud",
+    convexError: "",
+    screenOnly: false,
+    backendStatus: 200,
+    templates: 1008,
+    sports: 27,
+    seedError: "",
+    expectedCommit: "a".repeat(40),
+    expectedStamp: "stamp-1",
+    server: null,
+    port: 4273,
+    ...overrides,
+  }
+}
+
+function liveServer(overrides = {}) {
+  return {
+    pid: 42,
+    alive: true,
+    owned: true,
+    pageStatus: 200,
+    build: { convexHost: "modest-kudu-493.convex.cloud", commit: "a".repeat(40), stamp: "stamp-1" },
+    ...overrides,
+  }
+}
+
+describe("clerkFrontendApi", () => {
+  it("decodes the Frontend API host from a publishable key", () => {
+    expect(clerkFrontendApi(`pk_test_${encode("example-clerk.accounts.dev$")}`)).toBe("example-clerk.accounts.dev")
+    expect(clerkFrontendApi(`pk_live_${encode("clerk.example.com$")}`)).toBe("clerk.example.com")
+  })
+
+  it("rejects keys that would leave the app on Loading", () => {
+    expect(clerkFrontendApi("")).toBe("")
+    expect(clerkFrontendApi("sk_test_abc")).toBe("")
+    expect(clerkFrontendApi(`pk_test_${encode("example-clerk.accounts.dev")}`)).toBe("")
+    expect(clerkFrontendApi(`pk_test_${encode("not a host$")}`)).toBe("")
+  })
+})
+
+describe("evaluateDoctor", () => {
+  it("passes a healthy pre-launch run and says the server is not running", () => {
+    const { lines, problems } = evaluateDoctor(healthy())
+    expect(problems).toEqual([])
+    expect(lines).toContain("seed: 1008 program templates, 27 sports")
+    expect(lines).toContain("server: not running (launch starts it)")
+  })
+
+  it("never prints the publishable key itself", () => {
+    const key = `pk_test_${encode("example-clerk.accounts.dev$")}`
+    const { lines } = evaluateDoctor(healthy())
+    expect(lines.join("\n")).not.toContain(key)
+  })
+
+  it("fails a key Clerk rejects, an unreachable backend and an unseeded deployment", () => {
+    const { problems } = evaluateDoctor(healthy({ clerkStatus: 400, backendStatus: 0, templates: 0 }))
+    expect(problems).toHaveLength(3)
+    expect(problems.join("\n")).toMatch(/Clerk rejected/)
+    expect(problems.join("\n")).toMatch(/did not answer \/version/)
+    expect(problems.join("\n")).toMatch(/not seeded/)
+  })
+
+  it("skips backend and seed checks in screen-only mode", () => {
+    const { lines, problems } = evaluateDoctor(
+      healthy({ screenOnly: true, convexHost: "wander-fit-e2e.invalid", backendStatus: null, templates: null, sports: null })
+    )
+    expect(problems).toEqual([])
+    expect(lines.some((line) => line.startsWith("seed:"))).toBe(false)
+  })
+
+  it("reports a refused Convex deployment as a problem", () => {
+    const { problems } = evaluateDoctor(healthy({ convexError: "Refusing app deployment fleet-mallard-22.convex.cloud" }))
+    expect(problems).toEqual(["Refusing app deployment fleet-mallard-22.convex.cloud"])
+  })
+
+  it("passes a live server serving this checkout's build", () => {
+    const { lines, problems } = evaluateDoctor(healthy({ server: liveServer() }))
+    expect(problems).toEqual([])
+    expect(lines).toContain("build: commit aaaaaaaaaaaa, convex modest-kudu-493.convex.cloud")
+  })
+
+  it("fails a server that is not ours, an old build, or a build for another backend", () => {
+    expect(evaluateDoctor(healthy({ server: liveServer({ owned: false }) })).problems.join()).toMatch(/not the one answering/)
+    expect(
+      evaluateDoctor(healthy({ server: liveServer({ build: { ...liveServer().build, commit: "b".repeat(40) } }) })).problems.join()
+    ).toMatch(/not HEAD/)
+    expect(
+      evaluateDoctor(healthy({ server: liveServer({ build: { ...liveServer().build, stamp: "stamp-0" } }) })).problems.join()
+    ).toMatch(/checkout changed/)
+    expect(
+      evaluateDoctor(healthy({ server: liveServer({ build: { ...liveServer().build, convexHost: "other.convex.cloud" } }) })).problems.join()
+    ).toMatch(/talks to other.convex.cloud/)
+    expect(evaluateDoctor(healthy({ server: liveServer({ build: null }) })).problems.join()).toMatch(/no verify-build.json/)
+  })
+})
+
+describe("sourceStamp", () => {
+  const files = { "a.ts": "one", "b.ts": "two" }
+  const read = (file) => files[file]
+
+  it("is stable for the same source and ignores untracked list order", () => {
+    const first = sourceStamp({ commit: "c1", diff: "", untracked: "a.ts\nb.ts\n", read })
+    const second = sourceStamp({ commit: "c1", diff: "", untracked: "b.ts\na.ts", read })
+    expect(first).toBe(second)
+  })
+
+  it("changes with the commit, an uncommitted diff, or an untracked file's content", () => {
+    const base = sourceStamp({ commit: "c1", diff: "", untracked: "a.ts", read })
+    expect(sourceStamp({ commit: "c2", diff: "", untracked: "a.ts", read })).not.toBe(base)
+    expect(sourceStamp({ commit: "c1", diff: "+x", untracked: "a.ts", read })).not.toBe(base)
+    expect(sourceStamp({ commit: "c1", diff: "", untracked: "a.ts", read: () => "edited" })).not.toBe(base)
+  })
+})
+
+describe("exportIsStale", () => {
+  const expected = { stamp: "s1", convexHost: "modest-kudu-493.convex.cloud" }
+
+  it("reuses an export built from the same source for the same backend", () => {
+    expect(exportIsStale({ stamp: "s1", convexHost: "modest-kudu-493.convex.cloud" }, expected)).toBe(false)
+  })
+
+  it("re-exports when there is no export, the source changed, or the backend changed", () => {
+    expect(exportIsStale(null, expected)).toBe(true)
+    expect(exportIsStale({ stamp: "s0", convexHost: expected.convexHost }, expected)).toBe(true)
+    expect(exportIsStale({ stamp: "s1", convexHost: "wander-fit-e2e.invalid" }, expected)).toBe(true)
+  })
+})
