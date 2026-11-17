@@ -97,6 +97,13 @@ export default function AthleteLayout() {
             headerShown: false, // Stack has its own header
           }}
         />
+        <Tabs.Screen
+          name="settings"
+          options={{
+            href: null,
+            headerShown: false,
+          }}
+        />
       </Tabs>
     </AthleteOnlyRoute>
   )
