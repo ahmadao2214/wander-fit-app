@@ -100,7 +100,11 @@ describe("chat hands", () => {
         sessionId,
         exerciseOrder,
       });
-      expect({ exerciseOrder, valid: preview.valid }).toEqual({ exerciseOrder, valid: false });
+      expect({ exerciseOrder, valid: preview.valid, expected: preview.expectedIndexes }).toEqual({
+        exerciseOrder,
+        valid: false,
+        expected: [1, 2],
+      });
       const write = await t.mutation(internal.chatHands.commitReorder, {
         clerkId: "clerk_athlete",
         sessionId,
@@ -117,8 +121,14 @@ describe("chat hands", () => {
     const slotA = { phase: "GPP" as const, week: 1, day: 1 };
     const slotB = { phase: "GPP" as const, week: 1, day: 2 };
     const preview = await t.query(internal.chatHands.previewSwap, { clerkId: "clerk_athlete", slotA, slotB });
-    expect(preview.dayA).toBe("Upper Body");
-    expect(preview.dayB).toBe("Lower Body");
+    expect(preview).toMatchObject({
+      valid: true,
+      reason: "ok",
+      slotA: { ...slotA, before: "Lower Body", after: "Upper Body" },
+      slotB: { ...slotB, before: "Upper Body", after: "Lower Body" },
+      // The fixture's Lower Body workout is already started.
+      inProgressWorkout: "Lower Body",
+    });
 
     const declined = await t.mutation(internal.chatHands.commitSwap, { clerkId: "clerk_athlete",
       slotA,
@@ -141,6 +151,9 @@ describe("chat hands", () => {
 
     const dayAfter = await t.query(internal.chatHands.readDay, { clerkId: "clerk_athlete", slot: slotA });
     expect(dayAfter.name).toBe("Upper Body");
+    // The started workout stays today's workout; only the calendar moved.
+    const today = await t.query(internal.chatHands.readToday, { clerkId: "clerk_athlete" });
+    expect({ name: today.name, source: today.source }).toEqual({ name: "Lower Body", source: "in_progress" });
 
     const stale = await t.mutation(internal.chatHands.commitSwap, { clerkId: "clerk_athlete",
       slotA,
@@ -151,6 +164,44 @@ describe("chat hands", () => {
     expect(stale).toEqual({ written: false, reason: "stale" });
     const still = await t.query(internal.chatHands.readDay, { clerkId: "clerk_athlete", slot: slotA });
     expect(still.name).toBe("Upper Body");
+  });
+
+  it("says why a swap is not possible, and refuses the write the same way", async () => {
+    const { t } = await fixture();
+    const cases = [
+      [{ phase: "GPP" as const, week: 1, day: 1 }, { phase: "GPP" as const, week: 1, day: 1 }, "same_slot"],
+      [{ phase: "GPP" as const, week: 1, day: 1 }, { phase: "SPP" as const, week: 1, day: 1 }, "different_phases"],
+      [{ phase: "SPP" as const, week: 1, day: 1 }, { phase: "SPP" as const, week: 1, day: 2 }, "locked"],
+      [{ phase: "GPP" as const, week: 1, day: 1 }, { phase: "GPP" as const, week: 1, day: 3 }, "empty_slot"],
+    ] as const;
+    for (const [slotA, slotB, reason] of cases) {
+      const preview = await t.query(internal.chatHands.previewSwap, { clerkId: "clerk_athlete", slotA, slotB });
+      expect({ reason, got: [preview.valid, preview.reason, preview.version, preview.slotA.after] }).toEqual({
+        reason,
+        got: [false, reason, null, null],
+      });
+    }
+    for (const [slotA, slotB, reason] of cases.slice(0, 3)) {
+      const write = await t.mutation(internal.chatHands.commitSwap, {
+        clerkId: "clerk_athlete",
+        slotA,
+        slotB,
+        version: "x",
+        accepted: true,
+      });
+      expect({ reason, write }).toEqual({ reason, write: { written: false, reason } });
+    }
+  });
+
+  it("reads a scheduled workout as scheduled, with no session to reorder", async () => {
+    const { t, sessionId } = await fixture();
+    await t.run((ctx) => ctx.db.patch(sessionId, { status: "abandoned" }));
+    const today = await t.query(internal.chatHands.readToday, { clerkId: "clerk_athlete" });
+    expect({ source: today.source, sessionId: today.sessionId, version: today.version }).toEqual({
+      source: "scheduled",
+      sessionId: null,
+      version: null,
+    });
   });
 
   it("does not read a locked phase", async () => {

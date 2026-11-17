@@ -26,8 +26,8 @@ const slot = {
   type: "object",
   properties: {
     phase,
-    week: { type: "integer", minimum: 1 },
-    day: { type: "integer", minimum: 1 },
+    week: { type: "integer", minimum: 1, description: "Week of the phase, starting at 1" },
+    day: { type: "integer", minimum: 1, description: "Training day of the week, starting at 1" },
   },
   required: ["phase", "week", "day"],
   additionalProperties: false,
@@ -66,7 +66,7 @@ export const TOOLS: Array<{
     name: "read_today",
     title: "Read today's workout",
     description:
-      "Today's workout as the app shows it: its name, the warm-up (always done first, in this order), and the main exercises in the athlete's current order. Present the warm-up and the main exercises as separate groups. Each main exercise has an index; a reorder lists those indexes. sessionId and version are set only when the workout is in progress; a reorder needs them.",
+      "Today's workout as the app shows it: its name, the warm-up (always done first, in this order), and the main exercises in the athlete's current order. Present the warm-up and the main exercises as separate groups. source is in_progress when a workout was already started (it stays today's workout even if its calendar slot was swapped since), scheduled when nothing is started, and none when there is no workout. Each main exercise has an index: a fixed id for that exercise in this workout, not its position. A reorder lists those indexes. sessionId and version are set only when source is in_progress; a reorder needs them.",
     inputSchema: noArgs,
     annotations: read,
   },
@@ -74,7 +74,7 @@ export const TOOLS: Array<{
     name: "read_day",
     title: "Read a day",
     description:
-      "The workout on one calendar slot (phase, week, day), including any swap already saved, with its warm-up and main exercises as separate groups. locked: true means that phase is not unlocked yet; say so and do not describe it.",
+      "The workout scheduled on one calendar slot (phase, week, day; week and day start at 1), including any swap already saved, with its warm-up and main exercises as separate groups. It shows the template order, not the order of a workout already in progress; use read_today for that. locked: true means that phase is not unlocked yet; say so and do not describe it.",
     inputSchema: { type: "object", properties: { slot }, required: ["slot"], additionalProperties: false },
     annotations: read,
   },
@@ -82,7 +82,7 @@ export const TOOLS: Array<{
     name: "preview_reorder",
     title: "Preview a reorder",
     description:
-      "Shows today's in-progress workout with its main exercises in a new order. exerciseOrder lists the index of every main exercise from read_today, each once, in the new order. The warm-up does not move and is not listed. Changes nothing. valid: false means the list was wrong; read today again. Otherwise show the result and ask the athlete to accept.",
+      "Shows today's in-progress workout with its main exercises in a new order. exerciseOrder lists the index of every main exercise from read_today, each exactly once, in the new order; copy the indexes, do not renumber them. The warm-up does not move and is not listed. Changes nothing. valid: false means the list was wrong; expectedIndexes lists the indexes it must contain. Otherwise show the result and ask the athlete to accept. version is an opaque token for the current order; pass it to commit_reorder unchanged.",
     inputSchema: {
       type: "object",
       properties: {
@@ -116,7 +116,7 @@ export const TOOLS: Array<{
     name: "preview_swap",
     title: "Preview a swap",
     description:
-      "Shows which workout would sit on each of two slots in the same phase after swapping them. Changes nothing. Show the result and ask the athlete to accept.",
+      "Shows what swapping two calendar slots in the same phase would do. slotA and slotB each give the workout there before and after the swap. Changes nothing. valid: false gives a reason: different_phases (swaps stay within one phase), locked (that phase is not unlocked), same_slot, empty_slot (a rest day), or no_program. Only calendar slots move: inProgressWorkout, when set, is a workout already started and it stays as it is. If valid, show before and after for both slots and ask the athlete to accept.",
     inputSchema: {
       type: "object",
       properties: { slotA: slot, slotB: slot },
@@ -129,7 +129,7 @@ export const TOOLS: Array<{
     name: "commit_swap",
     title: "Save a swap",
     description:
-      "Swaps the two slots the athlete accepted. Pass the version from preview_swap. accepted must be true only after the athlete said yes to that preview. reason: stale means the calendar changed; preview again.",
+      "Swaps the two slots the athlete accepted. Pass the same slots and the version from preview_swap. accepted must be true only after the athlete said yes to that preview. reason: stale means the calendar changed; preview again.",
     inputSchema: {
       type: "object",
       properties: {

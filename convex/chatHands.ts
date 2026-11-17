@@ -41,6 +41,8 @@ const writeResult = v.object({
     v.literal("no_session"),
     v.literal("bad_order"),
     v.literal("locked"),
+    v.literal("different_phases"),
+    v.literal("same_slot"),
   ),
 });
 
@@ -200,11 +202,20 @@ export const readToday = internalQuery({
     name: v.union(v.string(), v.null()),
     warmup: v.array(warmupItem),
     main: v.array(mainItem),
+    /** in_progress: the workout already started, even if its calendar slot was swapped since. */
+    source: v.union(v.literal("in_progress"), v.literal("scheduled"), v.literal("none")),
     sessionId: v.union(v.id("gpp_workout_sessions"), v.null()),
     version: v.union(v.string(), v.null()),
   }),
   handler: async (ctx, args) => {
-    const none = { templateId: null, name: null, ...emptyDay(), sessionId: null, version: null };
+    const none = {
+      templateId: null,
+      name: null,
+      ...emptyDay(),
+      source: "none" as const,
+      sessionId: null,
+      version: null,
+    };
     const today = await todayWorkoutFor(ctx, args.clerkId);
     const user = await userFor(ctx, args.clerkId);
     if (!today || !user) return none;
@@ -217,6 +228,7 @@ export const readToday = internalQuery({
       templateId: template._id,
       name: template.name,
       ...(await dayExercises(ctx, template, session?.exerciseOrder)),
+      source: session ? ("in_progress" as const) : ("scheduled" as const),
       sessionId: session?._id ?? null,
       version: session ? reorderVersion(normalizeExerciseOrder(session.exerciseOrder, template.exercises), session.startedAt) : null,
     };
@@ -234,9 +246,11 @@ export const previewReorder = internalQuery({
     warmup: v.array(warmupItem),
     main: v.array(mainItem),
     valid: v.boolean(),
+    /** Every main exercise's index, each to be listed once in a valid order. */
+    expectedIndexes: v.array(v.number()),
   }),
   handler: async (ctx, args) => {
-    const empty = { version: null, ...emptyDay(), valid: false };
+    const empty = { version: null, ...emptyDay(), valid: false, expectedIndexes: [] as number[] };
     const user = await userFor(ctx, args.clerkId);
     if (!user) return empty;
 
@@ -248,9 +262,11 @@ export const previewReorder = internalQuery({
     const template = await ctx.db.get(session.templateId);
     if (!template) return empty;
 
-    const valid = isOrderOf(args.exerciseOrder, mainTemplateIndices(template.exercises));
+    const expectedIndexes = mainTemplateIndices(template.exercises);
+    const valid = isOrderOf(args.exerciseOrder, expectedIndexes);
     const day = await dayExercises(ctx, template, valid ? args.exerciseOrder : undefined);
     return {
+      expectedIndexes,
       version: reorderVersion(normalizeExerciseOrder(session.exerciseOrder, template.exercises), session.startedAt),
       warmup: day.warmup,
       main: valid ? day.main : [],
@@ -298,24 +314,59 @@ export const commitReorder = internalMutation({
   },
 });
 
+const swapSide = v.object({
+  phase: phaseValidator,
+  week: v.number(),
+  day: v.number(),
+  before: v.union(v.string(), v.null()),
+  after: v.union(v.string(), v.null()),
+});
+
+const swapReason = v.union(
+  v.literal("ok"),
+  v.literal("no_program"),
+  v.literal("same_slot"),
+  v.literal("different_phases"),
+  v.literal("locked"),
+  v.literal("empty_slot"),
+);
+
+const sameSlot = (a: WorkoutSlotRef, b: WorkoutSlotRef) =>
+  a.phase === b.phase && a.week === b.week && a.day === b.day;
+
 export const previewSwap = internalQuery({
   args: { ...athlete, slotA: slotValidator, slotB: slotValidator },
   returns: v.object({
+    valid: v.boolean(),
+    reason: swapReason,
     version: v.union(v.string(), v.null()),
-    dayA: v.union(v.string(), v.null()),
-    dayB: v.union(v.string(), v.null()),
-    locked: v.boolean(),
+    slotA: swapSide,
+    slotB: swapSide,
+    /** A workout already started keeps running; a swap never changes it. */
+    inProgressWorkout: v.union(v.string(), v.null()),
   }),
   handler: async (ctx, args) => {
-    const empty = { version: null, dayA: null, dayB: null, locked: false };
-    const found = await athleteProgram(ctx, args.clerkId);
-    if (!found) return empty;
-    const { program } = found;
+    const side = (slot: WorkoutSlotRef, before: string | null = null, after: string | null = null) => ({
+      ...slot,
+      before,
+      after,
+    });
+    const refuse = (reason: "no_program" | "same_slot" | "different_phases" | "locked" | "empty_slot") => ({
+      valid: false,
+      reason,
+      version: null,
+      slotA: side(args.slotA),
+      slotB: side(args.slotB),
+      inProgressWorkout: null,
+    });
 
-    const open = unlockedPhases(program);
-    if (!open.includes(args.slotA.phase) || !open.includes(args.slotB.phase)) {
-      return { ...empty, locked: true };
-    }
+    const found = await athleteProgram(ctx, args.clerkId);
+    if (!found) return refuse("no_program");
+    const { user, program } = found;
+
+    if (sameSlot(args.slotA, args.slotB)) return refuse("same_slot");
+    if (args.slotA.phase !== args.slotB.phase) return refuse("different_phases");
+    if (!unlockedPhases(program).includes(args.slotA.phase)) return refuse("locked");
 
     const { existingOverride, templateA, templateB } = await resolveSlotPair(
       ctx,
@@ -323,13 +374,22 @@ export const previewSwap = internalQuery({
       args.slotA,
       args.slotB,
     );
-    if (!templateA || !templateB) return empty;
+    if (!templateA || !templateB) return refuse("empty_slot");
+
+    const running = await ctx.db
+      .query("gpp_workout_sessions")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .filter((q) => q.eq(q.field("status"), "in_progress"))
+      .first();
+    const runningTemplate = running ? await ctx.db.get(running.templateId) : null;
 
     return {
+      valid: true,
+      reason: "ok" as const,
       version: swapVersion(existingOverride?.updatedAt ?? null, templateA._id, templateB._id),
-      dayA: templateB.name,
-      dayB: templateA.name,
-      locked: false,
+      slotA: side(args.slotA, templateA.name, templateB.name),
+      slotB: side(args.slotB, templateB.name, templateA.name),
+      inProgressWorkout: runningTemplate?.name ?? null,
     };
   },
 });
@@ -350,8 +410,13 @@ export const commitSwap = internalMutation({
     }
     const { user, program } = found;
 
-    const open = unlockedPhases(program);
-    if (!open.includes(args.slotA.phase) || !open.includes(args.slotB.phase)) {
+    if (sameSlot(args.slotA, args.slotB)) {
+      return { written: false, reason: "same_slot" as const };
+    }
+    if (args.slotA.phase !== args.slotB.phase) {
+      return { written: false, reason: "different_phases" as const };
+    }
+    if (!unlockedPhases(program).includes(args.slotA.phase)) {
       return { written: false, reason: "locked" as const };
     }
 
