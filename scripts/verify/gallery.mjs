@@ -147,8 +147,10 @@ export function featureTitle(flow, dir = featuresDir) {
 // The page model. Every flow gets a row and every platform a cell, even with
 // no evidence, so a missing platform reads as not run instead of vanishing.
 // The newest entry per flow and platform wins, passing or not. When `run`
-// names the run building the gallery, web evidence older than that run's
-// start is flagged stale: this run uploaded nothing newer for the flow.
+// names the run building the gallery, evidence for a platform that run
+// covers is flagged stale unless that run uploaded it. Comparing run IDs, not
+// times: a main check that held the e2e-backend queue can upload after the
+// nightly started, and that is still not the nightly's evidence.
 export function buildGallery({ flows, entries, run = null, titles = {} }) {
   const names = [...new Set([...flows, ...entries.map((entry) => entry.flow)])].sort()
   const newest = new Map()
@@ -166,7 +168,7 @@ export function buildGallery({ flows, entries, run = null, titles = {} }) {
     cells: platforms.map((platform) => {
       const entry = newest.get(`${platform.id}\u0000${flow}`) || null
       const stale = Boolean(
-        entry && run?.startedAt && ranPlatforms.includes(platform.id) && entry.createdAt < run.startedAt
+        entry && run?.runId && ranPlatforms.includes(platform.id) && String(entry.runId) !== String(run.runId)
       )
       return { platform: platform.id, label: platform.label, notRun: platform.notRun || "No evidence yet", entry, stale }
     }),
