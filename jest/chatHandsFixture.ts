@@ -40,6 +40,11 @@ export async function fixture() {
       slug: "hip_hinge",
       tags: ["hinge"],
     });
+    const stretch = await ctx.db.insert("exercises", {
+      name: "World's Greatest Stretch",
+      slug: "worlds_greatest_stretch",
+      tags: ["mobility"],
+    });
     const programId = await ctx.db.insert("user_programs", {
       userId,
       intakeResponseId: intakeId,
@@ -67,7 +72,12 @@ export async function fixture() {
       day: 1,
       name: "Lower Body",
       estimatedDurationMinutes: 40,
-      exercises: [prescription(squat, 0), prescription(hinge, 1)],
+      // Warm-up first, then the main lifts: template indices 1 and 2 are the main exercises.
+      exercises: [
+        { ...prescription(stretch, 0), section: "warmup" as const },
+        prescription(squat, 1),
+        prescription(hinge, 2),
+      ],
     });
     const dayTwo = await ctx.db.insert("program_templates", {
       gppCategoryId: 2,
@@ -87,6 +97,12 @@ export async function fixture() {
       status: "in_progress",
       exercises: [
         {
+          exerciseId: stretch,
+          completed: false,
+          skipped: false,
+          sets: [{ completed: false, skipped: false }],
+        },
+        {
           exerciseId: squat,
           completed: false,
           skipped: false,
@@ -100,7 +116,7 @@ export async function fixture() {
         },
       ],
     });
-    return { dayOne, dayTwo, squat, hinge, sessionId };
+    return { dayOne, dayTwo, stretch, squat, hinge, sessionId };
   });
 
   const asAthlete = t.withIdentity({

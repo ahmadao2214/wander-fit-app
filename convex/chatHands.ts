@@ -16,10 +16,11 @@ import type { WorkoutSlotRef } from "./scheduleOverrides";
 import {
   OMITTED_WRITES,
   TOOL_NAMES,
-  isPermutation,
+  isOrderOf,
   reorderVersion,
   swapVersion,
 } from "./chatHandsVersion";
+import { isWarmupExercise, mainTemplateIndices, normalizeExerciseOrder } from "../lib/executionOrder";
 
 const phaseValidator = v.union(v.literal("GPP"), v.literal("SPP"), v.literal("SSP"));
 
@@ -72,20 +73,39 @@ async function athleteProgram(ctx: QueryCtx, clerkId: string) {
   return program ? { user, program } : null;
 }
 
-function exerciseIdsInOrder(
+const warmupItem = v.object({ exerciseId: v.id("exercises"), name: v.string() });
+const mainItem = v.object({ index: v.number(), exerciseId: v.id("exercises"), name: v.string() });
+
+type DayExercises = {
+  warmup: Array<{ exerciseId: Id<"exercises">; name: string }>;
+  main: Array<{ index: number; exerciseId: Id<"exercises">; name: string }>;
+};
+
+/**
+ * A day as the workout screen runs it: warm-up first, in template order and
+ * never moved, then the main exercises in the athlete's saved order. `index`
+ * is the template index the app stores in exerciseOrder.
+ */
+async function dayExercises(
+  ctx: QueryCtx,
   template: Doc<"program_templates">,
-  order: number[] | undefined,
-): Id<"exercises">[] {
-  const source = template.exercises;
-  const indexes =
-    order && order.length === source.length ? order : source.map((_, index) => index);
-  return indexes.map((index) => source[index].exerciseId);
+  savedOrder: number[] | undefined,
+): Promise<DayExercises> {
+  const rows = template.exercises;
+  const names = await Promise.all(rows.map((row) => ctx.db.get(row.exerciseId)));
+  const nameAt = (index: number) => names[index]?.name ?? "Unknown exercise";
+  const warmup = rows.flatMap((row, index) =>
+    isWarmupExercise(row) ? [{ exerciseId: row.exerciseId, name: nameAt(index) }] : [],
+  );
+  const main = normalizeExerciseOrder(savedOrder, rows).map((index) => ({
+    index,
+    exerciseId: rows[index].exerciseId,
+    name: nameAt(index),
+  }));
+  return { warmup, main };
 }
 
-async function namesFor(ctx: QueryCtx, ids: Id<"exercises">[]): Promise<string[]> {
-  const rows = await Promise.all(ids.map((id) => ctx.db.get(id)));
-  return rows.map((row) => row?.name ?? "Unknown exercise");
-}
+const emptyDay = (): DayExercises => ({ warmup: [], main: [] });
 
 async function inProgressSession(
   ctx: QueryCtx,
@@ -146,17 +166,11 @@ export const readDay = internalQuery({
     locked: v.boolean(),
     templateId: v.union(v.id("program_templates"), v.null()),
     name: v.union(v.string(), v.null()),
-    exerciseIds: v.array(v.id("exercises")),
-    exerciseNames: v.array(v.string()),
+    warmup: v.array(warmupItem),
+    main: v.array(mainItem),
   }),
   handler: async (ctx, args) => {
-    const empty = {
-      locked: false,
-      templateId: null,
-      name: null,
-      exerciseIds: [] as Id<"exercises">[],
-      exerciseNames: [] as string[],
-    };
+    const empty = { locked: false, templateId: null, name: null, ...emptyDay() };
     const found = await athleteProgram(ctx, args.clerkId);
     if (!found) return empty;
     const { program } = found;
@@ -169,13 +183,11 @@ export const readDay = internalQuery({
     const template = pair.templateA;
     if (!template) return empty;
 
-    const exerciseIds = exerciseIdsInOrder(template, undefined);
     return {
       locked: false,
       templateId: template._id,
       name: template.name,
-      exerciseIds,
-      exerciseNames: await namesFor(ctx, exerciseIds),
+      ...(await dayExercises(ctx, template, undefined)),
     };
   },
 });
@@ -186,43 +198,27 @@ export const readToday = internalQuery({
   returns: v.object({
     templateId: v.union(v.id("program_templates"), v.null()),
     name: v.union(v.string(), v.null()),
-    exerciseIds: v.array(v.id("exercises")),
-    exerciseNames: v.array(v.string()),
+    warmup: v.array(warmupItem),
+    main: v.array(mainItem),
     sessionId: v.union(v.id("gpp_workout_sessions"), v.null()),
     version: v.union(v.string(), v.null()),
   }),
   handler: async (ctx, args) => {
-    const none = {
-      templateId: null,
-      name: null,
-      exerciseIds: [] as Id<"exercises">[],
-      exerciseNames: [] as string[],
-      sessionId: null,
-      version: null,
-    };
-    const today = (await todayWorkoutFor(ctx, args.clerkId)) as
-      | (Doc<"program_templates"> & {
-          exercises: Array<{ exerciseId: Id<"exercises">; exercise?: { name: string } | null }>;
-        })
-      | null;
+    const none = { templateId: null, name: null, ...emptyDay(), sessionId: null, version: null };
+    const today = await todayWorkoutFor(ctx, args.clerkId);
     const user = await userFor(ctx, args.clerkId);
     if (!today || !user) return none;
 
-    const session = await inProgressSession(ctx, user, today._id);
-    const indexes =
-      session?.exerciseOrder && session.exerciseOrder.length === today.exercises.length
-        ? session.exerciseOrder
-        : today.exercises.map((_, index) => index);
+    const template = await ctx.db.get(today._id as Id<"program_templates">);
+    if (!template) return none;
 
+    const session = await inProgressSession(ctx, user, template._id);
     return {
-      templateId: today._id,
-      name: today.name,
-      exerciseIds: indexes.map((index) => today.exercises[index].exerciseId),
-      exerciseNames: indexes.map(
-        (index) => today.exercises[index].exercise?.name ?? "Unknown exercise",
-      ),
+      templateId: template._id,
+      name: template.name,
+      ...(await dayExercises(ctx, template, session?.exerciseOrder)),
       sessionId: session?._id ?? null,
-      version: session ? reorderVersion(session.exerciseOrder, session.startedAt) : null,
+      version: session ? reorderVersion(normalizeExerciseOrder(session.exerciseOrder, template.exercises), session.startedAt) : null,
     };
   },
 });
@@ -235,17 +231,12 @@ export const previewReorder = internalQuery({
   },
   returns: v.object({
     version: v.union(v.string(), v.null()),
-    exerciseIds: v.array(v.id("exercises")),
-    exerciseNames: v.array(v.string()),
+    warmup: v.array(warmupItem),
+    main: v.array(mainItem),
     valid: v.boolean(),
   }),
   handler: async (ctx, args) => {
-    const empty = {
-      version: null,
-      exerciseIds: [] as Id<"exercises">[],
-      exerciseNames: [] as string[],
-      valid: false,
-    };
+    const empty = { version: null, ...emptyDay(), valid: false };
     const user = await userFor(ctx, args.clerkId);
     if (!user) return empty;
 
@@ -257,12 +248,12 @@ export const previewReorder = internalQuery({
     const template = await ctx.db.get(session.templateId);
     if (!template) return empty;
 
-    const valid = isPermutation(args.exerciseOrder, template.exercises.length);
-    const exerciseIds = valid ? exerciseIdsInOrder(template, args.exerciseOrder) : [];
+    const valid = isOrderOf(args.exerciseOrder, mainTemplateIndices(template.exercises));
+    const day = await dayExercises(ctx, template, valid ? args.exerciseOrder : undefined);
     return {
-      version: reorderVersion(session.exerciseOrder, session.startedAt),
-      exerciseIds,
-      exerciseNames: await namesFor(ctx, exerciseIds),
+      version: reorderVersion(normalizeExerciseOrder(session.exerciseOrder, template.exercises), session.startedAt),
+      warmup: day.warmup,
+      main: valid ? day.main : [],
       valid,
     };
   },
@@ -285,7 +276,7 @@ export const commitReorder = internalMutation({
     }
 
     const template = await ctx.db.get(session.templateId);
-    if (!template || !isPermutation(args.exerciseOrder, template.exercises.length)) {
+    if (!template || !isOrderOf(args.exerciseOrder, mainTemplateIndices(template.exercises))) {
       return { written: false, reason: "bad_order" as const };
     }
 
@@ -293,11 +284,15 @@ export const commitReorder = internalMutation({
       return { written: false, reason: "not_accepted" as const };
     }
 
-    const current = reorderVersion(session.exerciseOrder, session.startedAt);
+    const current = reorderVersion(
+      normalizeExerciseOrder(session.exerciseOrder, template.exercises),
+      session.startedAt,
+    );
     if (current !== args.version) {
       return { written: false, reason: "stale" as const };
     }
 
+    // Same shape the workout screen saves: main exercises' template indices.
     await writeExerciseOrder(ctx, session, args.exerciseOrder);
     return { written: true, reason: "ok" as const };
   },

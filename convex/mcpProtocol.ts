@@ -66,7 +66,7 @@ export const TOOLS: Array<{
     name: "read_today",
     title: "Read today's workout",
     description:
-      "Today's workout as the app shows it: its name and exercises in order. sessionId and version are set only when the workout is in progress; a reorder needs them.",
+      "Today's workout as the app shows it: its name, the warm-up (always done first, in this order), and the main exercises in the athlete's current order. Present the warm-up and the main exercises as separate groups. Each main exercise has an index; a reorder lists those indexes. sessionId and version are set only when the workout is in progress; a reorder needs them.",
     inputSchema: noArgs,
     annotations: read,
   },
@@ -74,7 +74,7 @@ export const TOOLS: Array<{
     name: "read_day",
     title: "Read a day",
     description:
-      "The workout on one calendar slot (phase, week, day), including any swap already saved. locked: true means that phase is not unlocked yet; say so and do not describe it.",
+      "The workout on one calendar slot (phase, week, day), including any swap already saved, with its warm-up and main exercises as separate groups. locked: true means that phase is not unlocked yet; say so and do not describe it.",
     inputSchema: { type: "object", properties: { slot }, required: ["slot"], additionalProperties: false },
     annotations: read,
   },
@@ -82,7 +82,7 @@ export const TOOLS: Array<{
     name: "preview_reorder",
     title: "Preview a reorder",
     description:
-      "Shows today's in-progress workout with its exercises in a new order. exerciseOrder lists positions from read_today (0-based), each once. Changes nothing. Show the result and ask the athlete to accept.",
+      "Shows today's in-progress workout with its main exercises in a new order. exerciseOrder lists the index of every main exercise from read_today, each once, in the new order. The warm-up does not move and is not listed. Changes nothing. valid: false means the list was wrong; read today again. Otherwise show the result and ask the athlete to accept.",
     inputSchema: {
       type: "object",
       properties: {
@@ -98,7 +98,7 @@ export const TOOLS: Array<{
     name: "commit_reorder",
     title: "Save a reorder",
     description:
-      "Saves the reorder the athlete accepted. Pass the version from preview_reorder. accepted must be true only after the athlete said yes to that preview. reason: stale means the day changed; read it again.",
+      "Saves the main-exercise order the athlete accepted. Pass the same exerciseOrder and the version from preview_reorder. accepted must be true only after the athlete said yes to that preview. reason: stale means the day changed; read it again.",
     inputSchema: {
       type: "object",
       properties: {

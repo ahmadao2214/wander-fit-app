@@ -20,14 +20,14 @@ export function swapVersion(
   return `swap:${updatedAt ?? 0}:${templateA}:${templateB}`;
 }
 
-export function isPermutation(order: number[], length: number): boolean {
-  if (order.length !== length) return false;
-  const seen = new Set(order);
-  if (seen.size !== length) return false;
-  for (let i = 0; i < length; i++) {
-    if (!seen.has(i)) return false;
+/** True when `order` lists every value of `allowed` exactly once, in any order. */
+export function isOrderOf(order: readonly number[], allowed: readonly number[]): boolean {
+  if (order.length !== allowed.length) return false;
+  const remaining = new Set(allowed);
+  for (const value of order) {
+    if (!remaining.delete(value)) return false;
   }
-  return true;
+  return remaining.size === 0;
 }
 
 /** Writes this connection does not offer. Easier or harder is chosen from intensity. */

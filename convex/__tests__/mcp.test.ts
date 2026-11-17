@@ -131,10 +131,14 @@ describe("MCP sign-in and tool calls", () => {
     expect(result.isError).toBe(false);
     expect(result.structuredContent.templateId).toBe(dayOne);
     expect(result.structuredContent.name).toBe(screen?.name);
-    expect(result.structuredContent.exerciseIds).toEqual([squat, hinge]);
-    expect(result.structuredContent.exerciseNames).toEqual(
-      screen?.exercises.map((row: { exercise?: { name: string } }) => row.exercise?.name),
+    expect(result.structuredContent.main.map((row: { exerciseId: string }) => row.exerciseId)).toEqual([
+      squat,
+      hinge,
+    ]);
+    const shown = [...result.structuredContent.warmup, ...result.structuredContent.main].map(
+      (row: { name: string }) => row.name,
     );
+    expect(shown).toEqual(screen?.exercises.map((row: { exercise?: { name: string } }) => row.exercise?.name));
     expect(JSON.parse(result.content[0].text)).toEqual(result.structuredContent);
   });
 
@@ -173,27 +177,29 @@ describe("MCP sign-in and tool calls", () => {
     const { t, sessionId, squat, hinge } = await fixture();
     const token = await sign(key);
     const today = (await callTool(t, token, "read_today")).structuredContent;
-    const preview = (await callTool(t, token, "preview_reorder", { sessionId, exerciseOrder: [1, 0] }))
+    const preview = (await callTool(t, token, "preview_reorder", { sessionId, exerciseOrder: [2, 1] }))
       .structuredContent;
-    expect(preview.exerciseIds).toEqual([hinge, squat]);
+    expect(preview.main.map((row: { exerciseId: string }) => row.exerciseId)).toEqual([hinge, squat]);
 
     const declined = await callTool(t, token, "commit_reorder", {
       sessionId,
-      exerciseOrder: [1, 0],
+      exerciseOrder: [2, 1],
       version: preview.version,
       accepted: false,
     });
     expect(declined.structuredContent).toEqual({ written: false, reason: "not_accepted" });
-    expect((await callTool(t, token, "read_today")).structuredContent.exerciseIds).toEqual(today.exerciseIds);
+    expect((await callTool(t, token, "read_today")).structuredContent.main).toEqual(today.main);
 
     const accepted = await callTool(t, token, "commit_reorder", {
       sessionId,
-      exerciseOrder: [1, 0],
+      exerciseOrder: [2, 1],
       version: preview.version,
       accepted: true,
     });
     expect(accepted.structuredContent).toEqual({ written: true, reason: "ok" });
-    expect((await callTool(t, token, "read_today")).structuredContent.exerciseIds).toEqual([hinge, squat]);
+    expect(
+      (await callTool(t, token, "read_today")).structuredContent.main.map((row: { exerciseId: string }) => row.exerciseId),
+    ).toEqual([hinge, squat]);
   });
 
   it("says there is no program instead of inventing one", async () => {
@@ -262,7 +268,7 @@ describe("MCP token rejection", () => {
     const { t, sessionId } = await fixture();
     const refused = await rpc(t, await makeToken(), "tools/call", {
       name: "commit_reorder",
-      arguments: { sessionId, exerciseOrder: [1, 0], version: "x", accepted: true },
+      arguments: { sessionId, exerciseOrder: [2, 1], version: "x", accepted: true },
     });
     expect(refused.status).toBe(401);
     expect(refused.challenge).toBe(invalid);
