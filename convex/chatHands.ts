@@ -63,6 +63,11 @@ function exerciseIdsInOrder(
   return indexes.map((index) => source[index].exerciseId);
 }
 
+async function namesFor(ctx: QueryCtx, ids: Id<"exercises">[]): Promise<string[]> {
+  const rows = await Promise.all(ids.map((id) => ctx.db.get(id)));
+  return rows.map((row) => row?.name ?? "Unknown exercise");
+}
+
 export const listTools = query({
   args: {},
   returns: v.object({
@@ -126,6 +131,7 @@ export const readDay = query({
     templateId: v.union(v.id("program_templates"), v.null()),
     name: v.union(v.string(), v.null()),
     exerciseIds: v.array(v.id("exercises")),
+    exerciseNames: v.array(v.string()),
   }),
   handler: async (ctx, args) => {
     const empty = {
@@ -133,6 +139,7 @@ export const readDay = query({
       templateId: null,
       name: null,
       exerciseIds: [] as Id<"exercises">[],
+      exerciseNames: [] as string[],
     };
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return empty;
@@ -154,11 +161,13 @@ export const readDay = query({
     const template = pair.templateA;
     if (!template) return empty;
 
+    const exerciseIds = exerciseIdsInOrder(template, undefined);
     return {
       locked: false,
       templateId: template._id,
       name: template.name,
-      exerciseIds: exerciseIdsInOrder(template, undefined),
+      exerciseIds,
+      exerciseNames: await namesFor(ctx, exerciseIds),
     };
   },
 });
@@ -213,7 +222,7 @@ const getTodayWorkoutRef = makeFunctionReference<
   {
     _id: Id<"program_templates">;
     name: string;
-    exercises: { exerciseId: Id<"exercises"> }[];
+    exercises: { exerciseId: Id<"exercises">; exercise?: { name: string } | null }[];
   } | null
 >("scheduleOverrides:getTodayWorkout");
 
@@ -233,6 +242,7 @@ export const readToday = action({
     templateId: v.union(v.id("program_templates"), v.null()),
     name: v.union(v.string(), v.null()),
     exerciseIds: v.array(v.id("exercises")),
+    exerciseNames: v.array(v.string()),
     sessionId: v.union(v.id("gpp_workout_sessions"), v.null()),
     version: v.union(v.string(), v.null()),
   }),
@@ -243,6 +253,7 @@ export const readToday = action({
         templateId: null,
         name: null,
         exerciseIds: [],
+        exerciseNames: [],
         sessionId: null,
         version: null,
       };
@@ -253,11 +264,15 @@ export const readToday = action({
     });
     const indexes = order?.exerciseOrder ?? today.exercises.map((_, index) => index);
     const exerciseIds = indexes.map((index) => today.exercises[index].exerciseId);
+    const exerciseNames = indexes.map(
+      (index) => today.exercises[index].exercise?.name ?? "Unknown exercise",
+    );
 
     return {
       templateId: today._id,
       name: today.name,
       exerciseIds,
+      exerciseNames,
       sessionId: order?.sessionId ?? null,
       version: order?.version ?? null,
     };
