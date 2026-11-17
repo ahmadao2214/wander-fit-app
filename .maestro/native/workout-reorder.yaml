@@ -6,7 +6,7 @@
 # first main exercise. Maestro can't make that drag: the grip needs a 150 ms
 # long press before moving, and Maestro's swipe moves at once. Drag with
 # agent-device (`gesture pan` slow enough to hold first); see
-# .cursor/skills/verify-wander-fit/features/workout-reorder.md.
+# .claude/skills/verify-wander-fit/features/workout-reorder.md.
 #
 # FIRST_EXERCISE and SECOND_EXERCISE are the first two rows after the reorder,
 # as regexes (e.g. "Goblet Squat.*"); the detail rows add the prescription.

@@ -3,7 +3,7 @@ url: ${VERIFY_URL}
 # The First Run (v2), signed out: four question screens, the two-part reveal
 # (Category, then Plan), Save my plan with a new account, then the Program
 # tab with Day 1 up next. Nothing starts by itself. See
-# .cursor/skills/verify-wander-fit/features/first-run.md.
+# .claude/skills/verify-wander-fit/features/first-run.md.
 - runFlow: ../subflows/_evidence-start.yaml
 - extendedWaitUntil:
     visible: "LET'S BUILD YOUR PLAN FOR THIS SEASON."
