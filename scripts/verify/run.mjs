@@ -358,25 +358,16 @@ export function createSignupPersona({ file = personaFile, now = Date.now, mask =
 
 // persona inspect prints the Convex object. convex run pretty-prints it, so the
 // last line is often "}" and is not the result.
-//
-// The First Run must leave the account and program it saves together: intake
-// done, GPP week 1 day 1, and the first launch time sent with the intake.
-export function assertFirstRun(output, email) {
-  let parsed = null
+function parseInspect(output) {
   try {
-    parsed = parseRunResult(output)
+    return parseRunResult(output)
   } catch {
-    parsed = null
+    return null
   }
-  const expected = {
-    found: true,
-    intakeCompleted: true,
-    hasProgram: true,
-    phase: "GPP",
-    week: 1,
-    day: 1,
-    firstLaunchRecorded: true,
-  }
+}
+
+// Compares the inspected fields a flow cares about and names the ones that differ.
+function assertInspected(parsed, expected, describe) {
   const actual = parsed
     ? Object.fromEntries(Object.keys(expected).map((key) => [key, parsed[key] ?? null]))
     : null
@@ -385,23 +376,73 @@ export function assertFirstRun(output, email) {
     : Object.keys(expected)
   if (mismatched.length) {
     const detail = actual ? JSON.stringify(actual) : "no inspect output"
-    throw new Error(`the First Run left ${email} short of a saved GPP week 1 day 1 program (${mismatched.join(", ")}): ${detail}`)
+    throw new Error(`${describe} (${mismatched.join(", ")}): ${detail}`)
   }
+}
+
+// The First Run must leave the account and program it saves together: intake
+// done, GPP week 1 day 1, and the first launch time sent with the intake.
+export function assertFirstRun(output, email) {
+  const parsed = parseInspect(output)
+  assertInspected(
+    parsed,
+    {
+      found: true,
+      intakeCompleted: true,
+      hasProgram: true,
+      phase: "GPP",
+      week: 1,
+      day: 1,
+      firstLaunchRecorded: true,
+    },
+    `the First Run left ${email} short of a saved GPP week 1 day 1 program`
+  )
   return parsed
 }
 
+// The workout loop starts an onboarded persona at GPP week 1 day 1 with no
+// sessions. Finishing today's workout must save one completed session with
+// every main exercise done (the skipped warmup counts as done), and move the
+// program to day 2.
+export function assertWorkoutLoop(output, email) {
+  const parsed = parseInspect(output)
+  const sessions = Array.isArray(parsed?.sessions) ? parsed.sessions : []
+  const session = sessions.length === 1 ? sessions[0] : null
+  assertInspected(
+    parsed && {
+      ...parsed,
+      sessionCount: sessions.length,
+      sessionStatus: session?.status ?? null,
+      allExercisesDone: session !== null && session.exercisesCompleted > 0 && session.exercisesNotDone === 0,
+    },
+    {
+      found: true,
+      phase: "GPP",
+      week: 1,
+      day: 2,
+      sessionCount: 1,
+      sessionStatus: "completed",
+      allExercisesDone: true,
+    },
+    `the workout loop left ${email} without one finished session and the program on day 2`
+  )
+  return { phase: parsed.phase, week: parsed.week, day: parsed.day, sessions }
+}
+
+// Checks run on the account after Maestro passes, by flow.
 const inspectChecks = {
   "first-run": assertFirstRun,
+  "workout-loop": assertWorkoutLoop,
 }
 
-// Modes with no entry are not inspected after Maestro passes.
-export function needsInspect(mode) {
-  return Object.hasOwn(inspectChecks, mode)
+// Flows with no entry are not inspected after Maestro passes.
+export function needsInspect(flow) {
+  return Object.hasOwn(inspectChecks, flow)
 }
 
-function inspectPersona(persona, mode) {
-  const check = inspectChecks[mode]
-  if (!check) throw new Error(`No inspect check for persona mode "${mode}".`)
+function inspectPersona(persona, flow) {
+  const check = inspectChecks[flow]
+  if (!check) throw new Error(`No inspect check for flow "${flow}".`)
   const result = spawnSync(
     process.execPath,
     ["scripts/verify/persona.mjs", "inspect", persona.email, "--json"],
@@ -620,9 +661,9 @@ const webIo = {
   releasePersona: (persona) => releasePersonaFile(persona.email),
 }
 
-// Each flow's persona mode picks how it is created and whether the account
-// is inspected after Maestro passes. Cleanup is the same for every mode.
-// Seeded modes (onboarded, with-history) go through persona create.
+// Each flow's persona mode picks how it is created, and the flow picks
+// whether the account is inspected after Maestro passes. Cleanup is the same
+// for every mode. Seeded modes (onboarded, with-history) go through persona create.
 export function webSuiteSteps(url, io = webIo) {
   return {
     createPersona: (flow) => {
@@ -635,8 +676,7 @@ export function webSuiteSteps(url, io = webIo) {
       io.runMaestro(flow, url, persona)
     },
     verify: (flow, persona) => {
-      const mode = personaMode(flow)
-      if (needsInspect(mode)) io.inspectPersona(persona, mode)
+      if (needsInspect(flow)) io.inspectPersona(persona, flow)
     },
     redact: io.redact,
     deletePersona: io.deletePersona,

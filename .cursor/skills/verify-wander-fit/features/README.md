@@ -36,3 +36,4 @@ This directory is the maintained source for verifying Wander Fit on the web expo
 - [First Run](./first-run.md) covers a signed-out athlete answering the intake, seeing the reveal, creating the account with the program, and starting Day 1's warm-up, checked with `persona inspect`.
 - [History](./history.md) covers a persona with one completed GPP session seeing it listed on the History tab.
 - [App Settings](./app-settings.md) covers opening App Settings from Profile, seeing the chat connector address and the Claude steps, and Back to Profile.
+- [Workout loop](./workout-loop.md) covers an onboarded athlete starting today's workout, logging every set, finishing, and seeing the session on History, checked with `persona inspect`.
