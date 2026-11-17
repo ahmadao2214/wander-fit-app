@@ -35,3 +35,4 @@ This directory is the maintained source for verifying Wander Fit on the web expo
 - [Sign in](./sign-in.md) covers the signed-out welcome screen, signing in to Today, and signing out from Profile.
 - [First Run](./first-run.md) covers a signed-out athlete answering the intake, seeing the reveal, creating the account with the program, and starting Day 1's warm-up, checked with `persona inspect`.
 - [History](./history.md) covers a persona with one completed GPP session seeing it listed on the History tab.
+- [Workout loop](./workout-loop.md) covers an onboarded athlete starting today's workout, logging every set, finishing, and seeing the session on History, checked with `persona inspect`.
