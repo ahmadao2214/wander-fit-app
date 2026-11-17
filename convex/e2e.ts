@@ -203,6 +203,11 @@ export const inspect = internalQuery({
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .first();
 
+    const sessions = await ctx.db
+      .query("gpp_workout_sessions")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
     return {
       found: true as const,
       email: user.email,
@@ -214,6 +219,15 @@ export const inspect = internalQuery({
       phase: program?.currentPhase ?? null,
       week: program?.currentWeek ?? null,
       day: program?.currentDay ?? null,
+      // Oldest first, so a flow's own session is the last one.
+      sessions: sessions.map((session) => ({
+        status: session.status,
+        exerciseIds: session.exercises.map((exercise) => exercise.exerciseId),
+        // Warmup entries are saved completed and skipped; main exercises are
+        // completed once every set is logged.
+        exercisesCompleted: session.exercises.filter((exercise) => exercise.completed && !exercise.skipped).length,
+        exercisesNotDone: session.exercises.filter((exercise) => !exercise.completed).length,
+      })),
     };
   },
 });

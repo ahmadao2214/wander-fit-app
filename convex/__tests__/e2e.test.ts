@@ -144,6 +144,16 @@ describe("e2e persona provisioning", () => {
       templateSnapshot: { name: "Lower Body Foundation" },
     });
 
+    // persona inspect lists the sessions, so the workout-loop flow can check its own
+    const inspected = await t.query(internal.e2e.inspect, { email });
+    expect(inspected.found && inspected.sessions).toHaveLength(15);
+    expect(inspected.found && inspected.sessions[0]).toMatchObject({
+      status: "completed",
+      exercisesCompleted: 1,
+      exercisesNotDone: 0,
+    });
+    expect(inspected.found && inspected.sessions[0].exerciseIds).toHaveLength(1);
+
     await t.mutation(internal.e2e.remove, { email });
     const left = await t.run((ctx) => ctx.db.query("gpp_workout_sessions").collect());
     expect(left).toEqual([]);
