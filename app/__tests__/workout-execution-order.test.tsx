@@ -59,9 +59,9 @@ jest.mock('react-native-safe-area-context', () => ({
 
 // The queue drawer pulls in Reanimated; it isn't what this test covers
 // It records its props so the header button can be checked
-let mockQueueProps: { open?: boolean } = {}
+let mockQueueProps: { open?: boolean; onReorder?: (from: number, to: number) => void } = {}
 jest.mock('../../components/workout/ExerciseQueue', () => ({
-  ExerciseQueue: (props: { open?: boolean }) => {
+  ExerciseQueue: (props: { open?: boolean; onReorder?: (from: number, to: number) => void }) => {
     mockQueueProps = props
     return null
   },
@@ -151,7 +151,8 @@ describe('Workout execution after reordering', () => {
     })
 
     const saved = mockUpdateProgress.mock.calls.at(-1)?.[0]
-    expect(saved.exerciseOrder).toEqual([2, 1])
+    // The order is already saved, so the set save leaves it alone.
+    expect(saved.exerciseOrder).toBeUndefined()
     expect(saved.exercises.map((e: any) => e.exerciseId)).toEqual(['cat_cow', 'goblet_squat', 'romanian_deadlift'])
     expect(saved.exercises[2].sets[0].completed).toBe(true)
     expect(saved.exercises[1].sets.every((set: any) => !set.completed)).toBe(true)
@@ -210,8 +211,36 @@ describe('Workout execution after reordering', () => {
       jest.advanceTimersByTime(2500)
     })
     const saved = mockUpdateProgress.mock.calls.at(-1)?.[0]
-    expect(saved.exerciseOrder).toEqual([2, 1])
+    // The chat's order stands: this save does not send an order at all.
+    expect(saved.exerciseOrder).toBeUndefined()
     expect(saved.exercises[1].sets[0].completed).toBe(true)
+  })
+
+  it('saves an order the athlete changes on the screen', async () => {
+    renderSession({
+      _id: 'session_1',
+      startedAt: Date.now(),
+      status: 'in_progress',
+      template: {
+        ...template,
+        exercises: [...template.exercises, exercise('hip_thrust', 'Hip Thrust', 3, '10')],
+      },
+      exercises: [
+        { exerciseId: 'cat_cow', completed: true, skipped: true, sets: [{ completed: true, skipped: true }] },
+        { exerciseId: 'goblet_squat', completed: false, skipped: false, sets: freshSets(6) },
+        { exerciseId: 'romanian_deadlift', completed: false, skipped: false, sets: freshSets(3) },
+        { exerciseId: 'hip_thrust', completed: false, skipped: false, sets: freshSets(3) },
+      ],
+      exerciseOrder: [1, 2, 3],
+    })
+    // Move Hip Thrust ahead of Romanian Deadlift (both still to come).
+    await act(async () => {
+      mockQueueProps.onReorder?.(2, 1)
+    })
+    await act(async () => {
+      jest.advanceTimersByTime(2500)
+    })
+    expect(mockUpdateProgress.mock.calls.at(-1)?.[0].exerciseOrder).toEqual([1, 3, 2])
   })
 
   it("does not take its own save coming back as a new order", async () => {
@@ -232,8 +261,8 @@ describe('Workout execution after reordering', () => {
     await act(async () => {
       jest.advanceTimersByTime(2500)
     })
-    expect(mockUpdateProgress.mock.calls.at(-1)?.[0].exerciseOrder).toEqual([2, 1])
-    // The echo of that save changes nothing on screen.
+    expect(mockUpdateProgress.mock.calls.at(-1)?.[0].exerciseOrder).toBeUndefined()
+    // The server's copy coming back changes nothing on screen.
     mockSession = { ...base, exerciseOrder: [2, 1] }
     screen.rerender(<WorkoutExecutionScreen />)
     expect(screen.getAllByText(/Romanian Deadlift/).length).toBeGreaterThan(0)

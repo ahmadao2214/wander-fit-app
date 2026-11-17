@@ -22,6 +22,7 @@ import {
 } from "./chatHandsVersion";
 import { isWarmupExercise, mainTemplateIndices, normalizeExerciseOrder } from "../lib/executionOrder";
 import { countsAsDone } from "./blockCompletion";
+import { DEFAULT_WEEKS_PER_PHASE } from "./weekMapping";
 
 const phaseValidator = v.union(v.literal("GPP"), v.literal("SPP"), v.literal("SSP"));
 
@@ -44,6 +45,7 @@ const writeResult = v.object({
     v.literal("locked"),
     v.literal("different_phases"),
     v.literal("same_slot"),
+    v.literal("out_of_range"),
   ),
 });
 
@@ -52,6 +54,14 @@ function unlockedPhases(program: Doc<"user_programs">): Array<"GPP" | "SPP" | "S
   if (program.sppUnlockedAt) phases.push("SPP");
   if (program.sspUnlockedAt) phases.push("SSP");
   return phases;
+}
+
+/** A slot the program has: week within the phase's weeks, day from 1. */
+function inProgramRange(program: Doc<"user_programs">, slot: WorkoutSlotRef): boolean {
+  const weeks = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
+  return (
+    Number.isInteger(slot.week) && Number.isInteger(slot.day) && slot.week >= 1 && slot.week <= weeks && slot.day >= 1
+  );
 }
 
 async function userFor(ctx: QueryCtx, clerkId: string) {
@@ -180,6 +190,7 @@ export const readDay = internalQuery({
     if (!unlockedPhases(program).includes(args.slot.phase)) {
       return { ...empty, locked: true };
     }
+    if (!inProgramRange(program, args.slot)) return empty;
 
     const pair = await resolveSlotPair(ctx, program, args.slot, args.slot);
     const template = pair.templateA;
@@ -222,6 +233,9 @@ export const readToday = internalQuery({
 
     const template = await ctx.db.get(today._id as Id<"program_templates">);
     if (!template) return none;
+    // A workout left running in a phase that was locked again stays unread.
+    const program = await programFor(ctx, user);
+    if (!program || !unlockedPhases(program).includes(template.phase)) return none;
 
     const session = await inProgressSession(ctx, user, template._id);
     return {
@@ -261,6 +275,8 @@ export const previewReorder = internalQuery({
 
     const template = await ctx.db.get(session.templateId);
     if (!template) return empty;
+    const program = await programFor(ctx, user);
+    if (!program || !unlockedPhases(program).includes(template.phase)) return empty;
 
     const expectedIndexes = mainTemplateIndices(template.exercises);
     const valid = isOrderOf(args.exerciseOrder, expectedIndexes);
@@ -292,6 +308,10 @@ export const commitReorder = internalMutation({
     }
 
     const template = await ctx.db.get(session.templateId);
+    const program = await programFor(ctx, user);
+    if (template && (!program || !unlockedPhases(program).includes(template.phase))) {
+      return { written: false, reason: "locked" as const };
+    }
     if (!template || !isOrderOf(args.exerciseOrder, mainTemplateIndices(template.exercises))) {
       return { written: false, reason: "bad_order" as const };
     }
@@ -330,6 +350,7 @@ const swapReason = v.union(
   v.literal("locked"),
   v.literal("empty_slot"),
   v.literal("completed"),
+  v.literal("out_of_range"),
 );
 
 const sameSlot = (a: WorkoutSlotRef, b: WorkoutSlotRef) =>
@@ -353,7 +374,14 @@ export const previewSwap = internalQuery({
       after,
     });
     const refuse = (
-      reason: "no_program" | "same_slot" | "different_phases" | "locked" | "empty_slot" | "completed",
+      reason:
+        | "no_program"
+        | "same_slot"
+        | "different_phases"
+        | "locked"
+        | "empty_slot"
+        | "completed"
+        | "out_of_range",
     ) => ({
       valid: false,
       reason,
@@ -370,6 +398,7 @@ export const previewSwap = internalQuery({
     if (sameSlot(args.slotA, args.slotB)) return refuse("same_slot");
     if (args.slotA.phase !== args.slotB.phase) return refuse("different_phases");
     if (!unlockedPhases(program).includes(args.slotA.phase)) return refuse("locked");
+    if (!inProgramRange(program, args.slotA) || !inProgramRange(program, args.slotB)) return refuse("out_of_range");
 
     const { existingOverride, templateA, templateB } = await resolveSlotPair(
       ctx,
@@ -431,6 +460,9 @@ export const commitSwap = internalMutation({
     }
     if (!unlockedPhases(program).includes(args.slotA.phase)) {
       return { written: false, reason: "locked" as const };
+    }
+    if (!inProgramRange(program, args.slotA) || !inProgramRange(program, args.slotB)) {
+      return { written: false, reason: "out_of_range" as const };
     }
 
     if (!args.accepted) {

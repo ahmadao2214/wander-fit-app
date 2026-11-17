@@ -344,6 +344,7 @@ export default function ProfilePage() {
               borderWidth={1}
               borderColor="$borderColor"
               pressStyle={{ bg: '$surfaceHover' }}
+              testID="profile-app-settings"
               onPress={() => {
                 router.push('/(athlete)/settings')
               }}

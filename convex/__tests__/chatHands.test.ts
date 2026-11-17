@@ -241,6 +241,46 @@ describe("chat hands", () => {
     expect({ source: today.source, sessionId: today.sessionId }).toEqual({ source: "in_progress", sessionId });
   });
 
+  it("refuses a week past the end of the phase instead of mapping it onto a real one", async () => {
+    const { t } = await fixture();
+    const slotA = { phase: "GPP" as const, week: 1, day: 1 };
+    const far = { phase: "GPP" as const, week: 99, day: 2 };
+    const preview = await t.query(internal.chatHands.previewSwap, { clerkId: "clerk_athlete", slotA, slotB: far });
+    expect({ valid: preview.valid, reason: preview.reason }).toEqual({ valid: false, reason: "out_of_range" });
+    const write = await t.mutation(internal.chatHands.commitSwap, {
+      clerkId: "clerk_athlete",
+      slotA,
+      slotB: far,
+      version: "x",
+      accepted: true,
+    });
+    expect(write).toEqual({ written: false, reason: "out_of_range" });
+    const day = await t.query(internal.chatHands.readDay, { clerkId: "clerk_athlete", slot: far });
+    expect(day.templateId).toBeNull();
+  });
+
+  it("leaves a started workout alone once its phase is locked again", async () => {
+    const { t, dayOne, sessionId } = await fixture();
+    // The started workout belongs to SPP, which this athlete has not unlocked.
+    await t.run((ctx) => ctx.db.patch(dayOne, { phase: "SPP" }));
+    const today = await t.query(internal.chatHands.readToday, { clerkId: "clerk_athlete" });
+    expect({ source: today.source, sessionId: today.sessionId }).toEqual({ source: "none", sessionId: null });
+    const preview = await t.query(internal.chatHands.previewReorder, {
+      clerkId: "clerk_athlete",
+      sessionId,
+      exerciseOrder: [2, 1],
+    });
+    expect(preview.valid).toBe(false);
+    const write = await t.mutation(internal.chatHands.commitReorder, {
+      clerkId: "clerk_athlete",
+      sessionId,
+      exerciseOrder: [2, 1],
+      version: "x",
+      accepted: true,
+    });
+    expect(write).toEqual({ written: false, reason: "locked" });
+  });
+
   it("reads a scheduled workout as scheduled, with no session to reorder", async () => {
     const { t, sessionId } = await fixture();
     await t.run((ctx) => ctx.db.patch(sessionId, { status: "abandoned" }));
