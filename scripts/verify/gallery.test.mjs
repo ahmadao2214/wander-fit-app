@@ -110,17 +110,21 @@ describe("buildGallery", () => {
     expect(html).toContain("No evidence yet")
   })
 
-  it("flags web evidence older than the run building the page", () => {
+  it("flags web evidence that the run building the page did not upload", () => {
     const model = buildGallery({
-      flows: ["sign-in", "history"],
+      flows: ["sign-in", "history", "first-run"],
       entries: [
-        entry({ createdAt: "2026-11-15T07:30:00Z" }),
-        entry({ flow: "history", createdAt: "2026-11-16T07:40:00Z" }),
+        entry({ runId: 8, createdAt: "2026-11-15T07:30:00Z" }),
+        entry({ flow: "history", runId: 9, createdAt: "2026-11-16T07:40:00Z" }),
+        // A main check that held the e2e-backend queue uploaded after the
+        // nightly started; the nightly itself uploaded nothing for this flow.
+        entry({ flow: "first-run", runId: 7, createdAt: "2026-11-16T07:25:00Z" }),
       ],
       run: { runId: 9, startedAt: "2026-11-16T07:17:00Z", platforms: ["web"] },
     })
     expect(cellOf(model, "sign-in", "web").stale).toBe(true)
     expect(cellOf(model, "history", "web").stale).toBe(false)
+    expect(cellOf(model, "first-run", "web").stale).toBe(true)
     expect(renderGallery(model)).toContain("uploaded no evidence for this flow")
   })
 
