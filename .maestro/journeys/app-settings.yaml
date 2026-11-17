@@ -37,8 +37,11 @@ url: ${VERIFY_URL}
 - takeScreenshot: 02-app-settings
 - tapOn:
     id: "Back"
+# Back lands on /profile#sign-out, scrolled to the bottom of the list, so
+# check the row near Sign Out rather than "Training info" at the top.
 - extendedWaitUntil:
-    visible: "Training info"
+    visible:
+      id: profile-app-settings
     timeout: 30000
 - takeScreenshot: 03-back-to-profile
 - runFlow: ../subflows/_evidence-stop.yaml
