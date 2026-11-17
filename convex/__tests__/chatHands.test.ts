@@ -193,6 +193,54 @@ describe("chat hands", () => {
     }
   });
 
+  it("refuses to preview a swap of a workout already done in this block", async () => {
+    const { t, dayTwo } = await fixture();
+    await t.run(async (ctx) => {
+      const user = (await ctx.db.query("users").first())!;
+      const program = (await ctx.db.query("user_programs").first())!;
+      await ctx.db.insert("gpp_workout_sessions", {
+        userId: user._id,
+        templateId: dayTwo,
+        userProgramId: program._id,
+        startedAt: Date.now(),
+        completedAt: Date.now(),
+        status: "completed",
+        exercises: [],
+      });
+    });
+    const preview = await t.query(internal.chatHands.previewSwap, {
+      clerkId: "clerk_athlete",
+      slotA: { phase: "GPP", week: 1, day: 1 },
+      slotB: { phase: "GPP", week: 1, day: 2 },
+    });
+    expect({ valid: preview.valid, reason: preview.reason }).toEqual({ valid: false, reason: "completed" });
+  });
+
+  it("finds the athlete's started workout however many others share the template", async () => {
+    const { t, dayOne, sessionId } = await fixture();
+    await t.run(async (ctx) => {
+      const program = (await ctx.db.query("user_programs").first())!;
+      for (let i = 0; i < 12; i++) {
+        const other = await ctx.db.insert("users", {
+          email: `other${i}@example.com`,
+          name: "Other",
+          clerkId: `clerk_other_${i}`,
+          createdAt: 1,
+        });
+        await ctx.db.insert("gpp_workout_sessions", {
+          userId: other,
+          templateId: dayOne,
+          userProgramId: program._id,
+          startedAt: Date.now() + i + 1,
+          status: "in_progress",
+          exercises: [],
+        });
+      }
+    });
+    const today = await t.query(internal.chatHands.readToday, { clerkId: "clerk_athlete" });
+    expect({ source: today.source, sessionId: today.sessionId }).toEqual({ source: "in_progress", sessionId });
+  });
+
   it("reads a scheduled workout as scheduled, with no session to reorder", async () => {
     const { t, sessionId } = await fixture();
     await t.run((ctx) => ctx.db.patch(sessionId, { status: "abandoned" }));

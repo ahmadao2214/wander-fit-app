@@ -321,6 +321,30 @@ export default function WorkoutExecutionScreen() {
     }
   }, [session, isInitialized])
 
+  // The order this screen last saved, so its own save coming back is not
+  // mistaken for a change made elsewhere.
+  const lastSentOrderRef = useRef<string | null>(null)
+
+  // Adopt an order changed elsewhere while this screen is open (a reorder the
+  // athlete accepted in a chat), so the next save does not undo it. Logged
+  // sets live in template order, so they stay with their exercise.
+  const serverOrderKey = Array.isArray(session?.exerciseOrder) ? (session.exerciseOrder as number[]).join('.') : ''
+  useEffect(() => {
+    if (!isInitialized || !serverOrderKey || exerciseOrder.length === 0) return
+    const templateExs = session?.template?.exercises as any[] | undefined
+    if (!templateExs) return
+    const incoming = normalizeExerciseOrder(session?.exerciseOrder as number[], templateExs)
+    const key = incoming.join('.')
+    if (key === exerciseOrder.join('.') || key === lastSentOrderRef.current) return
+    const onScreen = exerciseOrder[currentIndexRef.current]
+    setExerciseOrder(incoming)
+    lastSentOrderRef.current = key
+    const position = incoming.indexOf(onScreen)
+    if (position !== -1) setCurrentExerciseIndex(position)
+    // Only a change in the saved order should run this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverOrderKey, isInitialized])
+
   // Opening a paused session ends the pause, so its clock runs again. Not
   // after this screen's own Exit: its pause must stand until Resume.
   const resumeRequestedRef = useRef(false)
@@ -402,6 +426,7 @@ export default function WorkoutExecutionScreen() {
       if (sessionEndedRef.current) return
 
       if (sessionId && exerciseCompletions.length > 0) {
+        if (exerciseOrder.length > 0) lastSentOrderRef.current = exerciseOrder.join('.')
         try {
           await updateProgress({
             sessionId: sessionId as Id<"gpp_workout_sessions">,

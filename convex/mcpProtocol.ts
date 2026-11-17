@@ -116,7 +116,7 @@ export const TOOLS: Array<{
     name: "preview_swap",
     title: "Preview a swap",
     description:
-      "Shows what swapping two calendar slots in the same phase would do. slotA and slotB each give the workout there before and after the swap. Changes nothing. valid: false gives a reason: different_phases (swaps stay within one phase), locked (that phase is not unlocked), same_slot, empty_slot (a rest day), or no_program. Only calendar slots move: inProgressWorkout, when set, is a workout already started and it stays as it is. If valid, show before and after for both slots and ask the athlete to accept.",
+      "Shows what swapping two calendar slots in the same phase would do. slotA and slotB each give the workout there before and after the swap. Changes nothing. valid: false gives a reason: different_phases (swaps stay within one phase), locked (that phase is not unlocked), same_slot, empty_slot (a rest day), completed (a workout already done in this block stays put), or no_program. Only calendar slots move: inProgressWorkout, when set, is a workout already started and it stays as it is. If valid, show before and after for both slots and ask the athlete to accept.",
     inputSchema: {
       type: "object",
       properties: { slotA: slot, slotB: slot },

@@ -21,6 +21,7 @@ import {
   swapVersion,
 } from "./chatHandsVersion";
 import { isWarmupExercise, mainTemplateIndices, normalizeExerciseOrder } from "../lib/executionOrder";
+import { countsAsDone } from "./blockCompletion";
 
 const phaseValidator = v.union(v.literal("GPP"), v.literal("SPP"), v.literal("SSP"));
 
@@ -116,10 +117,9 @@ async function inProgressSession(
 ) {
   const sessions = await ctx.db
     .query("gpp_workout_sessions")
-    .withIndex("by_template", (q) => q.eq("templateId", templateId))
-    .order("desc")
-    .take(10);
-  return sessions.find((row) => row.userId === user._id && row.status === "in_progress") ?? null;
+    .withIndex("by_user_status", (q) => q.eq("userId", user._id).eq("status", "in_progress"))
+    .collect();
+  return sessions.find((row) => row.templateId === templateId) ?? null;
 }
 
 export const listTools = internalQuery({
@@ -329,6 +329,7 @@ const swapReason = v.union(
   v.literal("different_phases"),
   v.literal("locked"),
   v.literal("empty_slot"),
+  v.literal("completed"),
 );
 
 const sameSlot = (a: WorkoutSlotRef, b: WorkoutSlotRef) =>
@@ -351,7 +352,9 @@ export const previewSwap = internalQuery({
       before,
       after,
     });
-    const refuse = (reason: "no_program" | "same_slot" | "different_phases" | "locked" | "empty_slot") => ({
+    const refuse = (
+      reason: "no_program" | "same_slot" | "different_phases" | "locked" | "empty_slot" | "completed",
+    ) => ({
       valid: false,
       reason,
       version: null,
@@ -376,10 +379,20 @@ export const previewSwap = internalQuery({
     );
     if (!templateA || !templateB) return refuse("empty_slot");
 
+    // Same rule the swap itself enforces: a workout done in this block stays put.
+    const done = (
+      await ctx.db
+        .query("gpp_workout_sessions")
+        .withIndex("by_user_status", (q) => q.eq("userId", user._id).eq("status", "completed"))
+        .collect()
+    ).filter((session) => countsAsDone(session, program));
+    if (done.some((session) => session.templateId === templateA._id || session.templateId === templateB._id)) {
+      return refuse("completed");
+    }
+
     const running = await ctx.db
       .query("gpp_workout_sessions")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .filter((q) => q.eq(q.field("status"), "in_progress"))
+      .withIndex("by_user_status", (q) => q.eq("userId", user._id).eq("status", "in_progress"))
       .first();
     const runningTemplate = running ? await ctx.db.get(running.templateId) : null;
 
