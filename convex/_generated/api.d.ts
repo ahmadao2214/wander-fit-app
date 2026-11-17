@@ -26,6 +26,7 @@ import type * as http from "../http.js";
 import type * as intensityScaling from "../intensityScaling.js";
 import type * as migrations_migrateAgeGroups from "../migrations/migrateAgeGroups.js";
 import type * as migrations_migrateTemplates from "../migrations/migrateTemplates.js";
+import type * as mcpAuth from "../mcpAuth.js";
 import type * as mcpProtocol from "../mcpProtocol.js";
 import type * as migrations from "../migrations.js";
 import type * as onboarding from "../onboarding.js";
@@ -65,6 +66,7 @@ declare const fullApi: ApiFromModules<{
   intensityScaling: typeof intensityScaling;
   "migrations/migrateAgeGroups": typeof migrations_migrateAgeGroups;
   "migrations/migrateTemplates": typeof migrations_migrateTemplates;
+  mcpAuth: typeof mcpAuth;
   mcpProtocol: typeof mcpProtocol;
   migrations: typeof migrations;
   onboarding: typeof onboarding;

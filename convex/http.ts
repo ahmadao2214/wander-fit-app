@@ -4,6 +4,20 @@ import type { ActionCtx } from "./_generated/server";
 import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { handleMessage, PARSE_ERROR, type CallTool } from "./mcpProtocol";
+import {
+  CORS_HEADERS,
+  MCP_PATH,
+  RESOURCE_METADATA_PATH,
+  protectedResourceMetadata,
+  unauthorizedHeader,
+  type McpEnv,
+} from "./mcpAuth";
+
+const env = (): McpEnv => ({
+  MCP_RESOURCE_URL: process.env.MCP_RESOURCE_URL,
+  CONVEX_SITE_URL: process.env.CONVEX_SITE_URL,
+  CLERK_JWT_ISSUER_DOMAIN: process.env.CLERK_JWT_ISSUER_DOMAIN,
+});
 
 type Slot = { phase: "GPP" | "SPP" | "SSP"; week: number; day: number };
 
@@ -55,17 +69,18 @@ function toolsFor(ctx: ActionCtx): CallTool {
 const json = (body: unknown, status = 200, headers: Record<string, string> = {}) =>
   new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json", ...headers },
+    headers: { "Content-Type": "application/json", ...CORS_HEADERS, ...headers },
   });
 
 const mcp = httpAction(async (ctx, request) => {
-  // Convex has already checked the bearer token against auth.config.ts.
+  // Convex has already checked the bearer token against auth.config.ts: either the
+  // app's session token or a Clerk OAuth token whose audience is this endpoint.
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) {
     return json(
       { jsonrpc: "2.0", id: null, error: { code: -32001, message: "Sign in to Wander Fit first" } },
       401,
-      { "WWW-Authenticate": 'Bearer realm="wander-fit"' },
+      { "WWW-Authenticate": unauthorizedHeader(env()) },
     );
   }
 
@@ -77,16 +92,44 @@ const mcp = httpAction(async (ctx, request) => {
   }
 
   const response = await handleMessage(message, toolsFor(ctx));
-  if (response === null) return new Response(null, { status: 202 });
+  if (response === null) return new Response(null, { status: 202, headers: CORS_HEADERS });
   return json(response);
 });
 
 // Stateless server: no server-to-client stream and no session to end.
-const notAllowed = httpAction(async () => new Response(null, { status: 405, headers: { Allow: "POST" } }));
+const notAllowed = httpAction(
+  async () => new Response(null, { status: 405, headers: { Allow: "POST, OPTIONS", ...CORS_HEADERS } }),
+);
+
+const preflight = httpAction(async () => new Response(null, { status: 204, headers: CORS_HEADERS }));
+
+/** RFC 9728: tells a chat client that Clerk signs the athlete in for this endpoint. */
+const resourceMetadata = httpAction(async () => {
+  const metadata = protectedResourceMetadata(env());
+  if (!metadata) return json({ error: "MCP sign-in is not configured on this deployment" }, 404);
+  return json(metadata, 200, { "Cache-Control": "public, max-age=300" });
+});
+
+/**
+ * Clients built on the 2025-03-26 spec look for the authorization server's
+ * metadata on this origin. Pass Clerk's through unchanged.
+ */
+const authServerMetadata = httpAction(async () => {
+  const issuer = env().CLERK_JWT_ISSUER_DOMAIN;
+  if (!issuer) return json({ error: "Clerk issuer is not configured" }, 404);
+  const upstream = await fetch(`${issuer.replace(/\/$/, "")}/.well-known/oauth-authorization-server`);
+  return json(await upstream.json(), upstream.status, { "Cache-Control": "public, max-age=300" });
+});
 
 const http = httpRouter();
-http.route({ path: "/mcp", method: "POST", handler: mcp });
-http.route({ path: "/mcp", method: "GET", handler: notAllowed });
-http.route({ path: "/mcp", method: "DELETE", handler: notAllowed });
+http.route({ path: MCP_PATH, method: "POST", handler: mcp });
+http.route({ path: MCP_PATH, method: "GET", handler: notAllowed });
+http.route({ path: MCP_PATH, method: "DELETE", handler: notAllowed });
+http.route({ path: MCP_PATH, method: "OPTIONS", handler: preflight });
+for (const path of [RESOURCE_METADATA_PATH, `${RESOURCE_METADATA_PATH}${MCP_PATH}`]) {
+  http.route({ path, method: "GET", handler: resourceMetadata });
+  http.route({ path, method: "OPTIONS", handler: preflight });
+}
+http.route({ path: "/.well-known/oauth-authorization-server", method: "GET", handler: authServerMetadata });
 
 export default http;

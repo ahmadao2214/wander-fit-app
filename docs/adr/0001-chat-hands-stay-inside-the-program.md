@@ -15,3 +15,7 @@ Every athlete who can sign in gets this connection. Pricing and who can reach it
 ## Later slice, agreed and not started
 
 The chat may add a movement that already exists in the library onto a day. The day keeps its phase and skill. The added movement is marked so a prescribed movement and an athlete-added movement stay distinct. Phase, skill, and the intensity ceiling stay with the program until a trainer product exists. The same acceptance rule applies.
+
+## Sign-in for the connection
+
+Clerk, which already signs the athlete into the app, is the authorization server for the connection. The `/mcp` endpoint is only a resource server: it publishes metadata at `/.well-known/oauth-protected-resource/mcp` naming Clerk, and a request without a token gets a 401 that points there. Convex checks the Clerk OAuth access token through a second provider in `auth.config.ts`, whose audience is the endpoint's own address (`MCP_RESOURCE_URL`). Every hand, including the app's own Today query, then runs as that athlete with no second code path. The provider is off until `MCP_RESOURCE_URL` is set on a deployment.

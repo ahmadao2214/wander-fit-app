@@ -2,6 +2,7 @@ import { Button, ScrollView, Text, YStack, styled } from 'tamagui'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ChevronLeft } from '@tamagui/lucide-icons'
+import { mcpAddress } from '../../lib/mcpAddress'
 
 const DisplayHeading = styled(Text, {
   fontFamily: '$heading',
@@ -25,13 +26,20 @@ const StepTitle = styled(Text, {
 })
 
 const STEPS = [
-  'Open Claude on the web or on this phone.',
-  'Add a custom connector for Wander Fit.',
-  'Sign in with the same account you use in this app.',
-  'Ask what today is. Claude reads the program from Wander Fit, and a change to a day waits for you to accept it.',
+  'On claude.ai or the Claude desktop app, open Settings, then Connectors, and add a custom connector.',
+  'Name it Wander Fit and paste the address above.',
+  'Select Connect and sign in with the same account you use in this app.',
+  'Open Claude on this phone and ask what today is. A change to a day waits for you to accept it.',
 ]
 
+const Address = styled(Text, {
+  fontFamily: '$body',
+  fontSize: 15,
+  color: '$color12',
+})
+
 export default function AthleteSettingsScreen() {
+  const address = mcpAddress(process.env.EXPO_PUBLIC_CONVEX_URL)
   const insets = useSafeAreaInsets()
   const router = useRouter()
 
@@ -51,8 +59,18 @@ export default function AthleteSettingsScreen() {
         />
         <DisplayHeading>App Settings</DisplayHeading>
         <BodyText>
-          A chat can read your program and, after you accept, reorder a day or swap two days. The connector address is not published yet. These are the steps once it is.
+          Claude can read your program and, after you accept, reorder today&apos;s exercises or swap two days. Logging sets stays in this app.
         </BodyText>
+        <YStack gap="$1" bg="$color2" rounded="$4" p="$3">
+          <StepTitle>Connector address</StepTitle>
+          {address ? (
+            <Address selectable testID="mcp-address">
+              {address}
+            </Address>
+          ) : (
+            <BodyText>This build has no connector address.</BodyText>
+          )}
+        </YStack>
         <YStack gap="$3">
           {STEPS.map((step, index) => (
             <YStack key={step} gap="$1">
