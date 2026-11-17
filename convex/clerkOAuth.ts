@@ -5,8 +5,9 @@
  * Clerk's own SDK tells them from session tokens, whose typ is "JWT"). The
  * signature is checked against the issuer's JWKS before any claim is read.
  * Then: exact issuer, unexpired, and the exact audience of the resource being
- * called. Opaque tokens are refused: verifying one needs introspection that
- * reports the audience, and this deployment has no Clerk secret for that.
+ * called. An opaque token (oat_...) is checked through Clerk's verify API,
+ * which needs the Clerk secret key on the server and reports the audience;
+ * without the key, opaque tokens are refused.
  */
 
 export type Jwk = JsonWebKey & { kid?: string; alg?: string; use?: string };
@@ -36,7 +37,9 @@ export type Rejection =
   | "expired"
   | "not_yet_valid"
   | "wrong_audience"
-  | "no_subject";
+  | "no_subject"
+  | "unknown_token"
+  | "revoked";
 
 export type Verified = {
   ok: true;
@@ -167,4 +170,62 @@ export function issuerJwks(issuer: string, fetcher: typeof fetch = fetch) {
 
 export function clearJwksCache() {
   jwksCache.clear();
+}
+
+const CLERK_API = "https://api.clerk.com/v1";
+
+/** The fields of Clerk's IdPOAuthAccessToken that the decision needs. */
+type IntrospectedToken = {
+  subject?: unknown;
+  client_id?: unknown;
+  scopes?: unknown;
+  revoked?: unknown;
+  expired?: unknown;
+  expiration?: unknown;
+  aud?: unknown;
+};
+
+export type IntrospectOptions = {
+  secretKey: string;
+  audience: string;
+  fetcher?: typeof fetch;
+  now?: () => number;
+};
+
+export const isOpaqueToken = (token: string) => /^oat_[0-9A-Za-z]+$/.test(token);
+
+/**
+ * Resource-aware introspection of an opaque Clerk OAuth access token. Throws
+ * only when Clerk cannot be reached, so the caller can answer 503, not 401.
+ */
+export async function introspectOpaqueToken(token: string, options: IntrospectOptions): Promise<Verification> {
+  if (!isOpaqueToken(token)) return fail("malformed");
+  const fetcher = options.fetcher ?? fetch;
+  const response = await fetcher(`${CLERK_API}/oauth_applications/access_tokens/verify`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${options.secretKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ access_token: token }),
+  });
+  if (response.status === 404 || response.status === 400 || response.status === 422) return fail("unknown_token");
+  if (!response.ok) throw new Error(`Clerk token verify failed: ${response.status}`);
+
+  const body = (await response.json()) as IntrospectedToken;
+  const now = options.now ? options.now() : Math.floor(Date.now() / 1000);
+
+  if (body.revoked !== false) return fail("revoked");
+  if (body.expired !== false) return fail("expired");
+  if (typeof body.expiration !== "number" || body.expiration <= now) return fail("expired");
+
+  const audiences = Array.isArray(body.aud) ? body.aud : typeof body.aud === "string" ? [body.aud] : [];
+  if (!audiences.includes(options.audience)) return fail("wrong_audience");
+
+  if (typeof body.subject !== "string" || body.subject.length === 0) return fail("no_subject");
+
+  return {
+    ok: true,
+    subject: body.subject,
+    clientId: typeof body.client_id === "string" ? body.client_id : null,
+    scopes: Array.isArray(body.scopes) ? body.scopes.filter((v): v is string => typeof v === "string") : [],
+    expiresAt: body.expiration,
+  };
 }

@@ -1,5 +1,12 @@
 import { webcrypto } from "node:crypto";
-import { bearerToken, clearJwksCache, issuerJwks, verifyAccessToken, type Jwks } from "../clerkOAuth";
+import {
+  bearerToken,
+  clearJwksCache,
+  introspectOpaqueToken,
+  issuerJwks,
+  verifyAccessToken,
+  type Jwks,
+} from "../clerkOAuth";
 import { ISSUER, RESOURCE, jwksFetch, makeKey, sign, type SigningKey } from "../../jest/clerkTokens";
 
 const subtle = webcrypto.subtle as unknown as SubtleCrypto;
@@ -161,5 +168,66 @@ describe("bearerToken", () => {
     expect(bearerToken("Basic dXNlcjpwYXNz")).toBeNull();
     expect(bearerToken(null)).toBeNull();
     expect(bearerToken("Bearer a b")).toBeNull();
+  });
+});
+
+describe("introspectOpaqueToken", () => {
+  const now = 1_800_000_000;
+  const active = {
+    object: "clerk_idp_oauth_access_token",
+    client_id: "https://claude.ai/oauth/mcp-oauth-client-metadata",
+    subject: "clerk_athlete",
+    scopes: ["openid", "profile", "email"],
+    revoked: false,
+    expired: false,
+    expiration: now + 600,
+    aud: [RESOURCE],
+  };
+  const respond = (status: number, body: unknown) => {
+    const requests: { url: string; init?: RequestInit }[] = [];
+    const fetcher = (async (url: RequestInfo | URL, init?: RequestInit) => {
+      requests.push({ url: String(url), init });
+      return new Response(JSON.stringify(body), { status });
+    }) as typeof fetch;
+    return { fetcher, requests };
+  };
+  const check = (fetcher: typeof fetch, token = "oat_ABC123") =>
+    introspectOpaqueToken(token, { secretKey: "sk_test_x", audience: RESOURCE, fetcher, now: () => now });
+
+  it("accepts an active token for this resource and sends the secret only to Clerk", async () => {
+    const { fetcher, requests } = respond(200, active);
+    expect(await check(fetcher)).toEqual({
+      ok: true,
+      subject: "clerk_athlete",
+      clientId: active.client_id,
+      scopes: active.scopes,
+      expiresAt: now + 600,
+    });
+    expect(requests).toHaveLength(1);
+    expect(requests[0].url).toBe("https://api.clerk.com/v1/oauth_applications/access_tokens/verify");
+    expect(requests[0].init?.headers).toMatchObject({ Authorization: "Bearer sk_test_x" });
+    expect(JSON.parse(String(requests[0].init?.body))).toEqual({ access_token: "oat_ABC123" });
+  });
+
+  it.each([
+    ["a token Clerk does not know", 404, { errors: [{ code: "oauth_access_token_not_found" }] }, "unknown_token"],
+    ["a revoked token", 200, { ...active, revoked: true }, "revoked"],
+    ["an expired token", 200, { ...active, expired: true }, "expired"],
+    ["a token past its expiration", 200, { ...active, expiration: now - 1 }, "expired"],
+    ["a token for another resource", 200, { ...active, aud: ["https://other.example.com/mcp"] }, "wrong_audience"],
+    ["a token with no audience", 200, { ...active, aud: undefined }, "wrong_audience"],
+    ["a token with no subject", 200, { ...active, subject: "" }, "no_subject"],
+  ])("rejects %s", async (_label, status, body, reason) => {
+    expect(await check(respond(status, body).fetcher)).toEqual({ ok: false, reason });
+  });
+
+  it("does not call Clerk for something that is not an opaque token", async () => {
+    const { fetcher, requests } = respond(200, active);
+    expect(await check(fetcher, "eyJ.a.b")).toEqual({ ok: false, reason: "malformed" });
+    expect(requests).toHaveLength(0);
+  });
+
+  it("throws when Clerk is down, so the endpoint answers 503", async () => {
+    await expect(check(respond(500, {}).fetcher)).rejects.toThrow(/500/);
   });
 });

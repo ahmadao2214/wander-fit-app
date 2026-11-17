@@ -284,6 +284,75 @@ describe("MCP token rejection", () => {
   });
 });
 
+describe("MCP with opaque Clerk tokens", () => {
+  const verifyUrl = "https://api.clerk.com/v1/oauth_applications/access_tokens/verify";
+  const active = (overrides: Record<string, unknown> = {}) => ({
+    object: "clerk_idp_oauth_access_token",
+    client_id: "https://claude.ai/oauth/mcp-oauth-client-metadata",
+    subject: "clerk_athlete",
+    scopes: ["openid", "profile", "email"],
+    revoked: false,
+    expired: false,
+    expiration: Math.floor(Date.now() / 1000) + 600,
+    aud: [RESOURCE],
+    ...overrides,
+  });
+  const clerkSays = (status: number, body: unknown) => {
+    const verifyCalls: string[] = [];
+    jest.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      if (String(input) === verifyUrl) {
+        verifyCalls.push(JSON.parse(String(init?.body)).access_token);
+        return new Response(JSON.stringify(body), { status });
+      }
+      return new Response("not found", { status: 404 });
+    });
+    return verifyCalls;
+  };
+
+  beforeEach(() => {
+    process.env.CLERK_SECRET_KEY = "sk_test_example";
+  });
+
+  it("runs a tool as the athlete Clerk reports for the token", async () => {
+    const { t, dayOne } = await fixture();
+    const calls = clerkSays(200, active());
+    const result = await callTool(t, "oat_Claude123", "read_today");
+    expect(result.isError).toBe(false);
+    expect(result.structuredContent.templateId).toBe(dayOne);
+    expect(calls).toEqual(["oat_Claude123"]);
+  });
+
+  it.each([
+    ["for another resource", 200, active({ aud: ["https://other.example.com/mcp"] })],
+    ["with no audience", 200, active({ aud: undefined })],
+    ["that was revoked", 200, active({ revoked: true })],
+    ["that expired", 200, active({ expired: true })],
+    ["that Clerk does not know", 404, { errors: [{ code: "oauth_access_token_not_found" }] }],
+  ])("rejects an opaque token %s", async (_label, status, body) => {
+    const { t } = await fixture();
+    clerkSays(status, body);
+    const refused = await rpc(t, "oat_Claude123", "tools/list");
+    expect(refused.status).toBe(401);
+    expect(refused.challenge).toContain('error="invalid_token"');
+  });
+
+  it("refuses opaque tokens when the server has no Clerk secret", async () => {
+    delete process.env.CLERK_SECRET_KEY;
+    const { t } = await fixture();
+    const calls = clerkSays(200, active());
+    expect((await rpc(t, "oat_Claude123", "tools/list")).status).toBe(401);
+    expect(calls).toHaveLength(0);
+  });
+
+  it("answers 503, not a sign-in challenge, when Clerk is unreachable", async () => {
+    const { t } = await fixture();
+    clerkSays(502, {});
+    const result = await rpc(t, "oat_Claude123", "tools/list");
+    expect(result.status).toBe(503);
+    expect(result.challenge).toBeNull();
+  });
+});
+
 describe("MCP protocol", () => {
   it("negotiates a protocol version both sides speak", async () => {
     const { t } = await fixture();

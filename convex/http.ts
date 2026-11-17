@@ -13,7 +13,13 @@ import {
   unauthorizedHeader,
   type McpEnv,
 } from "./mcpAuth";
-import { bearerToken, issuerJwks, verifyAccessToken } from "./clerkOAuth";
+import {
+  bearerToken,
+  introspectOpaqueToken,
+  isOpaqueToken,
+  issuerJwks,
+  verifyAccessToken,
+} from "./clerkOAuth";
 
 const env = (): McpEnv => ({
   MCP_RESOURCE_URL: process.env.MCP_RESOURCE_URL,
@@ -99,10 +105,14 @@ const mcp = httpAction(async (ctx, request) => {
 
   let verified;
   try {
-    verified = await verifyAccessToken(token, { issuer, audience, getJwks: issuerJwks(issuer) });
+    const secretKey = process.env.CLERK_SECRET_KEY;
+    verified =
+      isOpaqueToken(token) && secretKey
+        ? await introspectOpaqueToken(token, { secretKey, audience })
+        : await verifyAccessToken(token, { issuer, audience, getJwks: issuerJwks(issuer) });
   } catch (error) {
-    // The JWKS could not be fetched. Not the client's fault, so no re-sign-in challenge.
-    console.error("MCP JWKS unavailable:", error instanceof Error ? error.message : String(error));
+    // Clerk (JWKS or verify API) could not be reached. Not the client's fault, so no re-sign-in challenge.
+    console.error("MCP sign-in check unavailable:", error instanceof Error ? error.message : String(error));
     return json({ jsonrpc: "2.0", id: null, error: { code: -32603, message: "Sign-in check unavailable" } }, 503);
   }
   if (!verified.ok) {
