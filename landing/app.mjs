@@ -1,4 +1,6 @@
-import { buildPlan, CALENDAR_WEEKS, dateKey, dayPhases, isLiftDay, testNames } from './plan.mjs';
+import { buildPlan, CALENDAR_WEEKS, dateKey, dayPhases, isLiftDay } from './plan.mjs';
+
+const TEST_NAMES = { tryout: 'team tryout', beep: 'beep test', mile: '1.5-mile run', academy: 'academy trial', none: 'season' };
 
 const $ = id => document.getElementById(id);
 const calendar = $('calendar');
@@ -10,9 +12,9 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 const DAY = 86400000;
 const longDate = d => d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
-// Where the visitor came from: ?ref=westside-fc or ?utm_source=instagram
+// Where the visitor came from: ?ref=gym-flyer or ?utm_source=instagram
 const params = new URLSearchParams(location.search);
-const source = (params.get('ref') || params.get('utm_source') || '').slice(0, 100);
+const source = (params.get('ref') || params.get('utm_source') || '').slice(0, 80);
 
 const today = new Date();
 today.setHours(0, 0, 0, 0);
@@ -45,21 +47,14 @@ const laterInput = $('later-date');
 const dayAfter = new Date(lastCell.date.getTime() + DAY);
 laterInput.min = dateKey(dayAfter);
 
-// Default: the first Saturday at least five weeks out, so the page opens with a real plan.
-let selected = cells.find(c => c.offset >= 35 && c.date.getDay() === 6) ?? lastCell;
+// Default: the first Saturday at least 12 weeks out (matching NO_SEASON_PROGRAM_WEEKS), falling back to last cell.
+let selected = cells.find(c => c.offset >= 84 && c.date.getDay() === 6) ?? lastCell;
 let noDate = false;
-
-const experience = () => planForm.elements.experience.value;
 
 function render({ animate = false } = {}) {
   const days = noDate ? null : selected.offset;
-  const phases = noDate ? [] : dayPhases(days, experience());
-  let lifts = 0;
-  // Lifts past the visible grid still count toward the total.
-  for (let k = 1; k < (days ?? 0); k++) {
-    const d = new Date(today.getTime() + k * DAY);
-    if (isLiftDay(phases[k], d.getDay())) lifts++;
-  }
+  const phases = noDate ? [] : dayPhases(days);
+  const plan = buildPlan(days);
   for (const c of cells) {
     const phase = c.offset > 0 && c.offset < (days ?? 0) ? phases[c.offset] : null;
     const isTest = !noDate && c === selected;
@@ -80,24 +75,20 @@ function render({ animate = false } = {}) {
   }
   if (selected.btn || noDate) laterInput.value = '';
   $('no-date').setAttribute('aria-pressed', String(noDate));
-  $('summary').innerHTML = summaryText(days, lifts);
-  $('save').textContent = noDate ? 'Save my spot' : `Save my spot for ${longDate(selected.date)}`;
+  $('summary').innerHTML = summaryText(plan);
+  $('save').textContent = noDate ? 'Start 2-week free beta' : `Start 2-week free beta for ${longDate(selected.date)}`;
 }
 
-function summaryText(days, lifts) {
-  const test = testNames[$('test').value].toLowerCase();
-  if (noDate) return 'No date yet? Save your spot anyway. The plan starts counting the day you pick one.';
-  const plan = buildPlan(days, experience());
-  if (!plan || plan.weeks < 2) return `<strong>${days} ${days === 1 ? 'day' : 'days'}.</strong> Too close to build strength. You’d get <span class="key taper"></span>an easy week to arrive sharp for your ${test}.`;
+function summaryText(plan) {
+  if (!plan) return '';
   const w = n => `${n} ${n === 1 ? 'week' : 'weeks'}`;
-  const part = name => plan.phases.find(p => p.name === name)?.weeks ?? 0;
-  const bits = [];
-  if (part('Technique')) bits.push(`<span class="key technique"></span>${w(part('Technique'))} learning the lifts`);
-  bits.push(`<span class="key build"></span>${w(part('Build'))} building`);
-  if (part('Peak')) bits.push('<span class="key peak"></span>a peak week');
-  bits.push(`<span class="key taper"></span>an easy week before your ${test}`);
+  const bits = plan.phases.map(p => `<span class="key ${p.id}"></span>${w(p.weeks)} ${p.code}`);
+  if (plan.isDefault) {
+    return `<strong>12-week default, ${plan.sessions} sessions.</strong> ${bits.join(', ')}.`;
+  }
+  const test = TEST_NAMES[$('test')?.value] ?? 'season';
   const when = selected.btn ? '' : ` Your ${test} is ${longDate(selected.date)}.`;
-  return `<strong>${days} days, ${lifts} lifts.</strong> ${bits.join(', ')}.${when}`;
+  return `<strong>${plan.weeksUntil} ${plan.weeksUntil === 1 ? 'week' : 'weeks'}, ${plan.sessions} sessions.</strong> ${bits.join(', ')}.${when}`;
 }
 
 function select(cell, { focus = false } = {}) {
@@ -185,19 +176,17 @@ signup.addEventListener('submit', async e => {
   }
   $('error').hidden = true;
 
+  const numericAge = Number(age);
+  const mappedRole = parent ? 'parent' : numericAge >= 18 ? 'athlete_18_plus' : 'athlete_14_17';
   const body = {
-    role: signup.elements.role.value,
-    athleteName: name,
-    athleteAge: Number(age),
-    sport: $('sport').value,
-    test: noDate ? 'none' : $('test').value,
-    testDate: noDate ? '' : dateKey(selected.date),
-    experience: experience(),
-    athleteEmail: email,
-    parentEmail,
-    intent: signup.elements.intent.value,
+    role: mappedRole,
+    email: parent ? parentEmail : email,
+    ...(mappedRole === 'athlete_14_17' && parentEmail ? { parentEmail } : {}),
+    intent: signup.elements.intent.value === 'reserve' ? 'season_pass' : 'free_beta_only',
+    ...(noDate ? {} : { seasonDate: dateKey(selected.date) }),
     source,
     website: $('website').value,
+    athleteName: name,
   };
 
   const button = $('submit');

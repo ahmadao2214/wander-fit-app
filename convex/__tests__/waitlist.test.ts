@@ -1,124 +1,265 @@
 import { convexTest } from "convex-test";
 import schema from "../schema";
 import { internal } from "../_generated/api";
-import { cleanSignup } from "../waitlist";
+import { cleanSignup, RATE_LIMIT_MAX_REQUESTS } from "../waitlist";
 import { convexModules } from "../../jest/convexModules";
 
 const modules = convexModules();
 const newTest = () => convexTest(schema, modules);
 
-const TODAY = "2026-11-13";
-const athlete = {
-  role: "athlete",
-  athleteName: "Maya",
-  athleteAge: 15,
-  sport: "Soccer",
-  test: "tryout",
-  testDate: "2027-02-06",
-  experience: "never",
-  athleteEmail: "Maya@Example.com",
-  parentEmail: "parent@example.com",
-  intent: "reserve",
-  source: "westside-fc",
+const TODAY = "2026-11-21";
+
+const youthAthlete = {
+  role: "athlete_14_17",
+  email: "Maya@Example.com",
+  parentEmail: "Parent@Example.com",
+  intent: "season_pass",
+  seasonDate: "2027-02-13",
+  source: "gym-flyer",
 };
 
 describe("cleanSignup", () => {
-  it("accepts a complete athlete sign-up and normalizes emails", () => {
-    const result = cleanSignup(athlete, TODAY);
-    expect(result).toEqual({
+  it("accepts a youth athlete (14-17) with optional parent email and normalizes emails", () => {
+    expect(cleanSignup(youthAthlete, TODAY)).toEqual({
       ok: true,
-      value: { ...athlete, athleteEmail: "maya@example.com" },
+      value: {
+        role: "athlete_14_17",
+        email: "maya@example.com",
+        parentEmail: "parent@example.com",
+        intent: "season_pass",
+        seasonDate: "2027-02-13",
+        source: "gym-flyer",
+      },
     });
   });
 
-  it("lets a parent sign up without the athlete's email", () => {
-    const result = cleanSignup({ ...athlete, role: "parent", athleteEmail: "" }, TODAY);
-    expect(result.ok && result.value.athleteEmail).toBe(undefined);
+  it("allows athlete_14_17 without a parent email", () => {
+    const result = cleanSignup({ ...youthAthlete, parentEmail: "" }, TODAY);
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        role: "athlete_14_17",
+        email: "maya@example.com",
+        intent: "season_pass",
+        seasonDate: "2027-02-13",
+        source: "gym-flyer",
+      },
+    });
   });
 
-  it("drops the date when there is no test yet", () => {
-    const result = cleanSignup({ ...athlete, test: "none", testDate: "" }, TODAY);
-    expect(result.ok && result.value.testDate).toBe(undefined);
+  it("accepts adult athlete (18+) and parent roles and strips any stray parentEmail", () => {
+    const adult = cleanSignup(
+      { ...youthAthlete, role: "athlete_18_plus", intent: "monthly", seasonDate: "" },
+      TODAY
+    );
+    expect(adult).toEqual({
+      ok: true,
+      value: {
+        role: "athlete_18_plus",
+        email: "maya@example.com",
+        intent: "monthly",
+        source: "gym-flyer",
+      },
+    });
+
+    const parent = cleanSignup(
+      { ...youthAthlete, role: "parent", intent: "free_beta_only" },
+      TODAY
+    );
+    expect(parent.ok && parent.value.parentEmail).toBeUndefined();
   });
 
-  it("defaults intent to updates", () => {
-    const result = cleanSignup({ ...athlete, intent: "anything" }, TODAY);
-    expect(result.ok && result.value.intent).toBe("updates");
+  it("defaults omitted intent to free_beta_only", () => {
+    const result = cleanSignup({ role: "parent", email: "p@example.com" }, TODAY);
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        role: "parent",
+        email: "p@example.com",
+        intent: "free_beta_only",
+      },
+    });
   });
 
   const rejections: Array<[string, Record<string, unknown>, string]> = [
-    ["under 13", { athleteAge: 12 }, "WanderFit is for athletes 13 and older."],
-    ["no age", { athleteAge: "" }, "Add the athlete's age."],
-    ["no name", { athleteName: "  " }, "Add the athlete's first name."],
-    ["past date", { testDate: TODAY }, "Pick a test date after today."],
-    ["impossible date", { testDate: "2027-02-30" }, "Pick a test date."],
-    ["bad parent email", { parentEmail: "nope" }, "Add a parent's email."],
-    ["athlete without own email", { athleteEmail: "" }, "Add your email."],
-    ["unknown test", { test: "marathon" }, "Pick the kind of test."],
-    ["unknown role", { role: "coach" }, "Say whether you're the athlete or a parent."],
+    [
+      "unknown role",
+      { role: "coach" },
+      "Choose whether you are an athlete (14–17), adult athlete (18+), or parent.",
+    ],
+    ["missing email", { email: "   " }, "Enter a valid email address."],
+    ["invalid email", { email: "not-an-email" }, "Enter a valid email address."],
+    [
+      "invalid parent email for 14-17",
+      { parentEmail: "bad-email" },
+      "Enter a valid parent email, or leave it blank.",
+    ],
+    ["unknown intent", { intent: "lifetime" }, "Pick a beta plan preference."],
+    ["seasonDate equal to today", { seasonDate: TODAY }, "Pick a season date after today."],
+    ["past seasonDate", { seasonDate: "2026-11-01" }, "Pick a season date after today."],
+    ["impossible seasonDate", { seasonDate: "2027-02-30" }, "Pick a valid season date."],
+    [
+      "seasonDate beyond 52 weeks",
+      { seasonDate: "2028-01-01" },
+      "Pick a season date within the next 12 months.",
+    ],
   ];
+
   it.each(rejections)("rejects %s", (_label, change, error) => {
-    expect(cleanSignup({ ...athlete, ...change }, TODAY)).toEqual({ ok: false, error });
+    expect(cleanSignup({ ...youthAthlete, ...change }, TODAY)).toEqual({ ok: false, error });
   });
 
   it("flags the honeypot as spam", () => {
-    expect(cleanSignup({ ...athlete, website: "http://spam" }, TODAY)).toEqual({ ok: false, spam: true });
+    expect(cleanSignup({ ...youthAthlete, website: "https://spam.example" }, TODAY)).toEqual({
+      ok: false,
+      spam: true,
+    });
   });
 
-  it("caps long text", () => {
-    const result = cleanSignup({ ...athlete, athleteName: "x".repeat(500) }, TODAY);
-    expect(result.ok && result.value.athleteName.length).toBe(80);
+  it("strips control characters and caps source length to 80 chars", () => {
+    const result = cleanSignup(
+      { ...youthAthlete, source: `\n\t${"a".repeat(120)}` },
+      TODAY
+    );
+    expect(result.ok && result.value.source?.length).toBe(80);
   });
 });
 
 describe("waitlist.record", () => {
-  it("updates the same athlete under the same parent instead of duplicating", async () => {
+  it("upserts by normalized email, preserving createdAt and initial source", async () => {
     const t = newTest();
-    const value = (cleanSignup(athlete, TODAY) as { ok: true; value: any }).value;
-    await t.mutation(internal.waitlist.record, value);
-    const second = await t.mutation(internal.waitlist.record, { ...value, athleteName: "maya", sport: "Track" });
-    await t.mutation(internal.waitlist.record, { ...value, athleteName: "Leo" });
-    const rows = await t.run((ctx) => ctx.db.query("waitlist_signups").collect());
+    const firstPayload = (cleanSignup(youthAthlete, TODAY) as { ok: true; value: any }).value;
+    const first = await t.mutation(internal.waitlist.record, firstPayload);
+    expect(first.updated).toBe(false);
+
+    const second = await t.mutation(internal.waitlist.record, {
+      role: "athlete_14_17",
+      email: "maya@example.com",
+      intent: "monthly",
+    });
     expect(second.updated).toBe(true);
-    expect(rows.map((r) => [r.athleteName, r.sport])).toEqual([
-      ["maya", "Track"],
-      ["Leo", "Soccer"],
-    ]);
+    expect(second.id).toBe(first.id);
+
+    const rows = await t.run((ctx) => ctx.db.query("waitlist_signups").collect());
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      email: "maya@example.com",
+      intent: "monthly",
+      seasonDate: "2027-02-13",
+      source: "gym-flyer",
+    });
+  });
+});
+
+describe("waitlist.checkRateLimit", () => {
+  it("blocks after reaching the limit and resets once the window expires", async () => {
+    const t = newTest();
+    const start = 1_700_000_000_000;
+    const windowMs = 60_000;
+
+    for (let i = 0; i < 3; i++) {
+      const res = await t.mutation(internal.waitlist.checkRateLimit, {
+        key: "ip:1.2.3.4",
+        now: start + i * 1000,
+        limit: 3,
+        windowMs,
+      });
+      expect(res.allowed).toBe(true);
+    }
+
+    const blocked = await t.mutation(internal.waitlist.checkRateLimit, {
+      key: "ip:1.2.3.4",
+      now: start + 10_000,
+      limit: 3,
+      windowMs,
+    });
+    expect(blocked.allowed).toBe(false);
+    expect(blocked.retryAfterSeconds).toBe(50);
+
+    const afterReset = await t.mutation(internal.waitlist.checkRateLimit, {
+      key: "ip:1.2.3.4",
+      now: start + windowMs + 1,
+      limit: 3,
+      windowMs,
+    });
+    expect(afterReset.allowed).toBe(true);
+    expect(afterReset.remaining).toBe(2);
   });
 });
 
 describe("POST /waitlist", () => {
-  const post = (t: ReturnType<typeof newTest>, body: string) =>
-    t.fetch("/waitlist", { method: "POST", headers: { "Content-Type": "application/json" }, body });
+  const futureDate = () => {
+    const d = new Date(Date.now() + 84 * 86400000);
+    return d.toISOString().slice(0, 10);
+  };
 
-  it("saves a valid sign-up and allows cross-origin requests", async () => {
+  const post = (
+    t: ReturnType<typeof newTest>,
+    body: string,
+    headers: Record<string, string> = {}
+  ) =>
+    t.fetch("/waitlist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...headers },
+      body,
+    });
+
+  it("saves a valid Beta On-Ramp sign-up and allows cross-origin requests", async () => {
     const t = newTest();
-    const res = await post(t, JSON.stringify({ ...athlete, testDate: "2099-02-06" }));
+    const res = await post(
+      t,
+      JSON.stringify({ ...youthAthlete, seasonDate: futureDate() })
+    );
     expect(res.status).toBe(200);
     expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
     const rows = await t.run((ctx) => ctx.db.query("waitlist_signups").collect());
-    expect(rows.map((r) => r.parentEmail)).toEqual(["parent@example.com"]);
+    expect(rows.map((r) => [r.role, r.email, r.intent])).toEqual([
+      ["athlete_14_17", "maya@example.com", "season_pass"],
+    ]);
   });
 
-  it("returns the validation message for a bad sign-up and saves nothing", async () => {
+  it("returns 400 with validation error and saves nothing", async () => {
     const t = newTest();
-    const res = await post(t, JSON.stringify({ ...athlete, athleteAge: 11 }));
+    const res = await post(t, JSON.stringify({ role: "parent", email: "bad" }));
     expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({ error: "WanderFit is for athletes 13 and older." });
+    expect(await res.json()).toEqual({ error: "Enter a valid email address." });
     expect(await t.run((ctx) => ctx.db.query("waitlist_signups").collect())).toEqual([]);
   });
 
-  it("answers spam like success but saves nothing", async () => {
+  it("answers honeypot spam with 200 ok but saves nothing", async () => {
     const t = newTest();
-    const res = await post(t, JSON.stringify({ ...athlete, testDate: "2099-02-06", website: "x" }));
+    const res = await post(
+      t,
+      JSON.stringify({ ...youthAthlete, seasonDate: futureDate(), website: "bot" })
+    );
     expect(res.status).toBe(200);
     expect(await t.run((ctx) => ctx.db.query("waitlist_signups").collect())).toEqual([]);
   });
 
-  it("rejects bodies that aren't JSON or are too large", async () => {
+  it("rejects malformed JSON (400) and oversized payloads (413)", async () => {
     const t = newTest();
     expect((await post(t, "not json")).status).toBe(400);
-    expect((await post(t, JSON.stringify({ ...athlete, athleteName: "x".repeat(5000) }))).status).toBe(413);
+    expect(
+      (await post(t, JSON.stringify({ ...youthAthlete, source: "x".repeat(5000) }))).status
+    ).toBe(413);
+  });
+
+  it("enforces IP rate limiting with 429 and Retry-After header", async () => {
+    const t = newTest();
+    const payload = JSON.stringify({
+      role: "athlete_18_plus",
+      email: "tester@example.com",
+      intent: "free_beta_only",
+    });
+
+    for (let i = 0; i < RATE_LIMIT_MAX_REQUESTS; i++) {
+      const res = await post(t, payload, { "x-forwarded-for": "203.0.113.42" });
+      expect(res.status).toBe(200);
+    }
+
+    const limited = await post(t, payload, { "x-forwarded-for": "203.0.113.42" });
+    expect(limited.status).toBe(429);
+    expect(Number(limited.headers.get("Retry-After"))).toBeGreaterThan(0);
   });
 
   it("answers the CORS preflight", async () => {

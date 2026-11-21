@@ -829,32 +829,38 @@ export default defineSchema({
     .index('by_email_status', ['email', 'status']),
 
   /**
-   * Landing-page sign-ups (landing/). Written only by the public
+   * Landing-page Beta On-Ramp sign-ups (landing/). Written only by the public
    * POST /waitlist HTTP route through internal.waitlist.record.
-   * One row per athlete per parent email; a repeat sign-up updates it.
+   * One row per normalized email; repeat submissions update role, intent, and seasonDate.
    */
   waitlist_signups: defineTable({
-    role: v.union(v.literal("athlete"), v.literal("parent")),
-    athleteName: v.string(),
-    athleteAge: v.number(),
-    sport: v.string(),
-    test: v.union(
-      v.literal("tryout"),
-      v.literal("beep"),
-      v.literal("mile"),
-      v.literal("academy"),
-      v.literal("none")
+    role: v.union(
+      v.literal("athlete_14_17"),
+      v.literal("athlete_18_plus"),
+      v.literal("parent")
     ),
-    testDate: v.optional(v.string()), // YYYY-MM-DD, absent when test is "none"
-    experience: v.union(v.literal("never"), v.literal("some"), v.literal("regular")),
-    athleteEmail: v.optional(v.string()),
-    parentEmail: v.string(),
-    // The demand signal: "reserve" = wants the $34.99 season pass held for them.
-    intent: v.union(v.literal("reserve"), v.literal("updates")),
-    source: v.optional(v.string()), // ?ref= or utm_source on the landing URL
+    email: v.string(),
+    parentEmail: v.optional(v.string()), // optional, accepted only for athlete_14_17
+    // Willingness-to-pay anchor: $35 Season Pass, $15/mo, or just trying the free beta
+    intent: v.union(
+      v.literal("season_pass"),
+      v.literal("monthly"),
+      v.literal("free_beta_only")
+    ),
+    seasonDate: v.optional(v.string()), // YYYY-MM-DD from hero calendar, optional
+    source: v.optional(v.string()), // ?ref= or utm_source on the landing URL (e.g. gym-flyer)
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_parent_email", ["parentEmail"])
+    .index("by_email", ["email"])
     .index("by_created", ["createdAt"]),
+
+  /**
+   * Fixed-window rate limiting buckets for public HTTP routes (POST /waitlist).
+   */
+  waitlist_rate_limits: defineTable({
+    key: v.string(),
+    windowStart: v.number(),
+    count: v.number(),
+  }).index("by_key", ["key"]),
 });

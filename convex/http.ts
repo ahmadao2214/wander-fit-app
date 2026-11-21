@@ -170,30 +170,71 @@ for (const path of [RESOURCE_METADATA_PATH, `${RESOURCE_METADATA_PATH}${MCP_PATH
 }
 http.route({ path: "/.well-known/oauth-authorization-server", method: "GET", handler: authServerMetadata });
 
-
-
-// The landing page is a static site on its own domain, so the route allows
-// cross-origin POSTs. No cookies or credentials are involved.
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-  "Access-Control-Max-Age": "86400",
-};
-
 const MAX_BODY_BYTES = 4096;
 
-function waitlistJson(status: number, body: unknown) {
+/**
+ * Resolve CORS headers for the static landing page.
+ * Defaults to `*` for preview deploys; set `LANDING_ORIGIN` (comma-separated
+ * allowed origins) in production Convex env vars to restrict cross-origin POSTs.
+ */
+function corsHeaders(request: Request): Record<string, string> {
+  const configured = (process.env.LANDING_ORIGIN ?? "")
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
+
+  let allowOrigin = "*";
+  const vary: Record<string, string> = {};
+  if (configured.length > 0) {
+    const reqOrigin = request.headers.get("Origin") ?? "";
+    allowOrigin = configured.includes(reqOrigin) ? reqOrigin : configured[0];
+    vary["Vary"] = "Origin";
+  }
+
+  return {
+    "Access-Control-Allow-Origin": allowOrigin,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Max-Age": "86400",
+    ...vary,
+  };
+}
+
+function waitlistJson(
+  request: Request,
+  status: number,
+  body: unknown,
+  extraHeaders: Record<string, string> = {}
+) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...CORS, "Content-Type": "application/json" },
+    headers: {
+      ...corsHeaders(request),
+      "Content-Type": "application/json",
+      ...extraHeaders,
+    },
   });
+}
+
+function extractClientIp(request: Request): string | null {
+  const cfIp = request.headers.get("cf-connecting-ip")?.trim();
+  if (cfIp) return cfIp.slice(0, 64);
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) {
+    const first = forwarded.split(",")[0]?.trim();
+    if (first) return first.slice(0, 64);
+  }
+  const realIp = request.headers.get("x-real-ip")?.trim();
+  if (realIp) return realIp.slice(0, 64);
+  return null;
 }
 
 http.route({
   path: "/waitlist",
   method: "OPTIONS",
-  handler: httpAction(async () => new Response(null, { status: 204, headers: CORS })),
+  handler: httpAction(async (_ctx, request) => {
+    return new Response(null, { status: 204, headers: corsHeaders(request) });
+  }),
 });
 
 http.route({
@@ -201,23 +242,52 @@ http.route({
   method: "POST",
   handler: httpAction(async (ctx, request) => {
     const raw = await request.text();
-    if (raw.length > MAX_BODY_BYTES) return waitlistJson(413, { error: "That sign-up is too large." });
+    if (raw.length > MAX_BODY_BYTES) {
+      return waitlistJson(request, 413, { error: "That sign-up is too large." });
+    }
 
     let body: unknown;
     try {
       body = JSON.parse(raw);
     } catch {
-      return waitlistJson(400, { error: "Send the sign-up as JSON." });
+      return waitlistJson(request, 400, { error: "Send the sign-up as JSON." });
+    }
+
+    const clientIp = extractClientIp(request);
+    if (clientIp) {
+      const ipLimit = await ctx.runMutation(internal.waitlist.checkRateLimit, {
+        key: `ip:${clientIp}`,
+      });
+      if (!ipLimit.allowed) {
+        return waitlistJson(
+          request,
+          429,
+          { error: "Too many sign-up attempts. Try again in a few minutes." },
+          { "Retry-After": String(ipLimit.retryAfterSeconds) }
+        );
+      }
     }
 
     const today = new Date().toISOString().slice(0, 10);
     const result = cleanSignup(body, today);
     // Spam gets the same answer as a real sign-up so bots learn nothing.
-    if (!result.ok && "spam" in result) return waitlistJson(200, { ok: true });
-    if (!result.ok) return waitlistJson(400, { error: result.error });
+    if (!result.ok && "spam" in result) return waitlistJson(request, 200, { ok: true });
+    if (!result.ok) return waitlistJson(request, 400, { error: result.error });
+
+    const emailLimit = await ctx.runMutation(internal.waitlist.checkRateLimit, {
+      key: `email:${result.value.email}`,
+    });
+    if (!emailLimit.allowed) {
+      return waitlistJson(
+        request,
+        429,
+        { error: "Too many sign-up attempts. Try again in a few minutes." },
+        { "Retry-After": String(emailLimit.retryAfterSeconds) }
+      );
+    }
 
     await ctx.runMutation(internal.waitlist.record, result.value);
-    return waitlistJson(200, { ok: true });
+    return waitlistJson(request, 200, { ok: true });
   }),
 });
 

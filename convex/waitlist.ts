@@ -2,27 +2,33 @@ import { v } from "convex/values";
 import { internalMutation } from "./_generated/server";
 
 /**
- * Landing-page waitlist. The page posts to the public HTTP route in http.ts,
- * which validates with `cleanSignup` and saves through `record`. Nothing here
- * is a public Convex function, so the only way in is the validated route.
+ * Landing-page Beta On-Ramp backend.
+ *
+ * The static site in `landing/` posts to the public HTTP route in `http.ts`,
+ * which validates with `cleanSignup`, checks rate limits with `checkRateLimit`,
+ * and persists through `record`. Nothing here is a public Convex function, so
+ * the only way in is the validated, rate-limited HTTP route.
  */
 
-export const TESTS = ["tryout", "beep", "mile", "academy", "none"] as const;
-export const EXPERIENCE = ["never", "some", "regular"] as const;
-export const MIN_AGE = 13; // COPPA: no accounts for under-13s
-export const MAX_AGE = 19;
+export const ROLES = ["athlete_14_17", "athlete_18_plus", "parent"] as const;
+export type BetaRole = (typeof ROLES)[number];
+
+export const INTENTS = ["season_pass", "monthly", "free_beta_only"] as const;
+export type BetaIntent = (typeof INTENTS)[number];
+
+/** Season dates up to 52 weeks out match `MAX_SEASON_WEEKS` in `lib/firstRun.ts`. */
+export const MAX_SEASON_DAYS = 52 * 7;
+
+/** Default fixed-window rate limit: 10 requests per 15 minutes per key. */
+export const RATE_LIMIT_MAX_REQUESTS = 10;
+export const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 
 export type Signup = {
-  role: "athlete" | "parent";
-  athleteName: string;
-  athleteAge: number;
-  sport: string;
-  test: (typeof TESTS)[number];
-  testDate?: string;
-  experience: (typeof EXPERIENCE)[number];
-  athleteEmail?: string;
-  parentEmail: string;
-  intent: "reserve" | "updates";
+  role: BetaRole;
+  email: string;
+  parentEmail?: string;
+  intent: BetaIntent;
+  seasonDate?: string;
   source?: string;
 };
 
@@ -33,126 +39,214 @@ export type CleanResult =
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const CONTROL_CHARS = /[\u0000-\u001f\u007f]/g;
+const MS_PER_DAY = 86400000;
 
 function text(value: unknown, max: number): string {
-  return typeof value === "string" ? value.trim().slice(0, max) : "";
+  return typeof value === "string"
+    ? value.replace(CONTROL_CHARS, "").trim().slice(0, max)
+    : "";
 }
 
-function isRealDate(value: string): boolean {
-  if (!DATE.test(value)) return false;
+function parseUtcDate(value: string): number | null {
+  if (!DATE.test(value)) return null;
   const [y, m, d] = value.split("-").map(Number);
-  const date = new Date(Date.UTC(y, m - 1, d));
-  return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;
+  const utc = Date.UTC(y, m - 1, d);
+  const check = new Date(utc);
+  if (
+    check.getUTCFullYear() !== y ||
+    check.getUTCMonth() !== m - 1 ||
+    check.getUTCDate() !== d
+  ) {
+    return null;
+  }
+  return utc;
 }
 
-/** Validate and normalize a raw sign-up body. `today` is YYYY-MM-DD (UTC). */
+/** Validate and normalize a raw Beta On-Ramp sign-up body. `today` is YYYY-MM-DD (UTC). */
 export function cleanSignup(raw: unknown, today: string): CleanResult {
-  if (!raw || typeof raw !== "object") return { ok: false, error: "Send the sign-up as JSON." };
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return { ok: false, error: "Send the sign-up as JSON." };
+  }
   const body = raw as Record<string, unknown>;
 
   // Honeypot: a hidden field people never see. Bots fill it; drop quietly.
   if (text(body.website, 200)) return { ok: false, spam: true };
 
-  const role = body.role === "parent" ? "parent" : body.role === "athlete" ? "athlete" : null;
-  if (!role) return { ok: false, error: "Say whether you're the athlete or a parent." };
-
-  const athleteName = text(body.athleteName, 80);
-  if (!athleteName) return { ok: false, error: "Add the athlete's first name." };
-
-  const rawAge = body.athleteAge;
-  const athleteAge = rawAge === "" || rawAge === null || rawAge === undefined ? NaN : Number(rawAge);
-  if (!Number.isInteger(athleteAge)) return { ok: false, error: "Add the athlete's age." };
-  if (athleteAge < MIN_AGE) return { ok: false, error: "WanderFit is for athletes 13 and older." };
-  if (athleteAge > MAX_AGE) return { ok: false, error: "Add an age between 13 and 19." };
-
-  const sport = text(body.sport, 40);
-  if (!sport) return { ok: false, error: "Add the athlete's sport." };
-
-  const test = TESTS.find((t) => t === body.test);
-  if (!test) return { ok: false, error: "Pick the kind of test." };
-
-  let testDate: string | undefined;
-  if (test !== "none") {
-    const date = text(body.testDate, 10);
-    if (!isRealDate(date)) return { ok: false, error: "Pick a test date." };
-    if (date <= today) return { ok: false, error: "Pick a test date after today." };
-    testDate = date;
+  const role = ROLES.find((r) => r === body.role);
+  if (!role) {
+    return {
+      ok: false,
+      error: "Choose whether you are an athlete (14–17), adult athlete (18+), or parent.",
+    };
   }
 
-  const experience = EXPERIENCE.find((e) => e === body.experience);
-  if (!experience) return { ok: false, error: "Say how much the athlete has lifted." };
-
-  const athleteEmailRaw = text(body.athleteEmail, 254).toLowerCase();
-  const parentEmail = text(body.parentEmail, 254).toLowerCase();
-  if (!EMAIL.test(parentEmail)) {
-    return { ok: false, error: role === "parent" ? "Add your email." : "Add a parent's email." };
-  }
-  if (role === "athlete" && !EMAIL.test(athleteEmailRaw)) return { ok: false, error: "Add your email." };
-  if (athleteEmailRaw && !EMAIL.test(athleteEmailRaw)) {
-    return { ok: false, error: "Fix the athlete's email or leave it blank." };
+  const email = text(body.email, 254).toLowerCase();
+  if (!EMAIL.test(email)) {
+    return { ok: false, error: "Enter a valid email address." };
   }
 
-  const intent = body.intent === "reserve" ? "reserve" : "updates";
-  const source = text(body.source, 100) || undefined;
+  let parentEmail: string | undefined;
+  if (role === "athlete_14_17") {
+    const rawParent = text(body.parentEmail, 254).toLowerCase();
+    if (rawParent) {
+      if (!EMAIL.test(rawParent)) {
+        return { ok: false, error: "Enter a valid parent email, or leave it blank." };
+      }
+      parentEmail = rawParent;
+    }
+  }
+
+  const rawIntent = body.intent;
+  let intent: BetaIntent;
+  if (rawIntent === undefined || rawIntent === null || rawIntent === "") {
+    intent = "free_beta_only";
+  } else {
+    const matched = INTENTS.find((i) => i === rawIntent);
+    if (!matched) {
+      return { ok: false, error: "Pick a beta plan preference." };
+    }
+    intent = matched;
+  }
+
+  let seasonDate: string | undefined;
+  const rawDate = text(body.seasonDate, 10);
+  if (rawDate) {
+    const todayMs = parseUtcDate(today);
+    const dateMs = parseUtcDate(rawDate);
+    if (dateMs === null || todayMs === null) {
+      return { ok: false, error: "Pick a valid season date." };
+    }
+    const diffDays = Math.round((dateMs - todayMs) / MS_PER_DAY);
+    if (diffDays <= 0) {
+      return { ok: false, error: "Pick a season date after today." };
+    }
+    if (diffDays > MAX_SEASON_DAYS) {
+      return { ok: false, error: "Pick a season date within the next 12 months." };
+    }
+    seasonDate = rawDate;
+  }
+
+  const source = text(body.source, 80) || undefined;
 
   return {
     ok: true,
     value: {
       role,
-      athleteName,
-      athleteAge,
-      sport,
-      test,
-      testDate,
-      experience,
-      athleteEmail: athleteEmailRaw || undefined,
-      parentEmail,
+      email,
+      ...(parentEmail ? { parentEmail } : {}),
       intent,
-      source,
+      ...(seasonDate ? { seasonDate } : {}),
+      ...(source ? { source } : {}),
     },
   };
 }
 
 const signupArgs = {
-  role: v.union(v.literal("athlete"), v.literal("parent")),
-  athleteName: v.string(),
-  athleteAge: v.number(),
-  sport: v.string(),
-  test: v.union(
-    v.literal("tryout"),
-    v.literal("beep"),
-    v.literal("mile"),
-    v.literal("academy"),
-    v.literal("none")
+  role: v.union(
+    v.literal("athlete_14_17"),
+    v.literal("athlete_18_plus"),
+    v.literal("parent")
   ),
-  testDate: v.optional(v.string()),
-  experience: v.union(v.literal("never"), v.literal("some"), v.literal("regular")),
-  athleteEmail: v.optional(v.string()),
-  parentEmail: v.string(),
-  intent: v.union(v.literal("reserve"), v.literal("updates")),
+  email: v.string(),
+  parentEmail: v.optional(v.string()),
+  intent: v.union(
+    v.literal("season_pass"),
+    v.literal("monthly"),
+    v.literal("free_beta_only")
+  ),
+  seasonDate: v.optional(v.string()),
   source: v.optional(v.string()),
 };
 
 /**
- * Save a cleaned sign-up. The same athlete (by name) under the same parent
- * email updates the existing row instead of adding a duplicate.
+ * Save a cleaned Beta On-Ramp sign-up. Repeat submissions for the same
+ * normalized email update the existing row instead of duplicating, preserving
+ * `createdAt` and initial `source` attribution if a repeat omits `?ref=`.
  */
 export const record = internalMutation({
   args: signupArgs,
   handler: async (ctx, args) => {
     const now = Date.now();
-    const sameParent = await ctx.db
+    const existing = await ctx.db
       .query("waitlist_signups")
-      .withIndex("by_parent_email", (q) => q.eq("parentEmail", args.parentEmail))
-      .collect();
-    const existing = sameParent.find(
-      (row) => row.athleteName.toLowerCase() === args.athleteName.toLowerCase()
-    );
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .first();
+
     if (existing) {
-      await ctx.db.patch(existing._id, { ...args, updatedAt: now });
+      await ctx.db.patch(existing._id, {
+        role: args.role,
+        parentEmail: args.role === "athlete_14_17" ? args.parentEmail : undefined,
+        intent: args.intent,
+        seasonDate: args.seasonDate ?? existing.seasonDate,
+        source: args.source ?? existing.source,
+        updatedAt: now,
+      });
       return { id: existing._id, updated: true };
     }
-    const id = await ctx.db.insert("waitlist_signups", { ...args, createdAt: now, updatedAt: now });
+
+    const id = await ctx.db.insert("waitlist_signups", {
+      ...args,
+      createdAt: now,
+      updatedAt: now,
+    });
     return { id, updated: false };
+  },
+});
+
+/**
+ * Fixed-window rate limit check backed by `waitlist_rate_limits`.
+ * Returns `{ allowed, remaining, retryAfterSeconds }`.
+ */
+export const checkRateLimit = internalMutation({
+  args: {
+    key: v.string(),
+    now: v.optional(v.number()),
+    limit: v.optional(v.number()),
+    windowMs: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const now = args.now ?? Date.now();
+    const limit = args.limit ?? RATE_LIMIT_MAX_REQUESTS;
+    const windowMs = args.windowMs ?? RATE_LIMIT_WINDOW_MS;
+
+    const existing = await ctx.db
+      .query("waitlist_rate_limits")
+      .withIndex("by_key", (q) => q.eq("key", args.key))
+      .first();
+
+    if (!existing) {
+      await ctx.db.insert("waitlist_rate_limits", {
+        key: args.key,
+        windowStart: now,
+        count: 1,
+      });
+      return { allowed: true, remaining: Math.max(0, limit - 1), retryAfterSeconds: 0 };
+    }
+
+    if (now - existing.windowStart >= windowMs) {
+      await ctx.db.patch(existing._id, {
+        windowStart: now,
+        count: 1,
+      });
+      return { allowed: true, remaining: Math.max(0, limit - 1), retryAfterSeconds: 0 };
+    }
+
+    if (existing.count >= limit) {
+      const retryAfterMs = existing.windowStart + windowMs - now;
+      return {
+        allowed: false,
+        remaining: 0,
+        retryAfterSeconds: Math.max(1, Math.ceil(retryAfterMs / 1000)),
+      };
+    }
+
+    const nextCount = existing.count + 1;
+    await ctx.db.patch(existing._id, { count: nextCount });
+    return {
+      allowed: true,
+      remaining: Math.max(0, limit - nextCount),
+      retryAfterSeconds: 0,
+    };
   },
 });

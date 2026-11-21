@@ -1,56 +1,105 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildPlan, daysUntil } from './plan.mjs';
+import {
+  buildPlan,
+  calculateWeeksPerPhase,
+  calculateWeeksPerPhaseArray,
+  dateKey,
+  dayPhases,
+  daysUntil,
+  isLiftDay,
+  MAX_SEASON_WEEKS,
+  MAX_WEEKS_PER_PHASE,
+  MIN_WEEKS_PER_PHASE,
+  NO_SEASON_PROGRAM_WEEKS,
+  weeksUntilSeason,
+} from './plan.mjs';
 
 test('date math uses calendar days across daylight-saving boundaries', () => {
   assert.equal(daysUntil('2026-11-02', new Date(2026, 9, 31)), 2);
   assert.equal(daysUntil('2027-03-15', new Date(2027, 2, 13)), 2);
+  assert.equal(dateKey(new Date(2026, 10, 21)), '2026-11-21');
 });
+
 test('invalid and past dates cannot create a plan', () => {
-  for (const value of ['', '2026-02-30', 'not-a-date']) assert.equal(daysUntil(value), null);
-  assert.equal(buildPlan(null, 'never'), null);
-  assert.equal(buildPlan(-1, 'never'), null);
-  assert.equal(buildPlan(0, 'never'), null);
+  for (const value of ['', '2026-02-30', 'not-a-date', null]) {
+    assert.equal(daysUntil(value), null);
+  }
+  assert.equal(buildPlan(-1), null);
+  assert.equal(buildPlan(0), null);
+  assert.equal(buildPlan(NaN), null);
 });
-test('a six-week beginner preview accounts for every week', () => {
-  const plan = buildPlan(42, 'never');
-  assert.equal(plan.weeks, 6);
-  assert.equal(plan.sessions, 18);
-  assert.deepEqual(plan.phases.map(phase => phase.weeks), [2, 2, 1, 1]);
+
+test('no-date default mirrors NO_SEASON_PROGRAM_WEEKS (12 weeks, 4w per phase, 36 sessions)', () => {
+  const plan = buildPlan(null);
+  assert.equal(plan.isDefault, true);
+  assert.equal(plan.weeksUntil, NO_SEASON_PROGRAM_WEEKS);
+  assert.equal(plan.weeksPerPhase, 4);
+  assert.equal(plan.programWeeks, 12);
+  assert.equal(plan.sessions, 36);
+  assert.deepEqual(
+    plan.phases.map(p => [p.code, p.weeks]),
+    [
+      ['GPP', 4],
+      ['SPP', 4],
+      ['SSP', 4],
+    ]
+  );
 });
-test('experience changes technique time without changing the deadline', () => {
-  for (const experience of ['never', 'some', 'regular']) {
-    for (let days = 14; days <= 730; days++) {
-      const plan = buildPlan(days, experience);
-      assert.equal(plan.phases.reduce((sum, phase) => sum + phase.weeks, 0), plan.weeks);
-      assert.ok(plan.phases.every(phase => phase.weeks > 0));
-      assert.equal(plan.phases.at(-1).name, 'Taper');
-    }
+
+test('calculateWeeksPerPhase matches convex/weekMapping.ts across 1..52 weeks', () => {
+  assert.equal(calculateWeeksPerPhase(5), 2);
+  assert.equal(calculateWeeksPerPhase(6), 2);
+  assert.equal(calculateWeeksPerPhase(9), 3);
+  assert.equal(calculateWeeksPerPhase(12), 4);
+  assert.equal(calculateWeeksPerPhase(18), 6);
+  assert.equal(calculateWeeksPerPhase(24), 8);
+  assert.equal(calculateWeeksPerPhase(52), 8);
+
+  for (let w = 1; w <= MAX_SEASON_WEEKS; w++) {
+    const perPhase = calculateWeeksPerPhase(w);
+    assert.ok(perPhase >= MIN_WEEKS_PER_PHASE && perPhase <= MAX_WEEKS_PER_PHASE);
+    const plan = buildPlan(w * 7);
+    assert.equal(plan.weeksUntil, w);
+    assert.equal(plan.weeksPerPhase, perPhase);
+    assert.equal(plan.programWeeks, perPhase * 3);
+    assert.equal(plan.sessions, perPhase * 3 * 3);
+    assert.deepEqual(plan.phases.map(p => p.code), ['GPP', 'SPP', 'SSP']);
   }
 });
-test('near-term tests do not promise strength gains or lifting sessions', () => {
-  assert.equal(buildPlan(6, 'never').sessions, 0);
-  assert.equal(buildPlan(13, 'regular').phases[0].name, 'Preparation');
+
+test('calculateWeeksPerPhaseArray distributes remainder weeks to SSP then SPP', () => {
+  assert.deepEqual(calculateWeeksPerPhaseArray(12), [4, 4, 4]);
+  assert.deepEqual(calculateWeeksPerPhaseArray(14), [4, 5, 5]);
+  assert.deepEqual(calculateWeeksPerPhaseArray(15), [5, 5, 5]);
+  assert.deepEqual(calculateWeeksPerPhaseArray(16), [5, 5, 6]);
 });
 
-import { dayPhases, isLiftDay } from './plan.mjs';
+test('weeksUntilSeason rounds up partial weeks and clamps to 52 weeks', () => {
+  assert.equal(weeksUntilSeason(1), 1);
+  assert.equal(weeksUntilSeason(7), 1);
+  assert.equal(weeksUntilSeason(8), 2);
+  assert.equal(weeksUntilSeason(84), 12);
+  assert.equal(weeksUntilSeason(500), 52);
+});
 
-test('calendar phases run technique first and end with a full taper week', () => {
-  const phases = dayPhases(42, 'never');
-  assert.equal(phases[1], 'technique');
-  assert.equal(phases[14], 'technique');
-  assert.equal(phases[15], 'build');
-  assert.equal(phases[34], 'peak');
-  assert.equal(phases[35], 'taper');
-  assert.equal(phases[41], 'taper');
-  assert.equal(phases.length, 42);
+test('dayPhases shades days across gpp -> spp -> ssp with no taper phase', () => {
+  const phases = dayPhases(85);
+  assert.equal(phases.length, 85);
+  assert.equal(phases[0], null);
+  assert.equal(phases[1], 'gpp');
+  assert.equal(phases[28], 'gpp');
+  assert.equal(phases[29], 'spp');
+  assert.equal(phases[56], 'spp');
+  assert.equal(phases[57], 'ssp');
+  assert.equal(phases[84], 'ssp');
+  assert.ok(phases.slice(1).every(p => p === 'gpp' || p === 'spp' || p === 'ssp'));
 });
-test('regular lifters skip technique days', () => {
-  assert.notEqual(dayPhases(42, 'regular')[1], 'technique');
-});
-test('short runways and taper weeks keep lifting light', () => {
-  assert.ok(dayPhases(10, 'never').slice(1).every(p => p === 'taper'));
-  assert.equal(isLiftDay('taper', 3), false);
-  assert.equal(isLiftDay('build', 3), true);
+
+test('isLiftDay marks Mon/Wed/Fri by default for any active phase', () => {
+  assert.equal(isLiftDay('gpp', 1), true);
+  assert.equal(isLiftDay('spp', 3), true);
+  assert.equal(isLiftDay('ssp', 5), true);
+  assert.equal(isLiftDay('ssp', 2), false);
   assert.equal(isLiftDay(null, 1), false);
 });
