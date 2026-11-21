@@ -827,4 +827,34 @@ export default defineSchema({
     .index('by_trainer', ['trainerId'])
     .index('by_status', ['status'])
     .index('by_email_status', ['email', 'status']),
-})
+
+  /**
+   * Landing-page sign-ups (landing/). Written only by the public
+   * POST /waitlist HTTP route through internal.waitlist.record.
+   * One row per athlete per parent email; a repeat sign-up updates it.
+   */
+  waitlist_signups: defineTable({
+    role: v.union(v.literal("athlete"), v.literal("parent")),
+    athleteName: v.string(),
+    athleteAge: v.number(),
+    sport: v.string(),
+    test: v.union(
+      v.literal("tryout"),
+      v.literal("beep"),
+      v.literal("mile"),
+      v.literal("academy"),
+      v.literal("none")
+    ),
+    testDate: v.optional(v.string()), // YYYY-MM-DD, absent when test is "none"
+    experience: v.union(v.literal("never"), v.literal("some"), v.literal("regular")),
+    athleteEmail: v.optional(v.string()),
+    parentEmail: v.string(),
+    // The demand signal: "reserve" = wants the $34.99 season pass held for them.
+    intent: v.union(v.literal("reserve"), v.literal("updates")),
+    source: v.optional(v.string()), // ?ref= or utm_source on the landing URL
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_parent_email", ["parentEmail"])
+    .index("by_created", ["createdAt"]),
+});

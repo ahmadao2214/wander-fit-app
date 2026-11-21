@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="A strength and conditioning app for athletes, planned backward from your tryout. Pick your test date and see your plan.">
+  <meta name="theme-color" content="#f6f7f9">
+  <!-- Sign-ups POST here. Empty = preview mode: the form validates but stores nothing. -->
+  <meta name="waitlist-endpoint" content="">
+  <title>WanderFit · Circle your tryout</title>
+  <link rel="preload" href="fonts/Archivo-latin-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="app.mjs"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="top wrap">
+    <a class="wordmark" href="#">WanderFit</a>
+  </header>
+
+  <main id="main">
+    <section class="hero wrap" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <h1 id="hero-title">Circle your <span class="circled">tryout<svg viewBox="0 0 300 120" preserveAspectRatio="none" aria-hidden="true"><path d="M150 8C70 6 10 30 12 64c2 36 78 50 160 46 74-4 118-26 116-56C286 22 214 4 120 14"/></svg></span>.</h1>
+        <p class="product">A strength and conditioning app for athletes, planned backward from your tryout.</p>
+        <p class="lede">Tap your test day. You learn the lifts, build strength, then ease off so your legs are fresh.</p>
+
+        <form id="plan-form" class="controls" aria-label="Your test">
+          <div class="field">
+            <label for="test">What’s the test?</label>
+            <select id="test" name="test">
+              <option value="tryout">Team tryout</option>
+              <option value="beep">Beep test</option>
+              <option value="mile">1.5-mile run</option>
+              <option value="academy">Academy trial</option>
+            </select>
+          </div>
+          <fieldset class="field">
+            <legend>Have you lifted weights before?</legend>
+            <div class="segmented">
+              <label><input type="radio" name="experience" value="never" checked><span>Never</span></label>
+              <label><input type="radio" name="experience" value="some"><span>A little</span></label>
+              <label><input type="radio" name="experience" value="regular"><span>Regularly</span></label>
+            </div>
+          </fieldset>
+        </form>
+      </div>
+
+      <div class="planner">
+        <div class="cal-head" aria-hidden="true"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+        <div class="calendar" id="calendar" role="grid" aria-label="Pick your test day. Use arrow keys to move between days."></div>
+        <div class="later">
+          <label for="later-date">Later than this?</label>
+          <input type="date" id="later-date">
+          <button class="quiet" type="button" id="no-date">No date yet</button>
+        </div>
+      </div>
+
+      <div class="hero-act">
+        <p class="summary" id="summary" aria-live="polite"></p>
+
+        <div class="actions">
+          <button class="primary" type="button" id="save">Save my spot</button>
+        </div>
+
+        <form id="signup" class="signup" novalidate hidden aria-labelledby="signup-title">
+          <h2 id="signup-title" tabindex="-1">Who’s training?</h2>
+          <fieldset class="field">
+            <legend>Who’s filling this in?</legend>
+            <div class="segmented">
+              <label><input type="radio" name="role" value="athlete" checked><span>I’m the athlete</span></label>
+              <label><input type="radio" name="role" value="parent"><span>I’m a parent</span></label>
+            </div>
+          </fieldset>
+          <div class="trio">
+            <div class="field">
+              <label for="name">Athlete’s first name</label>
+              <input id="name" name="athleteName" autocomplete="given-name" maxlength="80" required>
+            </div>
+            <div class="field">
+              <label for="age">Age</label>
+              <select id="age" name="athleteAge" required>
+                <option value="">Age</option>
+                <option value="12">12 or under</option>
+                <option>13</option><option>14</option><option>15</option><option>16</option>
+                <option>17</option><option>18</option><option>19</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="sport">Sport</label>
+              <select id="sport" name="sport" required>
+                <option value="">Choose</option>
+                <option>Soccer</option><option>Basketball</option><option>Volleyball</option>
+                <option>Baseball</option><option>Softball</option><option>Lacrosse</option>
+                <option>Football</option><option>Track or cross country</option>
+                <option>Water polo</option><option>Wrestling</option><option>Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="pair">
+            <div class="field">
+              <label for="email" id="email-label">Your email</label>
+              <input id="email" name="athleteEmail" type="email" inputmode="email" autocomplete="email" maxlength="254" required>
+            </div>
+            <div class="field">
+              <label for="parent-email" id="parent-label">Parent’s email</label>
+              <input id="parent-email" name="parentEmail" type="email" inputmode="email" maxlength="254" required>
+            </div>
+          </div>
+          <fieldset class="field">
+            <legend>Want a season pass held for you?</legend>
+            <div class="options">
+              <label><input type="radio" name="intent" value="reserve" checked><span><strong>Hold one for me.</strong> $34.99 through test day, charged only if you keep going after the two free weeks.</span></label>
+              <label><input type="radio" name="intent" value="updates"><span><strong>Just keep me posted.</strong></span></label>
+            </div>
+          </fieldset>
+          <div class="hp" aria-hidden="true"><label for="website">Leave this empty</label><input id="website" name="website" tabindex="-1" autocomplete="off"></div>
+          <p class="error" id="error" role="alert" hidden></p>
+          <button class="primary" type="submit" id="submit">Save my spot</button>
+          <p class="fine" id="fine">Nothing is charged today. We email you before anything starts.</p>
+        </form>
+
+        <div class="done" id="done" hidden tabindex="-1">
+          <h2 id="done-title"></h2>
+          <p id="done-body"></p>
+          <button class="quiet" type="button" id="again">Sign up another athlete</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="why wrap" aria-labelledby="why-title">
+      <h2 id="why-title">Fit for your sport. New to the bar.</h2>
+      <div class="why-text">
+        <p>Years of practice don’t tell an app what you can squat. So WanderFit doesn’t ask for a max lift on day one. If you’ve never lifted, you start with two weeks of learning the movements, with weight you can control.</p>
+        <p>Your practices and games count. A heavy week with the team means a lighter week in the gym, so you show up to the test fresh instead of sore.</p>
+      </div>
+    </section>
+
+    <section class="week wrap" aria-labelledby="week-title">
+      <h2 id="week-title">One week, four weeks out.</h2>
+      <p class="week-sub">A soccer player in the build phase. Three lifts around two practices and a game.</p>
+      <ol class="days">
+        <li class="lift"><span class="d">Mon</span><span class="s">Lower Body Foundation</span><span class="x">Goblet squat 3×8, Romanian deadlift 3×8, split squat 2×10</span><span class="t">45 min</span></li>
+        <li><span class="d">Tue</span><span class="s">Team practice</span><span class="x">Counted in your weekly load</span><span class="t">90 min</span></li>
+        <li class="lift"><span class="d">Wed</span><span class="s">Upper Push/Pull</span><span class="x">Push-up 3×10, inverted row 3×8, dumbbell press 3×8</span><span class="t">40 min</span></li>
+        <li><span class="d">Thu</span><span class="s">Team practice</span><span class="x">Counted in your weekly load</span><span class="t">90 min</span></li>
+        <li class="lift"><span class="d">Fri</span><span class="s">Power &amp; Conditioning</span><span class="x">Box jump 4×3, hip thrust 3×8, 6 shuttle runs</span><span class="t">35 min</span></li>
+        <li><span class="d">Sat</span><span class="s">Game</span><span class="x">No lifting</span><span class="t"></span></li>
+        <li><span class="d">Sun</span><span class="s">Rest</span><span class="x">Walk, stretch, sleep</span><span class="t"></span></li>
+      </ol>
+      <p class="week-sub">Weights come from how hard last session felt. Goblet squat at 20 lb felt easy? Today it’s 25.</p>
+    </section>
+
+    <section class="price wrap" aria-labelledby="price-title">
+      <h2 id="price-title">Free for two weeks.</h2>
+      <p class="price-line">Then <strong>$34.99</strong> through test day, or <strong>$14.99</strong> a month if there’s no date yet.</p>
+      <p class="week-sub">Parents see the price before the first workout and approve it through Apple’s Ask to Buy. The season pass ends on test day, so there’s nothing to cancel. iPhone first; Android is coming.</p>
+    </section>
+
+    <section class="faq wrap" aria-labelledby="faq-title">
+      <h2 id="faq-title">Questions parents ask.</h2>
+      <div class="qs">
+        <details><summary>Is lifting safe for teens?</summary><p>Well-coached strength training is widely recommended for teen athletes. The risk is too much weight too soon, which is why new lifters start with technique and light loads.</p></details>
+        <details><summary>We don’t have a gym.</summary><p>The first two weeks need a pair of dumbbells or nothing at all. Tell us what you have and the plan works around it.</p></details>
+        <details><summary>What if the tryout moves?</summary><p>Change the date and the plan rebuilds from today. The easy week always lands right before the test.</p></details>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot wrap">
+    <span class="wordmark small">WanderFit</span>
+    <span>© 2026 · Not medical advice.</span>
+  </footer>
+</body>
+</html>

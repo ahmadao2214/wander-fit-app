@@ -1,3 +1,4 @@
+import { cleanSignup } from "./waitlist";
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import type { ActionCtx } from "./_generated/server";
@@ -168,5 +169,56 @@ for (const path of [RESOURCE_METADATA_PATH, `${RESOURCE_METADATA_PATH}${MCP_PATH
   http.route({ path, method: "OPTIONS", handler: preflight });
 }
 http.route({ path: "/.well-known/oauth-authorization-server", method: "GET", handler: authServerMetadata });
+
+
+
+// The landing page is a static site on its own domain, so the route allows
+// cross-origin POSTs. No cookies or credentials are involved.
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Max-Age": "86400",
+};
+
+const MAX_BODY_BYTES = 4096;
+
+function waitlistJson(status: number, body: unknown) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...CORS, "Content-Type": "application/json" },
+  });
+}
+
+http.route({
+  path: "/waitlist",
+  method: "OPTIONS",
+  handler: httpAction(async () => new Response(null, { status: 204, headers: CORS })),
+});
+
+http.route({
+  path: "/waitlist",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const raw = await request.text();
+    if (raw.length > MAX_BODY_BYTES) return waitlistJson(413, { error: "That sign-up is too large." });
+
+    let body: unknown;
+    try {
+      body = JSON.parse(raw);
+    } catch {
+      return waitlistJson(400, { error: "Send the sign-up as JSON." });
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const result = cleanSignup(body, today);
+    // Spam gets the same answer as a real sign-up so bots learn nothing.
+    if (!result.ok && "spam" in result) return waitlistJson(200, { ok: true });
+    if (!result.ok) return waitlistJson(400, { error: result.error });
+
+    await ctx.runMutation(internal.waitlist.record, result.value);
+    return waitlistJson(200, { ok: true });
+  }),
+});
 
 export default http;
