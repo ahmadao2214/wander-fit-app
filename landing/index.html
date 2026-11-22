@@ -24,8 +24,8 @@
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
   <link rel="preload" href="fonts/Archivo-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css">
-  <script type="module" src="app.mjs"></script>
+  <link rel="stylesheet" href="styles.css?v=2">
+  <script type="module" src="app.mjs?v=2"></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
@@ -42,9 +42,9 @@
   <main id="main">
     <section class="hero wrap" aria-labelledby="hero-title">
       <div class="hero-copy">
-        <h1 id="hero-title">Circle your <span class="circled">tryout<svg viewBox="0 0 300 120" preserveAspectRatio="none" aria-hidden="true"><path d="M150 8C70 6 10 30 12 64c2 36 78 50 160 46 74-4 118-26 116-56C286 22 214 4 120 14"/></svg></span>.</h1>
-        <p class="product">Strength training for athletes 14 to 17, planned backward from tryout or first game.</p>
-        <p class="lede">Tap a date on the calendar. WanderFit divides the weeks before it into three phases, and shows your full plan before you create an account.</p>
+        <h1 id="hero-title" class="hero-stagger" style="--stagger:0">Circle your <span class="circled">tryout<svg viewBox="0 0 300 120" preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="M150 8C70 6 10 30 12 64c2 36 78 50 160 46 74-4 118-26 116-56C286 22 214 4 120 14"/></svg></span>.</h1>
+        <p class="product hero-stagger" style="--stagger:1">Strength training for athletes 14 to 17, planned backward from tryout or first game.</p>
+        <p class="lede hero-stagger" style="--stagger:2">Tap a date on the calendar. WanderFit divides the weeks before it into three phases, and shows your full plan before you create an account.</p>
       </div>
 
       <div class="planner">
@@ -58,24 +58,24 @@
       </div>
 
       <div class="hero-act">
-        <p class="summary" id="summary" aria-live="polite"></p>
+        <p class="summary hero-stagger" id="summary" style="--stagger:3" aria-live="polite"></p>
 
-        <dl class="legend">
-          <div>
+        <dl class="legend hero-stagger" id="legend" style="--stagger:4">
+          <div data-phase="gpp">
             <dt><span class="key gpp" aria-hidden="true"></span>GPP</dt>
             <dd>General Physical Preparedness. Builds general fitness and movement quality.</dd>
           </div>
-          <div>
+          <div data-phase="spp">
             <dt><span class="key spp" aria-hidden="true"></span>SPP</dt>
             <dd>Specific Physical Preparedness. Shifts training toward the demands of your sport.</dd>
           </div>
-          <div>
+          <div data-phase="ssp">
             <dt><span class="key ssp" aria-hidden="true"></span>SSP</dt>
             <dd>Sport-Specific Preparedness. Sharpens you for the season itself.</dd>
           </div>
         </dl>
 
-        <div class="cta-block" id="hero-cta-wrap">
+        <div class="cta-block hero-stagger" id="hero-cta-wrap" style="--stagger:5">
           <button class="cta" type="button" id="open-form" data-open-form>Start 2-week free beta</button>
           <p class="fine-cta">Free for 2 weeks. No card required. iPhone, browser, or Android.</p>
           <a class="already" id="already" href="#access">Already signed up? View beta access and setup steps</a>
@@ -86,7 +86,8 @@
 
           <fieldset class="field">
             <legend>Who is signing up?</legend>
-            <div class="seg">
+            <div class="seg" id="role-seg">
+              <span class="seg-thumb" aria-hidden="true"></span>
               <label><input type="radio" name="role" value="athlete_14_17" checked><span>Athlete <span class="nowrap">(14–17)</span></span></label>
               <label><input type="radio" name="role" value="athlete_18_plus"><span>Adult Athlete <span class="nowrap">(18+)</span></span></label>
               <label><input type="radio" name="role" value="parent"><span>Parent / Guardian</span></label>
@@ -100,11 +101,15 @@
             <p class="err" id="email-err" hidden></p>
           </div>
 
-          <div class="field" id="parent-field">
-            <label for="parent-email">Parent email <span class="opt">(optional)</span></label>
-            <input id="parent-email" name="parentEmail" type="email" inputmode="email" autocapitalize="off" spellcheck="false" enterkeyhint="next" maxlength="254" aria-describedby="parent-hint parent-err">
-            <p class="hint" id="parent-hint">So we can share beta details with them too.</p>
-            <p class="err" id="parent-err" hidden></p>
+          <div class="collapse-wrap" id="parent-wrap" data-open="true">
+            <div class="collapse-inner">
+              <div class="field" id="parent-field">
+                <label for="parent-email">Parent email <span class="opt">(optional)</span></label>
+                <input id="parent-email" name="parentEmail" type="email" inputmode="email" autocapitalize="off" spellcheck="false" enterkeyhint="next" maxlength="254" aria-describedby="parent-hint parent-err">
+                <p class="hint" id="parent-hint">So we can share beta details with them too.</p>
+                <p class="err" id="parent-err" hidden></p>
+              </div>
+            </div>
           </div>
 
           <fieldset class="field" aria-describedby="intent-err">
@@ -169,7 +174,7 @@
         <div class="night-stage">
           <figure class="shot shot-secondary">
             <div class="phone-frame phone-dark">
-              <img src="assets/shots/intake-sport.png" width="804" height="1748" alt="WanderFit First Run sport picker showing popular sports including Football in the Strength category and search across 27 sports" loading="lazy" decoding="async">
+              <img src="assets/shots/intake-sport.png?v=2" width="804" height="1748" alt="WanderFit First Run sport picker showing popular sports including Football in the Strength category and search across 27 sports" loading="lazy" decoding="async">
             </div>
             <figcaption>
               <strong>Five questions, 27 sports.</strong>
@@ -179,7 +184,7 @@
 
           <figure class="shot shot-hero">
             <div class="phone-frame phone-dark">
-              <img src="assets/shots/reveal.png" width="804" height="1748" alt="WanderFit First Run program reveal showing a 12-week Football Strength plan across GPP, SPP, and SSP with weekly training days and total session count before creating an account" loading="lazy" decoding="async">
+              <img src="assets/shots/reveal.png?v=2" width="804" height="1748" alt="WanderFit First Run program reveal showing a 12-week Football Strength plan across GPP, SPP, and SSP with weekly training days and total session count before creating an account" loading="lazy" decoding="async">
             </div>
             <figcaption>
               <strong>The full plan before sign-up.</strong>
@@ -209,7 +214,7 @@
 
         <figure class="shot">
           <div class="phone-frame phone-light phone-cropped">
-            <img src="assets/shots/program.png" width="804" height="1450" alt="WanderFit Program screen showing Football 12-week GPP, SPP, and SSP phase bar, Up next workout card, and scheduled training week" loading="lazy" decoding="async">
+            <img src="assets/shots/program.png?v=2" width="804" height="1240" alt="WanderFit Program screen showing Football 12-week GPP, SPP, and SSP phase bar, Up next workout card, and scheduled training week" loading="lazy" decoding="async">
           </div>
           <figcaption>
             <strong>Your week laid out clearly.</strong>
@@ -259,27 +264,27 @@
       <div class="qs">
         <details>
           <summary>Is strength training safe for 14 to 17 year old athletes?</summary>
-          <p>Yes. Youth programs scale to the Youth (14–17) age group and open with GPP to build general fitness and movement quality before heavier sport-specific work. WanderFit does not ask for a day-one max lift.</p>
+          <div class="faq-body"><div><p>Yes. Youth programs scale to the Youth (14–17) age group and open with GPP to build general fitness and movement quality before heavier sport-specific work. WanderFit does not ask for a day-one max lift.</p></div></div>
         </details>
         <details>
           <summary>What equipment do I need?</summary>
-          <p>Current workouts assume standard gym equipment such as dumbbells, barbells, and benches. A home and bodyweight equipment option is on our roadmap.</p>
+          <div class="faq-body"><div><p>Current workouts assume standard gym equipment such as dumbbells, barbells, and benches. A home and bodyweight equipment option is on our roadmap.</p></div></div>
         </details>
         <details>
           <summary>How do the 2-week free beta and pricing work?</summary>
-          <p>The 2-week beta is free with no credit card required. We ask your plan preference in the form to understand whether athletes and parents prefer a one-time $35 Season Pass or $15/month once paid plans launch.</p>
+          <div class="faq-body"><div><p>The 2-week beta is free with no credit card required. We ask your plan preference in the form to understand whether athletes and parents prefer a one-time $35 Season Pass or $15/month once paid plans launch.</p></div></div>
         </details>
         <details>
           <summary>How is WanderFit different from asking ChatGPT for a workout plan?</summary>
-          <p>ChatGPT gives you a one-off text list. WanderFit maps your season date across three phases (GPP, SPP, and SSP) with Intro, Build, Peak, and Deload weeks, guided set-by-set logging, and real session history. Optional AI-assistant compatibility is also in progress.</p>
+          <div class="faq-body"><div><p>ChatGPT gives you a one-off text list. WanderFit maps your season date across three phases (GPP, SPP, and SSP) with Intro, Build, Peak, and Deload weeks, guided set-by-set logging, and real session history. Optional AI-assistant compatibility is also in progress.</p></div></div>
         </details>
         <details>
           <summary>I am over 18 or do not have an upcoming tryout. Can I still try it?</summary>
-          <p>Yes. Choose Adult Athlete (18+) in the sign-up form, then pick "No set season" and Performance (18–35) or Vitality (36+) during your First Run. You will receive a 12-week program with four weeks in each phase.</p>
+          <div class="faq-body"><div><p>Yes. Choose Adult Athlete (18+) in the sign-up form, then pick "No set season" and Performance (18–35) or Vitality (36+) during your First Run. You will receive a 12-week program with four weeks in each phase.</p></div></div>
         </details>
         <details>
           <summary>How do I install on iPhone, Android, or use it in my browser?</summary>
-          <p>Submit the short form at the top of the page to open the Beta Access Panel with iPhone TestFlight install steps, the mobile web link, and Android preview status. Already signed up? <a href="#access" data-show-access>Jump to beta access</a>.</p>
+          <div class="faq-body"><div><p>Submit the short form at the top of the page to open the Beta Access Panel with iPhone TestFlight install steps, the mobile web link, and Android preview status. Already signed up? <a href="#access" data-show-access>Jump to beta access</a>.</p></div></div>
         </details>
       </div>
     </section>

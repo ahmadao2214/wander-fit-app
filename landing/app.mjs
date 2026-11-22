@@ -11,14 +11,18 @@ import { renderQrSvg } from './qr.mjs';
 
 const $ = id => document.getElementById(id);
 
+const heroEl = document.querySelector('.hero');
 const calendar = $('calendar');
 const laterInput = $('later-date');
 const noDateBtn = $('no-date');
 const summaryEl = $('summary');
+const legendEl = $('legend');
 const heroCtaWrap = $('hero-cta-wrap');
-const openFormBtn = $('open-form');
-const alreadyLink = $('already');
 const form = $('onramp');
+const roleSeg = $('role-seg');
+const roleThumb = roleSeg?.querySelector('.seg-thumb');
+const parentWrap = $('parent-wrap');
+const parentInput = $('parent-email');
 const accessSection = $('access');
 const channelsEl = $('channels');
 const fineEl = $('fine');
@@ -30,7 +34,8 @@ const DAY = 86400000;
 
 const params = new URLSearchParams(location.search);
 const source = (params.get('ref') || params.get('utm_source') || '').slice(0, 80);
-const previewFlag = params.get('preview') === '1';
+// Keep previously shared Motion Lab links in preview mode.
+const previewFlag = params.get('preview') === '1' || params.get('motion-lab') === '1';
 const rawEndpoint = document.querySelector('meta[name="waitlist-endpoint"]')?.content.trim() ?? '';
 const endpoint = previewFlag ? '' : rawEndpoint;
 
@@ -77,6 +82,13 @@ function playIntroOnce(key) {
   } catch {
     return false;
   }
+}
+
+function triggerPanelEnter(el) {
+  if (reducedMotion()) return;
+  el.classList.remove('panel-enter');
+  void el.offsetWidth;
+  el.classList.add('panel-enter');
 }
 
 // ---------- Calendar setup ----------
@@ -129,7 +141,14 @@ function summaryText(plan) {
   return `${wk(plan.weeksUntil)} to ${dateLabel}. ${plan.programWeeks}-week program, ${plan.sessions} sessions at 3 days/week (${wk(plan.weeksPerPhase)} each of GPP, SPP, and SSP).`;
 }
 
-function renderCalendar({ animate = false } = {}) {
+function pulseSummary() {
+  if (reducedMotion()) return;
+  summaryEl.classList.remove('summary-tick');
+  void summaryEl.offsetWidth;
+  summaryEl.classList.add('summary-tick');
+}
+
+function renderCalendar({ animate = false, userAction = false } = {}) {
   const days = noDate ? null : selected.offset;
   const phases = days ? dayPhases(days) : [];
   const plan = buildPlan(days);
@@ -164,13 +183,14 @@ function renderCalendar({ animate = false } = {}) {
 
   noDateBtn.setAttribute('aria-pressed', String(noDate));
   summaryEl.textContent = summaryText(plan);
+  if (userAction) pulseSummary();
 }
 
 function selectCell(cell, { focus = false } = {}) {
   if (!cell || cell.offset < 1 || cell.offset > MAX_SEASON_WEEKS * 7) return;
   noDate = false;
   selected = cell;
-  renderCalendar({ animate: true });
+  renderCalendar({ animate: true, userAction: true });
   if (focus && cell.btn) cell.btn.focus();
 }
 
@@ -179,6 +199,20 @@ calendar.addEventListener('click', e => {
   if (!btn) return;
   const cell = cells.find(c => c.btn === btn);
   if (cell && cell.offset >= 1) selectCell(cell);
+});
+
+calendar.addEventListener('pointerover', e => {
+  if (e.pointerType !== 'mouse' || !legendEl) return;
+  const btn = e.target.closest('.day[data-phase]');
+  if (btn?.dataset.phase) {
+    legendEl.dataset.activePhase = btn.dataset.phase;
+  } else {
+    delete legendEl.dataset.activePhase;
+  }
+});
+
+calendar.addEventListener('pointerleave', () => {
+  if (legendEl) delete legendEl.dataset.activePhase;
 });
 
 calendar.addEventListener('keydown', e => {
@@ -209,8 +243,72 @@ laterInput.addEventListener('change', () => {
 
 noDateBtn.addEventListener('click', () => {
   noDate = !noDate;
-  renderCalendar({ animate: !noDate });
+  renderCalendar({ animate: !noDate, userAction: true });
 });
+
+// ---------- Role Switcher ----------
+function positionRoleThumb({ animate = true } = {}) {
+  if (!roleSeg || !roleThumb || form.hidden) return;
+  const checked = roleSeg.querySelector('input:checked');
+  const label = checked?.closest('label');
+  if (!label) return;
+  if (!animate) roleSeg.dataset.ready = 'false';
+  const left = label.offsetLeft;
+  const top = label.offsetTop;
+  const width = label.offsetWidth;
+  const height = label.offsetHeight;
+  if (!width || !height) return;
+  roleThumb.style.width = `${width}px`;
+  roleThumb.style.height = `${height}px`;
+  roleThumb.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+  roleSeg.dataset.thumbActive = 'true';
+  if (!animate) {
+    requestAnimationFrame(() => {
+      roleSeg.dataset.ready = 'true';
+    });
+  }
+}
+
+window.addEventListener('resize', () => positionRoleThumb({ animate: false }));
+
+// ---------- FAQ Accordion ----------
+function wireFaqMotion() {
+  const items = [...document.querySelectorAll('.qs details')];
+  for (const details of items) {
+    const summary = details.querySelector('summary');
+    const body = details.querySelector('.faq-body');
+    if (!summary || !body) continue;
+    let revision = 0;
+
+    summary.addEventListener('click', e => {
+      const current = ++revision;
+      if (reducedMotion()) {
+        delete details.dataset.anim;
+        body.inert = false;
+        return;
+      }
+      e.preventDefault();
+      if (details.open && details.dataset.anim !== 'closed') {
+        details.dataset.anim = 'closed';
+        body.inert = true;
+        const transitions = body.getAnimations().map(animation => animation.finished);
+        Promise.allSettled(transitions).then(() => {
+          if (current !== revision) return;
+          details.open = false;
+          delete details.dataset.anim;
+        });
+        return;
+      }
+      if (!details.open) {
+        details.dataset.anim = 'closed';
+        details.open = true;
+        void body.offsetHeight;
+      }
+      delete details.dataset.anim;
+      body.inert = false;
+    });
+  }
+}
 
 // ---------- Beta Access Panel ----------
 function renderChannels() {
@@ -264,25 +362,27 @@ function syncCtas() {
   }
 }
 
-function openForm({ scroll = true } = {}) {
+function openForm() {
   if (unlocked) {
-    showAccess({ focus: true, scroll });
+    showAccess();
     return;
   }
   heroCtaWrap.hidden = true;
   accessSection.hidden = true;
   form.hidden = false;
+  syncRole();
+  positionRoleThumb({ animate: false });
+  triggerPanelEnter(form);
   $('onramp-title').focus({ preventScroll: true });
-  if (scroll) {
-    form.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' });
-  }
+  form.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' });
 }
 
-function showAccess({ focus = true, scroll = true } = {}) {
+function showAccess({ focus = true, scroll = true, animate = true } = {}) {
   form.hidden = true;
   heroCtaWrap.hidden = true;
   accessSection.hidden = false;
   syncCtas();
+  if (animate) triggerPanelEnter(accessSection);
   if (focus) {
     accessSection.focus({ preventScroll: true });
   }
@@ -292,7 +392,7 @@ function showAccess({ focus = true, scroll = true } = {}) {
 }
 
 for (const btn of document.querySelectorAll('[data-open-form]')) {
-  btn.addEventListener('click', () => openForm({ scroll: true }));
+  btn.addEventListener('click', openForm);
 }
 
 for (const link of document.querySelectorAll('#already, [data-show-access]')) {
@@ -308,6 +408,8 @@ $('again').addEventListener('click', () => {
   form.hidden = false;
   form.reset();
   syncRole();
+  positionRoleThumb({ animate: false });
+  triggerPanelEnter(form);
   $('onramp-title').focus({ preventScroll: true });
   form.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' });
 });
@@ -315,12 +417,22 @@ $('again').addEventListener('click', () => {
 // ---------- Form Behavior & Validation ----------
 function syncRole() {
   const role = form.elements.role.value;
-  $('parent-field').hidden = role !== 'athlete_14_17';
+  const showParent = role === 'athlete_14_17';
+  if (parentWrap) {
+    parentWrap.dataset.open = String(showParent);
+    parentWrap.inert = !showParent;
+  }
+  if (parentInput) {
+    parentInput.tabIndex = showParent ? 0 : -1;
+  }
   $('email-label').textContent = role === 'parent' ? 'Parent or guardian email' : 'Your email';
 }
 
 form.addEventListener('change', e => {
-  if (e.target.name === 'role') syncRole();
+  if (e.target.name === 'role') {
+    syncRole();
+    positionRoleThumb({ animate: true });
+  }
   if (e.target.name === 'intent' && !$('intent-err').hidden) {
     setErr(null, $('intent-err'), '');
   }
@@ -334,7 +446,6 @@ function setErr(input, errEl, message) {
   errEl.hidden = !message;
 }
 
-// Validate on blur (never on first keystroke), clear on input once invalid.
 $('email').addEventListener('blur', () => {
   const v = $('email').value.trim();
   if (v) {
@@ -464,9 +575,13 @@ if (!endpoint && fineEl) {
 
 syncRole();
 renderChannels();
-renderCalendar({ animate: playIntroOnce('wf-intro') });
+wireFaqMotion();
+
+const shouldPlayIntro = playIntroOnce('wf-intro');
+renderCalendar({ animate: shouldPlayIntro });
+if (shouldPlayIntro) heroEl.classList.add('intro-play');
 syncCtas();
 
 if (unlocked || location.hash === '#access') {
-  showAccess({ focus: false, scroll: false });
+  showAccess({ focus: false, scroll: false, animate: false });
 }
