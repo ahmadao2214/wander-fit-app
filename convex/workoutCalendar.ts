@@ -1,6 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { calendarStart, countsAsDone, phaseAnchor, slotOnDate } from "./blockCompletion";
 import { loadProgramCompletion } from "./programCompletion";
+import { athleteClockProgram, athleteDate, athleteDayArgs, athleteToday } from "./athleteClock";
 import { countMainExercises } from "../lib/today";
 import { v } from "convex/values";
 import { mapUserWeekToTemplateWeek } from "./weekMapping";
@@ -1064,6 +1065,7 @@ export const moveWorkoutToDate = mutation({
     sourceWeek: v.number(),
     sourceDay: v.number(),
     targetDateISO: v.string(),
+    ...athleteDayArgs,
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -1110,6 +1112,8 @@ export const moveWorkoutToDate = mutation({
       DEFAULT_TRAINING_DAYS[3];
 
     const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
+    // Dates on the athlete's clock, as the calendar shows them
+    const clock = athleteClockProgram(program, args);
 
     // Validate source slot
     if (args.sourceWeek < 1 || args.sourceWeek > weeksPerPhase) {
@@ -1141,7 +1145,7 @@ export const moveWorkoutToDate = mutation({
     // Get the source slot's current effective date
     const sourceKey = `${args.sourcePhase}-${args.sourceWeek}-${args.sourceDay}`;
     const sourceCurrentDate = dateOverrideLookup.get(sourceKey) ??
-      formatDateISO(getDateForWorkout(phaseAnchor(program, args.sourcePhase), trainingDays, {
+      formatDateISO(getDateForWorkout(phaseAnchor(clock, args.sourcePhase), trainingDays, {
         phase: args.sourcePhase,
         week: args.sourceWeek,
         day: args.sourceDay,
@@ -1158,7 +1162,7 @@ export const moveWorkoutToDate = mutation({
     const sourceDate = parseDateISO(sourceCurrentDate);
 
     // NO PAST DATES CONSTRAINT: Cannot move workouts to dates in the past
-    const todayStart = startOfDay(new Date());
+    const todayStart = athleteToday(args);
     if (targetDate < todayStart) {
       throw new Error("Cannot move workout to a past date");
     }
@@ -1169,7 +1173,7 @@ export const moveWorkoutToDate = mutation({
       week: weeksPerPhase,
       day: trainingDays.length,
     };
-    const programEndDate = getDateForWorkout(phaseAnchor(program, "SSP"), trainingDays, lastWorkoutSlot, weeksPerPhase);
+    const programEndDate = getDateForWorkout(phaseAnchor(clock, "SSP"), trainingDays, lastWorkoutSlot, weeksPerPhase);
     const isLastWeek = isSameWeek(sourceDate, programEndDate);
 
     if (isLastWeek) {
@@ -1198,7 +1202,7 @@ export const moveWorkoutToDate = mutation({
           if (slotKey === sourceKey) continue;
 
           const slotDate = dateOverrideLookup.get(slotKey) ??
-            formatDateISO(getDateForWorkout(phaseAnchor(program, slot.phase), trainingDays, slot, weeksPerPhase));
+            formatDateISO(getDateForWorkout(phaseAnchor(clock, slot.phase), trainingDays, slot, weeksPerPhase));
 
           if (slotDate === args.targetDateISO) {
             targetSlot = slot;
@@ -1378,8 +1382,8 @@ export const getProgramCalendarMeta = query({
  * - Program metadata (start/end dates, progress)
  */
 export const getFullProgramCalendar = query({
-  args: {},
-  handler: async (ctx) => {
+  args: athleteDayArgs,
+  handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       return null;
@@ -1419,7 +1423,9 @@ export const getFullProgramCalendar = query({
     // Get dynamic weeks per phase (fallback to 4 for existing users)
     const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
 
-    const programStartDate = calendarStart(program);
+    // Dates on the athlete's clock, not the server's (see athleteClock)
+    const clock = athleteClockProgram(program, args);
+    const programStartDate = calendarStart(clock);
 
     // Calculate program end date (last workout of SSP)
     const lastWorkoutSlot: WorkoutSlot = {
@@ -1427,7 +1433,7 @@ export const getFullProgramCalendar = query({
       week: weeksPerPhase,
       day: trainingDays.length,
     };
-    const programEndDate = getDateForWorkout(phaseAnchor(program, "SSP"),
+    const programEndDate = getDateForWorkout(phaseAnchor(clock, "SSP"),
       trainingDays,
       lastWorkoutSlot,
       weeksPerPhase
@@ -1481,7 +1487,7 @@ export const getFullProgramCalendar = query({
     if (program.sspUnlockedAt) unlockedPhases.push("SSP");
 
     // Today's info
-    const today = startOfDay(new Date());
+    const today = athleteToday(args);
     const todayISO = formatDateISO(today);
 
     // Current slot
@@ -1552,7 +1558,7 @@ export const getFullProgramCalendar = query({
           if (dateOverride) {
             effectiveDate = parseDateISO(dateOverride);
           } else {
-            effectiveDate = getDateForWorkout(phaseAnchor(program, slot.phase), trainingDays, slot, weeksPerPhase);
+            effectiveDate = getDateForWorkout(phaseAnchor(clock, slot.phase), trainingDays, slot, weeksPerPhase);
           }
           const effectiveDateISO = formatDateISO(effectiveDate);
 
@@ -1612,7 +1618,7 @@ export const getFullProgramCalendar = query({
     // Redos included: a workout logged on a day shows on that day
     for (const session of completion.logged) {
       if (session.completedAt) {
-        const completionDateISO = formatDateISO(new Date(session.completedAt));
+        const completionDateISO = formatDateISO(athleteDate(session.completedAt, args));
         if (calendarData[completionDateISO]) {
           const alreadyAdded = calendarData[completionDateISO].workouts.some(
             (w) => w.templateId === session.templateId.toString()

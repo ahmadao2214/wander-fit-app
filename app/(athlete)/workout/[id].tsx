@@ -47,6 +47,8 @@ import {
   templateOrderToMainOrder,
 } from '../../../lib/executionOrder'
 import { phaseTokens } from '../../../lib/phase'
+import { localDayArgs } from '../../../lib/weeksOnPlan'
+import { useCurrentDate } from '../../../hooks/useCurrentDate'
 
 /**
  * Exercise type for the draggable list (with intensity scaling)
@@ -155,9 +157,10 @@ export default function WorkoutDetailScreen() {
   const setTodayFocus = useMutation(api.scheduleOverrides.setTodayFocus)
   
   // Get current today's workout to check if we need to auto-focus
+  const today = useCurrentDate()
   const todayWorkout = useQuery(
     api.scheduleOverrides.getTodayWorkout,
-    user ? {} : "skip"
+    user ? localDayArgs(today) : "skip"
   )
 
   const isCompleted = session?.status === 'completed'
@@ -273,6 +276,7 @@ export default function WorkoutDetailScreen() {
 
       // Pass custom exercise order (intensity is now auto-calculated from user profile)
       const result = await startSession({
+        ...localDayArgs(),
         templateId: template._id,
         // orderIndices are positions among the main exercises; the session
         // stores template indices (sending positions shifted every exercise

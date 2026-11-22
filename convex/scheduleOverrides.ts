@@ -2,6 +2,7 @@ import { query, mutation } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { countsAsDone } from "./blockCompletion";
 import { loadProgramCompletion } from "./programCompletion";
+import { athleteDate, athleteDayArgs, athleteToday, isoDate, type AthleteDay } from "./athleteClock";
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { mapUserWeekToTemplateWeek, DEFAULT_WEEKS_PER_PHASE } from "./weekMapping";
@@ -162,11 +163,11 @@ export const getWeekSchedule = query({
  * 4. Scheduled workout for current day
  */
 export const getTodayWorkout = query({
-  args: {},
-  handler: async (ctx) => {
+  args: athleteDayArgs,
+  handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
-    return await todayWorkoutFor(ctx, identity.subject);
+    return await todayWorkoutFor(ctx, identity.subject, args);
   },
 });
 
@@ -174,7 +175,7 @@ export const getTodayWorkout = query({
  * Today's workout for one athlete, by Clerk user id. The app's query and the
  * chat connector both read today through this, so they cannot disagree.
  */
-export async function todayWorkoutFor(ctx: QueryCtx, clerkId: string) {
+export async function todayWorkoutFor(ctx: QueryCtx, clerkId: string, day: AthleteDay = {}) {
   const user = await ctx.db
     .query("users")
     .withIndex("by_clerk", (q) => q.eq("clerkId", clerkId))
@@ -251,14 +252,33 @@ export async function todayWorkoutFor(ctx: QueryCtx, clerkId: string) {
     };
   };
 
+  // The athlete's day (see athleteClock). Builds that don't send it get the
+  // server's day.
+  const todayISO = isoDate(athleteToday(day));
+
   // PRIORITY 2: If there's an explicit focus override, return it
-  // This is a workout the user explicitly selected as "today's workout"
-  // We return it even if completed, so the UI can show it with a "Completed" badge
-  if (overrideRecord?.todayFocusTemplateId) {
+  // This is a workout the user explicitly selected as "today's workout".
+  // It lasts for the day it was picked on; the next day Today goes back to
+  // the program. We return it even if completed, so the UI can show it with
+  // a "Completed" badge
+  const focusSetAt = overrideRecord?.todayFocusSetAt;
+  const focusIsToday = focusSetAt !== undefined && isoDate(athleteDate(focusSetAt, day)) === todayISO;
+  if (overrideRecord?.todayFocusTemplateId && focusIsToday) {
     const focusTemplate = await ctx.db.get(overrideRecord.todayFocusTemplateId);
     if (focusTemplate) {
       return getTemplateWithExercises(focusTemplate, { isFocusOverride: true });
     }
+  }
+
+  // PRIORITY 2b: A workout of this phase moved onto today on the calendar,
+  // if it isn't done. The calendar shows it on today, so Today offers it too.
+  const movedToToday = overrideRecord?.dateOverrides?.find(
+    (o) => o.dateISO === todayISO && o.phase === program.currentPhase && !completion.isSlotDone(o),
+  );
+  const movedTemplateId = movedToToday ? completion.templateAt(movedToToday) : undefined;
+  const movedTemplate = movedTemplateId ? await ctx.db.get(movedTemplateId) : null;
+  if (movedTemplate) {
+    return getTemplateWithExercises(movedTemplate, { isSlotOverride: true });
   }
 
   // Map user week to template week (templates only exist for weeks 1-4)
