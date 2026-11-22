@@ -91,11 +91,12 @@ function main(argv = process.argv.slice(2)) {
     hasError = true
   }
 
-  // 3. Runtime env vars
-  const hasDsn = Boolean(process.env.EXPO_PUBLIC_SENTRY_DSN?.trim())
-  const sentryEnv = process.env.EXPO_PUBLIC_SENTRY_ENVIRONMENT?.trim() || '(auto: dev/production)'
-  const devEnabled = process.env.EXPO_PUBLIC_SENTRY_ENABLE_IN_DEV === 'true'
-  const debugTools = process.env.EXPO_PUBLIC_SENTRY_DEBUG_TOOLS === 'true'
+  // 3. Runtime env vars (shell env first, then .env.local / .env, as Expo loads them)
+  const env = loadSentryBuildEnv(process.cwd(), process.env)
+  const hasDsn = Boolean(env.EXPO_PUBLIC_SENTRY_DSN?.trim())
+  const sentryEnv = env.EXPO_PUBLIC_SENTRY_ENVIRONMENT?.trim() || '(auto: dev/production)'
+  const devEnabled = env.EXPO_PUBLIC_SENTRY_ENABLE_IN_DEV === 'true'
+  const debugTools = env.EXPO_PUBLIC_SENTRY_DEBUG_TOOLS === 'true'
   console.log(
     `[info] Runtime DSN (EXPO_PUBLIC_SENTRY_DSN): ${hasDsn ? 'SET (active)' : 'NOT SET (dormant/scaffolded)'}`
   )
@@ -104,7 +105,7 @@ function main(argv = process.argv.slice(2)) {
   )
 
   // 4. Build / source map upload env vars
-  const upload = resolveUploadDecision(loadSentryBuildEnv(process.cwd(), process.env))
+  const upload = resolveUploadDecision(env)
   console.log(
     `[info] Source map upload: ${
       upload.shouldUpload
