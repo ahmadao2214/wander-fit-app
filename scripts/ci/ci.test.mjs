@@ -327,7 +327,9 @@ describe('CI workflow speed and budgets', () => {
 
     const lintCheckout = checks.jobs.lint.steps[0]
     expect(lintCheckout.with.filter).toBe('blob:none')
-    expect(lintCheckout.with['fetch-depth']).toBe("${{ github.event_name == 'push' && 0 || 2 }}")
+    expect(lintCheckout.with['fetch-depth']).toBe(
+      "${{ github.event_name == 'push' && '0' || '2' }}"
+    )
 
     const unitRun = checks.jobs.unit.steps.find((s) => (s.run || '').includes('select-tests.mjs'))
     expect(unitRun.run).toContain('run-budgeted.mjs')
