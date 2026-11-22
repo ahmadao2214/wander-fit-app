@@ -6,6 +6,10 @@ import { StatusBar } from 'expo-status-bar'
 import { useFonts } from 'expo-font'
 import { DarkTheme, DefaultTheme, ThemeProvider, SplashScreen, Stack } from 'expo-router'
 import { Provider } from 'components/Provider'
+import { initSentry } from '../lib/sentry'
+
+// Initialize crash reporting before any layout or route renders (no-op until DSN is set).
+initSentry()
 
 // Import Google Fonts
 import {
@@ -19,9 +23,9 @@ import {
 } from '@expo-google-fonts/plus-jakarta-sans'
 
 export {
-  // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
-} from 'expo-router'
+  // Catch any errors thrown by the Layout component and report them to Sentry.
+  RootErrorBoundary as ErrorBoundary,
+} from '../components/RootErrorBoundary'
 
 export const unstable_settings = {
   // Ensure that reloading on any route goes through the index route for proper auth flow
@@ -31,7 +35,7 @@ export const unstable_settings = {
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync()
 
-export default function RootLayout() {
+function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     // Display font - Bebas Neue for headers
     BebasNeue: BebasNeue_400Regular,
@@ -64,6 +68,8 @@ export default function RootLayout() {
     </Providers>
   )
 }
+
+export default RootLayout
 
 const Providers = ({ children }: { children: React.ReactNode }) => {
   return <Provider>{children}</Provider>

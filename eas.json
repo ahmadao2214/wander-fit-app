@@ -16,14 +16,16 @@
       },
       "env": {
         "EXPO_PUBLIC_CONVEX_URL": "https://fleet-mallard-22.convex.cloud",
-        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_ZWxlY3RyaWMtbGVvcGFyZC03NS5jbGVyay5hY2NvdW50cy5kZXYk"
+        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_ZWxlY3RyaWMtbGVvcGFyZC03NS5jbGVyay5hY2NvdW50cy5kZXYk",
+        "EXPO_PUBLIC_SENTRY_ENVIRONMENT": "preview"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_CONVEX_URL": "https://fleet-mallard-22.convex.cloud",
-        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_ZWxlY3RyaWMtbGVvcGFyZC03NS5jbGVyay5hY2NvdW50cy5kZXYk"
+        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_ZWxlY3RyaWMtbGVvcGFyZC03NS5jbGVyay5hY2NvdW50cy5kZXYk",
+        "EXPO_PUBLIC_SENTRY_ENVIRONMENT": "production"
       }
     }
   },

@@ -2,12 +2,16 @@
 /**
  * @type {import('expo/metro-config').MetroConfig}
  */
-const { getDefaultConfig } = require('expo/metro-config')
+const { getSentryExpoConfig } = require('@sentry/react-native/metro')
 const { withTamagui } = require('@tamagui/metro-plugin')
 
-const config = getDefaultConfig(__dirname, {
+const config = getSentryExpoConfig(__dirname, {
   // [Web-only]: Enables CSS support in Metro.
   isCSSEnabled: true,
+  // Session replays and in-app feedback are handled outside Sentry; exclude
+  // those web sub-packages to keep bundle size lean and avoid capturing youth UI input.
+  includeWebReplay: false,
+  includeWebFeedback: false,
 })
 
 const tamaguiConfig = withTamagui(config, {

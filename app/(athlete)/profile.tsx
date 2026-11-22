@@ -6,6 +6,7 @@ import { api } from 'convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
 import { SignOutButton } from '../../components/SignOutButton'
 import { OneRepMaxSheet } from '../../components/OneRepMaxSheet'
+import { SentryDiagnosticsCard } from '../../components/SentryDiagnosticsCard'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   User,
@@ -359,6 +360,8 @@ export default function ProfilePage() {
                 <ChevronRight size={20} color="$color9" />
               </XStack>
             </Card>
+
+            <SentryDiagnosticsCard />
           </YStack>
 
           {/* Sign Out */}
