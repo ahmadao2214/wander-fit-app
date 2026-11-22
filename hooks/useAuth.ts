@@ -3,6 +3,7 @@ import { useUser } from '@clerk/clerk-expo'
 import { api } from 'convex/_generated/api'
 import { useMemo } from 'react'
 import type { User } from '../types'
+import { computeAuthState } from '../lib/authState'
 
 /**
  * useAuth Hook
@@ -49,96 +50,23 @@ export function useAuth() {
     })
   }
 
-  // Default auth state for initial/error cases
-  const defaultAuthState = {
-    isLoading: true,
-    isAuthenticated: false,
-    user: null as User | null,
-    role: null as string | null,
-    needsSetup: false,
-    needsIntake: false,
-  }
-
-  const authState = useMemo(() => {
-    // If Clerk is still loading, we're loading
-    if (isClerkLoading) {
-      return {
-        isLoading: true,
-        isAuthenticated: false,
-        user: null,
-        role: null,
-        needsSetup: false,
-        needsIntake: false,
-      }
-    }
-
-    // If no Clerk user, definitely not authenticated
-    if (!clerkUser) {
-      return {
-        isLoading: false,
-        isAuthenticated: false,
-        user: null,
-        role: null,
-        needsSetup: false,
-        needsIntake: false,
-      }
-    }
-
-    // If we have a Clerk user but Convex user is still loading
-    if (convexUser === undefined) {
-      return {
-        isLoading: true,
-        isAuthenticated: false,
-        user: null,
-        role: null,
-        needsSetup: false,
-        needsIntake: false,
-      }
-    }
-
-    // If we have a Clerk user but no Convex user, needs setup
-    if (convexUser === null) {
-      return {
-        isLoading: false,
-        isAuthenticated: true,
-        user: null,
-        role: null,
-        needsSetup: true,
-        needsIntake: false,
-      }
-    }
-
-    // Determine role (default to 'client'/athlete for now)
-    const role = convexUser.role || 'client'
-    
-    // Check if intake is needed (only for athletes/clients)
-    const needsIntake = role === 'client' && !convexUser.intakeCompletedAt
-
-    // If we have both Clerk user and Convex user, we're authenticated
-    return {
-      isLoading: false,
-      isAuthenticated: true,
-      user: convexUser,
-      role,
-      needsSetup: false,
-      needsIntake,
-    }
-  }, [isClerkLoading, clerkUser?.id, convexUser])
-
-  // Use defensive access to prevent "Cannot convert undefined value to object" error
-  // This can happen during React concurrent rendering or strict mode remounts
-  const safeAuthState = authState ?? defaultAuthState
+  const authState = useMemo(
+    () => computeAuthState<User>({ isClerkLoading, clerkUser, convexUser }),
+    // clerkUser is compared by id: Clerk hands back a new object on re-renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isClerkLoading, clerkUser?.id, convexUser]
+  )
 
   return {
-    isLoading: safeAuthState.isLoading,
-    isAuthenticated: safeAuthState.isAuthenticated,
-    user: safeAuthState.user,
-    role: safeAuthState.role,
-    needsSetup: safeAuthState.needsSetup,
-    needsIntake: safeAuthState.needsIntake,
+    isLoading: authState.isLoading,
+    isAuthenticated: authState.isAuthenticated,
+    user: authState.user,
+    role: authState.role,
+    needsSetup: authState.needsSetup,
+    needsIntake: authState.needsIntake,
     clerkUser,
     // Helper functions
-    hasCompletedIntake: !!safeAuthState.user?.intakeCompletedAt,
+    hasCompletedIntake: !!authState.user?.intakeCompletedAt,
   }
 }
 

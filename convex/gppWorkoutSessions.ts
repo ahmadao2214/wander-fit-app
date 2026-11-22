@@ -286,16 +286,16 @@ export const getSessionForTemplate = query({
         return null;
       }
 
-      // Get the most recent session for this template
-      // templateId is guaranteed to be defined here since we check above
-      const sessions = await ctx.db
+      // This athlete's most recent session for the template. Templates are
+      // shared, so the index starts with the user: other athletes' sessions
+      // must not push this one out of the result.
+      const userSession = await ctx.db
         .query("gpp_workout_sessions")
-        .withIndex("by_template", (q) => q.eq("templateId", args.templateId!))
+        .withIndex("by_user_template", (q) =>
+          q.eq("userId", user._id).eq("templateId", args.templateId!)
+        )
         .order("desc")
-        .take(10);
-
-      // Find the user's session (most recent)
-      const userSession = sessions.find(s => s.userId === user._id);
+        .first();
 
       if (!userSession) {
         return null;
@@ -678,17 +678,15 @@ export const getLastCompletedSessionForTemplate = query({
       return null;
     }
 
-    // Get completed sessions for this template, most recent first
-    const sessions = await ctx.db
+    // This athlete's most recent completed session for the template
+    const lastCompleted = await ctx.db
       .query("gpp_workout_sessions")
-      .withIndex("by_template", (q) => q.eq("templateId", args.templateId))
+      .withIndex("by_user_template", (q) =>
+        q.eq("userId", user._id).eq("templateId", args.templateId)
+      )
       .order("desc")
-      .take(20);
-
-    // Find the user's most recent completed session
-    const lastCompleted = sessions.find(
-      (s) => s.userId === user._id && s.status === "completed"
-    );
+      .filter((q) => q.eq(q.field("status"), "completed"))
+      .first();
 
     if (!lastCompleted) {
       return null;

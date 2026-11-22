@@ -226,6 +226,14 @@ describe('First Run reveal: category, then plan', () => {
     await show()
     expect(screen.getByTestId('redirect').props.children).toBe('/(first-run)/season')
   })
+
+  it('sends a draft whose sport is no longer listed back to the sport question (regression)', async () => {
+    testDraft.reset()
+    await testDraft.seed({ answers: { ...answers, sportId: 'a-sport-that-was-removed' } })
+    await show()
+    expect(screen.queryByTestId('reveal-loading')).toBeNull()
+    expect(screen.getByTestId('redirect').props.children).toBe('/(first-run)/sport')
+  })
 })
 
 describe('firstUnanswered', () => {

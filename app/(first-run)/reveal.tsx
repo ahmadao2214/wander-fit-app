@@ -77,7 +77,7 @@ export default function FirstRunReveal() {
   const router = useRouter()
   const motion = useIntakeMotion()
   const { draft } = useFirstRunDraft()
-  const { sport, category } = useIntakeSport()
+  const { sport, category, missing: sportMissing } = useIntakeSport()
   const [saving, setSaving] = useState(false)
   const [story, setStory] = useState<RevealPart>('category')
   const [revisit, setRevisit] = useState(false)
@@ -138,6 +138,8 @@ export default function FirstRunReveal() {
   }, [story])
 
   if (draft && !complete) return <Redirect href={firstUnanswered(draft.answers)} />
+  // The picked sport is gone from the list: waiting would never end.
+  if (sportMissing) return <Redirect href={STEP_ROUTES.sport as Href} />
 
   if (!ready || !program || !sport || !category || !answers || !isComplete(answers)) {
     return (
