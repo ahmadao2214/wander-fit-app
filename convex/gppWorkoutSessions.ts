@@ -855,9 +855,12 @@ export const startSession = mutation({
 
         // Today's slot: one the athlete moved onto today on the calendar,
         // else the calendar's own mapping. Starting a workout moved onto
-        // today must not reshuffle it back off today.
+        // today must not reshuffle it back off today. Same rule as Today
+        // (todayWorkoutFor): this phase, not done.
         const todayISO = isoDate(today);
-        const movedToToday = existingOverride?.dateOverrides?.find((o) => o.dateISO === todayISO);
+        const movedToToday = existingOverride?.dateOverrides?.find(
+          (o) => o.dateISO === todayISO && o.phase === userProgram.currentPhase && !completion.isSlotDone(o),
+        );
         const todaySlot: WorkoutSlot | null = movedToToday
           ? { phase: movedToToday.phase as CalendarPhase, week: movedToToday.week, day: movedToToday.day }
           : slotOnDate(userProgram, (anchor) =>

@@ -142,6 +142,28 @@ describe("a workout moved onto today on the calendar", () => {
     expect(record?.slotOverrides).toEqual([]);
   });
 
+  it("once done, it no longer stands in for today's slot when another workout starts", async () => {
+    const { ids, t, asAthlete } = await setup();
+    await t.run(async (ctx) => {
+      await ctx.db.insert("user_schedule_overrides", {
+        userId: ids.userId, userProgramId: ids.programId, slotOverrides: [],
+        dateOverrides: [{ phase: "GPP", week: 1, day: 6, dateISO: serverDay().today }],
+        createdAt: Date.now(), updatedAt: Date.now(),
+      });
+      await ctx.db.insert("gpp_workout_sessions", {
+        userId: ids.userId, templateId: ids.templates.W1D6, userProgramId: ids.programId,
+        startedAt: Date.now(), completedAt: Date.now(), status: "completed",
+        templateSnapshot: { name: "W1D6", phase: "GPP", week: 1, day: 6, workoutDate: Date.now() },
+        exercises: [],
+      });
+    });
+    // Today's slot is the calendar's (day 4) again, so starting day 5 reshuffles from there
+    const started = await asAthlete.mutation(api.gppWorkoutSessions.startSession, {
+      ...serverDay(), templateId: ids.templates.W1D5,
+    });
+    expect(started.cascadeApplied).toBe(true);
+  });
+
   it("is not offered once it is done", async () => {
     const { ids, t, asAthlete } = await setup();
     await t.run(async (ctx) => {
