@@ -1,7 +1,7 @@
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { countsAsDone, slotOnDate } from "./blockCompletion";
 import { loadProgramCompletion } from "./programCompletion";
-import { athleteDayArgs, athleteToday, isoDate } from "./athleteClock";
+import { athleteDayArgs, athleteToday } from "./athleteClock";
 import { getWorkoutForDate } from "./workoutCalendar";
 import { DEFAULT_WEEKS_PER_PHASE, mapUserWeekToTemplateWeek } from "./weekMapping";
 import { v } from "convex/values";
@@ -853,19 +853,10 @@ export const startSession = mutation({
           .withIndex("by_user_program", (q) => q.eq("userProgramId", userProgram._id))
           .first();
 
-        // Today's slot: one the athlete moved onto today on the calendar,
-        // else the calendar's own mapping. Starting a workout moved onto
-        // today must not reshuffle it back off today. Same rule as Today
-        // (todayWorkoutFor): this phase, not done.
-        const todayISO = isoDate(today);
-        const movedToToday = existingOverride?.dateOverrides?.find(
-          (o) => o.dateISO === todayISO && o.phase === userProgram.currentPhase && !completion.isSlotDone(o),
+        // Today's slot, with the calendar's own mapping
+        const todaySlot = slotOnDate(userProgram, (anchor) =>
+          getWorkoutForDate(anchor, trainingDays, today, weeksPerPhase)
         );
-        const todaySlot: WorkoutSlot | null = movedToToday
-          ? { phase: movedToToday.phase as CalendarPhase, week: movedToToday.week, day: movedToToday.day }
-          : slotOnDate(userProgram, (anchor) =>
-              getWorkoutForDate(anchor, trainingDays, today, weeksPerPhase)
-            );
 
         if (todaySlot) {
           const selectedSlot: WorkoutSlot = {
@@ -953,8 +944,17 @@ export const startSession = mutation({
               // Get slots in the cascade range
               const slotsInRange = allSlots.slice(todayIndex, selectedIndex + 1);
 
-              // Don't cascade over a workout that's done
-              const canCascade = !slotsInRange.some((slot) => completion.isSlotDone(slot));
+              // Don't cascade over a workout that's done, or over one the
+              // athlete moved to another date on the calendar: the cascade
+              // follows slot order, not dates, so it would undo the move
+              // (a workout moved onto today could land back off it, or one
+              // swapped away could land in the past)
+              const movedSlots = new Set(
+                (existingOverride?.dateOverrides ?? []).map((o) => `${o.phase}-${o.week}-${o.day}`)
+              );
+              const canCascade = !slotsInRange.some(
+                (slot) => completion.isSlotDone(slot) || movedSlots.has(`${slot.phase}-${slot.week}-${slot.day}`)
+              );
 
               if (canCascade) {
                 // Build new slot overrides with cascade
