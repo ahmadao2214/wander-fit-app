@@ -65,6 +65,35 @@ jobs:
       - name: Run typecheck (budgeted)
         run: node scripts/ci/run-budgeted.mjs --name "Typecheck" --max-seconds 60 -- bun run typecheck
 
+  lint:
+    name: Lint & format
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+          fetch-depth: ${{ github.event_name == 'push' && '0' || '2' }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.5
+      - name: Cache Bun packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            bun-${{ runner.os }}-
+      - run: bun install --frozen-lockfile
+      - name: Run lint and format check (budgeted)
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_PUSH_BEFORE: ${{ github.event.before }}
+        run: node scripts/ci/run-budgeted.mjs --name "Lint & format" --max-seconds 30 -- sh -c "bun run lint && bun run format:check"
+
   # Plans Web E2E: selects the backend mode ("preview", "shared", or "dev"),
   # picks affected flows on PRs (all flows on main/manual), and balances them
   # into parallel shards by recorded run time.

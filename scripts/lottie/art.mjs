@@ -3,7 +3,17 @@
 // y pointing down. The builder scales that to the stage and applies the
 // sport's motion family.
 
-import { composition, fill, fixed, group, nullLayer, path, shapeLayer, stroke, transform } from './lottie.mjs'
+import {
+  composition,
+  fill,
+  fixed,
+  group,
+  nullLayer,
+  path,
+  shapeLayer,
+  stroke,
+  transform,
+} from './lottie.mjs'
 import { CANVAS, FPS, LOOP_FRAMES, rigTransform, spin, swing, tilt, tumble } from './motion.mjs'
 
 export const ART_RADIUS = 100
@@ -16,16 +26,28 @@ export const LINE = 4
 
 // ── shapes ──────────────────────────────────────────────────────────────────
 
-export const ellipse = (cx, cy, w, h = w) => ({ ty: 'el', d: 1, p: fixed([cx, cy]), s: fixed([w, h]) })
+export const ellipse = (cx, cy, w, h = w) => ({
+  ty: 'el',
+  d: 1,
+  p: fixed([cx, cy]),
+  s: fixed([w, h]),
+})
 
 export const circle = (cx, cy, r) => ellipse(cx, cy, r * 2)
 
-export const rect = (cx, cy, w, h, radius = 0) => ({ ty: 'rc', d: 1, p: fixed([cx, cy]), s: fixed([w, h]), r: fixed(radius) })
+export const rect = (cx, cy, w, h, radius = 0) => ({
+  ty: 'rc',
+  d: 1,
+  p: fixed([cx, cy]),
+  s: fixed([w, h]),
+  r: fixed(radius),
+})
 
 const zeros = (points) => points.map(() => [0, 0])
 
 /** Straight-edged path through points. */
-export const poly = (points, closed = true) => path({ v: points, i: zeros(points), o: zeros(points), c: closed })
+export const poly = (points, closed = true) =>
+  path({ v: points, i: zeros(points), o: zeros(points), c: closed })
 
 /**
  * Smooth path. Each node is [x, y, inX, inY, outX, outY], with tangents
@@ -58,7 +80,10 @@ export function arc(cx, cy, r, a0, a1) {
   return path({ v, i, o, c: false })
 }
 
-const polar = (angle, r) => [r * Math.cos((angle * Math.PI) / 180), r * Math.sin((angle * Math.PI) / 180)]
+const polar = (angle, r) => [
+  r * Math.cos((angle * Math.PI) / 180),
+  r * Math.sin((angle * Math.PI) / 180),
+]
 const add = (a, b) => [a[0] + b[0], a[1] + b[1]]
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1]]
 
@@ -93,7 +118,11 @@ export function edgeSegments(r, a, b) {
   for (let n = 0; n < count; n++) {
     const a0 = a + n * step
     const a1 = a0 + step
-    segs.push({ c1: add(polar(a0, r), polar(a0 + 90, k)), c2: sub(polar(a1, r), polar(a1 + 90, k)), to: polar(a1, r) })
+    segs.push({
+      c1: add(polar(a0, r), polar(a0 + 90, k)),
+      c2: sub(polar(a1, r), polar(a1 + 90, k)),
+      to: polar(a1, r),
+    })
   }
   return segs
 }
@@ -134,20 +163,29 @@ export const paint = (nm, shapes, color, { opacity = 100, offset, rotation } = {
 /** Stroke only, for seams, laces and straps. */
 export const line = (nm, shapes, color, { width = LINE, offset, rotation, dash } = {}) => {
   const st = stroke(color, width)
-  if (dash) st.d = [{ n: 'd', nm: 'dash', v: fixed(dash[0]) }, { n: 'g', nm: 'gap', v: fixed(dash[1]) }]
+  if (dash)
+    st.d = [
+      { n: 'd', nm: 'dash', v: fixed(dash[0]) },
+      { n: 'g', nm: 'gap', v: fixed(dash[1]) },
+    ]
   return group(nm, [...shapes, st], offset, rotation)
 }
 
 /** Soft shading crescent like soccer's: a darker overlay on the lower right of a ball. */
 export const ballShade = (r, offset) =>
-  paint('shade', [
-    curve([
-      [r * 0.92, -r * 0.38, 0, 0, -r * 0.05, r * 0.75],
-      [-r * 0.38, r * 0.92, r * 0.78, r * 0.12, 0, 0],
-      [r * 0.0, r * 0.995, -r * 0.2, 0, r * 0.62, -r * 0.05],
-      [r * 0.995, r * 0.0, 0, r * 0.62, 0, -r * 0.2],
-    ]),
-  ], '#000000', { opacity: 14, offset })
+  paint(
+    'shade',
+    [
+      curve([
+        [r * 0.92, -r * 0.38, 0, 0, -r * 0.05, r * 0.75],
+        [-r * 0.38, r * 0.92, r * 0.78, r * 0.12, 0, 0],
+        [0, r * 0.995, -r * 0.2, 0, r * 0.62, -r * 0.05],
+        [r * 0.995, 0, 0, r * 0.62, 0, -r * 0.2],
+      ]),
+    ],
+    '#000000',
+    { opacity: 14, offset }
+  )
 
 // ── builder ─────────────────────────────────────────────────────────────────
 
@@ -168,14 +206,25 @@ export const ballShade = (r, offset) =>
  * - swing: no hop; swings from `pivot` and settles (hanging objects).
  * - still: stationary rig; each layer drives its own bespoke `ks` motion.
  */
-export function buildSport({ nm, family, layers, bottom = ART_RADIUS, pivot = [0, -ART_RADIUS], spinCenter = [0, 0], tiltDegrees = 8 }) {
+export function buildSport({
+  nm,
+  family,
+  layers,
+  bottom = ART_RADIUS,
+  pivot = [0, -ART_RADIUS],
+  spinCenter = [0, 0],
+  tiltDegrees = 8,
+}) {
   const op = LOOP_FRAMES
   const RIG = layers.length + 1
   const STAND = layers.length + 2
   const motion = {
     bounce: { rig: { artRadius: ART_RADIUS, bottom }, body: null, markings: spin() },
     tumble: { rig: { artRadius: ART_RADIUS, bottom, squash: 0.35 }, body: tumble() },
-    tilt: { rig: { artRadius: ART_RADIUS, bottom, height: 0.7, squash: 0.3 }, body: tilt(tiltDegrees) },
+    tilt: {
+      rig: { artRadius: ART_RADIUS, bottom, height: 0.7, squash: 0.3 },
+      body: tilt(tiltDegrees),
+    },
     swing: { rig: { artRadius: ART_RADIUS, bottom, still: true }, body: swing() },
     still: { rig: { artRadius: ART_RADIUS, bottom, still: true }, body: null },
   }[family]
@@ -186,9 +235,10 @@ export function buildSport({ nm, family, layers, bottom = ART_RADIUS, pivot = [0
   const ksFor = (l) => {
     if (l.ks) return l.ks
     if (l.role === 'fixed') return transform()
-    const r = l.role === 'markings' ? motion.markings ?? motion.body : motion.body
+    const r = l.role === 'markings' ? (motion.markings ?? motion.body) : motion.body
     if (!r) return transform()
-    const anchor = family === 'swing' ? [...pivot, 0] : l.role === 'markings' ? [...spinCenter, 0] : [0, 0, 0]
+    const anchor =
+      family === 'swing' ? [...pivot, 0] : l.role === 'markings' ? [...spinCenter, 0] : [0, 0, 0]
     return transform({ a: anchor, p: anchor, r })
   }
 
@@ -213,7 +263,16 @@ export function buildSport({ nm, family, layers, bottom = ART_RADIUS, pivot = [0
         return l.null ? nullLayer(spec) : shapeLayer({ ...spec, shapes: l.groups })
       }),
       nullLayer({ ind: RIG, nm: 'rig', op, ks: rigTransform(motion.rig) }),
-      ...(hasFixed ? [nullLayer({ ind: STAND, nm: 'stand', op, ks: rigTransform({ ...motion.rig, still: true }) })] : []),
+      ...(hasFixed
+        ? [
+            nullLayer({
+              ind: STAND,
+              nm: 'stand',
+              op,
+              ks: rigTransform({ ...motion.rig, still: true }),
+            }),
+          ]
+        : []),
     ],
   })
 }

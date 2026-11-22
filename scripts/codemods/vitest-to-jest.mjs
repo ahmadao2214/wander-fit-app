@@ -18,44 +18,45 @@
 //   argument and throws "Expect takes at most one argument" otherwise
 // - replaces `import.meta.glob("../**/*.ts")`, which only Vite provides, with
 //   `convexModules()` from jest/convexModules.ts and imports it
-import fs from "node:fs"
-import path from "node:path"
-import { fileURLToPath } from "node:url"
-import ts from "typescript"
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import ts from 'typescript'
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const TEST_FILE = /\.test\.(ts|tsx|js|mjs)$/
 // scripts/codemods holds this codemod's own test, whose fixtures are Vitest code.
-const SKIP_DIRS = new Set(["node_modules", ".git", ".claude", ".expo", "dist", "codemods"])
+const SKIP_DIRS = new Set(['node_modules', '.git', '.claude', '.expo', 'dist', 'codemods'])
 
 const VITEST_IMPORT = /^import\s+(?:type\s+)?\{[^}]*\}\s+from\s+["']vitest["'];?[ \t]*\r?\n/gm
 const VITEST_ENV = /^\/\/\s*@vitest-environment\b.*\r?\n/gm
 const VITE_TYPES = /^\/\/\/\s*<reference types=["']vite\/client["']\s*\/>[ \t]*\r?\n/gm
 const CREATE_REQUIRE = /^const require = createRequire\(import\.meta\.url\);?[ \t]*\r?\n/m
-const CREATE_REQUIRE_IMPORT = /^import \{ createRequire \} from ["'](?:node:)?module["'];?[ \t]*\r?\n/m
+const CREATE_REQUIRE_IMPORT =
+  /^import \{ createRequire \} from ["'](?:node:)?module["'];?[ \t]*\r?\n/m
 const CONVEX_GLOB = /import\.meta\.glob\(\s*["']\.\.\/\*\*\/\*\.ts["']\s*\)/g
 const ANY_GLOB = /import\.meta\.glob\(/
-const HELPER = path.join(root, "jest/convexModules")
+const HELPER = path.join(root, 'jest/convexModules')
 
 export function convert(source, filePath) {
   const isTs = /\.tsx?$/.test(filePath)
-  const onlyVitestImports = !source.replace(VITEST_IMPORT, "").match(/^(import|export)\b/m)
+  const onlyVitestImports = !source.replace(VITEST_IMPORT, '').match(/^(import|export)\b/m)
   const keepModule = isTs && onlyVitestImports && VITEST_IMPORT.test(source)
   VITEST_IMPORT.lastIndex = 0
   let out = source
-    .replace(VITEST_IMPORT, keepModule ? "export {};\n" : "")
-    .replace(VITEST_ENV, "")
-    .replace(VITE_TYPES, "")
-    .replace(CREATE_REQUIRE, "")
-  if (!/\bcreateRequire\(/.test(out)) out = out.replace(CREATE_REQUIRE_IMPORT, "")
+    .replace(VITEST_IMPORT, keepModule ? 'export {};\n' : '')
+    .replace(VITEST_ENV, '')
+    .replace(VITE_TYPES, '')
+    .replace(CREATE_REQUIRE, '')
+  if (!/\bcreateRequire\(/.test(out)) out = out.replace(CREATE_REQUIRE_IMPORT, '')
   out = renameVi(out, filePath)
   out = dropExpectMessages(out, filePath)
 
   if (out.match(CONVEX_GLOB)) {
-    out = out.replace(CONVEX_GLOB, "convexModules()")
+    out = out.replace(CONVEX_GLOB, 'convexModules()')
     if (!/\bconvexModules\b.*from\s+["'][^"']*jest\/convexModules["']/.test(out)) {
-      let rel = path.relative(path.dirname(filePath), HELPER).split(path.sep).join("/")
-      if (!rel.startsWith(".")) rel = `./${rel}`
+      let rel = path.relative(path.dirname(filePath), HELPER).split(path.sep).join('/')
+      if (!rel.startsWith('.')) rel = `./${rel}`
       const line = `import { convexModules } from "${rel}";\n`
       const imports = [...out.matchAll(/^import[\s\S]*?from\s+["'][^"']+["'];?[ \t]*\r?\n/gm)]
       const at = imports.length ? imports.at(-1).index + imports.at(-1)[0].length : 0
@@ -72,9 +73,9 @@ export function convert(source, filePath) {
 // collect(node, file) returns, so strings, regexes, templates and comments are
 // never mistaken for code. Edits inside a larger edit are skipped.
 function editCode(src, filePath, collect) {
-  const kind = /\.tsx$/.test(filePath)
+  const kind = filePath.endsWith('.tsx')
     ? ts.ScriptKind.TSX
-    : /\.ts$/.test(filePath)
+    : filePath.endsWith('.ts')
       ? ts.ScriptKind.TS
       : ts.ScriptKind.JS
   const file = ts.createSourceFile(filePath, src, ts.ScriptTarget.Latest, false, kind)
@@ -96,25 +97,25 @@ function editCode(src, filePath, collect) {
 }
 
 // vi.fn() -> jest.fn(), for real member access on `vi` only.
-export function renameVi(src, filePath = "file.ts") {
+export function renameVi(src, filePath = 'file.ts') {
   return editCode(src, filePath, (node, file) =>
     ts.isPropertyAccessExpression(node) &&
     ts.isIdentifier(node.expression) &&
-    node.expression.text === "vi"
-      ? [node.expression.getStart(file), node.expression.end, "jest"]
-      : null,
+    node.expression.text === 'vi'
+      ? [node.expression.getStart(file), node.expression.end, 'jest']
+      : null
   )
 }
 
 // expect(value, "message") -> expect(value)
-export function dropExpectMessages(src, filePath = "file.ts") {
+export function dropExpectMessages(src, filePath = 'file.ts') {
   return editCode(src, filePath, (node) =>
     ts.isCallExpression(node) &&
     ts.isIdentifier(node.expression) &&
-    node.expression.text === "expect" &&
+    node.expression.text === 'expect' &&
     node.arguments.length > 1
-      ? [node.arguments[0].end, node.arguments.at(-1).end, ""]
-      : null,
+      ? [node.arguments[0].end, node.arguments.at(-1).end, '']
+      : null
   )
 }
 
@@ -129,20 +130,20 @@ function walk(dir, files = []) {
 }
 
 function main(args) {
-  const check = args.includes("--check")
-  const paths = args.filter((a) => a !== "--check")
+  const check = args.includes('--check')
+  const paths = args.filter((a) => a !== '--check')
   const files = paths.length ? paths.map((f) => path.resolve(f)) : walk(root)
   let changed = 0
   for (const file of files) {
-    const before = fs.readFileSync(file, "utf8")
+    const before = fs.readFileSync(file, 'utf8')
     const after = convert(before, file)
     if (after !== before) {
       changed++
       if (!check) fs.writeFileSync(file, after)
-      console.log(`${check ? "needs converting" : "converted"} ${path.relative(root, file)}`)
+      console.log(`${check ? 'needs converting' : 'converted'} ${path.relative(root, file)}`)
     }
   }
-  console.log(`${changed} of ${files.length} file(s) ${check ? "need converting" : "changed"}`)
+  console.log(`${changed} of ${files.length} file(s) ${check ? 'need converting' : 'changed'}`)
   if (check && changed) process.exitCode = 1
 }
 

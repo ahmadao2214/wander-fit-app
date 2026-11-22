@@ -43,9 +43,9 @@ const Divider = styled(YStack, {
 // Custom hook for warming up browser on Android
 export const useWarmUpBrowser = () => {
   useEffect(() => {
-    Platform.OS === 'android' && void WebBrowser.warmUpAsync()
+    if (Platform.OS === 'android') void WebBrowser.warmUpAsync()
     return () => {
-      Platform.OS === 'android' && void WebBrowser.coolDownAsync()
+      if (Platform.OS === 'android') void WebBrowser.coolDownAsync()
     }
   }, [])
 }
@@ -75,14 +75,15 @@ export default function SignInPage() {
     try {
       const { createdSessionId, setActive, signIn, signUp } = await startSSOFlow({
         strategy: 'oauth_google',
-        redirectUrl: Platform.OS === 'web'
-          ? AuthSession.makeRedirectUri()
-          : Platform.OS === 'ios' || Platform.OS === 'android'
-            ? AuthSession.makeRedirectUri({
-                scheme: 'myapp',
-                path: 'oauth'
-              })
-            : undefined,
+        redirectUrl:
+          Platform.OS === 'web'
+            ? AuthSession.makeRedirectUri()
+            : Platform.OS === 'ios' || Platform.OS === 'android'
+              ? AuthSession.makeRedirectUri({
+                  scheme: 'myapp',
+                  path: 'oauth',
+                })
+              : undefined,
       })
 
       if (createdSessionId) {
@@ -124,7 +125,7 @@ export default function SignInPage() {
 
       if (signInAttempt.status === 'complete') {
         await setActive({ session: signInAttempt.createdSessionId })
-        
+
         if (Platform.OS !== 'web') {
           setTimeout(() => {
             router.replace('/')
@@ -143,7 +144,7 @@ export default function SignInPage() {
       const clerkError = err?.errors?.[0]
       const errorCode = clerkError?.code || err?.code
       const errorMessage = clerkError?.longMessage || clerkError?.message
-      
+
       if (errorCode) {
         if (errorCode === 'form_identifier_not_found') {
           setError('No account found with this email address.')
@@ -182,15 +183,15 @@ export default function SignInPage() {
             showsVerticalScrollIndicator={false}
             automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
           >
-            <YStack 
-              gap="$5" 
-              flex={1} 
-              justify="center" 
-              px="$5" 
+            <YStack
+              gap="$5"
+              flex={1}
+              justify="center"
+              px="$5"
               pt={insets.top + 40}
               pb={insets.bottom + 40}
-              maxW={400} 
-              mx="auto" 
+              maxW={400}
+              mx="auto"
               width="100%"
             >
               {/* Logo/Brand */}
@@ -206,12 +207,19 @@ export default function SignInPage() {
                   accessibilityLabel="Wander Fit"
                   testID="sign-in-wordmark"
                 >
-                  WANDER<Text fontFamily="$heading" fontSize={56} lineHeight={60} letterSpacing={2} color="$primaryText">FIT</Text>
+                  WANDER
+                  <Text
+                    fontFamily="$heading"
+                    fontSize={56}
+                    lineHeight={60}
+                    letterSpacing={2}
+                    color="$primaryText"
+                  >
+                    FIT
+                  </Text>
                 </Text>
                 <DisplayHeading>WELCOME BACK</DisplayHeading>
-                <Subtitle>
-                  Sign in to continue your training journey
-                </Subtitle>
+                <Subtitle>Sign in to continue your training journey</Subtitle>
               </YStack>
 
               {/* OAuth Section */}
@@ -222,7 +230,8 @@ export default function SignInPage() {
                   bg="white"
                   borderWidth={1}
                   borderColor="#dadce0"
-                  fontFamily="$body" fontWeight="500"
+                  fontFamily="$body"
+                  fontWeight="500"
                   color="#3c4043"
                   rounded="$3"
                   hoverStyle={{ bg: '#f1f3f4', borderColor: '#c0c4c7' }}
@@ -234,10 +243,11 @@ export default function SignInPage() {
 
                 <XStack items="center" gap="$3">
                   <Divider />
-                  <Text 
-                    fontSize={12} 
-                    color="$color10" 
-                    fontFamily="$body" fontWeight="500"
+                  <Text
+                    fontSize={12}
+                    color="$color10"
+                    fontFamily="$body"
+                    fontWeight="500"
                     letterSpacing={1}
                   >
                     OR
@@ -249,12 +259,7 @@ export default function SignInPage() {
               {/* Error Message */}
               {error ? (
                 <Card bg="$red2" borderWidth={1} borderColor="$red6" p="$3" rounded="$3">
-                  <Text 
-                    color="$red11"
-                    text="center" 
-                    fontSize={14}
-                    fontFamily="$body"
-                  >
+                  <Text color="$red11" text="center" fontSize={14} fontFamily="$body">
                     {error}
                   </Text>
                 </Card>
@@ -327,7 +332,8 @@ export default function SignInPage() {
                   size="$5"
                   bg="$primary"
                   color="white"
-                  fontFamily="$body" fontWeight="700"
+                  fontFamily="$body"
+                  fontWeight="700"
                   rounded="$4"
                   opacity={isSigningIn ? 0.7 : 1}
                   hoverStyle={{ bg: '#1d4ed8', opacity: 0.95 }}
@@ -343,7 +349,13 @@ export default function SignInPage() {
                   Don't have an account?
                 </Text>
                 <Link href="/(first-run)">
-                  <Text fontFamily="$body" fontWeight="600" color="$primaryText" cursor="pointer" hoverStyle={{ opacity: 0.8 }}>
+                  <Text
+                    fontFamily="$body"
+                    fontWeight="600"
+                    color="$primaryText"
+                    cursor="pointer"
+                    hoverStyle={{ opacity: 0.8 }}
+                  >
                     Sign up
                   </Text>
                 </Link>

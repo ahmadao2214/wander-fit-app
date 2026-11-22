@@ -13,13 +13,14 @@ import { normalizeWebUrlToRoutePattern } from '../telemetryWebPayload'
 function webRoutePatternsUnder(dir: string, prefix: string[] = [], indexOnly = false): string[] {
   const found: string[] = []
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (entry.name === '__tests__' || entry.name.startsWith('_') || entry.name.startsWith('+')) continue
+    if (entry.name === '__tests__' || entry.name.startsWith('_') || entry.name.startsWith('+'))
+      continue
     if (entry.isDirectory()) {
       const next = entry.name.startsWith('(') ? prefix : [...prefix, entry.name]
       found.push(...webRoutePatternsUnder(path.join(dir, entry.name), next, indexOnly))
       continue
     }
-    if (!/\.tsx$/.test(entry.name)) continue
+    if (!entry.name.endsWith('.tsx')) continue
     const name = entry.name.replace(/\.tsx$/, '')
     if (indexOnly && name !== 'index') continue
     const parts = name === 'index' ? prefix : [...prefix, name]
@@ -50,11 +51,7 @@ describe('analyticsRoutes', () => {
       ).toBe('/(athlete)/workout/execute/[id]')
 
       expect(
-        normalizeRouteSegments([
-          '(athlete)',
-          'workout',
-          '550e8400-e29b-41d4-a716-446655440000',
-        ])
+        normalizeRouteSegments(['(athlete)', 'workout', '550e8400-e29b-41d4-a716-446655440000'])
       ).toBe('/(athlete)/workout/[id]')
 
       expect(normalizeRouteSegments(['(athlete)', 'workout', '12345'])).toBe(
@@ -121,7 +118,9 @@ describe('analyticsRoutes', () => {
       expect(normalizeWebUrlToRoutePattern('/workout/execute/example?token=synthetic')).toBe(
         '/workout/execute/[id]'
       )
-      expect(normalizeWebUrlToRoutePattern('/workout/execute/settings')).toBe('/workout/execute/[id]')
+      expect(normalizeWebUrlToRoutePattern('/workout/execute/settings')).toBe(
+        '/workout/execute/[id]'
+      )
       expect(normalizeWebUrlToRoutePattern('https://app.wanderfit.app/workout/jordan#x')).toBe(
         'https://app.wanderfit.app/workout/[id]'
       )
