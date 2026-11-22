@@ -1,7 +1,7 @@
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { countsAsDone, slotOnDate } from "./blockCompletion";
 import { loadProgramCompletion } from "./programCompletion";
-import { athleteDayArgs, athleteToday } from "./athleteClock";
+import { athleteDayArgs, athleteToday, isoDate } from "./athleteClock";
 import { getWorkoutForDate } from "./workoutCalendar";
 import { DEFAULT_WEEKS_PER_PHASE, mapUserWeekToTemplateWeek } from "./weekMapping";
 import { v } from "convex/values";
@@ -847,10 +847,22 @@ export const startSession = mutation({
         const today = athleteToday(args);
         const weeksPerPhase = userProgram.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
 
-        // Today's slot, with the calendar's own mapping
-        const todaySlot = slotOnDate(userProgram, (anchor) =>
-          getWorkoutForDate(anchor, trainingDays, today, weeksPerPhase)
-        );
+        // Get existing schedule overrides
+        const existingOverride = await ctx.db
+          .query("user_schedule_overrides")
+          .withIndex("by_user_program", (q) => q.eq("userProgramId", userProgram._id))
+          .first();
+
+        // Today's slot: one the athlete moved onto today on the calendar,
+        // else the calendar's own mapping. Starting a workout moved onto
+        // today must not reshuffle it back off today.
+        const todayISO = isoDate(today);
+        const movedToToday = existingOverride?.dateOverrides?.find((o) => o.dateISO === todayISO);
+        const todaySlot: WorkoutSlot | null = movedToToday
+          ? { phase: movedToToday.phase as CalendarPhase, week: movedToToday.week, day: movedToToday.day }
+          : slotOnDate(userProgram, (anchor) =>
+              getWorkoutForDate(anchor, trainingDays, today, weeksPerPhase)
+            );
 
         if (todaySlot) {
           const selectedSlot: WorkoutSlot = {
@@ -861,12 +873,6 @@ export const startSession = mutation({
 
           const workoutsPerWeek = trainingDays.length;
           const todayIndex = getAbsoluteIndex(todaySlot, workoutsPerWeek, weeksPerPhase);
-
-          // Get existing schedule overrides
-          const existingOverride = await ctx.db
-            .query("user_schedule_overrides")
-            .withIndex("by_user_program", (q) => q.eq("userProgramId", userProgram._id))
-            .first();
 
           // Get all templates for user's category and skill level
           const allTemplates = await ctx.db
