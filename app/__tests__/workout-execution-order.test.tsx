@@ -32,7 +32,8 @@ const mockUpdateProgress = jest.fn().mockResolvedValue(undefined)
 
 jest.mock('convex/react', () => ({
   useQuery: (name: string) => (name === 'getById' ? mockSession : null),
-  useMutation: (name: string) => (name === 'updateProgress' ? mockUpdateProgress : jest.fn()),
+  useMutation: (name: string) =>
+    name === 'updateProgress' ? mockUpdateProgress : jest.fn(() => Promise.resolve(null)),
 }))
 
 jest.mock('../../convex/_generated/api', () => ({

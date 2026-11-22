@@ -1,5 +1,6 @@
 import { internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import type { Doc } from "./_generated/dataModel";
 import {
   getCurrentUser as getCurrentUserDoc,
   requireCurrentUser,
@@ -94,5 +95,58 @@ export const updateUser = mutation({
 
     await ctx.db.patch(userId, updateData);
     return await ctx.db.get(userId);
+  },
+});
+
+// Update the authenticated athlete's telemetry & replay privacy preferences.
+// Server-side guard prevents youth (14-17) or athletes without a verified adult
+// age group from enabling session replay opt-in.
+export const updateTelemetryPreferences = mutation({
+  args: {
+    analyticsOptOut: v.optional(v.boolean()),
+    sessionReplayOptIn: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireCurrentUser(ctx);
+
+    if (args.sessionReplayOptIn === true) {
+      if (args.analyticsOptOut === true) {
+        throw new Error("Cannot enable session replays while opted out of analytics.");
+      }
+
+      const program = await ctx.db
+        .query("user_programs")
+        .withIndex("by_user", (q) => q.eq("userId", user._id))
+        .first();
+      const latestIntake = await ctx.db
+        .query("intake_responses")
+        .withIndex("by_user", (q) => q.eq("userId", user._id))
+        .order("desc")
+        .first();
+
+      const ageGroup = program?.ageGroup ?? latestIntake?.ageGroup;
+      if (ageGroup !== "18-35" && ageGroup !== "36+") {
+        throw new Error("Session replay opt-in is only available for adult athletes (18+).");
+      }
+    }
+
+    const patch: Partial<Doc<"users">> = {};
+
+    if (args.analyticsOptOut !== undefined) {
+      patch.analyticsOptOut = args.analyticsOptOut;
+      if (args.analyticsOptOut === true) {
+        patch.sessionReplayOptIn = false;
+      }
+    }
+
+    if (args.sessionReplayOptIn !== undefined && patch.sessionReplayOptIn === undefined) {
+      patch.sessionReplayOptIn = args.sessionReplayOptIn;
+    }
+
+    if (Object.keys(patch).length > 0) {
+      await ctx.db.patch(user._id, patch);
+    }
+
+    return await ctx.db.get(user._id);
   },
 });

@@ -7,6 +7,7 @@ import { useIntakeMotion } from '../../components/first-run/useIntakeMotion'
 import { useIntakeSport } from '../../components/first-run/useIntakeSport'
 import { useReachStep } from '../../components/first-run/useReachStep'
 import { useFirstRunDraft } from '../../hooks/useFirstRunDraft'
+import { analytics, FIRST_RUN_STEP_INDEX } from '../../lib/analytics'
 import { DEFAULT_TRAINING_DAYS, normalizeTrainingDays } from '../../lib/firstRun'
 import { DAY_FULL, DAY_SHORT, NIGHT, WEEK_ORDER, daysSummary, movementFamily } from '../../lib/firstRunStory'
 import { selectionFeedback } from '../../lib/haptics'
@@ -55,6 +56,11 @@ export default function FirstRunDays() {
         onPress: async () => {
           // Store the preselected days too, if the athlete kept them.
           await save({ trainingDays: days })
+          analytics.trackFirstRunStepAdvanced({
+            step: 'days',
+            step_index: FIRST_RUN_STEP_INDEX.days,
+            training_days_per_week: days.length,
+          })
           router.push('/(first-run)/about')
         },
         testID: 'first-run-continue',

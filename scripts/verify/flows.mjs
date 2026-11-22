@@ -67,6 +67,7 @@ export const FLOW_DURATION_SECONDS = {
   "workout-exit-resume": 70,
   reassessment: 60,
   "app-settings": 58,
+  "settings-telemetry": 55,
   "sign-in": 46,
   history: 39,
   "repeated-week": 35,
@@ -136,8 +137,8 @@ const ROUTE_FLOW_RULES = [
     flows: ["history"],
   },
   {
-    match: /^(app\/\(athlete\)\/(settings|profile)(\.tsx|\/)|\.maestro\/(web|journeys)\/app-settings\.yaml$)/,
-    flows: ["app-settings", "sign-in"],
+    match: /^(app\/\(athlete\)\/(settings|profile)(\.tsx|\/)|components\/settings\/|\.maestro\/(web|journeys)\/(app-settings|settings-telemetry)\.yaml$)/,
+    flows: ["app-settings", "settings-telemetry", "sign-in"],
   },
   {
     // ConfettiEffect is also imported by app/(reassessment)/celebration.tsx, so

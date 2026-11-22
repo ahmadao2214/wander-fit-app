@@ -612,4 +612,41 @@ describe('WarmupSection', () => {
     expect(getByText('Cat-Cow')).toBeTruthy()
     expect(getByText('10')).toBeTruthy()
   })
+
+  it('distinguishes Skip (skipped: true) from completing warm-up phases (skipped: false)', () => {
+    const { getByTestId, getByText } = render(
+      <WarmupSection
+        exercises={mockExercises}
+        totalDuration={10}
+        onComplete={mockOnComplete}
+        mode="flow"
+      />,
+      { wrapper: AllTheProviders }
+    )
+
+    // Tapping Skip reports skipped: true
+    fireEvent.press(getByTestId('warmup-skip'))
+    expect(mockOnComplete).toHaveBeenLastCalledWith({
+      skipped: true,
+      completedPhases: 0,
+      totalPhases: 6,
+    })
+
+    // Tapping "Start Workout" with 0 phases checked also reports skipped: true
+    fireEvent.press(getByText('Start Workout'))
+    expect(mockOnComplete).toHaveBeenLastCalledWith({
+      skipped: true,
+      completedPhases: 0,
+      totalPhases: 6,
+    })
+
+    // Checking a phase and starting reports skipped: false
+    fireEvent.press(getByTestId('phase-toggle-mobility'))
+    fireEvent.press(getByText('Start Workout (1/6 complete)'))
+    expect(mockOnComplete).toHaveBeenLastCalledWith({
+      skipped: false,
+      completedPhases: 1,
+      totalPhases: 6,
+    })
+  })
 })

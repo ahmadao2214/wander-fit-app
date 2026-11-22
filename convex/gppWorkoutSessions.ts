@@ -1191,6 +1191,43 @@ export const updateProgress = mutation({
 });
 
 /**
+ * Persists the dedicated workout-start telemetry marker once per session
+ * (when warm-up finishes or the first non-skipped set is logged).
+ * Idempotent: returns `alreadyStarted: true` if already marked.
+ */
+export const markWorkoutStarted = mutation({
+  args: {
+    sessionId: v.id("gpp_workout_sessions"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) {
+      throw new Error("Not authenticated");
+    }
+
+    const session = await ctx.db.get(args.sessionId);
+    if (!session) {
+      throw new Error("Session not found");
+    }
+
+    if (session.userId !== user._id) {
+      throw new Error("Not authorized to update this session");
+    }
+
+    if (session.status !== "in_progress") {
+      return { marked: false, alreadyStarted: session.workoutStartedAt !== undefined };
+    }
+
+    if (session.workoutStartedAt !== undefined) {
+      return { marked: false, alreadyStarted: true };
+    }
+
+    await ctx.db.patch(args.sessionId, { workoutStartedAt: Date.now() });
+    return { marked: true, alreadyStarted: false };
+  },
+});
+
+/**
  * Complete the workout session
  */
 export const completeSession = mutation({

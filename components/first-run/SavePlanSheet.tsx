@@ -8,6 +8,7 @@ import { Eye, EyeOff } from '@tamagui/lucide-icons'
 import { FieldLabel } from '../FieldLabel'
 import { VerificationCodeInput } from '../VerificationCodeInput'
 import { useFirstRunDraft } from '../../hooks/useFirstRunDraft'
+import { analytics, type AuthMethod } from '../../lib/analytics'
 import { getSignUpFormErrors, getVerificationErrorMessage } from '../../lib/signUpErrors'
 import { useSavePlan } from './useSavePlan'
 
@@ -82,7 +83,7 @@ export function SavePlanSheet({
   const { startSSOFlow } = useSSO()
   const { user: clerkUser } = useUser()
   const { signOut } = useClerk()
-  const { clear } = useFirstRunDraft()
+  const { draft, clear } = useFirstRunDraft()
   const savePlan = useSavePlan()
 
   const [step, setStep] = useState<Step>('choose')
@@ -96,10 +97,18 @@ export function SavePlanSheet({
   const [busy, setBusy] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
-  const finish = async (account: { email?: string; name?: string } = {}) => {
+  const finish = async (
+    account: { email?: string; name?: string } = {},
+    authMethod: AuthMethod = 'existing_session'
+  ) => {
     setStep('saving')
     try {
       const { keptExistingProgram } = await savePlan(account)
+      analytics.trackFirstRunCompleted({
+        auth_method: authMethod,
+        kept_existing_program: keptExistingProgram,
+        age_group: draft?.answers.ageGroup,
+      })
       // Land on the Program tab. Nothing starts by itself; Day 1 waits there.
       router.replace({ pathname: '/(athlete)/program', params: programWelcomeParams(keptExistingProgram, nextLabel) })
       await clear()
@@ -112,7 +121,10 @@ export function SavePlanSheet({
   }
 
   const onSaveSignedIn = () =>
-    void finish({ email: fields.current.email.trim() || undefined, name: fields.current.name.trim() || undefined })
+    void finish(
+      { email: fields.current.email.trim() || undefined, name: fields.current.name.trim() || undefined },
+      'existing_session'
+    )
 
   const onApple = async () => {
     setErrors({})
@@ -125,10 +137,13 @@ export function SavePlanSheet({
       if (!sessionId) return
       await result.setActive!({ session: sessionId })
       const su = result.signUp
-      await finish({
-        email: su?.emailAddress ?? undefined,
-        name: `${su?.firstName ?? ''} ${su?.lastName ?? ''}`.trim() || undefined,
-      })
+      await finish(
+        {
+          email: su?.emailAddress ?? undefined,
+          name: `${su?.firstName ?? ''} ${su?.lastName ?? ''}`.trim() || undefined,
+        },
+        'apple'
+      )
     } catch (error) {
       console.error('Apple sign-in failed:', error)
       setErrors({ general: "Apple sign-in didn't finish. Try again, or continue with email." })
@@ -178,7 +193,7 @@ export function SavePlanSheet({
         return
       }
       await setActive({ session: attempt.createdSessionId })
-      await finish({ email: fields.current.email.trim(), name: fields.current.name.trim() })
+      await finish({ email: fields.current.email.trim(), name: fields.current.name.trim() }, 'email')
     } catch (error) {
       setErrors({ general: getVerificationErrorMessage(error) })
       setCode('')

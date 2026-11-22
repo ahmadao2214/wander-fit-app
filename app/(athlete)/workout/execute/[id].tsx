@@ -27,7 +27,8 @@ import { SetTracker } from '../../../../components/workout/SetTracker'
 import { InstructionsAccordion } from '../../../../components/workout/InstructionsAccordion'
 import { ExerciseQueue } from '../../../../components/workout/ExerciseQueue'
 import { ConfettiEffect } from '../../../../components/workout/ConfettiEffect'
-import { WarmupSection, type WarmupExercise } from '../../../../components/workout/WarmupSection'
+import { WarmupSection, type WarmupExercise, type WarmupOutcome } from '../../../../components/workout/WarmupSection'
+import { analytics, type WorkoutStartTrigger } from '../../../../lib/analytics'
 import { WARMUP_PHASES } from '../../../../convex/warmupSequences'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { PanResponder, Platform, Vibration, Animated, Pressable } from 'react-native'
@@ -127,6 +128,10 @@ export default function WorkoutExecutionScreen() {
   // Track if session has been completed/abandoned to prevent save attempts
   const sessionEndedRef = useRef(false)
 
+  // Dedupes workout_started to at most once per gpp_workout_sessions._id
+  const startedTrackedSessionIdRef = useRef<string | null>(null)
+  const resumedSessionRef = useRef(false)
+
   // Queries
   const session = useQuery(
     api.gppWorkoutSessions.getById,
@@ -141,6 +146,7 @@ export default function WorkoutExecutionScreen() {
 
   // Mutations
   const updateProgress = useMutation(api.gppWorkoutSessions.updateProgress)
+  const markWorkoutStarted = useMutation(api.gppWorkoutSessions.markWorkoutStarted)
   const completeSession = useMutation(api.gppWorkoutSessions.completeSession)
   const pauseSession = useMutation(api.gppWorkoutSessions.pauseSession)
   const resumeSession = useMutation(api.gppWorkoutSessions.resumeSession)
@@ -316,6 +322,16 @@ export default function WorkoutExecutionScreen() {
         const hasProgress = session.exercises.some((e: any) => e.completed || e.skipped)
         if (hasProgress) {
           setShowWarmup(false)
+          resumedSessionRef.current = true
+        }
+        const hasLoggedNonSkippedMainSet = session.exercises.some(
+          (e: any) =>
+            Array.isArray(e.sets) && e.sets.some((s: any) => s.completed && !s.skipped)
+        )
+        if ((session.workoutStartedAt !== undefined || hasLoggedNonSkippedMainSet) && session._id) {
+          // Already started in an earlier visit (persisted workoutStartedAt marker or logged set) —
+          // do not double-fire workout_started across reloads, autosave, or pause/resume remounts.
+          startedTrackedSessionIdRef.current = String(session._id)
         }
       }
     }
@@ -398,7 +414,7 @@ export default function WorkoutExecutionScreen() {
     let mainIdx = 0
     for (let i = 0; i < templateExs.length; i++) {
       if (warmupData.indices.has(i)) {
-        // Insert warmup completion (stored or placeholder)
+        // Insert warmup completion (stored or placeholder) without mutating recorded warm-up flags
         const stored = warmupData.completions.get(i)
         if (stored) {
           full.push({ ...stored, completed: true, skipped: true })
@@ -468,8 +484,46 @@ export default function WorkoutExecutionScreen() {
     }
   }, [exerciseCompletions, exerciseOrder, isInitialized, debouncedSave])
 
+  const trackWorkoutStartedOnce = useCallback(
+    (trigger: WorkoutStartTrigger) => {
+      const currentSessionId = session?._id ? String(session._id) : sessionId
+      if (!currentSessionId || startedTrackedSessionIdRef.current === currentSessionId) return
+      const tmpl = session?.template
+      if (!tmpl) return
+
+      if (!session?._id) return
+
+      startedTrackedSessionIdRef.current = currentSessionId
+      const startedProps = {
+        trigger,
+        phase: tmpl.phase,
+        week: tmpl.week,
+        day: tmpl.day,
+        intensity: session.targetIntensity ?? 'Moderate',
+        resumed: resumedSessionRef.current,
+      }
+      // Emit only when Convex confirms this call created the marker, so two tabs or
+      // devices on the same session can't both send workout_started (S5).
+      void markWorkoutStarted({ sessionId: session._id })
+        .then((result) => {
+          if (result?.marked) analytics.trackWorkoutStarted(startedProps)
+        })
+        .catch((error) => {
+          // Let a later logged set retry the marker for this session (S20)
+          if (startedTrackedSessionIdRef.current === currentSessionId) {
+            startedTrackedSessionIdRef.current = null
+          }
+          console.error('Failed to persist workout start marker:', error)
+        })
+    },
+    [session, sessionId, markWorkoutStarted]
+  )
+
   // Handle set update
   const handleSetUpdate = (setIndex: number, data: SetData) => {
+    if (data.completed && !data.skipped) {
+      trackWorkoutStartedOnce('first_set_logged')
+    }
     setExerciseCompletions((prev) => {
       const updated = [...prev]
       const slot = completionSlotAt(currentExerciseIndex)
@@ -537,6 +591,9 @@ export default function WorkoutExecutionScreen() {
         exerciseOrder: orderToSave(exerciseOrder),
       })
 
+      let triggersReassessment = false
+      let completedPhaseForPrompt: string | null = null
+
       // Advance program position
       if (session?.userProgramId) {
         try {
@@ -546,16 +603,42 @@ export default function WorkoutExecutionScreen() {
           })
 
           if (result?.triggerReassessment) {
-            // Show reassessment prompt instead of navigating away
-            setReassessmentPhase(result.completedPhase ?? null)
-            setShowCompletionDialog(false)
-            setShowReassessmentPrompt(true)
-            return
+            triggersReassessment = true
+            completedPhaseForPrompt = result.completedPhase ?? null
           }
         } catch (advanceError) {
           // Log but don't block — workout is already completed
           console.error('Failed to advance program:', advanceError)
         }
+      }
+
+      if (session?.template) {
+        let setsCompleted = 0
+        let setsSkipped = 0
+        for (const ex of exerciseCompletions) {
+          for (const set of ex.sets) {
+            if (set.skipped) setsSkipped += 1
+            else if (set.completed) setsCompleted += 1
+          }
+        }
+        analytics.trackWorkoutCompleted({
+          phase: session.template.phase,
+          week: session.template.week,
+          day: session.template.day,
+          intensity: session.targetIntensity ?? 'Moderate',
+          duration_seconds: elapsedTime,
+          sets_completed: setsCompleted,
+          sets_skipped: setsSkipped,
+          triggers_reassessment: triggersReassessment,
+        })
+      }
+
+      if (triggersReassessment) {
+        // Show reassessment prompt instead of navigating away
+        setReassessmentPhase(completedPhaseForPrompt)
+        setShowCompletionDialog(false)
+        setShowReassessmentPrompt(true)
+        return
       }
 
       setShowCompletionDialog(false)
@@ -582,6 +665,19 @@ export default function WorkoutExecutionScreen() {
         exercises: buildFullExercises(exerciseCompletions),
         exerciseOrder: orderToSave(exerciseOrder),
       })
+      if (session?.template) {
+        const setsCompleted = exerciseCompletions.reduce(
+          (sum, ex) => sum + ex.sets.filter((s) => s.completed && !s.skipped).length,
+          0
+        )
+        analytics.trackWorkoutPaused({
+          phase: session.template.phase,
+          week: session.template.week,
+          day: session.template.day,
+          elapsed_seconds: elapsedTime,
+          sets_completed: setsCompleted,
+        })
+      }
       setShowExitDialog(false)
       router.replace('/(athlete)')
     } catch (error) {
@@ -707,7 +803,12 @@ export default function WorkoutExecutionScreen() {
       <WarmupSection
         exercises={warmupExs}
         totalDuration={warmupDuration}
-        onComplete={() => setShowWarmup(false)}
+        onComplete={(outcome?: WarmupOutcome) => {
+          setShowWarmup(false)
+          if (outcome && !outcome.skipped) {
+            trackWorkoutStartedOnce('warmup_completed')
+          }
+        }}
         onBack={() => router.back()}
         mode="flow"
         trainingPhase={template?.phase}

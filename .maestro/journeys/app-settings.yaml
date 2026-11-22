@@ -33,8 +33,19 @@ url: ${VERIFY_URL}
 - assertVisible:
     id: mcp-address
 - assertVisible: ".*add a custom connector.*"
-- assertVisible: ".*waits for you to accept it.*"
 - takeScreenshot: 02-app-settings
+# The last step sits below the 625px viewport, inside the ScrollView
+# (.maestro/flow-layout.md): a touch swipe brings it up, and a swipe back
+# down returns Back to view.
+- swipe:
+    start: 50%, 80%
+    end: 50%, 20%
+    duration: 800
+- assertVisible: ".*waits for you to accept it.*"
+- swipe:
+    start: 50%, 20%
+    end: 50%, 80%
+    duration: 800
 - tapOn:
     id: "Back"
 # Back lands on /profile#sign-out, scrolled to the bottom of the list, so

@@ -131,6 +131,14 @@ jobs:
           path: e2e-artifacts/app-settings/web/
           if-no-files-found: warn
           retention-days: 30
+      - name: Upload settings-telemetry evidence
+        if: always() && hashFiles('e2e-artifacts/settings-telemetry/web/.scrubbed') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-web-settings-telemetry
+          path: e2e-artifacts/settings-telemetry/web/
+          if-no-files-found: warn
+          retention-days: 30
       - name: Upload workout-loop evidence
         if: always() && hashFiles('e2e-artifacts/workout-loop/web/.scrubbed') != ''
         uses: actions/upload-artifact@v4
