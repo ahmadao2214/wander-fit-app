@@ -3,6 +3,7 @@ import schema from "../schema";
 import { api } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { convexModules } from "../../jest/convexModules";
+import { loadProgramCompletion } from "../programCompletion";
 
 const modules = convexModules();
 const DAY = 24 * 60 * 60 * 1000;
@@ -86,6 +87,22 @@ async function setup({ completedInBlock = 3, completedBeforeBlock = 0 } = {}) {
   return { t, ids, asAthlete };
 }
 
+/**
+ * How many of the block's workouts have a session that still counts as done
+ * (countsAsDone: not from an earlier run of the current phase).
+ */
+async function doneInBlock(
+  t: Awaited<ReturnType<typeof setup>>["t"],
+  ids: Awaited<ReturnType<typeof setup>>["ids"],
+) {
+  return t.run(async (ctx) => {
+    const program = await ctx.db.get(ids.programId);
+    const completion = await loadProgramCompletion(ctx, program!);
+    const done = new Set(completion.sessions.map((s) => String(s.templateId)));
+    return ids.templateIds.filter((id) => done.has(String(id))).length;
+  });
+}
+
 const checkIn = { phaseDifficulty: "just_right" as const, maxesUpdated: false };
 
 describe("end-of-block check-in", () => {
@@ -148,27 +165,26 @@ describe("end-of-block check-in", () => {
 
   // Sol review: a repeated block must not inherit the last run's completions
   it("after Repeat, the block's workouts are not done yet (regression)", async () => {
-    const { asAthlete, ids } = await setup({ completedInBlock: 3 });
+    const { t, asAthlete, ids } = await setup({ completedInBlock: 3 });
 
     // Before the check-in, every workout in the block is done
-    const doneBefore = await asAthlete.query(api.gppWorkoutSessions.getCompletedTemplateIds, {});
-    expect(doneBefore).toHaveLength(3);
+    expect(await doneInBlock(t, ids)).toBe(3);
 
     await asAthlete.mutation(api.userPrograms.completeReassessment, { ...checkIn, decision: "repeat" });
 
     // Today offers day 1 again, nothing in the block reads as done
     const today = await asAthlete.query(api.scheduleOverrides.getTodayWorkout, {});
     expect(today?._id).toBe(ids.templateIds[0]);
-    expect(await asAthlete.query(api.gppWorkoutSessions.getCompletedTemplateIds, {})).toEqual([]);
+    expect(await doneInBlock(t, ids)).toBe(0);
     expect(
       await asAthlete.query(api.gppWorkoutSessions.getSessionForTemplate, { templateId: ids.templateIds[0] })
     ).toBeNull();
   });
 
   it("after Move on, the finished phase's workouts stay done", async () => {
-    const { asAthlete } = await setup({ completedInBlock: 3 });
+    const { t, ids, asAthlete } = await setup({ completedInBlock: 3 });
     await asAthlete.mutation(api.userPrograms.completeReassessment, { ...checkIn, decision: "move_on" });
-    expect(await asAthlete.query(api.gppWorkoutSessions.getCompletedTemplateIds, {})).toHaveLength(3);
+    expect(await doneInBlock(t, ids)).toBe(3);
   });
 
   // Greptile review on #120

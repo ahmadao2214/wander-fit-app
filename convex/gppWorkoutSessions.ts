@@ -1,5 +1,5 @@
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
-import { countsAsDone, slotOnDate } from "./blockCompletion";
+import { slotOnDate } from "./blockCompletion";
 import { loadProgramCompletion } from "./programCompletion";
 import { athleteDayArgs, athleteToday } from "./athleteClock";
 import { getWorkoutForDate } from "./workoutCalendar";
@@ -615,45 +615,6 @@ export const getHistory = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => loadHistory(ctx, args.limit || 20),
-});
-
-/**
- * Get IDs of all templates that have completed sessions
- * Used by Program tab to show completion status on workout cards
- */
-export const getCompletedTemplateIds = query({
-  args: {},
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return [];
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      return [];
-    }
-
-    const program = await ctx.db
-      .query("user_programs")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .first();
-
-    // Completed sessions, minus ones from an earlier run of the current phase
-    const completedSessions = (await ctx.db
-      .query("gpp_workout_sessions")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .filter((q) => q.eq(q.field("status"), "completed"))
-      .collect()).filter((s) => !program || countsAsDone(s, program));
-
-    // Return unique template IDs
-    const templateIds = Array.from(new Set(completedSessions.map((s) => s.templateId)));
-    return templateIds;
-  },
 });
 
 /**

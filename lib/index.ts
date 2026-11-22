@@ -16,14 +16,6 @@ export type { IntensityColorToken } from "./intakeUI";
 export { parseReps, normalizeTrackedSets, isCardioExercise, CARDIO_TAGS, mapIntensityToLevel } from "./workout";
 export type { IntensityLevel, BackendIntensity } from "./workout";
 
-// Drag reorder logic
-export {
-  computeOrderedExercises,
-  computeOrderIndices,
-  hasCustomOrder,
-  moveExercise,
-} from "./dragReorder";
-
 // Auth state logic
 export {
   computeAuthState,
