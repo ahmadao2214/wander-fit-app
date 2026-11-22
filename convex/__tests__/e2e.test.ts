@@ -144,6 +144,29 @@ describe("e2e persona provisioning", () => {
       templateSnapshot: { name: "Lower Body Foundation" },
     });
 
+    // persona inspect lists the sessions, so the workout-loop flow can check its own
+    const inspected = await t.query(internal.e2e.inspect, { email });
+    expect(inspected.found && inspected.sessions).toHaveLength(15);
+    expect(inspected.found && inspected.sessions[0]).toMatchObject({
+      status: "completed",
+      mainExercises: 1,
+      mainExercisesNotLogged: 0,
+    });
+
+    // The one main exercise (3 sets) counts as not logged when it is
+    // missing, saved as skipped, or short of a set
+    const [first] = await t.run((ctx) => ctx.db.query("gpp_workout_sessions").collect());
+    const notLoggedAfter = async (exercises: typeof first.exercises) => {
+      await t.run((ctx) => ctx.db.patch(first._id, { exercises }));
+      const after = await t.query(internal.e2e.inspect, { email });
+      return after.found ? after.sessions[0].mainExercisesNotLogged : null;
+    };
+    const [main] = first.exercises;
+    expect(await notLoggedAfter([])).toBe(1);
+    expect(await notLoggedAfter([{ ...main, skipped: true }])).toBe(1);
+    expect(await notLoggedAfter([{ ...main, sets: main.sets.slice(1) }])).toBe(1);
+    expect(await notLoggedAfter([main])).toBe(0);
+
     await t.mutation(internal.e2e.remove, { email });
     const left = await t.run((ctx) => ctx.db.query("gpp_workout_sessions").collect());
     expect(left).toEqual([]);

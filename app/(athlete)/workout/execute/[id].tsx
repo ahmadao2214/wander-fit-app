@@ -1133,6 +1133,7 @@ export default function WorkoutExecutionScreen() {
                 rounded="$4"
                 pressStyle={{ bg: '$primaryPress', scale: 0.98 }}
                 onPress={handleCompleteWorkout}
+                testID="workout-complete-done"
               >
                 Done
               </Button>

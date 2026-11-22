@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url"
 import { isGeneratedEmail } from "./persona.mjs"
 import {
   assertFirstRun,
+  assertWorkoutLoop,
   cleanupPending,
   createSignupPersona,
   ownServerReady,
@@ -357,10 +358,49 @@ describe("persona modes", () => {
     }
   })
 
-  it("does not inspect an onboarded persona", () => {
-    expect(needsInspect("onboarded")).toBe(false)
-    expect(needsInspect("with-history")).toBe(false)
+  it("inspects the flows that change the account, by flow rather than persona mode", () => {
+    expect(needsInspect("sign-in")).toBe(false)
+    expect(needsInspect("history")).toBe(false)
+    expect(needsInspect("workout-exit-resume")).toBe(false)
     expect(needsInspect("first-run")).toBe(true)
+    expect(needsInspect("workout-loop")).toBe(true)
+  })
+
+  it("inspects the workout loop's onboarded persona, and not the sign-in one", () => {
+    const { calls, io } = webIo()
+    runSuite(["sign-in", "workout-loop"], webSuiteSteps("http://127.0.0.1:1", io), () => 0)
+    expect(calls.filter((call) => call.startsWith("inspect"))).toEqual([
+      "inspect workout-loop e2e.1+clerk_test@example.com",
+    ])
+  })
+
+  it("requires one completed session with every exercise done and the program on day 2", () => {
+    const email = "e2e.1+clerk_test@example.com"
+    const finished = { status: "completed", exerciseIds: ["w", "a", "b"], mainExercises: 2, mainExercisesNotLogged: 0 }
+    const done = { found: true, email, hasProgram: true, phase: "GPP", week: 1, day: 2, sessions: [finished] }
+    expect(assertWorkoutLoop(`noise\n${JSON.stringify(done, null, 2)}\n`, email)).toMatchObject({ day: 2 })
+    expect(() => assertWorkoutLoop(JSON.stringify({ ...done, day: 1 }), email)).toThrow(/\(day\)/)
+    expect(() =>
+      assertWorkoutLoop(JSON.stringify({ ...done, sessions: [{ ...finished, status: "in_progress" }] }), email)
+    ).toThrow(/sessionStatus/)
+    // A main exercise missing, skipped, or short of its sets
+    expect(() =>
+      assertWorkoutLoop(JSON.stringify({ ...done, sessions: [{ ...finished, mainExercisesNotLogged: 1 }] }), email)
+    ).toThrow(/allMainExercisesLogged/)
+    // No template to compare with
+    expect(() =>
+      assertWorkoutLoop(
+        JSON.stringify({ ...done, sessions: [{ ...finished, mainExercises: null, mainExercisesNotLogged: null }] }),
+        email
+      )
+    ).toThrow(/allMainExercisesLogged/)
+    expect(() => assertWorkoutLoop(JSON.stringify({ ...done, sessions: [finished, finished] }), email)).toThrow(
+      /sessionCount/
+    )
+    expect(() => assertWorkoutLoop(JSON.stringify({ ...done, sessions: [] }), email)).toThrow(
+      /sessionCount, sessionStatus, allMainExercisesLogged/
+    )
+    expect(() => assertWorkoutLoop("", email)).toThrow(/no inspect output/)
   })
 
   it("requires a saved GPP week 1 day 1 program and the first launch after the First Run", () => {

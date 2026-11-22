@@ -1,0 +1,100 @@
+url: ${VERIFY_URL}
+---
+# The daily loop: an onboarded persona at GPP week 1 day 1, with no sessions,
+# starts today's workout, logs every set, finishes, and lands back on Today.
+# History then lists the session. The runner's persona inspect checks the
+# session was saved completed and the program moved to day 2.
+# Today's workout depends on the server date, so nothing here asserts a name.
+- runFlow: ../subflows/_evidence-start.yaml
+- runFlow: ../subflows/_open-sign-in.yaml
+- runFlow: ../subflows/_sign-in.yaml
+- extendedWaitUntil:
+    visible:
+      id: today-workout-card
+    timeout: 90000
+- takeScreenshot: 01-today
+- tapOn: "Start Workout"
+- extendedWaitUntil:
+    visible:
+      id: workout-start
+    timeout: 30000
+- tapOn:
+    id: workout-start
+- extendedWaitUntil:
+    visible:
+      id: warmup-skip
+    timeout: 30000
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: warmup-skip
+    commands:
+      - tapOn:
+          id: warmup-skip
+- extendedWaitUntil:
+    visible:
+      id: execute-exercise-name
+    timeout: 30000
+- takeScreenshot: 02-first-exercise
+
+# Every exercise: tap the next pending set until none is left, then Next.
+# On the last exercise the button reads Finish and opens the completion
+# dialog, which ends the loop. The caps only stop a runaway loop; GPP
+# workouts have well under 20 exercises and 10 sets each.
+# On web the pending tile's testID is the inner card's (set-tile-next).
+# The second row of tiles sits under the fixed Previous/Next bar at the
+# 625px web viewport, and a tap there lands on the bar (flow-layout.md).
+# A touch swipe scrolls the exercise's ScrollView so every row is clear.
+# It starts above the tiles and lasts under the tiles' 400 ms long press,
+# which would open the set editor instead.
+- repeat:
+    times: 20
+    while:
+      notVisible: "Workout complete!"
+    commands:
+      - swipe:
+          start: 50%, 30%
+          end: 50%, 2%
+          duration: 300
+      - repeat:
+          times: 10
+          while:
+            visible:
+              id: set-tile-next
+          commands:
+            - tapOn:
+                id: set-tile-next
+      - assertNotVisible:
+          id: set-tile-next
+      - tapOn:
+          id: execute-next
+
+- extendedWaitUntil:
+    visible: "Workout complete!"
+    timeout: 30000
+- takeScreenshot: 03-complete
+- tapOn:
+    id: workout-complete-done
+
+# Back on Today: the finished workout no longer offers Start or Resume
+- extendedWaitUntil:
+    visible:
+      id: today-heading
+    timeout: 30000
+- assertNotVisible: "Resume Workout"
+- takeScreenshot: 04-today-after
+
+# History lists the finished session as completed
+- tapOn: "History"
+- extendedWaitUntil:
+    visible: "Workout history"
+    timeout: 30000
+- extendedWaitUntil:
+    visible:
+      id: "history-completed|Completed"
+    timeout: 30000
+- assertNotVisible: "Not finished"
+- assertVisible: "1 workout done.*"
+- takeScreenshot: 05-history
+- runFlow: ../subflows/_evidence-stop.yaml
