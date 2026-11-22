@@ -242,6 +242,8 @@ export default function WorkoutExecutionScreen() {
   // Filter warmup exercises so exerciseCompletions aligns with orderedExercises
   useEffect(() => {
     if (session?.exercises && !isInitialized) {
+      // Whether the athlete has logged any of the workout itself
+      let mainProgress = false
       if (session.template?.exercises) {
         const templateExs = session.template.exercises as any[]
 
@@ -301,6 +303,9 @@ export default function WorkoutExecutionScreen() {
         if (firstIncomplete !== -1) {
           setCurrentExerciseIndex(firstIncomplete)
         }
+        mainProgress = normalizedCompletions.some(
+          (c) => c.completed || c.skipped || c.sets.some((set) => set.completed || set.skipped)
+        )
       } else {
         // Legacy templates without section field
         setExerciseCompletions(session.exercises as ExerciseCompletion[])
@@ -312,15 +317,18 @@ export default function WorkoutExecutionScreen() {
         if (firstIncomplete !== -1) {
           setCurrentExerciseIndex(firstIncomplete)
         }
+        mainProgress = session.exercises.some((e: any) => e.completed || e.skipped)
       }
 
       setIsInitialized(true)
 
-      // Skip warmup if session already has progress (e.g. resuming after backgrounding)
+      // Skip warmup if the workout itself has progress (e.g. resuming after
+      // backgrounding). Saves store the warmup as done-and-skipped
+      // placeholders from the first auto-save on, so they don't count: an
+      // athlete who left during the warmup gets the warmup again.
       if (!warmupInitRef.current) {
         warmupInitRef.current = true
-        const hasProgress = session.exercises.some((e: any) => e.completed || e.skipped)
-        if (hasProgress) {
+        if (mainProgress) {
           setShowWarmup(false)
           resumedSessionRef.current = true
         }
