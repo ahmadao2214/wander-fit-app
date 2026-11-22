@@ -35,3 +35,31 @@ _Avoid_: Specific Preparation, Specific Preparation Phase
 **SSP**:
 Sport-Specific Preparedness. The third phase, sharpening the athlete for the season itself.
 _Avoid_: Sport-Specific Preparation, peak phase
+
+### Chat
+
+**Program**:
+The assignment intake produces for an athlete: category, skill, phase, and the prescribed days. A chat calls actions on it and leaves that assignment in place.
+_Avoid_: routine, plan, when those words mean a workout the chat authored
+
+**Day**:
+One prescribed workout on the athlete's calendar. The first change a chat may make is inside a day the app already shows.
+_Avoid_: exercise library, movement bank
+
+**Hands**:
+The named actions a chat can call on the athlete's own program. The first connection is the one the athlete uses from Claude on the phone.
+
+**Acceptance**:
+The athlete's yes to a day as the chat showed it. The day changes only after that yes. A yes does not apply if the day changed after the chat read it.
+_Avoid_: save, preview
+
+**Unlocked phase**:
+A phase the athlete can already open. GPP is unlocked from the start. SPP and SSP unlock in order. The chat can read and change days only in an unlocked phase.
+
+**Intake slice**:
+The slice after the first connection. The chat submits answers the athlete stated, and the app recomputes the program.
+_Avoid_: the chat assigning a phase
+
+**Athlete-added movement**:
+A library movement placed on a day by the athlete through a chat, in a later slice. It stays distinct from a movement the program prescribed.
+_Avoid_: custom exercise

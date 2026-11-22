@@ -1,0 +1,47 @@
+url: ${VERIFY_URL}
+---
+# Profile → App Settings shows the chat connector address and the steps to
+# add it in Claude, then Back returns to Profile.
+- runFlow: ../subflows/_evidence-start.yaml
+- runFlow: ../subflows/_open-sign-in.yaml
+- runFlow: ../subflows/_sign-in.yaml
+- extendedWaitUntil:
+    visible:
+      id: today-workout-card
+    timeout: 90000
+- tapOn: "Profile"
+- extendedWaitUntil:
+    visible: "Training info"
+    timeout: 30000
+# The App settings row sits just above Sign Out, below the 625px viewport.
+# Profile scrolls inside the page, so follow the same #sign-out link the
+# sign-in journey uses to bring that end of the list into view.
+- evalScript: ${var base = VERIFY_URL; if (base.endsWith('/')) base = base.slice(0, -1); if (base.endsWith('/sign-in')) base = base.slice(0, -8); output.signOutUrl = base + '/profile#sign-out'}
+- openLink: ${output.signOutUrl}
+- extendedWaitUntil:
+    visible:
+      id: profile-app-settings
+    timeout: 30000
+- takeScreenshot: 01-profile
+- tapOn:
+    id: profile-app-settings
+- extendedWaitUntil:
+    visible: "App Settings"
+    timeout: 30000
+- assertVisible: "Connector address"
+# The address comes from this build's Convex deployment.
+- assertVisible:
+    id: mcp-address
+- assertVisible: ".*add a custom connector.*"
+- assertVisible: ".*waits for you to accept it.*"
+- takeScreenshot: 02-app-settings
+- tapOn:
+    id: "Back"
+# Back lands on /profile#sign-out, scrolled to the bottom of the list, so
+# check the row near Sign Out rather than "Training info" at the top.
+- extendedWaitUntil:
+    visible:
+      id: profile-app-settings
+    timeout: 30000
+- takeScreenshot: 03-back-to-profile
+- runFlow: ../subflows/_evidence-stop.yaml

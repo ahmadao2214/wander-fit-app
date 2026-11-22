@@ -97,6 +97,17 @@ export default function AthleteLayout() {
             headerShown: false, // Stack has its own header
           }}
         />
+        {/* App Settings - opened from Profile, not a tab. Hidden the same way
+            as the screens above: with href: null, a push to it on web landed
+            on Today instead. */}
+        <Tabs.Screen
+          name="settings"
+          options={{
+            tabBarButton: () => null,
+            tabBarItemStyle: { display: 'none' },
+            headerShown: false,
+          }}
+        />
       </Tabs>
     </AthleteOnlyRoute>
   )

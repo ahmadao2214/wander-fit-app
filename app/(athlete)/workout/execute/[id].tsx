@@ -321,6 +321,43 @@ export default function WorkoutExecutionScreen() {
     }
   }, [session, isInitialized])
 
+  // The order this screen last saved, so its own save coming back is not
+  // mistaken for a change made elsewhere.
+  const lastSentOrderRef = useRef<string | null>(null)
+
+  // The saved order as the server has it. A save carries exerciseOrder only
+  // when the athlete changed it on this screen, so a save that was already in
+  // flight (or queued offline) cannot undo a reorder accepted in a chat.
+  const savedOrderKey = (() => {
+    const templateExs = session?.template?.exercises as any[] | undefined
+    if (!templateExs) return ''
+    return normalizeExerciseOrder(session?.exerciseOrder as number[] | undefined, templateExs).join('.')
+  })()
+  const savedOrderKeyRef = useRef(savedOrderKey)
+  savedOrderKeyRef.current = savedOrderKey
+  const orderToSave = (order: number[]) =>
+    order.length > 0 && order.join('.') !== savedOrderKeyRef.current ? order : undefined
+
+  // Adopt an order changed elsewhere while this screen is open (a reorder the
+  // athlete accepted in a chat), so the next save does not undo it. Logged
+  // sets live in template order, so they stay with their exercise.
+  const serverOrderKey = Array.isArray(session?.exerciseOrder) ? (session.exerciseOrder as number[]).join('.') : ''
+  useEffect(() => {
+    if (!isInitialized || !serverOrderKey || exerciseOrder.length === 0) return
+    const templateExs = session?.template?.exercises as any[] | undefined
+    if (!templateExs) return
+    const incoming = normalizeExerciseOrder(session?.exerciseOrder as number[], templateExs)
+    const key = incoming.join('.')
+    if (key === exerciseOrder.join('.') || key === lastSentOrderRef.current) return
+    const onScreen = exerciseOrder[currentIndexRef.current]
+    setExerciseOrder(incoming)
+    lastSentOrderRef.current = key
+    const position = incoming.indexOf(onScreen)
+    if (position !== -1) setCurrentExerciseIndex(position)
+    // Only a change in the saved order should run this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverOrderKey, isInitialized])
+
   // Opening a paused session ends the pause, so its clock runs again. Not
   // after this screen's own Exit: its pause must stand until Resume.
   const resumeRequestedRef = useRef(false)
@@ -402,11 +439,13 @@ export default function WorkoutExecutionScreen() {
       if (sessionEndedRef.current) return
 
       if (sessionId && exerciseCompletions.length > 0) {
+        const order = orderToSave(exerciseOrder)
+        if (order) lastSentOrderRef.current = order.join('.')
         try {
           await updateProgress({
             sessionId: sessionId as Id<"gpp_workout_sessions">,
             exercises: buildFullExercises(exerciseCompletions),
-            exerciseOrder: exerciseOrder.length > 0 ? exerciseOrder : undefined,
+            exerciseOrder: order,
           })
         } catch (error) {
           // Silently ignore "already completed/abandoned" errors - this is expected
@@ -495,7 +534,7 @@ export default function WorkoutExecutionScreen() {
       await completeSession({
         sessionId: sessionId as Id<"gpp_workout_sessions">,
         exercises: buildFullExercises(exerciseCompletions),
-        exerciseOrder: exerciseOrder.length > 0 ? exerciseOrder : undefined,
+        exerciseOrder: orderToSave(exerciseOrder),
       })
 
       // Advance program position
@@ -538,7 +577,7 @@ export default function WorkoutExecutionScreen() {
       await pauseSession({
         sessionId: sessionId as Id<"gpp_workout_sessions">,
         exercises: buildFullExercises(exerciseCompletions),
-        exerciseOrder: exerciseOrder.length > 0 ? exerciseOrder : undefined,
+        exerciseOrder: orderToSave(exerciseOrder),
       })
       setShowExitDialog(false)
       router.replace('/(athlete)')

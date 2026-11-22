@@ -1131,6 +1131,19 @@ export const startSession = mutation({
   },
 });
 
+/** The order the workout screen reads from `getSessionForTemplate`. */
+export async function writeExerciseOrder(
+  ctx: MutationCtx,
+  session: Doc<"gpp_workout_sessions">,
+  exerciseOrder: number[],
+) {
+  if (session.status !== "in_progress") {
+    throw new Error("Cannot update a completed or abandoned session");
+  }
+
+  await ctx.db.patch(session._id, { exerciseOrder });
+}
+
 /**
  * Update session progress (called periodically during workout)
  */
@@ -1168,17 +1181,11 @@ export const updateProgress = mutation({
       throw new Error("Cannot update a completed or abandoned session");
     }
 
-    // Build update object
-    const updates: { exercises: typeof args.exercises; exerciseOrder?: number[] } = {
-      exercises: args.exercises,
-    };
+    await ctx.db.patch(args.sessionId, { exercises: args.exercises });
 
-    // Include exercise order if provided
     if (args.exerciseOrder) {
-      updates.exerciseOrder = args.exerciseOrder;
+      await writeExerciseOrder(ctx, session, args.exerciseOrder);
     }
-
-    await ctx.db.patch(args.sessionId, updates);
 
     return { success: true };
   },
