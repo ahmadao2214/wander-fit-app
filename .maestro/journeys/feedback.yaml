@@ -31,21 +31,32 @@ url: ${VERIFY_URL}
 # 1. Private star rating
 - tapOn:
     id: feedback-row-rate
+# Web reports aria-label ("5 stars") as id; native reports testID ("rating-star-5").
 - extendedWaitUntil:
     visible:
-      id: rating-submit-button
+      id: "rating-star-5|5 stars"
     timeout: 15000
-# Web reports aria-label ("5 stars") as id; native reports testID ("rating-star-5").
 - tapOn:
     id: "rating-star-5|5 stars"
 - tapOn:
     id: rating-note-input
 - inputText: "Great training plan"
+# The sheet scrolls inside itself; its submit button starts below the 625px
+# web viewport, which the driver omits. Drag the sheet's content up to it.
+- repeat:
+    while:
+      notVisible:
+        id: rating-submit-button
+    times: 4
+    commands:
+      - swipe:
+          start: "50%, 85%"
+          end: "50%, 45%"
+          duration: 400
 - tapOn:
     id: rating-submit-button
 - extendedWaitUntil:
-    notVisible:
-      id: rating-submit-button
+    visible: "Thanks for the rating!"
     timeout: 15000
 - assertNotVisible:
     id: rating-error
@@ -56,7 +67,7 @@ url: ${VERIFY_URL}
     id: feedback-row-bug
 - extendedWaitUntil:
     visible:
-      id: bug-submit-button
+      id: bug-title-input
     timeout: 15000
 - tapOn:
     id: bug-title-input
@@ -64,13 +75,24 @@ url: ${VERIFY_URL}
 - tapOn:
     id: bug-details-input
 - inputText: "Noticed minor clipping on narrow viewport"
+# The sheet scrolls inside itself; its submit button starts below the 625px
+# web viewport, which the driver omits. Drag the sheet's content up to it.
+- repeat:
+    while:
+      notVisible:
+        id: bug-submit-button
+    times: 4
+    commands:
+      - swipe:
+          start: "50%, 85%"
+          end: "50%, 45%"
+          duration: 400
 - tapOn:
     id: bug-severity-minor
 - tapOn:
     id: bug-submit-button
 - extendedWaitUntil:
-    notVisible:
-      id: bug-submit-button
+    visible: "Bug report sent"
     timeout: 15000
 - assertNotVisible:
     id: bug-error
@@ -81,21 +103,32 @@ url: ${VERIFY_URL}
     id: feedback-row-feature
 - extendedWaitUntil:
     visible:
-      id: feature-submit-button
+      id: feature-category-progress_maxes
     timeout: 15000
 - tapOn:
     id: feature-category-progress_maxes
 - tapOn:
     id: feature-title-input
 - inputText: "Rest timer audio cue"
+# The sheet scrolls inside itself; its submit button starts below the 625px
+# web viewport, which the driver omits. Drag the sheet's content up to it.
+- repeat:
+    while:
+      notVisible:
+        id: feature-submit-button
+    times: 4
+    commands:
+      - swipe:
+          start: "50%, 85%"
+          end: "50%, 45%"
+          duration: 400
 - tapOn:
     id: feature-details-input
 - inputText: "Short chime when rest finishes"
 - tapOn:
     id: feature-submit-button
 - extendedWaitUntil:
-    notVisible:
-      id: feature-submit-button
+    visible: "Idea sent!"
     timeout: 15000
 - assertNotVisible:
     id: feature-error
