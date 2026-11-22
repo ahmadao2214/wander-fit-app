@@ -94,6 +94,9 @@ jobs:
         run: node scripts/verify/run.mjs deploy
       - name: Run web flows
         env:
+          # Pull requests skip the nightly-only flows (scripts/verify/flows.mjs);
+          # main pushes run every flow.
+          VERIFY_FLOW_SET: ${{ github.event_name == 'pull_request' && 'pr' || 'all' }}
           EXPO_PUBLIC_CONVEX_URL_E2E: ${{ steps.backend.outputs.convex_url }}
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
           CONVEX_DEPLOY_KEY_E2E: ${{ github.event_name != 'pull_request' && secrets.CONVEX_DEPLOY_KEY_E2E || '' }}

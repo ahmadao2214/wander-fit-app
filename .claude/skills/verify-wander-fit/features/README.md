@@ -56,6 +56,8 @@ Native only (iPhone 17 simulator and a local build; unreachable from the web har
 
 ## Nightly evidence
 
+Flows in `nightlyOnlyFlows` (`scripts/verify/flows.mjs`, today `workout-loop`) are left out of pull request runs to keep the per-PR web job under 10 minutes. Main pushes, the nightly run and local `run.mjs all` run every flow.
+
 `.github/workflows/nightly-e2e.yml` runs every flow under `.maestro/web/` each night against the `wander-fit-e2e` dev deployment, in the same `e2e-backend` queue as main's web E2E. Each flow's evidence uploads as `e2e-web-<flow>` (kept 30 days) once its password scrub has passed.
 
 After the run, `node scripts/verify/gallery.mjs collect` downloads the newest `e2e-<platform>-<flow>` artifact from main for every flow, from either workflow. `gallery.mjs build` turns them into one page, deployed to GitHub Pages. The page has one section per feature, with Web, Android and iOS columns, each showing the video, the step screenshots, pass or fail, the run date and the commit. A failing flow stays on the page, marked failing. Android and iOS read "Not run yet" until #83 and #84 add those runs. The nightly run's summary links the page. Only videos and screenshots go on the page. Logs and `commands.json` stay in the artifacts.

@@ -31,4 +31,4 @@ Preconditions:
 ## Gotchas
 
 - At the 625px web viewport, the second row of set tiles sits under the fixed Previous/Next bar, and a tap there lands on the bar. The flow swipes each exercise's list up once, starting above the tiles (50%, 30%) and lasting 300 ms. That is under the tiles' 400 ms long press, which would open the set editor instead.
-- The flow takes 4–5 minutes on web: Maestro waits for the page to settle after each of about 20 taps.
+- The flow takes 4–5 minutes on web: Maestro waits for the page to settle after each of about 20 taps. That put the per-PR web job over its 10-minute budget, so it is nightly-only (`nightlyOnlyFlows` in `scripts/verify/flows.mjs`): pull request runs skip it, and main pushes, the nightly run and local `run.mjs all` keep it.

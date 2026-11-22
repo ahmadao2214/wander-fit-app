@@ -2,7 +2,7 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import { parse } from "yaml"
-import { artifactName, evidenceDirFor, listWebFlows, personaMode, root } from "./flows.mjs"
+import { artifactName, defaultFlows, evidenceDirFor, listWebFlows, nightlyOnlyFlows, personaMode, root } from "./flows.mjs"
 import { renderSummary } from "./summary.mjs"
 
 const checks = parse(fs.readFileSync(path.join(root, ".github/workflows/checks.yml"), "utf8"))
@@ -360,5 +360,25 @@ describe("native no-auto-advance flow", () => {
     const nextIndex = steps.findIndex((s) => s.tapOn?.id === "execute-next")
     expect(steps[waitIndex + 1].assertVisible.text).toBe("${maestro.copiedText}")
     expect(nextIndex).toBeGreaterThan(waitIndex)
+  })
+})
+
+describe("nightly-only flows", () => {
+  it("leaves the nightly-only flows out of pull request runs and keeps them everywhere else", () => {
+    const available = listWebFlows()
+    expect(available).toContain("workout-loop")
+    expect(defaultFlows(available, "pr")).not.toContain("workout-loop")
+    expect(defaultFlows(available, "pr")).toEqual(available.filter((flow) => !nightlyOnlyFlows.includes(flow)))
+    expect(defaultFlows(available, "all")).toEqual(available)
+    expect(defaultFlows(available, undefined)).toEqual(available)
+  })
+
+  it("names only flows that exist, so a rename cannot silently drop a flow from PRs", () => {
+    expect(nightlyOnlyFlows.filter((flow) => !listWebFlows().includes(flow))).toEqual([])
+  })
+
+  it("sets the PR flow set only on pull request runs of the web job", () => {
+    const step = job.steps.find((s) => /run\.mjs all$/.test(s.run || ""))
+    expect(step.env.VERIFY_FLOW_SET).toBe("${{ github.event_name == 'pull_request' && 'pr' || 'all' }}")
   })
 })
