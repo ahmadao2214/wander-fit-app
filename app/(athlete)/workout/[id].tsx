@@ -569,18 +569,14 @@ export default function WorkoutDetailScreen() {
           />
         )}
 
-        {/* Exercise List Header */}
+        {/* Exercise List Header. Each row's grip says it can be dragged
+            (long-press). */}
         <XStack items="center" justify="space-between" pt="$2">
           <SectionTitle>{isCompleted && viewMode === "review" ? "Performance" : "Exercises"}</SectionTitle>
-          {canReorder && viewMode === "preview" && (
-            <Caption color="$color10">
-              Hold to drag
-            </Caption>
-          )}
         </XStack>
       </YStack>
     )
-  }, [template, isPhaseUnlocked, isCompleted, canReorder, lastCompletedSession, viewMode, reassessmentStatus])
+  }, [template, isPhaseUnlocked, isCompleted, lastCompletedSession, viewMode, reassessmentStatus])
 
   // Footer component with bottom padding
   const ListFooter = useMemo(() => {
