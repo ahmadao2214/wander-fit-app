@@ -1,5 +1,6 @@
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { countsAsDone, slotOnDate } from "./blockCompletion";
+import { loadProgramCompletion } from "./programCompletion";
 import { getWorkoutForDate } from "./workoutCalendar";
 import { DEFAULT_WEEKS_PER_PHASE, mapUserWeekToTemplateWeek } from "./weekMapping";
 import { v } from "convex/values";
@@ -301,15 +302,19 @@ export const getSessionForTemplate = query({
         return null;
       }
 
-      // A completed session from an earlier run of the current phase (a
-      // repeated block, or a new cycle) doesn't make this workout done now
+      // A completed session only makes the workout done for where the athlete
+      // is now: not from an earlier run of the phase, and not in a later week
+      // that repeats the workout (phases longer than four weeks)
       if (userSession.status === "completed") {
         const program = await ctx.db
           .query("user_programs")
           .withIndex("by_user", (q) => q.eq("userId", user._id))
           .first();
-        if (program && !countsAsDone(userSession, program)) {
-          return null;
+        if (program) {
+          const completion = await loadProgramCompletion(ctx, program);
+          if (!completion.isWorkoutDone(userSession.templateId)) {
+            return null;
+          }
         }
       }
 
@@ -822,6 +827,11 @@ export const startSession = mutation({
       throw new Error("Workout template not found");
     }
 
+    // Starting a workout that's already done for where the athlete is now is
+    // a Redo: logged, but it doesn't fill a slot or move the program forward
+    const completion = await loadProgramCompletion(ctx, userProgram);
+    const redo = completion.isWorkoutDone(args.templateId);
+
     // ─────────────────────────────────────────────────────────────────────────
     // CASCADE LOGIC: Auto-swap when starting a future workout
     // ─────────────────────────────────────────────────────────────────────────
@@ -935,28 +945,11 @@ export const startSession = mutation({
                 }
               }
 
-              // Get completed template IDs
-              const completedSessions = (await ctx.db
-                .query("gpp_workout_sessions")
-                .withIndex("by_user", (q) => q.eq("userId", user._id))
-                .filter((q) => q.eq(q.field("status"), "completed"))
-                .collect()).filter((s) => countsAsDone(s, userProgram));
-              const completedTemplateIds = new Set(
-                completedSessions.map((s) => s.templateId.toString())
-              );
-
               // Get slots in the cascade range
               const slotsInRange = allSlots.slice(todayIndex, selectedIndex + 1);
 
-              // Check if any workout in the cascade range is completed
-              let canCascade = true;
-              for (const slot of slotsInRange) {
-                const slotTemplate = getTemplateForSlot(slot);
-                if (slotTemplate && completedTemplateIds.has(slotTemplate._id.toString())) {
-                  canCascade = false;
-                  break;
-                }
-              }
+              // Don't cascade over a workout that's done
+              const canCascade = !slotsInRange.some((slot) => completion.isSlotDone(slot));
 
               if (canCascade) {
                 // Build new slot overrides with cascade
@@ -1109,6 +1102,7 @@ export const startSession = mutation({
       exerciseOrder: args.exerciseOrder,
       targetIntensity: args.targetIntensity,
       scalingSnapshot,
+      ...(redo ? { redo: true } : {}),
       templateSnapshot: {
         name: template.name,
         phase: template.phase,

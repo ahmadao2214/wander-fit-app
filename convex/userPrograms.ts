@@ -579,6 +579,25 @@ export const advanceToNextDay = mutation({
       throw new Error("Program is paused. Resume before continuing.");
     }
 
+    // The app calls this right after completing a workout. A Redo is extra
+    // work on a workout already done, so the program stays where it is.
+    // (Installed builds call this too, so the check lives here, not in the app.)
+    const latest = await ctx.db
+      .query("gpp_workout_sessions")
+      .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
+      .order("desc")
+      .first();
+    if (latest?.status === "completed" && latest.redo) {
+      return {
+        advanced: false,
+        currentPhase: program.currentPhase,
+        currentWeek: program.currentWeek,
+        currentDay: program.currentDay,
+        phaseComplete: false,
+        programComplete: false,
+      };
+    }
+
     const now = Date.now();
     let { currentDay, currentWeek, currentPhase } = program;
 
