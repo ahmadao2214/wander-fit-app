@@ -35,7 +35,10 @@ url: ${VERIFY_URL}
 - assertVisible: "Field Hockey"
 - assertNotVisible: "POPULAR"
 - eraseText: 10
+# Basketball is a Popular sport, which search used to skip ("No sport
+# matches"), so finding it proves search covers every sport.
 - inputText: "basketball"
+- assertNotVisible: "No sport matches.*"
 - tapOn:
     id: "Basketball"
 - takeScreenshot: 02-sport

@@ -46,6 +46,15 @@ export function categoryLayout(
   return { tile, name: Math.floor(Math.min(128, usableHeight * 0.17, fitsWidth)) }
 }
 
+/**
+ * "<SPORT> TRAINS FOR" on one line: 30 pt, or smaller when the sport name is
+ * long. Web ignores adjustsFontSizeToFit, so the size is set from the width
+ * (1 px letter spacing per character, 6% to spare).
+ */
+export function leadFontSize(text: string, usableWidth: number): number {
+  return Math.min(30, Math.floor((usableWidth - text.length) / (displayWidthEm(text) * 1.06)))
+}
+
 /** Fades and rises in at `at` ms when `play`; otherwise simply there. */
 export function Beat({
   at,
@@ -139,6 +148,8 @@ export function CategoryStory({
   const insets = useSafeAreaInsets()
   const { height: screenH, width: screenW } = useWindowDimensions()
   const size = categoryLayout(screenH - insets.top - insets.bottom - 56, Math.min(screenW, 560) - 48, category.name)
+  const lead = `${sportName.toUpperCase()} TRAINS FOR`
+  const leadSize = leadFontSize(lead, Math.min(screenW, 560) - 48)
   const [lit, setLit] = useState(settled)
   useEffect(() => {
     if (settled) {
@@ -186,9 +197,9 @@ export function CategoryStory({
             numberOfLines={1}
             adjustsFontSizeToFit
             minimumFontScale={0.72}
-            style={{ fontFamily: DISPLAY, fontSize: 30, lineHeight: 32, color: NIGHT.fg2, letterSpacing: 1 }}
+            style={{ fontFamily: DISPLAY, fontSize: leadSize, lineHeight: leadSize + 2, color: NIGHT.fg2, letterSpacing: 1 }}
           >
-            {`${sportName.toUpperCase()} TRAINS FOR`}
+            {lead}
           </RNText>
         </Beat>
         <Beat at={CATEGORY_BEATS.name} play={play}>

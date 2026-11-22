@@ -1,7 +1,7 @@
 jest.mock('react-native-reanimated', () => jest.requireActual('../../../jest/reanimatedMock'))
 
 // eslint-disable-next-line import/first
-import { CATEGORY_TILE_HEIGHT, categoryLayout, displayWidthEm } from '../CategoryStory'
+import { CATEGORY_TILE_HEIGHT, categoryLayout, displayWidthEm, leadFontSize } from '../CategoryStory'
 
 describe('categoryLayout', () => {
   it('keeps full-size tiles on a tall phone and shrinks them on a short one', () => {
@@ -107,5 +107,18 @@ describe('captionMinHeight', () => {
   it('reserves a fourth line on a phone narrower than 360pt', () => {
     const { captionMinHeight } = jest.requireActual('../PlanView')
     expect([captionMinHeight(320), captionMinHeight(375), captionMinHeight(402)]).toEqual([80, 60, 60])
+  })
+})
+
+describe('leadFontSize', () => {
+  it('keeps a short lead at 30 pt', () => {
+    expect(leadFontSize('SOCCER TRAINS FOR', 342)).toBe(30)
+  })
+
+  it('shrinks the longest lead to fit one line on a 390-wide phone', () => {
+    const lead = 'TRACK (SPRINTS/JUMPS) TRAINS FOR'
+    const size = leadFontSize(lead, 390 - 48)
+    expect(size).toBeLessThan(30)
+    expect(displayWidthEm(lead) * size + lead.length).toBeLessThanOrEqual(342)
   })
 })

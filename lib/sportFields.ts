@@ -348,9 +348,9 @@ const FIELDS: Record<string, () => FieldMark[]> = {
 
 /** The sport's field as chalk marks, or General Fitness's turf for an unknown sport. */
 export function sportField(name: string): FieldMark[] {
-  return (FIELDS[name] ?? generalFitness)()
+  return (hasSportField(name) ? FIELDS[name] : generalFitness)()
 }
 
 export function hasSportField(name: string): boolean {
-  return name in FIELDS
+  return Object.hasOwn(FIELDS, name)
 }
