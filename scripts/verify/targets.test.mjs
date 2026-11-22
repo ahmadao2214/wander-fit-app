@@ -81,12 +81,12 @@ describe("preview deployments (pull requests)", () => {
     expect(() => previewName("///")).toThrow()
   })
 
-  it("deploys to the named preview, seeds it, and reports its URL", () => {
+  it("deploys to the named preview and reports its URL without unconditional seeding", () => {
     const args = previewDeployArgs("t3-feature")
     const value = (flag) => args[args.indexOf(flag) + 1]
     expect(args[0]).toBe("deploy")
     expect(value("--preview-create")).toBe("t3-feature")
-    expect(value("--preview-run")).toBe("seed:seedAll")
+    expect(args).not.toContain("--preview-run")
     expect(value("--cmd")).toBe("node scripts/verify/run.mjs record-url")
     expect(value("--cmd-url-env-var-name")).toBe("EXPO_PUBLIC_CONVEX_URL_E2E")
   })

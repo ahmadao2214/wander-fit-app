@@ -75,6 +75,20 @@ describe("persona provisioning", () => {
       fs.rmSync(dir, { recursive: true, force: true })
     }
   })
+
+  it("provisions without running seed when seed step is omitted", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "verify-persona-noseed-"))
+    const file = path.join(dir, "persona-latest.json")
+    const calls = []
+    const record = { email: "e2e.2+clerk_test@example.com", password: "pw", clerkId: "user_2", state: "onboarded" }
+    try {
+      provisionPersona(record, { provision: () => calls.push("provision") }, file)
+      expect(calls).toEqual(["provision"])
+      expect(JSON.parse(fs.readFileSync(file, "utf8"))).toEqual(record)
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  })
 })
 
 describe("persona email guard", () => {

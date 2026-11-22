@@ -194,15 +194,15 @@ export const getPhaseOverview = query({
     skillLevel: skillLevelValidator,
   },
   handler: async (ctx, args) => {
-    const templates = await ctx.db
+    const filtered = await ctx.db
       .query("program_templates")
-      .withIndex("by_category_phase", (q) =>
-        q.eq("gppCategoryId", args.gppCategoryId).eq("phase", args.phase)
+      .withIndex("by_assignment", (q) =>
+        q
+          .eq("gppCategoryId", args.gppCategoryId)
+          .eq("phase", args.phase)
+          .eq("skillLevel", args.skillLevel)
       )
       .collect();
-
-    // Filter by skill level and organize by week
-    const filtered = templates.filter((t) => t.skillLevel === args.skillLevel);
 
     const byWeek = new Map<number, typeof filtered>();
     filtered.forEach((t) => {
@@ -246,6 +246,27 @@ export const exists = query({
       .first();
 
     return template !== null;
+  },
+});
+
+/**
+ * Check whether program templates are seeded across all 4 GPP categories,
+ * reading at most one document per category (4 reads instead of scanning all
+ * 1,008 templates). Used by verify doctor and deploy.
+ */
+export const seedStatus = query({
+  args: {},
+  handler: async (ctx) => {
+    for (const categoryId of [1, 2, 3, 4]) {
+      const template = await ctx.db
+        .query("program_templates")
+        .withIndex("by_category_phase", (q) => q.eq("gppCategoryId", categoryId))
+        .first();
+      if (!template) {
+        return { hasTemplates: false };
+      }
+    }
+    return { hasTemplates: true };
   },
 });
 

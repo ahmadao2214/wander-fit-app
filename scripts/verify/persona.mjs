@@ -160,7 +160,7 @@ export function writeCredentials(record, file = credentialsFile) {
 // provisioning so a failed seed or provision can still be deleted.
 export function provisionPersona(record, steps, file = credentialsFile) {
   writeCredentials(record, file)
-  steps.seed()
+  steps.seed?.()
   steps.provision()
 }
 
@@ -171,6 +171,7 @@ function printJson(value) {
 async function create() {
   const state = flag("--state") || "onboarded"
   if (!states.has(state)) fail(`Unknown persona state "${state}".`)
+  const shouldSeedRef = process.argv.includes("--seed")
   convexInvocation()
   const email = `e2e.${Date.now()}+clerk_test@example.com`
   const secretPassword = generatePassword()
@@ -193,8 +194,11 @@ async function create() {
     state,
     createdAt: new Date().toISOString(),
   }
+  // Reference data (categories, sports, exercises, templates) is seeded by
+  // `run.mjs deploy`. Re-running seed:seedAll per flow re-reads ~226 docs per
+  // flow (~720 KB DB I/O per CI run), so only seed here when --seed is passed.
   provisionPersona(record, {
-    seed: () => convexRun("seed:seedAll", {}),
+    ...(shouldSeedRef ? { seed: () => convexRun("seed:seedAll", {}) } : {}),
     provision: () =>
       convexRun("e2e:provision", {
         clerkId,
