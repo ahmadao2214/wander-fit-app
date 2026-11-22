@@ -107,15 +107,6 @@ function RootLayoutNav() {
           }}
         />
 
-        {/* After the First Run saves: Start Day 1 or Not now */}
-        <Stack.Screen
-          name="ready"
-          options={{
-            headerShown: false,
-            gestureEnabled: false,
-          }}
-        />
-
         {/* Index/landing page */}
         <Stack.Screen
           name="index"
