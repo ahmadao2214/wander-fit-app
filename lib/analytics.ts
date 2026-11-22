@@ -93,6 +93,7 @@ export class AnalyticsService {
   private lastIdentifiedId: string | null = null
   private lastScreenName: string | null = null
   private runtimeContext: TelemetryRuntimeContext = {}
+  private readonly captureReadyListeners = new Set<() => void>()
 
   private readonly transportFactory: (config: TelemetryTransportConfig) => TelemetryTransport
   private readonly getApiKey: () => string | undefined
@@ -143,9 +144,21 @@ export class AnalyticsService {
    * on cold launch, preventing opted-out Athletes from emitting early events.
    */
   setCaptureReady(ready: boolean): void {
+    const changed = this.captureReady !== ready
     this.captureReady = ready
     if (!ready) {
       this.stopRecordingIfActive()
+    }
+    if (changed) {
+      for (const listener of this.captureReadyListeners) listener()
+    }
+  }
+
+  /** For `useSyncExternalStore`: notifies when capture readiness changes. */
+  subscribeCaptureReady = (listener: () => void): (() => void) => {
+    this.captureReadyListeners.add(listener)
+    return () => {
+      this.captureReadyListeners.delete(listener)
     }
   }
 

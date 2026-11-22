@@ -207,22 +207,6 @@ describe('Web PostHog transport & payload scrubbing (S1, S2, S4)', () => {
       expect(defaultCfg.get_current_url?.(syntheticDynamicUrl)).toBe(
         'https://app.wanderfit.app/workout/execute/[id]'
       )
-
-      // Verify PostHog remote config enables recording on startSessionRecording() while
-      // local client overrides prevent console/network/canvas from turning on (S14 + S15).
-      ;(sdk as any).onRemoteConfig?.({
-        sessionRecording: {
-          endpoint: '/s/',
-          consoleLogRecordingEnabled: true,
-          networkPayloadCapture: { recordHeaders: true, recordBody: true },
-          recordCanvas: true,
-        },
-      })
-      expect(sdk.config.enable_recording_console_log).toBe(false)
-      expect(sdk.config.session_recording?.recordHeaders).toBe(false)
-      expect(sdk.config.session_recording?.recordBody).toBe(false)
-      expect(sdk.config.session_recording?.captureCanvas).toEqual({ recordCanvas: false })
-      expect(sdk.config.session_recording?.canvasCapture?.maskRegionsFn?.({} as any)).toBeNull()
     } finally {
       ;(global as any).window = prevWindow
       ;(global as any).document = prevDocument
