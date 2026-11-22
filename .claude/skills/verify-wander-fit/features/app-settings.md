@@ -22,7 +22,7 @@ Preconditions:
 - **Whole journey.** Run `node scripts/verify/run.mjs all app-settings`. It exits `0` with `- app-settings: passed`, and the persona is deleted.
 - **Sign in.** The journey runs `.maestro/subflows/_open-sign-in.yaml` and `.maestro/subflows/_sign-in.yaml` and waits for `id: today-workout-card`.
 - **Open Profile.** It taps `Profile`, waits for `Training info`, then opens `/profile#sign-out` so the rows near Sign Out are in view, and waits for `id: profile-app-settings` (`01-profile`).
-- **App Settings.** It taps `profile-app-settings` and asserts `App Settings`, `Connector address`, `id: mcp-address`, and the custom-connector and accept-it steps (`02-app-settings`).
+- **App Settings.** It taps `profile-app-settings` and asserts `App Settings`, `Connector address`, `id: mcp-address` and the custom-connector step (`02-app-settings`), then swipes up to assert the accept-it step and swipes back down to Back.
 - **Back.** It taps `id: "Back"` and waits for `profile-app-settings` again (`03-back-to-profile`).
 - **Side effect.** None: the screen only reads the build's Convex URL.
 - **Proof.** `e2e-artifacts/app-settings/web/<timestamp>/app-settings/` holds the three screenshots under `takeScreenshot/` and `startRecording/recording.mp4`; `all` adds `e2e-artifacts/app-settings/web/result.json` with `"status": "passed"`.
@@ -30,4 +30,5 @@ Preconditions:
 ## Gotchas
 
 - Profile scrolls inside a React Native `ScrollView`, which Maestro web's `scroll` doesn't move. The flow opens `/profile#sign-out` instead of scrolling to reach the App settings row (`.maestro/flow-layout.md`).
+- The steps run past the 625px viewport inside a `ScrollView`, so the flow swipes to reach the last one and swipes back before tapping Back.
 - The MCP address differs per deployment (each PR preview has its own), so the flow asserts the element, not the address text.
