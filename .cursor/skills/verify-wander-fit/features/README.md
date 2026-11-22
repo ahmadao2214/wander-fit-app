@@ -37,3 +37,9 @@ This directory is the maintained source for verifying Wander Fit on the web expo
 - [History](./history.md) covers a persona with one completed GPP session seeing it listed on the History tab.
 - [App Settings](./app-settings.md) covers opening App Settings from Profile, seeing the chat connector address and the Claude steps, and Back to Profile.
 - [Workout loop](./workout-loop.md) covers an onboarded athlete starting today's workout, logging every set, finishing, and seeing the session on History, checked with `persona inspect`.
+
+## Nightly evidence
+
+`.github/workflows/nightly-e2e.yml` runs every flow under `.maestro/web/` each night against the `wander-fit-e2e` dev deployment, in the same `e2e-backend` queue as main's web E2E. Each flow's evidence uploads as `e2e-web-<flow>` (kept 30 days) once its password scrub has passed.
+
+After the run, `node scripts/verify/gallery.mjs collect` downloads the newest `e2e-<platform>-<flow>` artifact from main for every flow, from either workflow. `gallery.mjs build` turns them into one page, deployed to GitHub Pages. The page has one section per feature, with Web, Android and iOS columns, each showing the video, the step screenshots, pass or fail, the run date and the commit. A failing flow stays on the page, marked failing. Android and iOS read "Not run yet" until #83 and #84 add those runs. The nightly run's summary links the page. Only videos and screenshots go on the page. Logs and `commands.json` stay in the artifacts.
