@@ -4,6 +4,7 @@ import { render, screen, waitFor, act } from '@testing-library/react-native'
 import { TamaguiProvider } from 'tamagui'
 import config from '../../../tamagui.config'
 import { SportIcon } from '../SportIcon'
+import { resetReducedMotionCache } from '../../../hooks/useReducedMotion'
 
 const mockLottieProps: jest.Mock = jest.fn()
 jest.mock('lottie-react-native', () => {
@@ -33,6 +34,7 @@ function mockReduceMotion(value: boolean) {
 const lastLottie = () => mockLottieProps.mock.calls[mockLottieProps.mock.calls.length - 1][0]
 
 beforeEach(() => {
+  resetReducedMotionCache()
   mockLottieProps.mockClear()
   reduceMotionListener = undefined
   mockReduceMotion(false)

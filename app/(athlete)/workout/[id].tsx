@@ -34,17 +34,21 @@ import DraggableFlatList, {
 } from 'react-native-draggable-flatlist'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { ExerciseAccordionItem } from '../../../components/ExerciseAccordionItem'
+import { ReplayExcludedSurface } from '../../../components/ReplayExcludedSurface'
 import { PerformanceReviewItem } from '../../../components/workout/PerformanceReviewItem'
 import { WarmupSection, type WarmupExercise } from '../../../components/workout/WarmupSection'
 import { WARMUP_PHASES } from '../../../convex/warmupSequences'
 import { workoutMetaLine } from '../../../lib/workoutMeta'
 import { PAUSED_SESSION_MESSAGE } from '../../../lib/sessionTiming'
+import { analytics } from '../../../lib/analytics'
 import {
   mainOrderToTemplateOrder,
   normalizeExerciseOrder,
   templateOrderToMainOrder,
 } from '../../../lib/executionOrder'
 import { phaseTokens } from '../../../lib/phase'
+import { localDayArgs } from '../../../lib/weeksOnPlan'
+import { useCurrentDate } from '../../../hooks/useCurrentDate'
 
 /**
  * Exercise type for the draggable list (with intensity scaling)
@@ -153,9 +157,10 @@ export default function WorkoutDetailScreen() {
   const setTodayFocus = useMutation(api.scheduleOverrides.setTodayFocus)
   
   // Get current today's workout to check if we need to auto-focus
+  const today = useCurrentDate()
   const todayWorkout = useQuery(
     api.scheduleOverrides.getTodayWorkout,
-    user ? {} : "skip"
+    user ? localDayArgs(today) : "skip"
   )
 
   const isCompleted = session?.status === 'completed'
@@ -271,6 +276,7 @@ export default function WorkoutDetailScreen() {
 
       // Pass custom exercise order (intensity is now auto-calculated from user profile)
       const result = await startSession({
+        ...localDayArgs(),
         templateId: template._id,
         // orderIndices are positions among the main exercises; the session
         // stores template indices (sending positions shifted every exercise
@@ -279,6 +285,17 @@ export default function WorkoutDetailScreen() {
           ? mainOrderToTemplateOrder(orderIndices, template.exercises as any)
           : undefined,
       })
+
+      if (!result.isExisting) {
+        analytics.trackWorkoutOpened({
+          phase: template.phase,
+          week: template.week,
+          day: template.day,
+          intensity: session?.targetIntensity ?? 'Moderate',
+          is_redo: isCompleted,
+          has_custom_order: hasCustomOrder,
+        })
+      }
 
       // Navigate to execution screen with the session ID
       router.push({
@@ -552,18 +569,14 @@ export default function WorkoutDetailScreen() {
           />
         )}
 
-        {/* Exercise List Header */}
+        {/* Exercise List Header. Each row's grip says it can be dragged
+            (long-press). */}
         <XStack items="center" justify="space-between" pt="$2">
           <SectionTitle>{isCompleted && viewMode === "review" ? "Performance" : "Exercises"}</SectionTitle>
-          {canReorder && viewMode === "preview" && (
-            <Caption color="$color10">
-              Hold to drag
-            </Caption>
-          )}
         </XStack>
       </YStack>
     )
-  }, [template, isPhaseUnlocked, isCompleted, canReorder, lastCompletedSession, viewMode, reassessmentStatus])
+  }, [template, isPhaseUnlocked, isCompleted, lastCompletedSession, viewMode, reassessmentStatus])
 
   // Footer component with bottom padding
   const ListFooter = useMemo(() => {
@@ -610,6 +623,7 @@ export default function WorkoutDetailScreen() {
   }
 
   return (
+    <ReplayExcludedSurface>
     <GestureHandlerRootView style={styles.container}>
       <YStack flex={1} bg="$background">
         {/* Header: back + primary action, then the title on its own line */}
@@ -704,6 +718,7 @@ export default function WorkoutDetailScreen() {
         </View>
       </YStack>
     </GestureHandlerRootView>
+    </ReplayExcludedSurface>
   )
 }
 

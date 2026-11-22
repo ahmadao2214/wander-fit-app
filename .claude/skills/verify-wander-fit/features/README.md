@@ -43,10 +43,12 @@ Web, one file per flow under `.maestro/web/` (`scripts/verify/feature-map.test.m
 - [Sign in](./sign-in.md): the signed-out welcome screen, signing in to Today, and signing out from Profile.
 - [First Run](./first-run.md): the intake, the reveal, creating the account with the program, and landing on Day 1, checked with `persona inspect`.
 - [History](./history.md): a persona with completed GPP sessions sees them and the progress line on History.
+- [Repeated week](./repeated-week.md): in week 3 of a 5-week GPP block, Today offers the repeated week-2 workout to start, not as done.
 - [Reassessment](./reassessment.md): the end-of-block check-in, an honest recap, and choosing Repeat GPP.
 - [Workout exit and resume](./workout-exit-resume.md): X → Exit pauses the session, and Today resumes it with the logged sets.
 - [App Settings](./app-settings.md): opening App Settings from Profile, the chat connector address and Claude steps, and Back.
 - [Workout loop](./workout-loop.md): starting today's workout, logging every set, finishing, and seeing it on History, checked with `persona inspect`.
+- [Settings telemetry](./settings-telemetry.md): turning anonymous usage analytics off in App Settings, the choice surviving a reopen, and turning it back on.
 
 Native only (iPhone 17 simulator and a local build; unreachable from the web harness):
 

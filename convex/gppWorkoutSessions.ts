@@ -1,5 +1,7 @@
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { countsAsDone, slotOnDate } from "./blockCompletion";
+import { loadProgramCompletion } from "./programCompletion";
+import { athleteDayArgs, athleteToday } from "./athleteClock";
 import { getWorkoutForDate } from "./workoutCalendar";
 import { DEFAULT_WEEKS_PER_PHASE, mapUserWeekToTemplateWeek } from "./weekMapping";
 import { v } from "convex/values";
@@ -59,13 +61,6 @@ const DEFAULT_TRAINING_DAYS: Record<number, number[]> = {
   6: [1, 2, 3, 4, 5, 6],
   7: [0, 1, 2, 3, 4, 5, 6],
 };
-
-// Date helpers for cascade calculation
-function startOfDay(date: Date): Date {
-  const result = new Date(date);
-  result.setHours(0, 0, 0, 0);
-  return result;
-}
 
 function getAbsoluteIndex(slot: WorkoutSlot, workoutsPerWeek: number, weeksPerPhase: number): number {
   const phaseIdx = PHASE_ORDER.indexOf(slot.phase);
@@ -286,30 +281,34 @@ export const getSessionForTemplate = query({
         return null;
       }
 
-      // Get the most recent session for this template
-      // templateId is guaranteed to be defined here since we check above
-      const sessions = await ctx.db
+      // This athlete's most recent session for the template. Templates are
+      // shared, so the index starts with the user: other athletes' sessions
+      // must not push this one out of the result.
+      const userSession = await ctx.db
         .query("gpp_workout_sessions")
-        .withIndex("by_template", (q) => q.eq("templateId", args.templateId!))
+        .withIndex("by_user_template", (q) =>
+          q.eq("userId", user._id).eq("templateId", args.templateId!)
+        )
         .order("desc")
-        .take(10);
-
-      // Find the user's session (most recent)
-      const userSession = sessions.find(s => s.userId === user._id);
+        .first();
 
       if (!userSession) {
         return null;
       }
 
-      // A completed session from an earlier run of the current phase (a
-      // repeated block, or a new cycle) doesn't make this workout done now
+      // A completed session only makes the workout done for where the athlete
+      // is now: not from an earlier run of the phase, and not in a later week
+      // that repeats the workout (phases longer than four weeks)
       if (userSession.status === "completed") {
         const program = await ctx.db
           .query("user_programs")
           .withIndex("by_user", (q) => q.eq("userId", user._id))
           .first();
-        if (program && !countsAsDone(userSession, program)) {
-          return null;
+        if (program) {
+          const completion = await loadProgramCompletion(ctx, program);
+          if (!completion.isWorkoutDone(userSession.templateId)) {
+            return null;
+          }
         }
       }
 
@@ -678,17 +677,15 @@ export const getLastCompletedSessionForTemplate = query({
       return null;
     }
 
-    // Get completed sessions for this template, most recent first
-    const sessions = await ctx.db
+    // This athlete's most recent completed session for the template
+    const lastCompleted = await ctx.db
       .query("gpp_workout_sessions")
-      .withIndex("by_template", (q) => q.eq("templateId", args.templateId))
+      .withIndex("by_user_template", (q) =>
+        q.eq("userId", user._id).eq("templateId", args.templateId)
+      )
       .order("desc")
-      .take(20);
-
-    // Find the user's most recent completed session
-    const lastCompleted = sessions.find(
-      (s) => s.userId === user._id && s.status === "completed"
-    );
+      .filter((q) => q.eq(q.field("status"), "completed"))
+      .first();
 
     if (!lastCompleted) {
       return null;
@@ -769,6 +766,7 @@ export const startSession = mutation({
     exerciseOrder: v.optional(v.array(v.number())),
     targetIntensity: v.optional(intensityValidator),
     skipCascade: v.optional(v.boolean()),
+    ...athleteDayArgs,
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -824,6 +822,11 @@ export const startSession = mutation({
       throw new Error("Workout template not found");
     }
 
+    // Starting a workout that's already done for where the athlete is now is
+    // a Redo: logged, but it doesn't fill a slot or move the program forward
+    const completion = await loadProgramCompletion(ctx, userProgram);
+    const redo = completion.isWorkoutDone(args.templateId);
+
     // ─────────────────────────────────────────────────────────────────────────
     // CASCADE LOGIC: Auto-swap when starting a future workout
     // ─────────────────────────────────────────────────────────────────────────
@@ -840,8 +843,15 @@ export const startSession = mutation({
           DEFAULT_TRAINING_DAYS[intake.preferredTrainingDaysPerWeek] ??
           DEFAULT_TRAINING_DAYS[3];
 
-        const today = startOfDay(new Date());
+        // The athlete's today, on their clock (see athleteClock)
+        const today = athleteToday(args);
         const weeksPerPhase = userProgram.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
+
+        // Get existing schedule overrides
+        const existingOverride = await ctx.db
+          .query("user_schedule_overrides")
+          .withIndex("by_user_program", (q) => q.eq("userProgramId", userProgram._id))
+          .first();
 
         // Today's slot, with the calendar's own mapping
         const todaySlot = slotOnDate(userProgram, (anchor) =>
@@ -857,12 +867,6 @@ export const startSession = mutation({
 
           const workoutsPerWeek = trainingDays.length;
           const todayIndex = getAbsoluteIndex(todaySlot, workoutsPerWeek, weeksPerPhase);
-
-          // Get existing schedule overrides
-          const existingOverride = await ctx.db
-            .query("user_schedule_overrides")
-            .withIndex("by_user_program", (q) => q.eq("userProgramId", userProgram._id))
-            .first();
 
           // Get all templates for user's category and skill level
           const allTemplates = await ctx.db
@@ -937,28 +941,20 @@ export const startSession = mutation({
                 }
               }
 
-              // Get completed template IDs
-              const completedSessions = (await ctx.db
-                .query("gpp_workout_sessions")
-                .withIndex("by_user", (q) => q.eq("userId", user._id))
-                .filter((q) => q.eq(q.field("status"), "completed"))
-                .collect()).filter((s) => countsAsDone(s, userProgram));
-              const completedTemplateIds = new Set(
-                completedSessions.map((s) => s.templateId.toString())
-              );
-
               // Get slots in the cascade range
               const slotsInRange = allSlots.slice(todayIndex, selectedIndex + 1);
 
-              // Check if any workout in the cascade range is completed
-              let canCascade = true;
-              for (const slot of slotsInRange) {
-                const slotTemplate = getTemplateForSlot(slot);
-                if (slotTemplate && completedTemplateIds.has(slotTemplate._id.toString())) {
-                  canCascade = false;
-                  break;
-                }
-              }
+              // Don't cascade over a workout that's done, or over one the
+              // athlete moved to another date on the calendar: the cascade
+              // follows slot order, not dates, so it would undo the move
+              // (a workout moved onto today could land back off it, or one
+              // swapped away could land in the past)
+              const movedSlots = new Set(
+                (existingOverride?.dateOverrides ?? []).map((o) => `${o.phase}-${o.week}-${o.day}`)
+              );
+              const canCascade = !slotsInRange.some(
+                (slot) => completion.isSlotDone(slot) || movedSlots.has(`${slot.phase}-${slot.week}-${slot.day}`)
+              );
 
               if (canCascade) {
                 // Build new slot overrides with cascade
@@ -1020,8 +1016,12 @@ export const startSession = mutation({
 
                 const now = Date.now();
 
-                // Save override record
-                if (existingOverride) {
+                // Save override record, unless it would hand a finished
+                // session to a different slot (see keepsDone)
+                const keepsDone = completion.keepsDone(newSlotOverrides);
+                if (!keepsDone) {
+                  // Leave the schedule as it is
+                } else if (existingOverride) {
                   await ctx.db.patch(existingOverride._id, {
                     slotOverrides: newSlotOverrides,
                     updatedAt: now,
@@ -1036,8 +1036,10 @@ export const startSession = mutation({
                   });
                 }
 
-                cascadeApplied = true;
-                cascadeAffectedSlots = slotsInRange.length;
+                if (keepsDone) {
+                  cascadeApplied = true;
+                  cascadeAffectedSlots = slotsInRange.length;
+                }
               }
             }
           }
@@ -1111,6 +1113,7 @@ export const startSession = mutation({
       exerciseOrder: args.exerciseOrder,
       targetIntensity: args.targetIntensity,
       scalingSnapshot,
+      ...(redo ? { redo: true } : {}),
       templateSnapshot: {
         name: template.name,
         phase: template.phase,
@@ -1189,6 +1192,43 @@ export const updateProgress = mutation({
     }
 
     return { success: true };
+  },
+});
+
+/**
+ * Persists the dedicated workout-start telemetry marker once per session
+ * (when warm-up finishes or the first non-skipped set is logged).
+ * Idempotent: returns `alreadyStarted: true` if already marked.
+ */
+export const markWorkoutStarted = mutation({
+  args: {
+    sessionId: v.id("gpp_workout_sessions"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) {
+      throw new Error("Not authenticated");
+    }
+
+    const session = await ctx.db.get(args.sessionId);
+    if (!session) {
+      throw new Error("Session not found");
+    }
+
+    if (session.userId !== user._id) {
+      throw new Error("Not authorized to update this session");
+    }
+
+    if (session.status !== "in_progress") {
+      return { marked: false, alreadyStarted: session.workoutStartedAt !== undefined };
+    }
+
+    if (session.workoutStartedAt !== undefined) {
+      return { marked: false, alreadyStarted: true };
+    }
+
+    await ctx.db.patch(args.sessionId, { workoutStartedAt: Date.now() });
+    return { marked: true, alreadyStarted: false };
   },
 });
 

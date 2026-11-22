@@ -11,7 +11,7 @@ import type { QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { writeExerciseOrder } from "./gppWorkoutSessions";
-import { applyWorkoutSwap, resolveSlotPair, todayWorkoutFor } from "./scheduleOverrides";
+import { applyWorkoutSwap, resolveSlotPair, swappedOverrides, todayWorkoutFor } from "./scheduleOverrides";
 import type { WorkoutSlotRef } from "./scheduleOverrides";
 import {
   OMITTED_WRITES,
@@ -21,7 +21,7 @@ import {
   swapVersion,
 } from "./chatHandsVersion";
 import { isWarmupExercise, mainTemplateIndices, normalizeExerciseOrder } from "../lib/executionOrder";
-import { countsAsDone } from "./blockCompletion";
+import { loadProgramCompletion } from "./programCompletion";
 import { DEFAULT_WEEKS_PER_PHASE } from "./weekMapping";
 
 const phaseValidator = v.union(v.literal("GPP"), v.literal("SPP"), v.literal("SSP"));
@@ -409,13 +409,11 @@ export const previewSwap = internalQuery({
     if (!templateA || !templateB) return refuse("empty_slot");
 
     // Same rule the swap itself enforces: a workout done in this block stays put.
-    const done = (
-      await ctx.db
-        .query("gpp_workout_sessions")
-        .withIndex("by_user_status", (q) => q.eq("userId", user._id).eq("status", "completed"))
-        .collect()
-    ).filter((session) => countsAsDone(session, program));
-    if (done.some((session) => session.templateId === templateA._id || session.templateId === templateB._id)) {
+    const completion = await loadProgramCompletion(ctx, program);
+    if (completion.isSlotDone(args.slotA) || completion.isSlotDone(args.slotB)) {
+      return refuse("completed");
+    }
+    if (!completion.keepsDone(swappedOverrides(existingOverride, args.slotA, args.slotB, templateA._id, templateB._id))) {
       return refuse("completed");
     }
 

@@ -1,5 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { calendarStart, countsAsDone, phaseAnchor, slotOnDate } from "./blockCompletion";
+import { loadProgramCompletion } from "./programCompletion";
+import { athleteDate, athleteDayArgs, athleteToday } from "./athleteClock";
 import { countMainExercises } from "../lib/today";
 import { v } from "convex/values";
 import { mapUserWeekToTemplateWeek } from "./weekMapping";
@@ -1063,6 +1065,7 @@ export const moveWorkoutToDate = mutation({
     sourceWeek: v.number(),
     sourceDay: v.number(),
     targetDateISO: v.string(),
+    ...athleteDayArgs,
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -1157,7 +1160,7 @@ export const moveWorkoutToDate = mutation({
     const sourceDate = parseDateISO(sourceCurrentDate);
 
     // NO PAST DATES CONSTRAINT: Cannot move workouts to dates in the past
-    const todayStart = startOfDay(new Date());
+    const todayStart = athleteToday(args);
     if (targetDate < todayStart) {
       throw new Error("Cannot move workout to a past date");
     }
@@ -1209,64 +1212,13 @@ export const moveWorkoutToDate = mutation({
       if (targetSlot) break;
     }
 
-    // Check completed workouts
-    const completedSessions = (await ctx.db
-      .query("gpp_workout_sessions")
-      .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
-      .filter((q) => q.eq(q.field("status"), "completed"))
-      .collect()).filter((s) => countsAsDone(s, program));
-
-    // Get templates to check completion
-    const templates = await ctx.db
-      .query("program_templates")
-      .withIndex("by_category_skill", (q) =>
-        q
-          .eq("gppCategoryId", program.gppCategoryId)
-          .eq("skillLevel", program.skillLevel)
-      )
-      .collect();
-
-    const completedTemplateIds = new Set(completedSessions.map((s) => s.templateId.toString()));
-
-    // Build template lookup considering slot overrides
-    const templateLookup = new Map<string, (typeof templates)[0]>();
-    for (const t of templates) {
-      const key = `${t.phase}-${t.week}-${t.day}`;
-      templateLookup.set(key, t);
-    }
-    const slotOverrideLookup = new Map<string, string>();
-    for (const override of slotOverrides) {
-      const key = `${override.phase}-${override.week}-${override.day}`;
-      slotOverrideLookup.set(key, override.templateId.toString());
-    }
-
-    const getTemplateForSlot = (slot: WorkoutSlot) => {
-      const key = `${slot.phase}-${slot.week}-${slot.day}`;
-      const overrideId = slotOverrideLookup.get(key);
-      if (overrideId) {
-        return templates.find((t) => t._id.toString() === overrideId);
-      }
-      const templateWeek = mapUserWeekToTemplateWeek(slot.week, weeksPerPhase);
-      const templateKey = `${slot.phase}-${templateWeek}-${slot.day}`;
-      return templateLookup.get(templateKey);
-    };
-
-    // Check source workout isn't completed
-    const sourceTemplate = getTemplateForSlot({
-      phase: args.sourcePhase,
-      week: args.sourceWeek,
-      day: args.sourceDay,
-    });
-    if (sourceTemplate && completedTemplateIds.has(sourceTemplate._id.toString())) {
+    // Neither workout may be one that's done
+    const completion = await loadProgramCompletion(ctx, program);
+    if (completion.isSlotDone({ phase: args.sourcePhase, week: args.sourceWeek, day: args.sourceDay })) {
       throw new Error("Cannot move a completed workout");
     }
-
-    // If target has a workout, check it's not completed
-    if (targetSlot) {
-      const targetTemplate = getTemplateForSlot(targetSlot);
-      if (targetTemplate && completedTemplateIds.has(targetTemplate._id.toString())) {
-        throw new Error("Cannot swap with a completed workout");
-      }
+    if (targetSlot && completion.isSlotDone(targetSlot)) {
+      throw new Error("Cannot swap with a completed workout");
     }
 
     // Build new dateOverrides
@@ -1428,8 +1380,8 @@ export const getProgramCalendarMeta = query({
  * - Program metadata (start/end dates, progress)
  */
 export const getFullProgramCalendar = query({
-  args: {},
-  handler: async (ctx) => {
+  args: athleteDayArgs,
+  handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       return null;
@@ -1489,24 +1441,8 @@ export const getFullProgramCalendar = query({
       .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
       .first();
 
-    // Get completed sessions
-    const completedSessions = (await ctx.db
-      .query("gpp_workout_sessions")
-      .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
-      .filter((q) => q.eq(q.field("status"), "completed"))
-      .collect()).filter((s) => countsAsDone(s, program));
-
-    // Build set of completed template IDs and completion dates
-    const completedTemplateIds = new Set(
-      completedSessions.map((s) => s.templateId.toString())
-    );
-    const completionDates = new Map<string, string>();
-    for (const session of completedSessions) {
-      if (session.completedAt) {
-        const completionDate = formatDateISO(new Date(session.completedAt));
-        completionDates.set(session.templateId.toString(), completionDate);
-      }
-    }
+    // Which slots are done, and by which session
+    const completion = await loadProgramCompletion(ctx, program);
 
     // Get all templates for user's category and skill level
     const templates = await ctx.db
@@ -1547,7 +1483,7 @@ export const getFullProgramCalendar = query({
     if (program.sspUnlockedAt) unlockedPhases.push("SSP");
 
     // Today's info
-    const today = startOfDay(new Date());
+    const today = athleteToday(args);
     const todayISO = formatDateISO(today);
 
     // Current slot
@@ -1641,7 +1577,8 @@ export const getFullProgramCalendar = query({
           }
 
           if (template) {
-            const isCompleted = completedTemplateIds.has(template._id.toString());
+            const doneBy = completion.sessionFor(slot);
+            const isCompleted = !!doneBy;
             const isTodayDate = effectiveDateISO === todayISO;
             const isInProgress =
               inProgressSession?.templateId.toString() === template._id.toString();
@@ -1659,7 +1596,7 @@ export const getFullProgramCalendar = query({
               isToday: isTodayDate && !isCompleted,
               isInProgress,
               isLocked,
-              completedOnDate: completionDates.get(template._id.toString()),
+              completedOnDate: doneBy?.completedAt ? formatDateISO(athleteDate(doneBy.completedAt, args)) : undefined,
             });
           } else {
             // Template not found - this usually means templates need to be regenerated
@@ -1674,9 +1611,10 @@ export const getFullProgramCalendar = query({
     }
 
     // Add workouts completed on specific dates (even if not currently scheduled there)
-    for (const session of completedSessions) {
+    // Redos included: a workout logged on a day shows on that day
+    for (const session of completion.logged) {
       if (session.completedAt) {
-        const completionDateISO = formatDateISO(new Date(session.completedAt));
+        const completionDateISO = formatDateISO(athleteDate(session.completedAt, args));
         if (calendarData[completionDateISO]) {
           const alreadyAdded = calendarData[completionDateISO].workouts.some(
             (w) => w.templateId === session.templateId.toString()
@@ -1716,7 +1654,7 @@ export const getFullProgramCalendar = query({
       trainingDays,
       weeksPerPhase, // Include in response for UI to use
       totalWorkouts,
-      completedWorkouts: completedSessions.length,
+      completedWorkouts: completion.sessions.length,
       currentPhase: program.currentPhase,
       currentWeek: program.currentWeek,
       currentDay: program.currentDay,

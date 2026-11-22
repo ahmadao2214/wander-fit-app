@@ -14,6 +14,7 @@ import { useIntakeMotion } from '../../components/first-run/useIntakeMotion'
 import { useIntakeSport } from '../../components/first-run/useIntakeSport'
 import { useReachStep } from '../../components/first-run/useReachStep'
 import { useFirstRunDraft } from '../../hooks/useFirstRunDraft'
+import { analytics } from '../../lib/analytics'
 import { dayLabel, firstTrainingDate, isComplete, revealProgram, weeksUntilSeason, type FirstRunAnswers } from '../../lib/firstRun'
 import { STEP_ROUTES } from '../../lib/firstRunRoutes'
 import { CATEGORY_HOLD_MS, HANDOFF_PLAN_DELAY_MS, NIGHT, countdownLine, weekStrip } from '../../lib/firstRunStory'
@@ -77,7 +78,7 @@ export default function FirstRunReveal() {
   const router = useRouter()
   const motion = useIntakeMotion()
   const { draft } = useFirstRunDraft()
-  const { sport, category } = useIntakeSport()
+  const { sport, category, missing: sportMissing } = useIntakeSport()
   const [saving, setSaving] = useState(false)
   const [story, setStory] = useState<RevealPart>('category')
   const [revisit, setRevisit] = useState(false)
@@ -138,6 +139,8 @@ export default function FirstRunReveal() {
   }, [story])
 
   if (draft && !complete) return <Redirect href={firstUnanswered(draft.answers)} />
+  // The picked sport is gone from the list: waiting would never end.
+  if (sportMissing) return <Redirect href={STEP_ROUTES.sport as Href} />
 
   if (!ready || !program || !sport || !category || !answers || !isComplete(answers)) {
     return (
@@ -165,7 +168,10 @@ export default function FirstRunReveal() {
       animate={animate}
       openFrom={openFrom}
       onCategory={toCategory}
-      onSave={() => setSaving(true)}
+      onSave={() => {
+        analytics.trackFirstRunSaveSheetOpened({ has_draft: Boolean(draft) })
+        setSaving(true)
+      }}
       // Without the week's workouts there's nothing to save yet; the query
       // is live, so Save turns on when they arrive.
       saveBlocked={templates && templates.length > 0 ? null : "Your first workouts aren't ready yet. Try again in a moment."}

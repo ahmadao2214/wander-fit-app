@@ -7,9 +7,15 @@ import { useFonts } from 'expo-font'
 import { DarkTheme, DefaultTheme, ThemeProvider, SplashScreen, Stack } from 'expo-router'
 import { Provider } from 'components/Provider'
 import { initSentry } from '../lib/sentry'
+import { primeReducedMotion } from '../hooks/useReducedMotion'
+import { TelemetryLifecycle } from 'components/TelemetryLifecycle'
 
 // Initialize crash reporting before any layout or route renders (no-op until DSN is set).
 initSentry()
+
+// Learn the Reduce Motion setting while the splash is up, so screens know it
+// on their first render.
+primeReducedMotion()
 
 // Import Google Fonts
 import {
@@ -80,6 +86,7 @@ function RootLayoutNav() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+      <TelemetryLifecycle />
       <Stack>
         {/* First Run: intake, reveal and save, before any account */}
         <Stack.Screen

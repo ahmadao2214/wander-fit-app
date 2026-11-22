@@ -32,7 +32,8 @@ const mockUpdateProgress = jest.fn().mockResolvedValue(undefined)
 
 jest.mock('convex/react', () => ({
   useQuery: (name: string) => (name === 'getById' ? mockSession : null),
-  useMutation: (name: string) => (name === 'updateProgress' ? mockUpdateProgress : jest.fn()),
+  useMutation: (name: string) =>
+    name === 'updateProgress' ? mockUpdateProgress : jest.fn(() => Promise.resolve(null)),
 }))
 
 jest.mock('../../convex/_generated/api', () => ({
@@ -77,9 +78,15 @@ const AllTheProviders = ({ children }: { children: React.ReactNode }) => (
   <TamaguiProvider config={config}>{children}</TamaguiProvider>
 )
 
+// These sessions have only the warmup saved (as done-and-skipped
+// placeholders), so the screen opens on the warmup; skip it, as the athlete
+// would, to reach the exercises.
 function renderSession(session: any) {
   mockSession = session
-  return render(<WorkoutExecutionScreen />, { wrapper: AllTheProviders })
+  const screen = render(<WorkoutExecutionScreen />, { wrapper: AllTheProviders })
+  const skip = screen.queryByTestId('warmup-skip')
+  if (skip) fireEvent.press(skip)
+  return screen
 }
 
 describe('Workout execution after reordering', () => {

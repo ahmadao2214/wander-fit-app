@@ -49,12 +49,14 @@ export function artifactName(flow, platform = "web") {
 // The First Run makes its own account through the UI, at the end of the
 // intake. History signs in as a persona with completed GPP sessions.
 // Reassessment signs in at the end of a GPP block with the check-in pending.
+// Repeated week signs in at week 3 of a 5-week GPP block with weeks 1-2 done.
 // Every other flow signs in as an onboarded persona created before Maestro
 // runs.
 const flowPersonaModes = {
   "first-run": "first-run",
   history: "with-history",
   reassessment: "phase-end",
+  "repeated-week": "repeated-week",
 }
 
 // Recorded median run times (seconds) on GitHub Ubuntu runners, used to
@@ -65,8 +67,10 @@ export const FLOW_DURATION_SECONDS = {
   "workout-exit-resume": 70,
   reassessment: 60,
   "app-settings": 58,
+  "settings-telemetry": 55,
   "sign-in": 46,
   history: 39,
+  "repeated-week": 35,
 }
 
 export const DEFAULT_FLOW_SECONDS = 60
@@ -133,8 +137,8 @@ const ROUTE_FLOW_RULES = [
     flows: ["history"],
   },
   {
-    match: /^(app\/\(athlete\)\/(settings|profile)(\.tsx|\/)|\.maestro\/(web|journeys)\/app-settings\.yaml$)/,
-    flows: ["app-settings", "sign-in"],
+    match: /^(app\/\(athlete\)\/(settings|profile)(\.tsx|\/)|components\/settings\/|\.maestro\/(web|journeys)\/(app-settings|settings-telemetry)\.yaml$)/,
+    flows: ["app-settings", "settings-telemetry", "sign-in"],
   },
   {
     // ConfettiEffect is also imported by app/(reassessment)/celebration.tsx, so

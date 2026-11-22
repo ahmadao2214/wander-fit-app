@@ -1,0 +1,21 @@
+url: ${VERIFY_URL}
+---
+# Regression for repeated weeks in long phases (PR #145): templates exist for
+# weeks 1-4 only, so a 5-week GPP block runs the week-2 workouts in both user
+# week 2 and user week 3. The persona (state repeated-week) is at GPP week 3
+# day 1 with every week-1 and week-2 workout done once. Today must offer week
+# 3's first workout to start, not show it done because week 2 did it.
+- runFlow: ../subflows/_evidence-start.yaml
+- runFlow: ../subflows/_open-sign-in.yaml
+- runFlow: ../subflows/_sign-in.yaml
+- extendedWaitUntil:
+    visible:
+      id: today-workout-card
+    timeout: 90000
+- extendedWaitUntil:
+    visible: "GPP W3 D1.*"
+    timeout: 30000
+- assertVisible: "Start Workout"
+- assertNotVisible: "Done"
+- takeScreenshot: 01-today-week-3
+- runFlow: ../subflows/_evidence-stop.yaml

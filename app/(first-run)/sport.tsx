@@ -11,6 +11,7 @@ import { PAGE_EASE } from '../../components/first-run/intakeMotion'
 import { useIntakeMotion } from '../../components/first-run/useIntakeMotion'
 import { useReachStep } from '../../components/first-run/useReachStep'
 import { useFirstRunDraft } from '../../hooks/useFirstRunDraft'
+import { analytics, FIRST_RUN_STEP_INDEX } from '../../lib/analytics'
 import { NIGHT, mixHex, splitSports, storyCategory, tintedGround } from '../../lib/firstRunStory'
 import { selectionFeedback } from '../../lib/haptics'
 
@@ -157,7 +158,14 @@ export default function FirstRunSport() {
       primary={{
         label: 'Continue',
         disabled: !selectedId,
-        onPress: () => router.push({ pathname: '/(first-run)/season', params: { fly: '1' } }),
+        onPress: () => {
+          analytics.trackFirstRunStepAdvanced({
+            step: 'sport',
+            step_index: FIRST_RUN_STEP_INDEX.sport,
+            sport_category_id: selected?.gppCategoryId,
+          })
+          router.push({ pathname: '/(first-run)/season', params: { fly: '1' } })
+        },
         testID: 'first-run-continue',
       }}
     >

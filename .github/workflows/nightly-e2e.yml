@@ -107,6 +107,14 @@ jobs:
           path: e2e-artifacts/history/web/
           if-no-files-found: warn
           retention-days: 30
+      - name: Upload repeated-week evidence
+        if: always() && hashFiles('e2e-artifacts/repeated-week/web/.scrubbed') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-web-repeated-week
+          path: e2e-artifacts/repeated-week/web/
+          if-no-files-found: warn
+          retention-days: 30
       - name: Upload workout-exit-resume evidence
         if: always() && hashFiles('e2e-artifacts/workout-exit-resume/web/.scrubbed') != ''
         uses: actions/upload-artifact@v4
@@ -121,6 +129,14 @@ jobs:
         with:
           name: e2e-web-app-settings
           path: e2e-artifacts/app-settings/web/
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Upload settings-telemetry evidence
+        if: always() && hashFiles('e2e-artifacts/settings-telemetry/web/.scrubbed') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-web-settings-telemetry
+          path: e2e-artifacts/settings-telemetry/web/
           if-no-files-found: warn
           retention-days: 30
       - name: Upload workout-loop evidence

@@ -6,15 +6,20 @@ import { storyCategory, tintedGround, type StoryCategory } from '../../lib/first
 /**
  * The picked sport and its category, for screens that theme the world by it.
  * `ground` is the tinted game-night background once a sport is known.
+ * `missing` is true when the draft names a sport the list no longer has
+ * (renamed or removed since it was picked), so the athlete picks again.
  */
 export function useIntakeSport(): {
   sport: { _id: string; name: string; gppCategoryId: number } | undefined
   category: StoryCategory | null
   ground: string
+  missing: boolean
 } {
   const { draft } = useFirstRunDraft()
   const sports = useQuery(api.sports.list)
   const sport = sports?.find((s) => s._id === draft?.answers.sportId)
   const category = sport ? storyCategory(sport.gppCategoryId) : null
-  return { sport, category, ground: tintedGround(category?.color) }
+  const sportId = draft?.answers.sportId
+  const missing = !!sportId && sports !== undefined && !sport
+  return { sport, category, ground: tintedGround(category?.color), missing }
 }

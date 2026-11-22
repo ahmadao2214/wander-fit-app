@@ -13,6 +13,10 @@ const stateValidator = v.union(
   // onboarded, plus one completed GPP W1D1 session today and two earlier
   // weeks fully on plan, for the History flow
   v.literal("with-history"),
+  // Week 3 of a 5-week GPP block with weeks 1 and 2 done. In a 5-week phase
+  // user weeks 2 and 3 both run the week-2 templates, so Today must offer
+  // week 2's first workout again, not show it done.
+  v.literal("repeated-week"),
 );
 
 const TRAINING_DAYS = [0, 1, 2, 3, 4, 5, 6];
@@ -103,10 +107,11 @@ export const provision = internalMutation({
       throw new Error("Basketball sport is missing. Run seed:seedAll on wander-fit-e2e first.");
     }
 
-    const totalProgramWeeks = 12;
+    const repeatedWeek = args.state === "repeated-week";
+    const totalProgramWeeks = repeatedWeek ? 15 : 12;
     const weeksPerPhase = calculateWeeksPerPhase(totalProgramWeeks);
     const preferredDays = TRAINING_DAYS.length;
-    const currentWeek = args.state === "phase-end" ? weeksPerPhase : 1;
+    const currentWeek = args.state === "phase-end" ? weeksPerPhase : repeatedWeek ? 3 : 1;
     const currentDay = args.state === "phase-end" ? preferredDays : 1;
 
     const intakeResponseId = await ctx.db.insert("intake_responses", {
@@ -136,7 +141,12 @@ export const provision = internalMutation({
       currentDay,
       // phase-end: the GPP block ran its full length with nothing logged,
       // and the check-in is pending, as advanceToNextDay leaves it
-      phaseStartDate: args.state === "phase-end" ? now - weeksPerPhase * 7 * 24 * 60 * 60 * 1000 : now,
+      phaseStartDate:
+        args.state === "phase-end"
+          ? now - weeksPerPhase * 7 * MS_PER_DAY
+          : repeatedWeek
+            ? now - 14 * MS_PER_DAY
+            : now,
       ...(args.state === "phase-end" ? { reassessmentPendingForPhase: "GPP" as const } : {}),
       createdAt: now,
       updatedAt: now,
@@ -184,6 +194,43 @@ export const provision = internalMutation({
         await completedSession(completedAt);
       }
       await completedSession(now);
+    }
+
+    if (repeatedWeek) {
+      // Every workout of template weeks 1 and 2, done once each, a day apart
+      const templates = await ctx.db
+        .query("program_templates")
+        .withIndex("by_assignment", (q) =>
+          q.eq("gppCategoryId", sport.gppCategoryId).eq("phase", "GPP").eq("skillLevel", "Novice")
+        )
+        .collect();
+      const done = templates
+        .filter((t) => t.week <= 2)
+        .sort((a, b) => a.week - b.week || a.day - b.day);
+      if (done.length === 0) {
+        throw new Error("No GPP Novice templates for Basketball. Run seed:seedAll on wander-fit-e2e first.");
+      }
+      for (const [i, template] of done.entries()) {
+        const completedAt = now - (14 - i) * MS_PER_DAY;
+        await ctx.db.insert("gpp_workout_sessions", {
+          userId,
+          templateId: template._id,
+          userProgramId,
+          startedAt: completedAt - 45 * 60 * 1000,
+          completedAt,
+          totalDurationSeconds: 45 * 60,
+          status: "completed",
+          exercises: template.exercises.map((exercise) => ({
+            exerciseId: exercise.exerciseId,
+            completed: true,
+            skipped: false,
+            sets: Array.from({ length: exercise.sets }, () => ({ completed: true, skipped: false })),
+          })),
+          templateSnapshot: {
+            name: template.name, phase: "GPP", week: template.week, day: template.day, workoutDate: completedAt,
+          },
+        });
+      }
     }
 
     return { email: args.email, state: args.state };

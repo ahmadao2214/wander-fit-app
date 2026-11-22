@@ -268,6 +268,10 @@ export default defineSchema({
     onboardingCompletedAt: v.optional(v.number()), // null = needs onboarding
     onboardingProgress: v.optional(v.number()), // Current screen index (0-9) for resume
     onboardingSkipped: v.optional(v.boolean()), // True if user skipped onboarding
+
+    // Telemetry & privacy preferences (Thread B2)
+    analyticsOptOut: v.optional(v.boolean()), // Default false (undefined = opted in to zero-PII events)
+    sessionReplayOptIn: v.optional(v.boolean()), // Default false (explicit adult 18+ opt-in only)
   })
     .index("by_email", ["email"])
     .index("by_clerk", ["clerkId"])
@@ -410,6 +414,10 @@ export default defineSchema({
 
     // Session timing (timestamps in milliseconds)
     startedAt: v.number(),
+    // First-start telemetry marker (ADR 0005 / S5): set once when warm-up finishes
+    // OR the first non-skipped main set is logged, so workout_started never double-fires
+    // across reloads, autosave, or pause/resume cycles.
+    workoutStartedAt: v.optional(v.number()),
     completedAt: v.optional(v.number()),
     totalDurationSeconds: v.optional(v.number()), // Total workout time in seconds
 
@@ -449,6 +457,13 @@ export default defineSchema({
      * templateSnapshot - Captures template state at time of workout
      * Preserves history even if template is later modified.
      */
+    /**
+     * True when the athlete started a workout that was already done for
+     * where they are in the program (Redo). A Redo is logged like any other
+     * workout but doesn't fill a slot or move the program forward.
+     */
+    redo: v.optional(v.boolean()),
+
     templateSnapshot: v.optional(v.object({
       name: v.string(),
       phase: phaseValidator,
@@ -476,6 +491,7 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_status", ["userId", "status"])
     .index("by_template", ["templateId"])
+    .index("by_user_template", ["userId", "templateId"])
     .index("by_user_program", ["userProgramId"]),
 
   // ─────────────────────────────────────────────────────────────────────────────

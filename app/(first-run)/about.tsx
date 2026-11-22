@@ -9,6 +9,7 @@ import { useIntakeMotion } from '../../components/first-run/useIntakeMotion'
 import { useIntakeSport } from '../../components/first-run/useIntakeSport'
 import { useReachStep } from '../../components/first-run/useReachStep'
 import { useFirstRunDraft } from '../../hooks/useFirstRunDraft'
+import { analytics, FIRST_RUN_STEP_INDEX } from '../../lib/analytics'
 import { AGE_GROUP_CHOICES, YEARS_CHOICES, skillLevelLabel } from '../../lib/firstRun'
 import { NIGHT } from '../../lib/firstRunStory'
 import { selectionFeedback } from '../../lib/haptics'
@@ -209,6 +210,11 @@ export default function FirstRunAbout() {
                     return
                   }
                   // A beat after the second answer, the reveal starts.
+                  analytics.trackFirstRunStepAdvanced({
+                    step: 'about',
+                    step_index: FIRST_RUN_STEP_INDEX.about,
+                    age_group: ageGroup,
+                  })
                   later(650, () => router.push('/(first-run)/reveal'))
                 }}
               />

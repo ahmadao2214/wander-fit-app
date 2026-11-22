@@ -512,6 +512,16 @@ describe('sharding and affected-flow selection', () => {
     expect(selectAffectedFlows(['components/workout/SetTracker.tsx'], { available }).flows).toEqual(
       ['workout-exit-resume']
     )
+    for (const file of [
+      'app/(athlete)/settings.tsx',
+      'components/settings/TelemetryPreferencesCard.tsx',
+      '.maestro/journeys/settings-telemetry.yaml',
+    ]) {
+      expect({ file, flows: selectAffectedFlows([file], { available }).flows }).toEqual({
+        file,
+        flows: ['app-settings', 'settings-telemetry', 'sign-in'],
+      })
+    }
     // Shared/backend helpers must ALWAYS force the full PR suite
     expect(selectAffectedFlows(['lib/firstRunRoutes.ts'], { available }).flows).toEqual(prAll)
     expect(selectAffectedFlows(['lib/executionOrder.ts'], { available }).flows).toEqual(prAll)

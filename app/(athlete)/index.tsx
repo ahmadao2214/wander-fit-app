@@ -19,8 +19,10 @@ import { workoutMetaLine } from '../../lib/workoutMeta'
 import { DEFAULT_WEEKS_PER_PHASE } from '../../lib/calendarUtils'
 import { pausedLabel } from '../../lib/sessionTiming'
 import { PHASE_NAMES, phaseTokens } from '../../lib/phase'
+import { analytics } from '../../lib/analytics'
 import type { Phase } from '../../types'
 import { Display, Title, Body, Supporting, Caption, numeric } from '../../components/Typography'
+import { localDayArgs } from '../../lib/weeksOnPlan'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PHASE PROGRESS
@@ -189,7 +191,8 @@ export default function AthleteDashboard() {
   // Get today's workout (with override support)
   const todayWorkout = useQuery(
     api.scheduleOverrides.getTodayWorkout,
-    user ? {} : "skip"
+    // The athlete's day: a Today pick lasts until midnight, local time
+    user ? localDayArgs(today) : "skip"
   )
 
   // Check for pending reassessment
@@ -443,6 +446,11 @@ export default function AthleteDashboard() {
                   <DiscardPausedWorkout
                     onDiscard={async () => {
                       await abandonSession({ sessionId: pausedSession._id })
+                      analytics.trackWorkoutAbandoned({
+                        phase: pausedSession.templateSnapshot?.phase,
+                        week: pausedSession.templateSnapshot?.week,
+                        day: pausedSession.templateSnapshot?.day,
+                      })
                     }}
                   />
                 </YStack>

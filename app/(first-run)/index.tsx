@@ -4,6 +4,7 @@ import { IntakeFrame } from '../../components/first-run/IntakeFrame'
 import { BODY_SEMI, Headline, PromiseDrift, headlineSize } from '../../components/first-run/Night'
 import { useIntakeMotion } from '../../components/first-run/useIntakeMotion'
 import { useReachStep } from '../../components/first-run/useReachStep'
+import { analytics, FIRST_RUN_STEP_INDEX } from '../../lib/analytics'
 import { DRIFT_SPORTS, NIGHT } from '../../lib/firstRunStory'
 
 /**
@@ -24,7 +25,17 @@ export default function FirstRunPromise() {
       showTop={false}
       scroll={false}
       behind={<PromiseDrift sports={DRIFT_SPORTS} moving={motion.moving} />}
-      primary={{ label: 'Choose your sport', onPress: () => router.push('/(first-run)/sport'), testID: 'first-run-start' }}
+      primary={{
+        label: 'Choose your sport',
+        onPress: () => {
+          analytics.trackFirstRunStepAdvanced({
+            step: 'promise',
+            step_index: FIRST_RUN_STEP_INDEX.promise,
+          })
+          router.push('/(first-run)/sport')
+        },
+        testID: 'first-run-start',
+      }}
       secondary={
         <Pressable
           onPress={() => router.push('/(auth)/sign-in')}

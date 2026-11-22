@@ -14,6 +14,8 @@ import { useReducedMotion } from '../../hooks/useReducedMotion'
 import { workoutShortName } from '../../lib/firstRunStory'
 import { PHASES } from '../../lib/phase'
 import type { Phase } from '../../types'
+import { localDayArgs } from '../../lib/weeksOnPlan'
+import { useCurrentDate } from '../../hooks/useCurrentDate'
 
 /** Where "You are here" sits along the bar, 0 → 1, mid-week. */
 export function seasonPosition(phase: Phase, week: number, weeksPerPhase: number): number {
@@ -68,7 +70,8 @@ export function ProgramSeasonHeader({ welcome, kept, next }: { welcome: boolean;
   const router = useRouter()
   const reduced = useReducedMotion()
   const state = useQuery(api.userPrograms.getCurrentProgramState, {})
-  const upNext = useQuery(api.scheduleOverrides.getTodayWorkout, {})
+  const today = useCurrentDate()
+  const upNext = useQuery(api.scheduleOverrides.getTodayWorkout, localDayArgs(today))
   const upNextSession = useQuery(
     api.gppWorkoutSessions.getSessionForTemplate,
     upNext ? { templateId: upNext._id } : 'skip'
