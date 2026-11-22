@@ -198,7 +198,8 @@ export function SavePlanSheet({
     }
   }
 
-  const snapPoints = useMemo(() => [step === 'choose' ? 45 : 90], [step])
+  const chooseSnap = APPLE_SIGN_IN_ENABLED || clerkUser ? 42 : 34
+  const snapPoints = useMemo(() => [step === 'choose' ? chooseSnap : 90], [step, chooseSnap])
 
   const close = (next: boolean) => {
     if (step === 'saving') return

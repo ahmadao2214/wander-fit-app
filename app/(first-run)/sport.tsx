@@ -53,6 +53,7 @@ function SportTile({
     >
       <View
         style={{
+          flex: 1,
           alignItems: 'center',
           gap: 4,
           paddingVertical: 8,
@@ -120,7 +121,12 @@ export default function FirstRunSport() {
   const selected = sports?.find((s) => s._id === selectedId)
   const category = selected ? storyCategory(selected.gppCategoryId) : null
   const { popular, rest } = useMemo(() => splitSports(sports ?? []), [sports])
-  const shownRest = rest.filter((s) => matchesSearch(s.name, search))
+  // Searching covers every sport and folds the Popular row away, so the
+  // matches sit right under the field instead of below the fold.
+  const searching = search.trim() !== ''
+  const shownRest = searching
+    ? (sports ?? []).filter((s) => matchesSearch(s.name, search)).sort((a, b) => a.name.localeCompare(b.name))
+    : rest
 
   const select = (sport: { _id: string }) => {
     selectionFeedback()
@@ -165,8 +171,12 @@ export default function FirstRunSport() {
         </View>
       ) : (
         <>
-          <Label style={{ marginTop: 16, marginBottom: 12 }}>Popular</Label>
-          <Grid>{popular.map((s) => tile(s, 'large'))}</Grid>
+          {searching ? null : (
+            <>
+              <Label style={{ marginTop: 16, marginBottom: 12 }}>Popular</Label>
+              <Grid>{popular.map((s) => tile(s, 'large'))}</Grid>
+            </>
+          )}
 
           <Label style={{ marginTop: 24 }}>All sports</Label>
           <TextInput

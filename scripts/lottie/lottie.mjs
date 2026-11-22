@@ -97,7 +97,7 @@ const layerBase = (ind, nm, op, parent) => ({
   bm: 0,
 })
 
-export const nullLayer = ({ ind, nm, op, ks }) => ({ ...layerBase(ind, nm, op), ty: 3, ks })
+export const nullLayer = ({ ind, nm, op, parent, ks }) => ({ ...layerBase(ind, nm, op, parent), ty: 3, ks })
 
 export const shapeLayer = ({ ind, nm, op, parent, ks = transform(), shapes }) => ({
   ...layerBase(ind, nm, op, parent),

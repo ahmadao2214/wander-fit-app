@@ -46,6 +46,15 @@ export function categoryLayout(
   return { tile, name: Math.floor(Math.min(128, usableHeight * 0.17, fitsWidth)) }
 }
 
+/**
+ * "<SPORT> TRAINS FOR" on one line: 30 pt, or smaller when the sport name is
+ * long. Web ignores adjustsFontSizeToFit, so the size is set from the width
+ * (1 px letter spacing per character, 6% to spare).
+ */
+export function leadFontSize(text: string, usableWidth: number): number {
+  return Math.min(30, Math.floor((usableWidth - text.length) / (displayWidthEm(text) * 1.06)))
+}
+
 /** Fades and rises in at `at` ms when `play`; otherwise simply there. */
 export function Beat({
   at,
@@ -90,7 +99,7 @@ const CategoryTile = forwardRef<ComponentRef<typeof View>, {
     k.value = settled ? (lit ? 1 : 0) : withTiming(lit ? 1 : 0, { duration: 400, easing: PAGE_EASE })
     fade.value = settled ? (dim ? 1 : 0) : withTiming(dim ? 1 : 0, { duration: 400, easing: PAGE_EASE })
   }, [lit, dim, settled, k, fade])
-  const tileStyle = useAnimatedStyle(() => ({ opacity: 1 - fade.value * 0.75 }))
+  const tileStyle = useAnimatedStyle(() => ({ opacity: 1 - fade.value * 0.55 }))
   const litStyle = useAnimatedStyle(() => ({ opacity: k.value }))
   return (
     <Animated.View
@@ -102,11 +111,11 @@ const CategoryTile = forwardRef<ComponentRef<typeof View>, {
       testID={`category-tile-${cat.id}`}
     >
       <Animated.View style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: cat.color }, litStyle]} />
-      <View style={{ position: 'absolute', left: 8, right: 8, top: 6, bottom: 40 }}>
+      <View style={{ position: 'absolute', left: 8, right: 8, top: 6, bottom: 48 }}>
         <Athlete cat={cat.id} lit={lit} tile={lit ? cat.color : NIGHT.ink2} play={playMove} settled={settled && lit} />
       </View>
       <RNText
-        style={{ position: 'absolute', left: 14, bottom: 12, fontFamily: DISPLAY, fontSize: 30, lineHeight: 30, color: lit ? '#FFFFFF' : NIGHT.fg2 }}
+        style={{ position: 'absolute', left: 14, bottom: 10, fontFamily: DISPLAY, fontSize: 30, lineHeight: 30, color: lit ? '#FFFFFF' : NIGHT.fg2 }}
       >
         {cat.name.toUpperCase()}
       </RNText>
@@ -139,6 +148,8 @@ export function CategoryStory({
   const insets = useSafeAreaInsets()
   const { height: screenH, width: screenW } = useWindowDimensions()
   const size = categoryLayout(screenH - insets.top - insets.bottom - 56, Math.min(screenW, 560) - 48, category.name)
+  const lead = `${sportName.toUpperCase()} TRAINS FOR`
+  const leadSize = leadFontSize(lead, Math.min(screenW, 560) - 48)
   const [lit, setLit] = useState(settled)
   useEffect(() => {
     if (settled) {
@@ -182,8 +193,13 @@ export function CategoryStory({
     <View style={{ flex: 1 }} testID="reveal-category">
       <Animated.View style={[{ marginTop: 'auto' }, leaveStyle]}>
         <Beat at={CATEGORY_BEATS.lead} play={play}>
-          <RNText style={{ fontFamily: DISPLAY, fontSize: 30, lineHeight: 32, color: NIGHT.fg2, letterSpacing: 1 }}>
-            {`${sportName.toUpperCase()} TRAINS FOR`}
+          <RNText
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.72}
+            style={{ fontFamily: DISPLAY, fontSize: leadSize, lineHeight: leadSize + 2, color: NIGHT.fg2, letterSpacing: 1 }}
+          >
+            {lead}
           </RNText>
         </Beat>
         <Beat at={CATEGORY_BEATS.name} play={play}>

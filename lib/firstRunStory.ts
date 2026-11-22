@@ -133,8 +133,6 @@ export type MovementFamily = 'roll' | 'bounce' | 'water'
 
 const FAMILIES: Record<string, MovementFamily> = {
   Soccer: 'roll',
-  'Field Hockey': 'roll',
-  Lacrosse: 'roll',
   Rugby: 'roll',
   Basketball: 'bounce',
   Volleyball: 'bounce',

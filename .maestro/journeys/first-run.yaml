@@ -19,6 +19,26 @@ url: ${VERIFY_URL}
     visible: "PICK YOUR SPORT"
     timeout: 30000
 - assertVisible: "POPULAR"
+# Regression: "hockey" once showed nothing, because matches rendered below the
+# fold and search skipped the Popular row. Searching now folds Popular away and
+# covers every sport. The field sits under the Popular grid, so swipe first.
+- swipe:
+    start: 50%, 80%
+    end: 50%, 20%
+    duration: 800
+- tapOn:
+    id: sport-search
+- inputText: "hockey"
+- extendedWaitUntil:
+    visible: "Ice Hockey"
+    timeout: 10000
+- assertVisible: "Field Hockey"
+- assertNotVisible: "POPULAR"
+- eraseText: 10
+# Basketball is a Popular sport, which search used to skip ("No sport
+# matches"), so finding it proves search covers every sport.
+- inputText: "basketball"
+- assertNotVisible: "No sport matches.*"
 - tapOn:
     id: "Basketball"
 - takeScreenshot: 02-sport

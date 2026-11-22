@@ -126,17 +126,17 @@ export function bandIconFrame(sportName: string, insetTop: number): { size: numb
   return { size: 128, right: 16, top: insetTop + 20 }
 }
 
-/** The sport icon in the band plays a short action (0.8 s) and holds its pose. */
+/** The sport icon in the band plays one move and settles upright at rest. */
 function BandIcon({ name, play, size }: { name: string; play: boolean; size: number }) {
   const ref = useRef<LottieView>(null)
   const source = getSportAnimation(name)
   useEffect(() => {
     if (!play) return
-    const t = setTimeout(() => ref.current?.play(0, 36), 0)
+    const t = setTimeout(() => ref.current?.play(0, 86), 0)
     return () => clearTimeout(t)
   }, [play])
   if (!source) return null
-  return <LottieView ref={ref} source={source} autoPlay={false} loop={false} speed={1.5} style={{ width: size, height: size }} />
+  return <LottieView ref={ref} source={source} autoPlay={false} loop={false} speed={1.8} style={{ width: size, height: size }} />
 }
 
 /**

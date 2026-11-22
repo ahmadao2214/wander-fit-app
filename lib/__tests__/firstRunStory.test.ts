@@ -62,8 +62,8 @@ describe('movementFamily', () => {
     )
     expect(got).toEqual([
       ['Soccer', 'roll'],
-      ['Field Hockey', 'roll'],
-      ['Lacrosse', 'roll'],
+      ['Field Hockey', null],
+      ['Lacrosse', null],
       ['Rugby', 'roll'],
       ['Basketball', 'bounce'],
       ['Volleyball', 'bounce'],

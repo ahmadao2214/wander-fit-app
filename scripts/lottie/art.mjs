@@ -100,14 +100,26 @@ export function edgeSegments(r, a, b) {
 
 export { polar, add }
 
-/** Lemon-shaped oval (football, rugby ball): pointed ends at ±halfLength. */
-export const lemon = (halfLength, halfWidth) =>
-  curve([
-    [-halfLength, 0, 0, 0, halfLength * 0.35, -halfWidth * 0.95],
-    [0, -halfWidth, -halfLength * 0.62, 0, halfLength * 0.62, 0],
-    [halfLength, 0, -halfLength * 0.35, -halfWidth * 0.95, -halfLength * 0.35, halfWidth * 0.95],
-    [0, halfWidth, halfLength * 0.62, 0, -halfLength * 0.62, 0],
+/** Half-height y(x) of a circular-arc lemon at horizontal offset x. */
+export function lemonY(x, halfLength, halfWidth) {
+  const rc = (halfLength * halfLength + halfWidth * halfWidth) / (2 * halfWidth)
+  return Math.sqrt(Math.max(0, rc * rc - x * x)) - (rc - halfWidth)
+}
+
+/** Symmetrical pointed oval (football, rugby ball): two smooth circular arcs meeting at ±halfLength. */
+export function lemon(halfLength, halfWidth) {
+  const rc = (halfLength * halfLength + halfWidth * halfWidth) / (2 * halfWidth)
+  const theta = 2 * Math.atan(halfWidth / halfLength)
+  const k = (4 / 3) * Math.tan(theta / 4) * rc
+  const tx = k * Math.cos(theta)
+  const ty = k * Math.sin(theta)
+  return curve([
+    [-halfLength, 0, tx, ty, tx, -ty],
+    [0, -halfWidth, -k, 0, k, 0],
+    [halfLength, 0, -tx, -ty, -tx, ty],
+    [0, halfWidth, k, 0, -k, 0],
   ])
+}
 
 // ── paint ───────────────────────────────────────────────────────────────────
 
@@ -142,16 +154,19 @@ export const ballShade = (r, offset) =>
 /**
  * Builds a sport's Lottie.
  *
- * `layers` are listed top first. Each is { nm, groups, role }:
+ * `layers` are listed top first. Each is { nm, groups, role, ks, null, parent }:
  * - role 'markings' spins with the ball (bounce family only).
  * - role 'fixed' stays put while the rest moves (a golf tee).
- * - anything else moves with the object.
+ * - `ks`: custom layer transform (overrides family motion for bespoke choreography).
+ * - `null: true`: makes this entry a null parent layer (no shapes) for nested transforms.
+ * - `parent`: optional `nm` of another layer in `layers` to parent to (defaults to RIG).
  *
  * Families:
  * - bounce: hops, squashes and spins its markings (balls).
  * - tumble: hops and flips end over end (oval balls, shuttlecock).
  * - tilt: smaller hops, little squash, leans and rocks level (rigid objects).
  * - swing: no hop; swings from `pivot` and settles (hanging objects).
+ * - still: stationary rig; each layer drives its own bespoke `ks` motion.
  */
 export function buildSport({ nm, family, layers, bottom = ART_RADIUS, pivot = [0, -ART_RADIUS], spinCenter = [0, 0], tiltDegrees = 8 }) {
   const op = LOOP_FRAMES
@@ -162,15 +177,28 @@ export function buildSport({ nm, family, layers, bottom = ART_RADIUS, pivot = [0
     tumble: { rig: { artRadius: ART_RADIUS, bottom, squash: 0.35 }, body: tumble() },
     tilt: { rig: { artRadius: ART_RADIUS, bottom, height: 0.7, squash: 0.3 }, body: tilt(tiltDegrees) },
     swing: { rig: { artRadius: ART_RADIUS, bottom, still: true }, body: swing() },
+    still: { rig: { artRadius: ART_RADIUS, bottom, still: true }, body: null },
   }[family]
   if (!motion) throw new Error(`${nm}: unknown family ${family}`)
 
-  const ksFor = (role) => {
-    if (role === 'fixed') return transform()
-    const r = role === 'markings' ? motion.markings ?? motion.body : motion.body
+  const indByName = new Map(layers.map((l, index) => [l.nm, index + 1]))
+
+  const ksFor = (l) => {
+    if (l.ks) return l.ks
+    if (l.role === 'fixed') return transform()
+    const r = l.role === 'markings' ? motion.markings ?? motion.body : motion.body
     if (!r) return transform()
-    const anchor = family === 'swing' ? [...pivot, 0] : role === 'markings' ? [...spinCenter, 0] : [0, 0, 0]
+    const anchor = family === 'swing' ? [...pivot, 0] : l.role === 'markings' ? [...spinCenter, 0] : [0, 0, 0]
     return transform({ a: anchor, p: anchor, r })
+  }
+
+  const parentFor = (l) => {
+    if (l.parent) {
+      const target = indByName.get(l.parent)
+      if (!target) throw new Error(`${nm}: unknown parent layer ${l.parent}`)
+      return target
+    }
+    return l.role === 'fixed' ? STAND : RIG
   }
 
   const hasFixed = layers.some((l) => l.role === 'fixed')
@@ -180,9 +208,10 @@ export function buildSport({ nm, family, layers, bottom = ART_RADIUS, pivot = [0
     op,
     size: CANVAS,
     layers: [
-      ...layers.map((l, index) =>
-        shapeLayer({ ind: index + 1, nm: l.nm, op, parent: l.role === 'fixed' ? STAND : RIG, ks: ksFor(l.role), shapes: l.groups }),
-      ),
+      ...layers.map((l, index) => {
+        const spec = { ind: index + 1, nm: l.nm, op, parent: parentFor(l), ks: ksFor(l) }
+        return l.null ? nullLayer(spec) : shapeLayer({ ...spec, shapes: l.groups })
+      }),
       nullLayer({ ind: RIG, nm: 'rig', op, ks: rigTransform(motion.rig) }),
       ...(hasFixed ? [nullLayer({ ind: STAND, nm: 'stand', op, ks: rigTransform({ ...motion.rig, still: true }) })] : []),
     ],
