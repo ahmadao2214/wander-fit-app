@@ -85,9 +85,10 @@ export default function AthleteSettingsScreen() {
 
   return (
     <ReplayExcludedSurface>
+      <YStack flex={1} bg="$background">
       <ScrollView
         flex={1}
-        bg="$background"
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={{ pb: insets.bottom + 32 }}
       >
         <YStack
@@ -174,6 +175,7 @@ export default function AthleteSettingsScreen() {
           </YStack>
         </YStack>
       </ScrollView>
+      </YStack>
     </ReplayExcludedSurface>
   )
 }
