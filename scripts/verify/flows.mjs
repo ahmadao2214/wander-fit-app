@@ -63,6 +63,7 @@ const flowPersonaModes = {
 // balance parallel E2E shards via greedy LPT bin packing.
 export const FLOW_DURATION_SECONDS = {
   "workout-loop": 175,
+  feedback: 126,
   "first-run": 125,
   "workout-exit-resume": 70,
   reassessment: 60,
@@ -139,6 +140,11 @@ const ROUTE_FLOW_RULES = [
   {
     match: /^(app\/\(athlete\)\/(settings|profile)(\.tsx|\/)|components\/settings\/|\.maestro\/(web|journeys)\/(app-settings|settings-telemetry)\.yaml$)/,
     flows: ["app-settings", "settings-telemetry", "sign-in"],
+  },
+  {
+    // Profile hosts the Feedback & support rows the feedback journey drives.
+    match: /^(app\/\(athlete\)\/profile(\.tsx|\/)|\.maestro\/(web|journeys)\/feedback\.yaml$)/,
+    flows: ["feedback"],
   },
   {
     // ConfettiEffect is also imported by app/(reassessment)/celebration.tsx, so
