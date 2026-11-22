@@ -540,7 +540,10 @@ export default function WorkoutExecutionScreen() {
       // Advance program position
       if (session?.userProgramId) {
         try {
-          const result = await advanceToNextDay({ programId: session.userProgramId })
+          const result = await advanceToNextDay({
+            programId: session.userProgramId,
+            sessionId: sessionId as Id<"gpp_workout_sessions">,
+          })
 
           if (result?.triggerReassessment) {
             // Show reassessment prompt instead of navigating away

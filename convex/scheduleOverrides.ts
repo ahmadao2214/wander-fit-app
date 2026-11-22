@@ -1,6 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { countsAsDone } from "./blockCompletion";
+import { loadProgramCompletion } from "./programCompletion";
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { mapUserWeekToTemplateWeek, DEFAULT_WEEKS_PER_PHASE } from "./weekMapping";
@@ -226,13 +227,8 @@ export async function todayWorkoutFor(ctx: QueryCtx, clerkId: string) {
     .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
     .first();
 
-  // Get all completed template IDs for this user
-  const completedSessions = (await ctx.db
-    .query("gpp_workout_sessions")
-    .withIndex("by_user", (q) => q.eq("userId", user._id))
-    .filter((q) => q.eq(q.field("status"), "completed"))
-    .collect()).filter((s) => countsAsDone(s, program));
-  const completedTemplateIds = new Set(completedSessions.map((s) => s.templateId));
+  // Which of this week's slots are done
+  const completion = await loadProgramCompletion(ctx, program);
 
   // Helper to get template with exercise details
   const getTemplateWithExercises = async (template: any, flags: { isFocusOverride?: boolean; isSlotOverride?: boolean; isFirstIncomplete?: boolean }) => {
@@ -314,7 +310,8 @@ export async function todayWorkoutFor(ctx: QueryCtx, clerkId: string) {
   
   for (const day of sortedDays) {
     const template = await getEffectiveTemplateForSlot(day);
-    if (template && !completedTemplateIds.has(template._id)) {
+    const slot = { phase: program.currentPhase, week: program.currentWeek, day };
+    if (template && !completion.isSlotDone(slot)) {
       const hasSlotOverride = !!overrideRecord?.slotOverrides.find(
         (o) => o.phase === program.currentPhase && o.week === program.currentWeek && o.day === day
       );
@@ -512,18 +509,8 @@ export const setTodayFocus = mutation({
     }
 
     // Prevent setting completed workout as today's focus (done in this block)
-    const completedSessions = await ctx.db
-      .query("gpp_workout_sessions")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("templateId"), args.templateId),
-          q.eq(q.field("status"), "completed")
-        )
-      )
-      .collect();
-
-    if (completedSessions.some((s) => countsAsDone(s, program))) {
+    const completion = await loadProgramCompletion(ctx, program);
+    if (completion.isWorkoutDone(args.templateId)) {
       throw new Error("Cannot set completed workout as today's focus");
     }
 
@@ -658,6 +645,25 @@ export async function resolveSlotPair(
 }
 
 /**
+ * The slot overrides after swapping the workouts on two slots.
+ */
+export function swappedOverrides(
+  existingOverride: Doc<"user_schedule_overrides"> | null,
+  slotA: WorkoutSlotRef,
+  slotB: WorkoutSlotRef,
+  templateA: Id<"program_templates">,
+  templateB: Id<"program_templates">,
+) {
+  const at = (o: WorkoutSlotRef, slot: WorkoutSlotRef) =>
+    o.phase === slot.phase && o.week === slot.week && o.day === slot.day;
+  return [
+    ...(existingOverride?.slotOverrides ?? []).filter((o) => !at(o, slotA) && !at(o, slotB)),
+    { phase: slotA.phase, week: slotA.week, day: slotA.day, templateId: templateB },
+    { phase: slotB.phase, week: slotB.week, day: slotB.day, templateId: templateA },
+  ];
+}
+
+/**
  * Swap two workout slots (same phase only).
  * Caller has already loaded the signed-in athlete and their program.
  */
@@ -683,14 +689,8 @@ export async function applyWorkoutSwap(
     throw new Error("One or both workout slots are empty (rest days)");
   }
 
-  const completedSessions = (await ctx.db
-    .query("gpp_workout_sessions")
-    .withIndex("by_user", (q) => q.eq("userId", user._id))
-    .filter((q) => q.eq(q.field("status"), "completed"))
-    .collect()).filter((s) => countsAsDone(s, program));
-  const completedTemplateIds = new Set(completedSessions.map((s) => s.templateId));
-
-  if (completedTemplateIds.has(templateA._id) || completedTemplateIds.has(templateB._id)) {
+  const completion = await loadProgramCompletion(ctx, program);
+  if (completion.isSlotDone(slotA) || completion.isSlotDone(slotB)) {
     throw new Error("Cannot swap: one or both workouts are already completed");
   }
 
@@ -699,27 +699,10 @@ export async function applyWorkoutSwap(
   }
 
   const now = Date.now();
-  let newSlotOverrides = existingOverride?.slotOverrides || [];
-
-  newSlotOverrides = newSlotOverrides.filter(
-    (o) =>
-      !(o.phase === slotA.phase && o.week === slotA.week && o.day === slotA.day) &&
-      !(o.phase === slotB.phase && o.week === slotB.week && o.day === slotB.day),
-  );
-
-  newSlotOverrides.push({
-    phase: slotA.phase,
-    week: slotA.week,
-    day: slotA.day,
-    templateId: templateB._id,
-  });
-
-  newSlotOverrides.push({
-    phase: slotB.phase,
-    week: slotB.week,
-    day: slotB.day,
-    templateId: templateA._id,
-  });
+  const newSlotOverrides = swappedOverrides(existingOverride, slotA, slotB, templateA._id, templateB._id);
+  if (!completion.keepsDone(newSlotOverrides)) {
+    throw new Error("Cannot swap: it would move a workout that's already done");
+  }
 
   if (existingOverride) {
     await ctx.db.patch(existingOverride._id, {

@@ -49,12 +49,14 @@ export function artifactName(flow, platform = "web") {
 // The First Run makes its own account through the UI, at the end of the
 // intake. History signs in as a persona with completed GPP sessions.
 // Reassessment signs in at the end of a GPP block with the check-in pending.
+// Repeated week signs in at week 3 of a 5-week GPP block with weeks 1-2 done.
 // Every other flow signs in as an onboarded persona created before Maestro
 // runs.
 const flowPersonaModes = {
   "first-run": "first-run",
   history: "with-history",
   reassessment: "phase-end",
+  "repeated-week": "repeated-week",
 }
 
 // Recorded median run times (seconds) on GitHub Ubuntu runners, used to
@@ -67,6 +69,7 @@ export const FLOW_DURATION_SECONDS = {
   "app-settings": 58,
   "sign-in": 46,
   history: 39,
+  "repeated-week": 35,
 }
 
 export const DEFAULT_FLOW_SECONDS = 60

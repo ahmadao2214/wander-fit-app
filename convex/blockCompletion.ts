@@ -1,3 +1,5 @@
+import { mapUserWeekToTemplateWeek } from "./weekMapping";
+
 /**
  * Which completed sessions still mark a workout as done.
  *
@@ -14,6 +16,7 @@ export type BlockSession = {
   startedAt: number;
   completedAt?: number;
   templateSnapshot?: { phase?: string };
+  redo?: boolean;
 };
 
 export type BlockProgram = {
@@ -23,6 +26,8 @@ export type BlockProgram = {
 
 export function countsAsDone(session: BlockSession, program: BlockProgram): boolean {
   if (session.status !== "completed") return false;
+  // Doing a finished workout again is extra work, not progress
+  if (session.redo) return false;
   if (session.templateSnapshot?.phase !== program.currentPhase) return true;
   return (session.completedAt ?? session.startedAt) >= program.phaseStartDate;
 }
@@ -105,4 +110,95 @@ export function slotOnDate<S extends { phase: string }>(
     if (slot && phaseAnchor(program, slot.phase).getTime() === anchor.getTime()) return slot;
   }
   return null;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WHICH SLOTS ARE DONE
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Templates exist for weeks 1-4 only, so a phase longer than four weeks
+ * repeats some of them: in a 5-week phase, user weeks 2 and 3 both use the
+ * week-2 workouts. A workout done once is then done in its first slot, not in
+ * every slot that repeats it. Each completed session fills the next slot that
+ * holds its workout, in program order.
+ */
+export type SlotRef = { phase: string; week: number; day: number };
+export type LayoutSlot = SlotRef & { templateId: string };
+
+export const slotKey = (slot: SlotRef) => `${slot.phase}-${slot.week}-${slot.day}`;
+
+export type LayoutTemplate = { _id: string; phase: string; week: number; day: number };
+export type LayoutOverride = { phase: string; week: number; day: number; templateId: string };
+
+/**
+ * Every slot of the program in order (phase, user week, day), with the
+ * workout it holds after slot overrides. Days are the template days of the
+ * week, the same list Today walks.
+ */
+export function programLayout(
+  templates: readonly LayoutTemplate[],
+  slotOverrides: readonly LayoutOverride[],
+  weeksPerPhase: number,
+): LayoutSlot[] {
+  const overrides = new Map(slotOverrides.map((o) => [slotKey(o), String(o.templateId)]));
+  const layout: LayoutSlot[] = [];
+  for (const phase of PHASES) {
+    for (let week = 1; week <= weeksPerPhase; week++) {
+      const templateWeek = mapUserWeekToTemplateWeek(week, weeksPerPhase);
+      const days = templates
+        .filter((t) => t.phase === phase && t.week === templateWeek)
+        .sort((a, b) => a.day - b.day);
+      for (const t of days) {
+        const slot = { phase, week, day: t.day };
+        layout.push({ ...slot, templateId: overrides.get(slotKey(slot)) ?? String(t._id) });
+      }
+    }
+  }
+  return layout;
+}
+
+/**
+ * The done slots, each with the session that did it. `sessions` are the ones
+ * that count (see countsAsDone); the earliest fills the first slot.
+ */
+export function doneSlots<S extends { templateId: string; completedAt?: number; startedAt: number }>(
+  layout: readonly LayoutSlot[],
+  sessions: readonly S[],
+): Map<string, S> {
+  const byTemplate = new Map<string, S[]>();
+  const when = (s: S) => s.completedAt ?? s.startedAt;
+  for (const session of [...sessions].sort((a, b) => when(a) - when(b))) {
+    const id = String(session.templateId);
+    byTemplate.set(id, [...(byTemplate.get(id) ?? []), session]);
+  }
+  const done = new Map<string, S>();
+  const used = new Map<string, number>();
+  for (const slot of layout) {
+    const n = used.get(slot.templateId) ?? 0;
+    const session = byTemplate.get(slot.templateId)?.[n];
+    if (!session) continue;
+    used.set(slot.templateId, n + 1);
+    done.set(slotKey(slot), session);
+  }
+  return done;
+}
+
+/**
+ * Whether a workout is done for where the athlete is now: every slot that
+ * holds it, in the current phase, up to the current week. A workout from a
+ * later week (done early) or another phase is done once its first slot is.
+ */
+export function isWorkoutDone(
+  layout: readonly LayoutSlot[],
+  done: ReadonlyMap<string, unknown>,
+  templateId: string,
+  position: { currentPhase: string; currentWeek: number },
+): boolean {
+  const slots = layout.filter((slot) => slot.templateId === String(templateId));
+  if (slots.length === 0) return false;
+  const due = slots.filter(
+    (slot) => slot.phase === position.currentPhase && slot.week <= position.currentWeek,
+  );
+  return (due.length > 0 ? due : [slots[0]]).every((slot) => done.has(slotKey(slot)));
 }

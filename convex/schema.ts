@@ -449,6 +449,13 @@ export default defineSchema({
      * templateSnapshot - Captures template state at time of workout
      * Preserves history even if template is later modified.
      */
+    /**
+     * True when the athlete started a workout that was already done for
+     * where they are in the program (Redo). A Redo is logged like any other
+     * workout but doesn't fill a slot or move the program forward.
+     */
+    redo: v.optional(v.boolean()),
+
     templateSnapshot: v.optional(v.object({
       name: v.string(),
       phase: phaseValidator,

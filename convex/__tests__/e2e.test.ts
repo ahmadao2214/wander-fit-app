@@ -173,6 +173,38 @@ describe("e2e persona provisioning", () => {
   });
 });
 
+describe("e2e repeated-week persona", () => {
+  it("sits at GPP week 3 of 5 with weeks 1-2 done, and Today offers week 2's first workout again", async () => {
+    const t = newTest();
+    await seedBasketball(t);
+    await t.run(async (ctx) => {
+      const exerciseId = await ctx.db.insert("exercises", { name: "Goblet Squat", slug: "goblet_squat", tags: [] });
+      for (let week = 1; week <= 4; week++) {
+        for (let day = 1; day <= 3; day++) {
+          await ctx.db.insert("program_templates", {
+            gppCategoryId: 2, phase: "GPP", skillLevel: "Novice", week, day, name: `W${week}D${day}`,
+            estimatedDurationMinutes: 40,
+            exercises: [{ exerciseId, sets: 3, reps: "10", restSeconds: 60, orderIndex: 0 }],
+          });
+        }
+      }
+    });
+    await t.mutation(internal.e2e.provision, { ...persona, state: "repeated-week" });
+
+    const inspected = await t.query(internal.e2e.inspect, { email });
+    expect(inspected.found && [inspected.phase, inspected.week, inspected.day]).toEqual(["GPP", 3, 1]);
+    expect(inspected.found && inspected.sessions.length).toBe(6);
+    const program = await t.run((ctx) => ctx.db.query("user_programs").first());
+    expect(program?.weeksPerPhase).toBe(5);
+
+    // What the repeated-week flow sees: W2D1 to start, not done
+    const asPersona = t.withIdentity({ subject: persona.clerkId, email });
+    const today = await asPersona.query(api.scheduleOverrides.getTodayWorkout, {});
+    expect(today?.name).toBe("W2D1");
+    expect(await asPersona.query(api.gppWorkoutSessions.getSessionForTemplate, { templateId: today!._id })).toBeNull();
+  });
+});
+
 describe("e2e template seed", () => {
   // Mirrors scripts/verify/run.mjs: seed:seedAll, then the generator per category.
   it("gives the e2e database the generated Day 1 that production serves", async () => {
