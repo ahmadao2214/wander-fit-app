@@ -6,6 +6,7 @@ import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
 import { Caption, Supporting } from '../Typography'
 import { FeedbackSheetFrame } from './FeedbackSheetFrame'
+import { useSheetSession } from './useSheetSession'
 import { useFeedbackToast } from './useFeedbackToast'
 import { buildFeedbackContext, type FeedbackProgramContext } from '../../lib/feedbackContext'
 import {
@@ -61,6 +62,7 @@ export function BugReportSheet({
   const [details, setDetails] = useState('')
   const [severity, setSeverity] = useState<BugSeverity>('annoying')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const sheetSession = useSheetSession(open)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -82,6 +84,7 @@ export function BugReportSheet({
       return
     }
 
+    const session = sheetSession.current
     setIsSubmitting(true)
     setError(null)
     try {
@@ -112,7 +115,8 @@ export function BugReportSheet({
 
       toast.show('Bug report sent', 'Thanks for helping us catch this.')
       onSubmitted?.()
-      onOpenChange(false)
+      // The athlete may have closed (and reopened) the sheet while this was sending.
+      if (sheetSession.current === session) onOpenChange(false)
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Could not send bug report. Please try again.'
@@ -124,7 +128,6 @@ export function BugReportSheet({
 
   return (
     <FeedbackSheetFrame
-      dismissDisabled={isSubmitting}
       open={open}
       onOpenChange={onOpenChange}
       title="Report a bug"

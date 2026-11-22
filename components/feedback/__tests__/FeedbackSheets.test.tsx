@@ -120,30 +120,34 @@ describe('Feedback sheets', () => {
   })
 
   describe('BugReportSheet', () => {
-    it('ignores Close while a report is still sending', async () => {
+    it("lets the athlete close mid-send, and a late success doesn't close a reopened sheet", async () => {
       let resolveSubmit: (value: unknown) => void = () => {}
       mockSubmitBugReport.mockImplementationOnce(
         () => new Promise((resolve) => (resolveSubmit = resolve))
       )
       const onOpenChange = jest.fn()
-      const { getByTestId, getByLabelText } = render(
-        <BugReportSheet open onOpenChange={onOpenChange} source="profile" screenRoute="/(athlete)/profile" />,
-        { wrapper: AllTheProviders }
+      const sheet = (open: boolean) => (
+        <BugReportSheet open={open} onOpenChange={onOpenChange} source="profile" screenRoute="/(athlete)/profile" />
       )
+      const { getByTestId, getByLabelText, rerender } = render(sheet(true), { wrapper: AllTheProviders })
       await act(async () => {})
       fireEvent.changeText(getByTestId('bug-title-input'), 'Timer froze')
       fireEvent.changeText(getByTestId('bug-details-input'), 'Rest timer stopped at 0:42')
-
       await act(async () => {
         fireEvent.press(getByTestId('bug-submit-button'))
       })
+
+      // Offline: the send is still pending, but Close still works
       fireEvent.press(getByLabelText('Close'))
-      expect(onOpenChange).not.toHaveBeenCalled()
+      expect(onOpenChange).toHaveBeenCalledWith(false)
+      rerender(sheet(false))
+      rerender(sheet(true))
+      onOpenChange.mockClear()
 
       await act(async () => {
         resolveSubmit({ bugReportId: 'bug_2' })
       })
-      expect(onOpenChange).toHaveBeenCalledWith(false)
+      expect(onOpenChange).not.toHaveBeenCalled()
     })
 
     it('attaches workout context, severity, and PostHog session ID on submit', async () => {

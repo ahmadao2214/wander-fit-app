@@ -5,6 +5,7 @@ import { useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { Caption, Supporting } from '../Typography'
 import { FeedbackSheetFrame } from './FeedbackSheetFrame'
+import { useSheetSession } from './useSheetSession'
 import { useFeedbackToast } from './useFeedbackToast'
 import { buildFeedbackContext, type FeedbackProgramContext } from '../../lib/feedbackContext'
 import {
@@ -45,6 +46,7 @@ export function FeatureRequestSheet({
   const [title, setTitle] = useState('')
   const [details, setDetails] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const sheetSession = useSheetSession(open)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -66,6 +68,7 @@ export function FeatureRequestSheet({
       return
     }
 
+    const session = sheetSession.current
     setIsSubmitting(true)
     setError(null)
     try {
@@ -90,7 +93,8 @@ export function FeatureRequestSheet({
 
       toast.show('Idea sent!', 'Thanks for helping shape WanderFit.')
       onSubmitted?.()
-      onOpenChange(false)
+      // The athlete may have closed (and reopened) the sheet while this was sending.
+      if (sheetSession.current === session) onOpenChange(false)
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Could not send idea. Please try again.'
@@ -102,7 +106,6 @@ export function FeatureRequestSheet({
 
   return (
     <FeedbackSheetFrame
-      dismissDisabled={isSubmitting}
       open={open}
       onOpenChange={onOpenChange}
       title="Request a feature"

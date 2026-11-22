@@ -6,6 +6,7 @@ import { useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { Body, Caption, Supporting } from '../Typography'
 import { FeedbackSheetFrame } from './FeedbackSheetFrame'
+import { useSheetSession } from './useSheetSession'
 import { useFeedbackToast } from './useFeedbackToast'
 import { buildFeedbackContext, type FeedbackProgramContext } from '../../lib/feedbackContext'
 import { FEEDBACK_RATING_NOTE_MAX, type RatingTrigger } from '../../lib/feedbackValidation'
@@ -49,6 +50,7 @@ export function RatingFeedbackSheet({
   const [stars, setStars] = useState<number>(0)
   const [note, setNote] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const sheetSession = useSheetSession(open)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -78,6 +80,7 @@ export function RatingFeedbackSheet({
       return
     }
 
+    const session = sheetSession.current
     setIsSubmitting(true)
     setError(null)
     try {
@@ -102,7 +105,8 @@ export function RatingFeedbackSheet({
 
       toast.show('Thanks for the rating!', 'Your private feedback goes straight to the WanderFit team.')
       onSubmitted?.()
-      onOpenChange(false)
+      // The athlete may have closed (and reopened) the sheet while this was sending.
+      if (sheetSession.current === session) onOpenChange(false)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Could not send rating. Please try again.'
       setError(message)
@@ -115,7 +119,6 @@ export function RatingFeedbackSheet({
 
   return (
     <FeedbackSheetFrame
-      dismissDisabled={isSubmitting}
       open={open}
       onOpenChange={handleOpenChange}
       title={trigger === 'post_workout_prompt' ? "How's WanderFit feeling?" : 'Rate WanderFit'}
