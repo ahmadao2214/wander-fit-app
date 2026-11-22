@@ -17,7 +17,7 @@
     "build:web": "node scripts/build-web.mjs",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:ci": "jest --ci",
+    "test:ci": "jest --ci --randomize",
     "typecheck": "tsc --noEmit",
     "verify:doctor": "node scripts/verify/run.mjs doctor",
     "verify:sentry": "node scripts/verify-sentry.mjs",
