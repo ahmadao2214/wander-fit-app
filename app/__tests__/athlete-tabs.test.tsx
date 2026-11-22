@@ -26,7 +26,7 @@ jest.mock('react-native-safe-area-context', () => ({
 describe('athlete tab destinations', () => {
   beforeEach(() => jest.clearAllMocks())
 
-  it.each(['workout', 'training-science'])('keeps %s reachable without a tab button', (name) => {
+  it.each(['workout', 'training-science', 'settings'])('keeps %s reachable without a tab button', (name) => {
     render(<AthleteLayout />)
 
     const screen = jest.requireMock('expo-router').Tabs.Screen.mock.calls
