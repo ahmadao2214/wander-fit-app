@@ -1,4 +1,4 @@
-import type { Doc } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
 import {
   countsAsDone,
@@ -58,6 +58,7 @@ export async function loadProgramCompletion(ctx: QueryCtx, program: Doc<"user_pr
     );
 
   const layout = layoutWith(override?.slotOverrides ?? []);
+  const layoutByKey = new Map(layout.map((slot) => [slotKey(slot), slot.templateId]));
   const counted = sessions.filter((s) => countsAsDone(s, program));
   const done = doneSlots(layout, counted);
 
@@ -66,6 +67,8 @@ export async function loadProgramCompletion(ctx: QueryCtx, program: Doc<"user_pr
     sessions: counted,
     /** Every workout logged in this block, Redos included (for history). */
     logged: sessions.filter((s) => countsAsDone({ ...s, redo: undefined }, program)),
+    /** The workout a slot holds, overrides applied. */
+    templateAt: (slot: SlotRef) => layoutByKey.get(slotKey(slot)) as Id<"program_templates"> | undefined,
     /** The session that did this slot, if it is done. */
     sessionFor: (slot: SlotRef) => done.get(slotKey(slot)),
     isSlotDone: (slot: SlotRef) => done.has(slotKey(slot)),

@@ -1,6 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { calendarStart, countsAsDone, phaseAnchor, slotOnDate } from "./blockCompletion";
 import { loadProgramCompletion } from "./programCompletion";
+import { athleteDate, athleteDayArgs, athleteToday } from "./athleteClock";
 import { countMainExercises } from "../lib/today";
 import { v } from "convex/values";
 import { mapUserWeekToTemplateWeek } from "./weekMapping";
@@ -1064,6 +1065,7 @@ export const moveWorkoutToDate = mutation({
     sourceWeek: v.number(),
     sourceDay: v.number(),
     targetDateISO: v.string(),
+    ...athleteDayArgs,
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -1158,7 +1160,7 @@ export const moveWorkoutToDate = mutation({
     const sourceDate = parseDateISO(sourceCurrentDate);
 
     // NO PAST DATES CONSTRAINT: Cannot move workouts to dates in the past
-    const todayStart = startOfDay(new Date());
+    const todayStart = athleteToday(args);
     if (targetDate < todayStart) {
       throw new Error("Cannot move workout to a past date");
     }
@@ -1378,8 +1380,8 @@ export const getProgramCalendarMeta = query({
  * - Program metadata (start/end dates, progress)
  */
 export const getFullProgramCalendar = query({
-  args: {},
-  handler: async (ctx) => {
+  args: athleteDayArgs,
+  handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       return null;
@@ -1481,7 +1483,7 @@ export const getFullProgramCalendar = query({
     if (program.sspUnlockedAt) unlockedPhases.push("SSP");
 
     // Today's info
-    const today = startOfDay(new Date());
+    const today = athleteToday(args);
     const todayISO = formatDateISO(today);
 
     // Current slot
@@ -1594,7 +1596,7 @@ export const getFullProgramCalendar = query({
               isToday: isTodayDate && !isCompleted,
               isInProgress,
               isLocked,
-              completedOnDate: doneBy?.completedAt ? formatDateISO(new Date(doneBy.completedAt)) : undefined,
+              completedOnDate: doneBy?.completedAt ? formatDateISO(athleteDate(doneBy.completedAt, args)) : undefined,
             });
           } else {
             // Template not found - this usually means templates need to be regenerated
@@ -1612,7 +1614,7 @@ export const getFullProgramCalendar = query({
     // Redos included: a workout logged on a day shows on that day
     for (const session of completion.logged) {
       if (session.completedAt) {
-        const completionDateISO = formatDateISO(new Date(session.completedAt));
+        const completionDateISO = formatDateISO(athleteDate(session.completedAt, args));
         if (calendarData[completionDateISO]) {
           const alreadyAdded = calendarData[completionDateISO].workouts.some(
             (w) => w.templateId === session.templateId.toString()

@@ -1,6 +1,7 @@
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { countsAsDone, slotOnDate } from "./blockCompletion";
 import { loadProgramCompletion } from "./programCompletion";
+import { athleteDayArgs, athleteToday } from "./athleteClock";
 import { getWorkoutForDate } from "./workoutCalendar";
 import { DEFAULT_WEEKS_PER_PHASE, mapUserWeekToTemplateWeek } from "./weekMapping";
 import { v } from "convex/values";
@@ -60,13 +61,6 @@ const DEFAULT_TRAINING_DAYS: Record<number, number[]> = {
   6: [1, 2, 3, 4, 5, 6],
   7: [0, 1, 2, 3, 4, 5, 6],
 };
-
-// Date helpers for cascade calculation
-function startOfDay(date: Date): Date {
-  const result = new Date(date);
-  result.setHours(0, 0, 0, 0);
-  return result;
-}
 
 function getAbsoluteIndex(slot: WorkoutSlot, workoutsPerWeek: number, weeksPerPhase: number): number {
   const phaseIdx = PHASE_ORDER.indexOf(slot.phase);
@@ -772,6 +766,7 @@ export const startSession = mutation({
     exerciseOrder: v.optional(v.array(v.number())),
     targetIntensity: v.optional(intensityValidator),
     skipCascade: v.optional(v.boolean()),
+    ...athleteDayArgs,
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -848,8 +843,15 @@ export const startSession = mutation({
           DEFAULT_TRAINING_DAYS[intake.preferredTrainingDaysPerWeek] ??
           DEFAULT_TRAINING_DAYS[3];
 
-        const today = startOfDay(new Date());
+        // The athlete's today, on their clock (see athleteClock)
+        const today = athleteToday(args);
         const weeksPerPhase = userProgram.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
+
+        // Get existing schedule overrides
+        const existingOverride = await ctx.db
+          .query("user_schedule_overrides")
+          .withIndex("by_user_program", (q) => q.eq("userProgramId", userProgram._id))
+          .first();
 
         // Today's slot, with the calendar's own mapping
         const todaySlot = slotOnDate(userProgram, (anchor) =>
@@ -865,12 +867,6 @@ export const startSession = mutation({
 
           const workoutsPerWeek = trainingDays.length;
           const todayIndex = getAbsoluteIndex(todaySlot, workoutsPerWeek, weeksPerPhase);
-
-          // Get existing schedule overrides
-          const existingOverride = await ctx.db
-            .query("user_schedule_overrides")
-            .withIndex("by_user_program", (q) => q.eq("userProgramId", userProgram._id))
-            .first();
 
           // Get all templates for user's category and skill level
           const allTemplates = await ctx.db
@@ -948,8 +944,17 @@ export const startSession = mutation({
               // Get slots in the cascade range
               const slotsInRange = allSlots.slice(todayIndex, selectedIndex + 1);
 
-              // Don't cascade over a workout that's done
-              const canCascade = !slotsInRange.some((slot) => completion.isSlotDone(slot));
+              // Don't cascade over a workout that's done, or over one the
+              // athlete moved to another date on the calendar: the cascade
+              // follows slot order, not dates, so it would undo the move
+              // (a workout moved onto today could land back off it, or one
+              // swapped away could land in the past)
+              const movedSlots = new Set(
+                (existingOverride?.dateOverrides ?? []).map((o) => `${o.phase}-${o.week}-${o.day}`)
+              );
+              const canCascade = !slotsInRange.some(
+                (slot) => completion.isSlotDone(slot) || movedSlots.has(`${slot.phase}-${slot.week}-${slot.day}`)
+              );
 
               if (canCascade) {
                 // Build new slot overrides with cascade

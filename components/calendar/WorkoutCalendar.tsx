@@ -8,6 +8,8 @@ import { api } from '../../convex/_generated/api'
 import { CalendarWeekView } from './CalendarWeekView'
 import { CalendarMonthView } from './CalendarMonthView'
 import type { Phase } from '../../types'
+import { localDayArgs } from '../../lib/weeksOnPlan'
+import { useCurrentDate } from '../../hooks/useCurrentDate'
 
 type ViewMode = 'week' | 'month'
 
@@ -67,7 +69,9 @@ export function WorkoutCalendar({
 
   // Fetch ALL calendar data upfront - no date range filtering
   // This ensures smooth navigation without loading states when scrolling
-  const fullCalendar = useQuery(api.workoutCalendar.getFullProgramCalendar)
+  // On the athlete's day, so today and moves match their calendar, not UTC
+  const today = useCurrentDate()
+  const fullCalendar = useQuery(api.workoutCalendar.getFullProgramCalendar, localDayArgs(today))
   const moveWorkoutToDate = useMutation(api.workoutCalendar.moveWorkoutToDate)
 
   // Handle week navigation
@@ -143,6 +147,7 @@ export function WorkoutCalendar({
     try {
       setIsMoving(true)
       await moveWorkoutToDate({
+        ...localDayArgs(),
         sourcePhase,
         sourceWeek,
         sourceDay,
