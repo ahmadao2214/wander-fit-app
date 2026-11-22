@@ -29,7 +29,7 @@ url: ${VERIFY_URL}
 - takeScreenshot: 01-settings-telemetry
 # Toggle analytics off and verify it updates to Off
 - tapOn:
-    id: analytics-opt-in-switch
+    id: "Share anonymous usage analytics"
 - extendedWaitUntil:
     visible: "Off"
     timeout: 15000
@@ -56,7 +56,7 @@ url: ${VERIFY_URL}
 - takeScreenshot: 03-settings-persisted-off
 # Restore to On
 - tapOn:
-    id: analytics-opt-in-switch
+    id: "Share anonymous usage analytics"
 - extendedWaitUntil:
     visible: "On"
     timeout: 15000
