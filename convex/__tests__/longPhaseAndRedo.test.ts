@@ -1,6 +1,6 @@
 import { convexTest } from "convex-test";
 import schema from "../schema";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import { convexModules } from "../../jest/convexModules";
 import type { Id } from "../_generated/dataModel";
 
@@ -136,5 +136,88 @@ describe("Redo", () => {
       templateId: ids.templates.W2D1,
     });
     expect(session).toBeNull();
+  });
+});
+
+describe("Redo, with two devices", () => {
+  it("a workout started elsewhere after a Redo doesn't let the Redo advance (regression)", async () => {
+    const { ids, t, asAthlete } = await setup({ currentWeek: 2, currentDay: 2 });
+    const { sessionId } = await asAthlete.mutation(api.gppWorkoutSessions.startSession, {
+      templateId: ids.templates.W2D1, skipCascade: true,
+    });
+    const redo = await t.run((ctx) => ctx.db.get(sessionId));
+    await asAthlete.mutation(api.gppWorkoutSessions.completeSession, { sessionId, exercises: redo!.exercises });
+    // Another device starts the due workout before this device's advance lands
+    await asAthlete.mutation(api.gppWorkoutSessions.startSession, { templateId: ids.templates.W2D2, skipCascade: true });
+
+    // Installed builds send no session id; new ones send it
+    const old = await asAthlete.mutation(api.userPrograms.advanceToNextDay, { programId: ids.programId });
+    expect(old.advanced).toBe(false);
+    const current = await asAthlete.mutation(api.userPrograms.advanceToNextDay, { programId: ids.programId, sessionId });
+    expect(current.advanced).toBe(false);
+  });
+});
+
+describe("swaps keep finished work where it was done", () => {
+  it("refuses a swap that would hand a done session to an earlier slot (regression)", async () => {
+    const { ids, t } = await setup({ currentWeek: 1, currentDay: 2 });
+    // W1D2 is not done; W2D1 is done in week 2
+    await t.run(async (ctx) => {
+      const s = await ctx.db.query("gpp_workout_sessions").filter((q) => q.eq(q.field("templateId"), ids.templates.W1D2)).first();
+      await ctx.db.delete(s!._id);
+    });
+    // Week 3 day 1 holds W2D1 again (not done). Moving it to week 1 day 2
+    // would make the week-2 session fill week 1 instead and reopen week 2.
+    const preview = await t.query(internal.chatHands.previewSwap, {
+      clerkId: "clerk_a",
+      slotA: { phase: "GPP", week: 1, day: 2 },
+      slotB: { phase: "GPP", week: 3, day: 1 },
+    });
+    expect(preview).toMatchObject({ valid: false, reason: "completed" });
+  });
+});
+
+describe("an override whose workout was deleted", () => {
+  it("falls back to the default workout, and doing it fills the slot (regression)", async () => {
+    const { ids, t, asAthlete } = await setup({ currentWeek: 3, currentDay: 1 });
+    await t.run(async (ctx) => {
+      const gone = await ctx.db.insert("program_templates", {
+        gppCategoryId: 2, phase: "GPP", skillLevel: "Moderate", week: 3, day: 1, name: "Gone", estimatedDurationMinutes: 30, exercises: [],
+      });
+      await ctx.db.delete(gone);
+      const user = (await ctx.db.query("users").first())!;
+      await ctx.db.insert("user_schedule_overrides", {
+        userId: user._id, userProgramId: ids.programId,
+        slotOverrides: [{ phase: "GPP", week: 3, day: 1, templateId: gone }],
+        createdAt: Date.now(), updatedAt: Date.now(),
+      });
+    });
+    expect((await asAthlete.query(api.scheduleOverrides.getTodayWorkout, {}))?.name).toBe("W2D1");
+
+    const { sessionId } = await asAthlete.mutation(api.gppWorkoutSessions.startSession, {
+      templateId: ids.templates.W2D1, skipCascade: true,
+    });
+    const started = await t.run((ctx) => ctx.db.get(sessionId));
+    expect(started?.redo).toBeUndefined();
+    await asAthlete.mutation(api.gppWorkoutSessions.completeSession, { sessionId, exercises: started!.exercises });
+    expect((await asAthlete.query(api.scheduleOverrides.getTodayWorkout, {}))?.name).toBe("W2D2");
+  });
+});
+
+describe("the calendar's history", () => {
+  it("shows a Redo on the day it was done", async () => {
+    const { ids, t, asAthlete } = await setup({ currentWeek: 2, currentDay: 2 });
+    const { sessionId } = await asAthlete.mutation(api.gppWorkoutSessions.startSession, {
+      templateId: ids.templates.W1D1, skipCascade: true,
+    });
+    const started = await t.run((ctx) => ctx.db.get(sessionId));
+    expect(started?.redo).toBe(true);
+    await asAthlete.mutation(api.gppWorkoutSessions.completeSession, { sessionId, exercises: started!.exercises });
+    const done = await t.run((ctx) => ctx.db.get(sessionId));
+    const day = new Date(done!.completedAt!);
+    const iso = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+
+    const calendar = await asAthlete.query(api.workoutCalendar.getFullProgramCalendar, {});
+    expect(calendar!.calendarData[iso]?.workouts.some((w) => w.name === "W1D1" && w.isCompleted)).toBe(true);
   });
 });

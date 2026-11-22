@@ -11,7 +11,7 @@ import type { QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { writeExerciseOrder } from "./gppWorkoutSessions";
-import { applyWorkoutSwap, resolveSlotPair, todayWorkoutFor } from "./scheduleOverrides";
+import { applyWorkoutSwap, resolveSlotPair, swappedOverrides, todayWorkoutFor } from "./scheduleOverrides";
 import type { WorkoutSlotRef } from "./scheduleOverrides";
 import {
   OMITTED_WRITES,
@@ -411,6 +411,9 @@ export const previewSwap = internalQuery({
     // Same rule the swap itself enforces: a workout done in this block stays put.
     const completion = await loadProgramCompletion(ctx, program);
     if (completion.isSlotDone(args.slotA) || completion.isSlotDone(args.slotB)) {
+      return refuse("completed");
+    }
+    if (!completion.keepsDone(swappedOverrides(existingOverride, args.slotA, args.slotB, templateA._id, templateB._id))) {
       return refuse("completed");
     }
 

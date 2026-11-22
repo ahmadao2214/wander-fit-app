@@ -1609,7 +1609,8 @@ export const getFullProgramCalendar = query({
     }
 
     // Add workouts completed on specific dates (even if not currently scheduled there)
-    for (const session of completion.sessions) {
+    // Redos included: a workout logged on a day shows on that day
+    for (const session of completion.logged) {
       if (session.completedAt) {
         const completionDateISO = formatDateISO(new Date(session.completedAt));
         if (calendarData[completionDateISO]) {

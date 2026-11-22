@@ -1011,8 +1011,12 @@ export const startSession = mutation({
 
                 const now = Date.now();
 
-                // Save override record
-                if (existingOverride) {
+                // Save override record, unless it would hand a finished
+                // session to a different slot (see keepsDone)
+                const keepsDone = completion.keepsDone(newSlotOverrides);
+                if (!keepsDone) {
+                  // Leave the schedule as it is
+                } else if (existingOverride) {
                   await ctx.db.patch(existingOverride._id, {
                     slotOverrides: newSlotOverrides,
                     updatedAt: now,
@@ -1027,8 +1031,10 @@ export const startSession = mutation({
                   });
                 }
 
-                cascadeApplied = true;
-                cascadeAffectedSlots = slotsInRange.length;
+                if (keepsDone) {
+                  cascadeApplied = true;
+                  cascadeAffectedSlots = slotsInRange.length;
+                }
               }
             }
           }

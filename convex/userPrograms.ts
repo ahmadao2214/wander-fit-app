@@ -1,5 +1,6 @@
 import { query, mutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
+import type { Doc } from "./_generated/dataModel";
 import { DEFAULT_WEEKS_PER_PHASE, mapUserWeekToTemplateWeek } from "./weekMapping";
 import { programShape } from "./programShape";
 import { anchorsAfterCheckIn } from "./blockCompletion";
@@ -553,7 +554,11 @@ export const completeIntake = mutation({
  * phase is unlocked. Athletes cannot access SPP until GPP is complete.
  */
 export const advanceToNextDay = mutation({
-  args: { programId: v.id("user_programs") },
+  args: {
+    programId: v.id("user_programs"),
+    /** The session just completed. Builds before the Redo flag don't send it. */
+    sessionId: v.optional(v.id("gpp_workout_sessions")),
+  },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
@@ -581,12 +586,24 @@ export const advanceToNextDay = mutation({
 
     // The app calls this right after completing a workout. A Redo is extra
     // work on a workout already done, so the program stays where it is.
-    // (Installed builds call this too, so the check lives here, not in the app.)
-    const latest = await ctx.db
-      .query("gpp_workout_sessions")
-      .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
-      .order("desc")
-      .first();
+    // (Installed builds call this too, so the check lives here, not in the
+    // app.) Without a session id, the workout just finished is the one
+    // completed last: a workout started since on another device doesn't hide it.
+    const latest = args.sessionId
+      ? await ctx.db.get(args.sessionId)
+      : (
+          await ctx.db
+            .query("gpp_workout_sessions")
+            .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
+            .filter((q) => q.eq(q.field("status"), "completed"))
+            .collect()
+        ).reduce<Doc<"gpp_workout_sessions"> | null>(
+          (last, s) => (!last || (s.completedAt ?? 0) > (last.completedAt ?? 0) ? s : last),
+          null,
+        );
+    if (latest && latest.userProgramId !== program._id) {
+      throw new Error("Session is not from this program");
+    }
     if (latest?.status === "completed" && latest.redo) {
       return {
         advanced: false,

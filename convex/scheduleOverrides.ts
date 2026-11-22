@@ -645,6 +645,25 @@ export async function resolveSlotPair(
 }
 
 /**
+ * The slot overrides after swapping the workouts on two slots.
+ */
+export function swappedOverrides(
+  existingOverride: Doc<"user_schedule_overrides"> | null,
+  slotA: WorkoutSlotRef,
+  slotB: WorkoutSlotRef,
+  templateA: Id<"program_templates">,
+  templateB: Id<"program_templates">,
+) {
+  const at = (o: WorkoutSlotRef, slot: WorkoutSlotRef) =>
+    o.phase === slot.phase && o.week === slot.week && o.day === slot.day;
+  return [
+    ...(existingOverride?.slotOverrides ?? []).filter((o) => !at(o, slotA) && !at(o, slotB)),
+    { phase: slotA.phase, week: slotA.week, day: slotA.day, templateId: templateB },
+    { phase: slotB.phase, week: slotB.week, day: slotB.day, templateId: templateA },
+  ];
+}
+
+/**
  * Swap two workout slots (same phase only).
  * Caller has already loaded the signed-in athlete and their program.
  */
@@ -680,27 +699,10 @@ export async function applyWorkoutSwap(
   }
 
   const now = Date.now();
-  let newSlotOverrides = existingOverride?.slotOverrides || [];
-
-  newSlotOverrides = newSlotOverrides.filter(
-    (o) =>
-      !(o.phase === slotA.phase && o.week === slotA.week && o.day === slotA.day) &&
-      !(o.phase === slotB.phase && o.week === slotB.week && o.day === slotB.day),
-  );
-
-  newSlotOverrides.push({
-    phase: slotA.phase,
-    week: slotA.week,
-    day: slotA.day,
-    templateId: templateB._id,
-  });
-
-  newSlotOverrides.push({
-    phase: slotB.phase,
-    week: slotB.week,
-    day: slotB.day,
-    templateId: templateA._id,
-  });
+  const newSlotOverrides = swappedOverrides(existingOverride, slotA, slotB, templateA._id, templateB._id);
+  if (!completion.keepsDone(newSlotOverrides)) {
+    throw new Error("Cannot swap: it would move a workout that's already done");
+  }
 
   if (existingOverride) {
     await ctx.db.patch(existingOverride._id, {
