@@ -376,21 +376,29 @@ describe("persona modes", () => {
 
   it("requires one completed session with every exercise done and the program on day 2", () => {
     const email = "e2e.1+clerk_test@example.com"
-    const finished = { status: "completed", exerciseIds: ["w", "a", "b"], exercisesCompleted: 2, exercisesNotDone: 0 }
+    const finished = { status: "completed", exerciseIds: ["w", "a", "b"], mainExercises: 2, mainExercisesNotLogged: 0 }
     const done = { found: true, email, hasProgram: true, phase: "GPP", week: 1, day: 2, sessions: [finished] }
     expect(assertWorkoutLoop(`noise\n${JSON.stringify(done, null, 2)}\n`, email)).toMatchObject({ day: 2 })
     expect(() => assertWorkoutLoop(JSON.stringify({ ...done, day: 1 }), email)).toThrow(/\(day\)/)
     expect(() =>
       assertWorkoutLoop(JSON.stringify({ ...done, sessions: [{ ...finished, status: "in_progress" }] }), email)
     ).toThrow(/sessionStatus/)
+    // A main exercise missing, skipped, or short of its sets
     expect(() =>
-      assertWorkoutLoop(JSON.stringify({ ...done, sessions: [{ ...finished, exercisesCompleted: 1, exercisesNotDone: 1 }] }), email)
-    ).toThrow(/allExercisesDone/)
+      assertWorkoutLoop(JSON.stringify({ ...done, sessions: [{ ...finished, mainExercisesNotLogged: 1 }] }), email)
+    ).toThrow(/allMainExercisesLogged/)
+    // No template to compare with
+    expect(() =>
+      assertWorkoutLoop(
+        JSON.stringify({ ...done, sessions: [{ ...finished, mainExercises: null, mainExercisesNotLogged: null }] }),
+        email
+      )
+    ).toThrow(/allMainExercisesLogged/)
     expect(() => assertWorkoutLoop(JSON.stringify({ ...done, sessions: [finished, finished] }), email)).toThrow(
       /sessionCount/
     )
     expect(() => assertWorkoutLoop(JSON.stringify({ ...done, sessions: [] }), email)).toThrow(
-      /sessionCount, sessionStatus, allExercisesDone/
+      /sessionCount, sessionStatus, allMainExercisesLogged/
     )
     expect(() => assertWorkoutLoop("", email)).toThrow(/no inspect output/)
   })

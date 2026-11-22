@@ -401,9 +401,9 @@ export function assertFirstRun(output, email) {
 }
 
 // The workout loop starts an onboarded persona at GPP week 1 day 1 with no
-// sessions. Finishing today's workout must save one completed session with
-// every main exercise done (the skipped warmup counts as done), and move the
-// program to day 2.
+// sessions. Finishing today's workout must save one completed session that
+// logs every prescribed set of every main exercise, and move the program to
+// day 2.
 export function assertWorkoutLoop(output, email) {
   const parsed = parseInspect(output)
   const sessions = Array.isArray(parsed?.sessions) ? parsed.sessions : []
@@ -413,7 +413,13 @@ export function assertWorkoutLoop(output, email) {
       ...parsed,
       sessionCount: sessions.length,
       sessionStatus: session?.status ?? null,
-      allExercisesDone: session !== null && session.exercisesCompleted > 0 && session.exercisesNotDone === 0,
+      // Every main exercise of the template saved at its position, completed
+      // and with every prescribed set logged; the skipped warmup is not one.
+      allMainExercisesLogged:
+        session !== null &&
+        typeof session.mainExercises === "number" &&
+        session.mainExercises > 0 &&
+        session.mainExercisesNotLogged === 0,
     },
     {
       found: true,
@@ -422,7 +428,7 @@ export function assertWorkoutLoop(output, email) {
       day: 2,
       sessionCount: 1,
       sessionStatus: "completed",
-      allExercisesDone: true,
+      allMainExercisesLogged: true,
     },
     `the workout loop left ${email} without one finished session and the program on day 2`
   )

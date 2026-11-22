@@ -2,6 +2,7 @@ import { internalMutation, internalQuery, type MutationCtx } from "./_generated/
 import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { calculateWeeksPerPhase } from "./weekMapping";
+import { mainTemplateIndices } from "../lib/executionOrder";
 
 // Internal only. The persona CLI calls these on wander-fit-e2e. Never from the app.
 
@@ -220,13 +221,23 @@ export const inspect = internalQuery({
       week: program?.currentWeek ?? null,
       day: program?.currentDay ?? null,
       // Oldest first, so a flow's own session is the last one.
-      sessions: sessions.map((session) => ({
-        status: session.status,
-        exerciseIds: session.exercises.map((exercise) => exercise.exerciseId),
-        // Warmup entries are saved completed and skipped; main exercises are
-        // completed once every set is logged.
-        exercisesCompleted: session.exercises.filter((exercise) => exercise.completed && !exercise.skipped).length,
-        exercisesNotDone: session.exercises.filter((exercise) => !exercise.completed).length,
+      sessions: await Promise.all(sessions.map(async (session) => {
+        // Saved exercises line up by position with the template's, warmup
+        // included. A main exercise is logged when its saved entry is
+        // completed, not skipped, and logs every prescribed set.
+        const template = await ctx.db.get(session.templateId);
+        const mainIndices = template ? mainTemplateIndices(template.exercises) : null;
+        const notLogged = (mainIndices ?? []).filter((index) => {
+          const saved = session.exercises[index];
+          const logged = saved?.sets.filter((set) => set.completed && !set.skipped).length ?? 0;
+          return !saved || !saved.completed || saved.skipped || logged < template!.exercises[index].sets;
+        });
+        return {
+          status: session.status,
+          exerciseIds: session.exercises.map((exercise) => exercise.exerciseId),
+          mainExercises: mainIndices?.length ?? null,
+          mainExercisesNotLogged: mainIndices ? notLogged.length : null,
+        };
       })),
     };
   },
