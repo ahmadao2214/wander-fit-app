@@ -15,7 +15,8 @@ const strap = (nm, shapes, color, width) => [
 
 // ── running shoes: sleek modern athletic silhouettes with running strides ───
 
-function shoe(nm, { upper, heelColor, accent, stripe2, sole, lugs = false, spikes = false }) {
+// The shoe's art, toe pointing right, centred near the origin.
+function shoeGroups({ upper, heelColor, accent, stripe2, sole, lugs = false, spikes = false, silhouette = false }) {
   // Sleek low-cut modern running shoe profile (no bulbous heel bump):
   // sculpted heel counter, clean ankle cutout, angled tongue, tapered toe box.
   const upperShape = curve([
@@ -47,6 +48,15 @@ function shoe(nm, { upper, heelColor, accent, stripe2, sole, lugs = false, spike
     [-16, 42, 24, 0, -24, 0],
     [-80, 42, 12, 0, -6, -2],
   ])
+
+  // A plain shape for a shoe seen small and far away: no laces or stripes.
+  if (silhouette) {
+    return [
+      line('upper outline', [upperShape], INK, { width: OUTLINE }),
+      paint('upper', [upperShape], upper),
+      solid('midsole', [midsole], '#F8FAFC'),
+    ]
+  }
 
   const groups = [
     line('upper outline', [upperShape], INK, { width: OUTLINE }),
@@ -89,6 +99,12 @@ function shoe(nm, { upper, heelColor, accent, stripe2, sole, lugs = false, spike
       solid('spikes', pins, '#E2E8F0'),
     )
   }
+  return groups
+}
+
+function shoe(nm, colors) {
+  const { spikes = false } = colors
+  const groups = shoeGroups(colors)
 
   // Genuine running stride: lifts off, pitches heel-down for strike, rolls
   // midfoot onto toe-off with cushioned compression + streaming ground dashes.
@@ -206,97 +222,122 @@ function shoe(nm, { upper, heelColor, accent, stripe2, sole, lugs = false, spike
 export const crossCountry = () =>
   shoe('cross-country', { upper: '#16A34A', heelColor: '#15803D', accent: '#FACC15', sole: '#475569', lugs: true })
 
-export const trackDistance = () =>
-  shoe('track-distance', { upper: '#2563EB', heelColor: '#1D4ED8', accent: '#F97316', stripe2: '#F8FAFC', sole: '#64748B', spikes: true })
+// Track (Distance)'s spike, reused by Track (Sprints/Jumps) so the two read as a pair.
+const SPIKE = { upper: '#2563EB', heelColor: '#1D4ED8', accent: '#F97316', stripe2: '#F8FAFC', sole: '#64748B', spikes: true }
 
-// ── track sprints/jumps: explosive vaulting arc clears the planted hurdle ───
+export const trackDistance = () =>
+  shoe('track-distance', SPIKE)
+
+// ── track sprints/jumps: a spike shoe clears the hurdle toward us and lands ─
 
 export const trackSprints = () => {
   const stripes = [-70, -42, -14, 14, 42].map((x) => rect(x + 14, -48, 14, 20))
+  // Two dust clouds kicked up where the shoe lands, in front of the hurdle.
+  const puffs = [ellipse(-14, 0, 18, 10), ellipse(12, -3, 22, 13)]
+  // The hurdle faces us, so the shoe jumps toward us: small and behind the
+  // bar on takeoff, over the top, then bigger and in front on landing. Two
+  // copies share one path; the cut at the top of the arc moves the shoe from
+  // behind the crossbar to in front of it.
+  const TOP = 24
+  const path = {
+    nm: 'spike path',
+    null: true,
+    ks: transform({
+      p: posTrack({
+        x: -14,
+        y: 22,
+        xKeys: [
+          { t: 6, v: -14, ease: EASE.inOut },
+          { t: TOP, v: 0, ease: EASE.inOut },
+          { t: 42, v: 10, ease: EASE.settle },
+          { t: 50, v: 10 },
+        ],
+        yKeys: [
+          { t: 6, v: 22, ease: EASE.rise },
+          { t: TOP, v: -88, ease: EASE.fall },
+          { t: 42, v: 46, ease: EASE.inOut },
+          { t: 50, v: 46 },
+        ],
+      }),
+      r: track([
+        { t: 6, v: -24, ease: EASE.inOut },
+        { t: TOP, v: 0, ease: EASE.inOut },
+        { t: 40, v: 12, ease: EASE.settle },
+        { t: 48, v: 0 },
+      ]),
+      s: scaleTrack([
+        { t: 6, v: [28, 28], ease: EASE.inOut },
+        { t: TOP, v: [40, 40], ease: EASE.inOut },
+        { t: 42, v: [56, 56], ease: EASE.settle },
+        { t: 46, v: [60, 52], ease: EASE.settle },
+        { t: 52, v: [56, 56] },
+      ], [28, 28]),
+    }),
+  }
+  const spike = (nm, behind) => ({
+    nm,
+    parent: 'spike path',
+    ks: transform({
+      o: behind
+        ? track([
+            { t: 6, v: 0, ease: EASE.linear },
+            { t: 11, v: 100, ease: EASE.linear },
+            { t: TOP, v: 100, ease: EASE.linear },
+            { t: TOP + 1, v: 0 },
+          ])
+        : track([
+            { t: TOP, v: 0, ease: EASE.linear },
+            { t: TOP + 1, v: 100, ease: EASE.linear },
+            { t: 54, v: 100, ease: EASE.linear },
+            { t: 64, v: 0 },
+          ]),
+    }),
+    // The takeoff copy is small and mostly behind the bar, so a plain
+    // silhouette keeps the file inside its size budget.
+    groups: shoeGroups(behind ? { ...SPIKE, silhouette: true } : SPIKE),
+  })
   return buildSport({
     nm: 'track-sprints-jumps',
     family: 'still',
     bottom: 66,
     layers: [
+      path,
+      spike('spike landing', false),
       {
-        // Bright vaulting comet head soaring cleanly over the hurdle crossbar.
-        nm: 'vaulter',
+        nm: 'dust',
         ks: transform({
-          p: posTrack({
-            xKeys: [
-              { t: 8, v: -82, ease: EASE.linear },
-              { t: 24, v: 0, ease: EASE.linear },
-              { t: 40, v: 82, ease: EASE.settle },
-              { t: 46, v: 0 },
-            ],
-            yKeys: [
-              { t: 8, v: 18, ease: EASE.rise },
-              { t: 24, v: -86, ease: EASE.fall },
-              { t: 40, v: 18, ease: EASE.linear },
-              { t: 46, v: 0 },
-            ],
-          }),
-          r: track([
-            { t: 8, v: -52, ease: EASE.inOut },
-            { t: 24, v: 0, ease: EASE.inOut },
-            { t: 40, v: 52, ease: EASE.linear },
-            { t: 46, v: 0 },
-          ]),
+          p: [10, 66, 0],
+          s: scaleTrack([
+            { t: 42, v: [30, 30], ease: EASE.settle },
+            { t: 58, v: [130, 90] },
+          ], [30, 30]),
           o: track([
-            { t: 8, v: 0, ease: EASE.linear },
-            { t: 12, v: 100, ease: EASE.linear },
-            { t: 36, v: 100, ease: EASE.linear },
-            { t: 42, v: 0 },
+            { t: 42, v: 0, ease: EASE.linear },
+            { t: 45, v: 85, ease: EASE.inOut },
+            { t: 60, v: 0 },
           ]),
         }),
-        groups: [
-          paint('core', [ellipse(4, 0, 26, 12)], '#FFFFFF'),
-          solid('streak', [curve([
-            [-32, 0, 0, 0, 14, -8],
-            [12, -8, -10, 0, 10, 0],
-            [22, 0, 0, -6, 0, 6],
-            [12, 8, 10, 0, -10, 0],
-          ])], '#FACC15'),
-        ],
+        groups: [solid('puffs', puffs, '#CBD5E1')],
       },
       {
-        // Glowing arc path tracing the jump trajectory across the top of the hurdle.
-        nm: 'jump arc',
-        ks: transform({
-          o: track([
-            { t: 12, v: 0, ease: EASE.inOut },
-            { t: 22, v: 75, ease: EASE.inOut },
-            { t: 36, v: 55, ease: EASE.inOut },
-            { t: 48, v: 0 },
-          ]),
-        }),
-        groups: [
-          line('trail', [curve([
-            [-76, 8, 0, 0, 22, -78],
-            [0, -86, -34, 0, 34, 0],
-            [76, 8, -22, -78, 0, 0],
-          ], false)], '#FACC15', { width: 5, dash: [10, 10] }),
-        ],
-      },
-      {
-        // Crossbar vibrates/dips slightly on pass-over while posts & feet stay planted.
+        // The crossbar shivers as the shoe skims it; posts and feet stay planted.
         nm: 'board',
         ks: transform({
           p: posTrack({
             yKeys: [
-              { t: 22, v: 0, ease: EASE.inOut },
-              { t: 27, v: 7, ease: EASE.inOut },
-              { t: 33, v: -3, ease: EASE.inOut },
-              { t: 40, v: 2, ease: EASE.inOut },
-              { t: 48, v: 0 },
+              { t: 24, v: 0, ease: EASE.inOut },
+              { t: 29, v: 5, ease: EASE.inOut },
+              { t: 35, v: -2, ease: EASE.inOut },
+              { t: 42, v: 1, ease: EASE.inOut },
+              { t: 50, v: 0 },
             ],
           }),
           r: track([
-            { t: 22, v: 0, ease: EASE.inOut },
-            { t: 27, v: 3, ease: EASE.inOut },
-            { t: 34, v: -2, ease: EASE.inOut },
-            { t: 42, v: 1, ease: EASE.inOut },
-            { t: 50, v: 0 },
+            { t: 24, v: 0, ease: EASE.inOut },
+            { t: 29, v: 2, ease: EASE.inOut },
+            { t: 36, v: -1.5, ease: EASE.inOut },
+            { t: 44, v: 0.5, ease: EASE.inOut },
+            { t: 52, v: 0 },
           ]),
         }),
         groups: [
@@ -304,6 +345,7 @@ export const trackSprints = () => {
           solid('board', [rect(0, -48, 174, 26, 3)], '#FAFAF7'),
         ],
       },
+      spike('spike takeoff', true),
       {
         nm: 'frame',
         groups: [
