@@ -37,10 +37,7 @@ url: ${VERIFY_URL}
 # Navigate back to Profile, reopen App settings, and assert persistence (still Off)
 - tapOn:
     id: "Back"
-- extendedWaitUntil:
-    visible: "Training info"
-    timeout: 30000
-- openLink: ${output.profileBottomUrl}
+# Back lands on Profile at its previous scroll position, near the Settings row
 - extendedWaitUntil:
     visible:
       id: profile-app-settings
