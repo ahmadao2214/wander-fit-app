@@ -2,12 +2,27 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="description" content="A strength and conditioning app for athletes, planned backward from your tryout. Pick your test date and see your plan.">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="description" content="Strength training for athletes 14 to 17, planned backward from tryout or first game across GPP, SPP, and SSP. Preview your schedule and start the 2-week free beta.">
   <meta name="theme-color" content="#f6f7f9">
-  <!-- Sign-ups POST here. Empty = preview mode: the form validates but stores nothing. -->
-  <meta name="waitlist-endpoint" content="">
-  <title>WanderFit · Circle your tryout</title>
+  <meta name="color-scheme" content="light">
+  <!-- Production Convex Beta On-Ramp endpoint. Leave empty or pass ?preview=1 to test locally without storing. -->
+  <meta name="waitlist-endpoint" content="https://fleet-mallard-22.convex.site/waitlist">
+  <title>WanderFit · Strength training planned backward from your tryout</title>
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="WanderFit · Circle your tryout">
+  <meta property="og:description" content="Strength training for athletes 14 to 17, planned backward from tryout or first game across GPP, SPP, and SSP. Start the 2-week free beta.">
+  <meta property="og:image" content="assets/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="WanderFit · Circle your tryout">
+  <meta name="twitter:description" content="Strength training for athletes 14 to 17, planned backward from tryout or first game across GPP, SPP, and SSP.">
+  <meta name="twitter:image" content="assets/og.png">
+
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
   <link rel="preload" href="fonts/Archivo-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="styles.css">
   <script type="module" src="app.mjs"></script>
@@ -16,161 +31,275 @@
   <a class="skip" href="#main">Skip to content</a>
 
   <header class="top wrap">
-    <a class="wordmark" href="#">WanderFit</a>
+    <a class="wordmark" href="#main">WanderFit</a>
+    <nav class="top-nav" aria-label="Page sections">
+      <a href="#inside">The app</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
+    </nav>
   </header>
 
   <main id="main">
     <section class="hero wrap" aria-labelledby="hero-title">
       <div class="hero-copy">
         <h1 id="hero-title">Circle your <span class="circled">tryout<svg viewBox="0 0 300 120" preserveAspectRatio="none" aria-hidden="true"><path d="M150 8C70 6 10 30 12 64c2 36 78 50 160 46 74-4 118-26 116-56C286 22 214 4 120 14"/></svg></span>.</h1>
-        <p class="product">A strength and conditioning app for athletes, planned backward from your tryout.</p>
-        <p class="lede">Tap your test day. You learn the lifts, build strength, then ease off so your legs are fresh.</p>
-
-        <form id="plan-form" class="controls" aria-label="Your test">
-          <div class="field">
-            <label for="test">What’s the test?</label>
-            <select id="test" name="test">
-              <option value="tryout">Team tryout</option>
-              <option value="beep">Beep test</option>
-              <option value="mile">1.5-mile run</option>
-              <option value="academy">Academy trial</option>
-            </select>
-          </div>
-          <fieldset class="field">
-            <legend>Have you lifted weights before?</legend>
-            <div class="segmented">
-              <label><input type="radio" name="experience" value="never" checked><span>Never</span></label>
-              <label><input type="radio" name="experience" value="some"><span>A little</span></label>
-              <label><input type="radio" name="experience" value="regular"><span>Regularly</span></label>
-            </div>
-          </fieldset>
-        </form>
+        <p class="product">Strength training for athletes 14 to 17, planned backward from tryout or first game.</p>
+        <p class="lede">Tap a date on the calendar. WanderFit divides the weeks before it into three phases, and shows your full plan before you create an account.</p>
       </div>
 
       <div class="planner">
         <div class="cal-head" aria-hidden="true"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
-        <div class="calendar" id="calendar" role="grid" aria-label="Pick your test day. Use arrow keys to move between days."></div>
+        <div class="calendar" id="calendar" role="grid" aria-label="Pick your tryout or season date. Use arrow keys to move between days."></div>
         <div class="later">
           <label for="later-date">Later than this?</label>
           <input type="date" id="later-date">
-          <button class="quiet" type="button" id="no-date">No date yet</button>
+          <button class="quiet" type="button" id="no-date" aria-pressed="false">No date yet</button>
         </div>
       </div>
 
       <div class="hero-act">
         <p class="summary" id="summary" aria-live="polite"></p>
 
-        <div class="actions">
-          <button class="primary" type="button" id="save">Save my spot</button>
+        <dl class="legend">
+          <div>
+            <dt><span class="key gpp" aria-hidden="true"></span>GPP</dt>
+            <dd>General Physical Preparedness. Builds general fitness and movement quality.</dd>
+          </div>
+          <div>
+            <dt><span class="key spp" aria-hidden="true"></span>SPP</dt>
+            <dd>Specific Physical Preparedness. Shifts training toward the demands of your sport.</dd>
+          </div>
+          <div>
+            <dt><span class="key ssp" aria-hidden="true"></span>SSP</dt>
+            <dd>Sport-Specific Preparedness. Sharpens you for the season itself.</dd>
+          </div>
+        </dl>
+
+        <div class="cta-block" id="hero-cta-wrap">
+          <button class="cta" type="button" id="open-form" data-open-form>Start 2-week free beta</button>
+          <p class="fine-cta">Free for 2 weeks. No card required. iPhone, browser, or Android.</p>
+          <a class="already" id="already" href="#access">Already signed up? View beta access and setup steps</a>
         </div>
 
-        <form id="signup" class="signup" novalidate hidden aria-labelledby="signup-title">
-          <h2 id="signup-title" tabindex="-1">Who’s training?</h2>
+        <form id="onramp" class="onramp" novalidate hidden aria-labelledby="onramp-title">
+          <h2 id="onramp-title" tabindex="-1">Start your 2-week free beta</h2>
+
           <fieldset class="field">
-            <legend>Who’s filling this in?</legend>
-            <div class="segmented">
-              <label><input type="radio" name="role" value="athlete" checked><span>I’m the athlete</span></label>
-              <label><input type="radio" name="role" value="parent"><span>I’m a parent</span></label>
+            <legend>Who is signing up?</legend>
+            <div class="seg">
+              <label><input type="radio" name="role" value="athlete_14_17" checked><span>Athlete <span class="nowrap">(14–17)</span></span></label>
+              <label><input type="radio" name="role" value="athlete_18_plus"><span>Adult Athlete <span class="nowrap">(18+)</span></span></label>
+              <label><input type="radio" name="role" value="parent"><span>Parent / Guardian</span></label>
             </div>
+            <p class="hint">Under 14? Ask a parent or guardian to sign up above.</p>
           </fieldset>
-          <div class="trio">
-            <div class="field">
-              <label for="name">Athlete’s first name</label>
-              <input id="name" name="athleteName" autocomplete="given-name" maxlength="80" required>
-            </div>
-            <div class="field">
-              <label for="age">Age</label>
-              <select id="age" name="athleteAge" required>
-                <option value="">Age</option>
-                <option value="12">12 or under</option>
-                <option>13</option><option>14</option><option>15</option><option>16</option>
-                <option>17</option><option>18</option><option>19</option>
-              </select>
-            </div>
-            <div class="field">
-              <label for="sport">Sport</label>
-              <select id="sport" name="sport" required>
-                <option value="">Choose</option>
-                <option>Soccer</option><option>Basketball</option><option>Volleyball</option>
-                <option>Baseball</option><option>Softball</option><option>Lacrosse</option>
-                <option>Football</option><option>Track or cross country</option>
-                <option>Water polo</option><option>Wrestling</option><option>Other</option>
-              </select>
-            </div>
+
+          <div class="field">
+            <label for="email" id="email-label">Your email</label>
+            <input id="email" name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" enterkeyhint="next" maxlength="254" required aria-describedby="email-err">
+            <p class="err" id="email-err" hidden></p>
           </div>
-          <div class="pair">
-            <div class="field">
-              <label for="email" id="email-label">Your email</label>
-              <input id="email" name="athleteEmail" type="email" inputmode="email" autocomplete="email" maxlength="254" required>
-            </div>
-            <div class="field">
-              <label for="parent-email" id="parent-label">Parent’s email</label>
-              <input id="parent-email" name="parentEmail" type="email" inputmode="email" maxlength="254" required>
-            </div>
+
+          <div class="field" id="parent-field">
+            <label for="parent-email">Parent email <span class="opt">(optional)</span></label>
+            <input id="parent-email" name="parentEmail" type="email" inputmode="email" autocapitalize="off" spellcheck="false" enterkeyhint="next" maxlength="254" aria-describedby="parent-hint parent-err">
+            <p class="hint" id="parent-hint">So we can share beta details with them too.</p>
+            <p class="err" id="parent-err" hidden></p>
           </div>
-          <fieldset class="field">
-            <legend>Want a season pass held for you?</legend>
-            <div class="options">
-              <label><input type="radio" name="intent" value="reserve" checked><span><strong>Hold one for me.</strong> $34.99 through test day, charged only if you keep going after the two free weeks.</span></label>
-              <label><input type="radio" name="intent" value="updates"><span><strong>Just keep me posted.</strong></span></label>
+
+          <fieldset class="field" aria-describedby="intent-err">
+            <legend>Free for 2 weeks during beta, no card needed. If it clicks, which plan would you pick?</legend>
+            <div class="opts">
+              <label>
+                <input type="radio" name="intent" value="season_pass">
+                <span>
+                  <strong>$35 Season Pass</strong>
+                  <small>One-time payment for a 12-week program through tryout or season. No auto-renewal.</small>
+                </span>
+              </label>
+              <label>
+                <input type="radio" name="intent" value="monthly">
+                <span>
+                  <strong>$15/month</strong>
+                  <small>Flexible month-to-month access.</small>
+                </span>
+              </label>
+              <label>
+                <input type="radio" name="intent" value="free_beta_only">
+                <span>
+                  <strong>Just trying the free beta first</strong>
+                </span>
+              </label>
             </div>
+            <p class="err" id="intent-err" hidden></p>
           </fieldset>
-          <div class="hp" aria-hidden="true"><label for="website">Leave this empty</label><input id="website" name="website" tabindex="-1" autocomplete="off"></div>
-          <p class="error" id="error" role="alert" hidden></p>
-          <button class="primary" type="submit" id="submit">Save my spot</button>
-          <p class="fine" id="fine">Nothing is charged today. We email you before anything starts.</p>
+
+          <div class="hp" aria-hidden="true">
+            <label for="website">Leave this empty</label>
+            <input id="website" name="website" tabindex="-1" autocomplete="off">
+          </div>
+
+          <p class="err" id="form-err" role="alert" hidden></p>
+
+          <div class="submit-row">
+            <button class="cta" type="submit" id="submit">Start 2-week free beta</button>
+            <p class="fine" id="fine">Nothing is charged during the beta. Your access links appear right after this step.</p>
+            <a class="already" href="#access" data-show-access>Already signed up? View beta access</a>
+          </div>
         </form>
 
-        <div class="done" id="done" hidden tabindex="-1">
-          <h2 id="done-title"></h2>
-          <p id="done-body"></p>
-          <button class="quiet" type="button" id="again">Sign up another athlete</button>
+        <section class="access" id="access" hidden tabindex="-1" aria-labelledby="access-title">
+          <div class="access-head">
+            <h2 id="access-title">You’re in. Pick how you’ll train.</h2>
+            <p class="access-sub" id="access-sub">Your First Run takes about two minutes and shows your full program before you create an account.</p>
+          </div>
+          <div class="channels" id="channels"></div>
+          <button class="quiet access-again" type="button" id="again">Sign up another athlete</button>
+        </section>
+      </div>
+    </section>
+
+    <section class="band-night" id="inside" aria-labelledby="first-run-title">
+      <div class="wrap night-inner">
+        <div class="section-head">
+          <h2 id="first-run-title">Tell it your sport and your date.</h2>
+          <p class="section-sub">Your First Run covers five intake questions across 27 sports and four training categories. WanderFit builds your three-phase program and shows the full plan before asking for an account.</p>
+        </div>
+
+        <div class="night-stage">
+          <figure class="shot shot-secondary">
+            <div class="phone-frame phone-dark">
+              <img src="assets/shots/intake-sport.png" width="804" height="1748" alt="WanderFit First Run sport picker showing popular sports including Football in the Strength category and search across 27 sports" loading="lazy" decoding="async">
+            </div>
+            <figcaption>
+              <strong>Five questions, 27 sports.</strong>
+              <span>Pick your sport, season date, training days, age group, and training experience.</span>
+            </figcaption>
+          </figure>
+
+          <figure class="shot shot-hero">
+            <div class="phone-frame phone-dark">
+              <img src="assets/shots/reveal.png" width="804" height="1748" alt="WanderFit First Run program reveal showing a 12-week Football Strength plan across GPP, SPP, and SSP with weekly training days and total session count before creating an account" loading="lazy" decoding="async">
+            </div>
+            <figcaption>
+              <strong>The full plan before sign-up.</strong>
+              <span>Your three phases, week counts, weekly schedule, and total sessions appear before you create an account.</span>
+            </figcaption>
+          </figure>
         </div>
       </div>
     </section>
 
-    <section class="why wrap" aria-labelledby="why-title">
-      <h2 id="why-title">Fit for your sport. New to the bar.</h2>
-      <div class="why-text">
-        <p>Years of practice don’t tell an app what you can squat. So WanderFit doesn’t ask for a max lift on day one. If you’ve never lifted, you start with two weeks of learning the movements, with weight you can control.</p>
-        <p>Your practices and games count. A heavy week with the team means a lighter week in the gym, so you show up to the test fresh instead of sore.</p>
+    <section class="band-day wrap" id="train" aria-labelledby="train-title">
+      <div class="section-head">
+        <h2 id="train-title">Then you train.</h2>
+        <p class="section-sub">Built for athletes new to structured strength training as well as experienced lifters. Inside each phase, weekly volume steps through Intro, Build, Peak, and Deload weeks.</p>
+      </div>
+
+      <div class="day-grid">
+        <figure class="shot">
+          <div class="phone-frame phone-light phone-cropped">
+            <img src="assets/shots/today.png" width="804" height="980" alt="WanderFit Today screen showing today's scheduled Football Strength workout card with Start Workout button and GPP Week 1 of 4 progress bar" loading="lazy" decoding="async">
+          </div>
+          <figcaption>
+            <strong>Today’s workout, one tap to start.</strong>
+            <span>See the session name, estimated time, exercise count, and where you are in the current phase.</span>
+          </figcaption>
+        </figure>
+
+        <figure class="shot">
+          <div class="phone-frame phone-light phone-cropped">
+            <img src="assets/shots/program.png" width="804" height="1450" alt="WanderFit Program screen showing Football 12-week GPP, SPP, and SSP phase bar, Up next workout card, and scheduled training week" loading="lazy" decoding="async">
+          </div>
+          <figcaption>
+            <strong>Your week laid out clearly.</strong>
+            <span>Every training session with its estimated time and exercise count, built around the days you picked.</span>
+          </figcaption>
+        </figure>
+
+        <figure class="shot">
+          <div class="phone-frame phone-light phone-cropped">
+            <img src="assets/shots/execute.png" width="804" height="1550" alt="WanderFit active workout screen for Goblet Squat showing 4 sets of 11 with Set 1 checked off, Set 2 highlighted as Next, and Previous and Next navigation" loading="lazy" decoding="async">
+          </div>
+          <figcaption>
+            <strong>Guided sets and real history.</strong>
+            <span>Tap through each set as you finish, pause if you step away, and build a weekly streak in your session history.</span>
+          </figcaption>
+        </figure>
       </div>
     </section>
 
-    <section class="week wrap" aria-labelledby="week-title">
-      <h2 id="week-title">One week, four weeks out.</h2>
-      <p class="week-sub">A soccer player in the build phase. Three lifts around two practices and a game.</p>
-      <ol class="days">
-        <li class="lift"><span class="d">Mon</span><span class="s">Lower Body Foundation</span><span class="x">Goblet squat 3×8, Romanian deadlift 3×8, split squat 2×10</span><span class="t">45 min</span></li>
-        <li><span class="d">Tue</span><span class="s">Team practice</span><span class="x">Counted in your weekly load</span><span class="t">90 min</span></li>
-        <li class="lift"><span class="d">Wed</span><span class="s">Upper Push/Pull</span><span class="x">Push-up 3×10, inverted row 3×8, dumbbell press 3×8</span><span class="t">40 min</span></li>
-        <li><span class="d">Thu</span><span class="s">Team practice</span><span class="x">Counted in your weekly load</span><span class="t">90 min</span></li>
-        <li class="lift"><span class="d">Fri</span><span class="s">Power &amp; Conditioning</span><span class="x">Box jump 4×3, hip thrust 3×8, 6 shuttle runs</span><span class="t">35 min</span></li>
-        <li><span class="d">Sat</span><span class="s">Game</span><span class="x">No lifting</span><span class="t"></span></li>
-        <li><span class="d">Sun</span><span class="s">Rest</span><span class="x">Walk, stretch, sleep</span><span class="t"></span></li>
-      </ol>
-      <p class="week-sub">Weights come from how hard last session felt. Goblet squat at 20 lb felt easy? Today it’s 25.</p>
+    <section class="pricing wrap" id="pricing" aria-labelledby="pricing-title">
+      <div class="section-head">
+        <h2 id="pricing-title">Free for two weeks. Clear pricing after.</h2>
+        <p class="section-sub">During the beta, WanderFit is completely free with no card required. Here is the pricing we plan to offer after the beta so athletes and parents know upfront.</p>
+      </div>
+
+      <div class="plans">
+        <div class="plan-col">
+          <p class="plan-tag">Planned post-beta option</p>
+          <h3>$35 Season Pass</h3>
+          <p class="plan-desc">One payment for a 12-week program through tryout or season start. No auto-renewal and nothing to cancel when the season begins.</p>
+        </div>
+        <div class="plan-col">
+          <p class="plan-tag">Planned post-beta option</p>
+          <h3>$15 / month</h3>
+          <p class="plan-desc">Flexible month-to-month access for athletes training year-round or without a tryout date on the calendar.</p>
+        </div>
+      </div>
+
+      <div class="pricing-act">
+        <button class="cta" type="button" data-open-form>Start 2-week free beta</button>
+        <p class="fine-cta">No credit card needed during beta. We ask your plan preference only to learn what fits best.</p>
+      </div>
     </section>
 
-    <section class="price wrap" aria-labelledby="price-title">
-      <h2 id="price-title">Free for two weeks.</h2>
-      <p class="price-line">Then <strong>$34.99</strong> through test day, or <strong>$14.99</strong> a month if there’s no date yet.</p>
-      <p class="week-sub">Parents see the price before the first workout and approve it through Apple’s Ask to Buy. The season pass ends on test day, so there’s nothing to cancel. iPhone first; Android is coming.</p>
-    </section>
-
-    <section class="faq wrap" aria-labelledby="faq-title">
-      <h2 id="faq-title">Questions parents ask.</h2>
+    <section class="faq wrap" id="faq" aria-labelledby="faq-title">
+      <h2 id="faq-title">Questions parents and athletes ask.</h2>
       <div class="qs">
-        <details><summary>Is lifting safe for teens?</summary><p>Well-coached strength training is widely recommended for teen athletes. The risk is too much weight too soon, which is why new lifters start with technique and light loads.</p></details>
-        <details><summary>We don’t have a gym.</summary><p>The first two weeks need a pair of dumbbells or nothing at all. Tell us what you have and the plan works around it.</p></details>
-        <details><summary>What if the tryout moves?</summary><p>Change the date and the plan rebuilds from today. The easy week always lands right before the test.</p></details>
+        <details>
+          <summary>Is strength training safe for 14 to 17 year old athletes?</summary>
+          <p>Yes. Youth programs scale to the Youth (14–17) age group and open with GPP to build general fitness and movement quality before heavier sport-specific work. WanderFit does not ask for a day-one max lift.</p>
+        </details>
+        <details>
+          <summary>What equipment do I need?</summary>
+          <p>Current workouts assume standard gym equipment such as dumbbells, barbells, and benches. A home and bodyweight equipment option is on our roadmap.</p>
+        </details>
+        <details>
+          <summary>How do the 2-week free beta and pricing work?</summary>
+          <p>The 2-week beta is free with no credit card required. We ask your plan preference in the form to understand whether athletes and parents prefer a one-time $35 Season Pass or $15/month once paid plans launch.</p>
+        </details>
+        <details>
+          <summary>How is WanderFit different from asking ChatGPT for a workout plan?</summary>
+          <p>ChatGPT gives you a one-off text list. WanderFit maps your season date across three phases (GPP, SPP, and SSP) with Intro, Build, Peak, and Deload weeks, guided set-by-set logging, and real session history. Optional AI-assistant compatibility is also in progress.</p>
+        </details>
+        <details>
+          <summary>I am over 18 or do not have an upcoming tryout. Can I still try it?</summary>
+          <p>Yes. Choose Adult Athlete (18+) in the sign-up form, then pick "No set season" and Performance (18–35) or Vitality (36+) during your First Run. You will receive a 12-week program with four weeks in each phase.</p>
+        </details>
+        <details>
+          <summary>How do I install on iPhone, Android, or use it in my browser?</summary>
+          <p>Submit the short form at the top of the page to open the Beta Access Panel with iPhone TestFlight install steps, the mobile web link, and Android preview status. Already signed up? <a href="#access" data-show-access>Jump to beta access</a>.</p>
+        </details>
       </div>
     </section>
   </main>
 
   <footer class="foot wrap">
-    <span class="wordmark small">WanderFit</span>
-    <span>© 2026 · Not medical advice.</span>
+    <div class="foot-row">
+      <span class="wordmark small">WanderFit</span>
+      <span class="foot-meta">© 2026 · Not medical advice.</span>
+      <nav class="foot-nav" aria-label="Footer">
+        <a href="#inside">Inside the app</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#faq">FAQ</a>
+        <a href="#access" data-show-access>Beta access</a>
+      </nav>
+    </div>
+    <details class="legal-note" id="legal">
+      <summary>Privacy &amp; Beta Terms</summary>
+      <p>Your email is used only to share WanderFit beta access links and pilot updates, and is never sold or shared with advertisers. Under-14 sign-ups require a parent or guardian. WanderFit provides general strength and conditioning guidance and is not medical advice, diagnosis, or physical therapy. Full hosted Privacy Policy and Terms of Service will publish at permanent URLs prior to public App Store launch.</p>
+    </details>
   </footer>
 </body>
 </html>
