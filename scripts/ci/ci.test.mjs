@@ -339,6 +339,11 @@ describe('CI workflow speed and budgets', () => {
       (s.run || '').includes('typecheck')
     )
     expect(typecheckRun.run).toContain('run-budgeted.mjs')
+    expect(typecheckRun.run).toContain('--max-seconds 30')
+
+    const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))
+    expect(pkg.scripts.typecheck).toBe('tsgo --noEmit')
+    expect(pkg.scripts['typecheck:tsc']).toBe('tsc --noEmit')
 
     const lintRun = checks.jobs.lint.steps.find((s) => (s.run || '').includes('bun run lint'))
     expect(lintRun.run).toContain('run-budgeted.mjs')

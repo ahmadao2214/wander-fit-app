@@ -59,7 +59,7 @@ bun run start           # Expo dev server
 
 ```bash
 bun run test:ci      # Jest, both projects; CI blocks on it
-bun run typecheck    # tsc --noEmit; CI blocks on it
+bun run typecheck    # tsgo --noEmit; CI blocks on it (typecheck:tsc for tsc fallback)
 ```
 
 Testing rules (where tests go, mocks, Maestro journeys, the simulator self-check) are in [AGENTS.md](AGENTS.md).
