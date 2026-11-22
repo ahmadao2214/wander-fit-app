@@ -43,15 +43,16 @@ describe('SettingsScreen', () => {
     jest.clearAllMocks()
   })
 
-  it('renders App Settings header, Privacy & telemetry section, and routes back explicitly to Profile (S9)', () => {
+  it('renders App Settings with Privacy and Use with Claude sections, and routes back explicitly to Profile (S9)', () => {
     const { getByText, getByTestId, getByLabelText } = render(<SettingsScreen />, {
       wrapper: AllTheProviders,
     })
 
     expect(getByText('App Settings')).toBeTruthy()
-    expect(getByText('Privacy & telemetry')).toBeTruthy()
+    expect(getByText('Privacy')).toBeTruthy()
+    expect(getByText('Use with Claude')).toBeTruthy()
     expect(getByText('Share anonymous usage analytics')).toBeTruthy()
-    expect(getByTestId('analytics-opt-in-status').props.children).toBe('On')
+    expect(getByTestId('analytics-opt-in-status').props.children).toMatch(/Never includes your name/)
 
     fireEvent.press(getByLabelText('Back'))
     expect(mockNavigate).toHaveBeenCalledWith('/(athlete)/profile')

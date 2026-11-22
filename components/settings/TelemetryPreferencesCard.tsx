@@ -91,7 +91,7 @@ export function TelemetryPreferencesCard({
 
   return (
     <YStack gap="$3">
-      <SectionTitle>Privacy & telemetry</SectionTitle>
+      <SectionTitle>Privacy</SectionTitle>
 
       <Card
         bg="$surface"
@@ -112,30 +112,23 @@ export function TelemetryPreferencesCard({
           >
             <YStack flex={1} gap="$1">
               <Body fontWeight="600">Share anonymous usage analytics</Body>
-              <Supporting color="$color10">
-                Helps us improve workouts and fix drop-offs. Never includes your name, email, or personal info.
+              <Supporting color="$color10" testID="analytics-opt-in-status">
+                {analyticsEnabled
+                  ? 'Helps us make workouts better. Never includes your name, email or anything personal.'
+                  : "Off. Wander Fit doesn't send usage data from this account."}
               </Supporting>
             </YStack>
-            <XStack items="center" gap="$2">
-              <Supporting
-                color="$color10"
-                fontWeight="600"
-                testID="analytics-opt-in-status"
-              >
-                {analyticsEnabled ? 'On' : 'Off'}
-              </Supporting>
-              <Switch
-                size="$3"
-                checked={analyticsEnabled}
-                disabled={saving}
-                onCheckedChange={handleAnalyticsToggle}
-                accessibilityLabel="Share anonymous usage analytics"
-                testID="analytics-opt-in-switch"
-                bg={analyticsEnabled ? '$primary' : '$color5'}
-              >
-                <Switch.Thumb animation="quick" />
-              </Switch>
-            </XStack>
+            <Switch
+              size="$3"
+              checked={analyticsEnabled}
+              disabled={saving}
+              onCheckedChange={handleAnalyticsToggle}
+              accessibilityLabel="Share anonymous usage analytics"
+              testID="analytics-opt-in-switch"
+              bg={analyticsEnabled ? '$primary' : '$color5'}
+            >
+              <Switch.Thumb animation="quick" />
+            </Switch>
           </XStack>
 
           {/* Double-gated adult Web session replay opt-in (strictly hidden for 14-17 and native) */}

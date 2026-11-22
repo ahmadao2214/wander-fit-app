@@ -23,18 +23,19 @@ url: ${VERIFY_URL}
 - extendedWaitUntil:
     visible: "App Settings"
     timeout: 30000
-- assertVisible: "Privacy & telemetry"
+- assertVisible: "Privacy"
+- assertVisible: "Use with Claude"
 - assertVisible: "Share anonymous usage analytics"
-- assertVisible: "On"
+- assertVisible: ".*Never includes your name.*"
 - takeScreenshot: 01-settings-telemetry
-# Toggle analytics off and verify it updates to Off
+# Toggle analytics off; the description switches to the opted-out line
 - tapOn:
     id: "Share anonymous usage analytics"
 - extendedWaitUntil:
-    visible: "Off"
+    visible: ".*send usage data from this account.*"
     timeout: 15000
 - takeScreenshot: 02-settings-opted-out
-# Navigate back to Profile, reopen App settings, and assert persistence (still Off)
+# Navigate back to Profile, reopen App settings, and assert persistence (still opted out)
 - tapOn:
     id: "Back"
 # Back lands on Profile at its previous scroll position, near the Settings row
@@ -48,13 +49,13 @@ url: ${VERIFY_URL}
     visible: "App Settings"
     timeout: 30000
 - extendedWaitUntil:
-    visible: "Off"
+    visible: ".*send usage data from this account.*"
     timeout: 15000
 - takeScreenshot: 03-settings-persisted-off
 # Restore to On
 - tapOn:
     id: "Share anonymous usage analytics"
 - extendedWaitUntil:
-    visible: "On"
+    visible: ".*Never includes your name.*"
     timeout: 15000
 - runFlow: ../subflows/_evidence-stop.yaml

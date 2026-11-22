@@ -1,5 +1,6 @@
 import React from 'react'
-import { render } from '@testing-library/react-native'
+import { Share } from 'react-native'
+import { act, fireEvent, render } from '@testing-library/react-native'
 import { TamaguiProvider } from 'tamagui'
 import config from '../../tamagui.config'
 
@@ -48,5 +49,18 @@ describe('App Settings', () => {
     const { getByText, queryByTestId } = render(<AthleteSettingsScreen />, { wrapper })
     expect(queryByTestId('mcp-address')).toBeNull()
     expect(getByText('This build has no connector address.')).toBeTruthy()
+  })
+
+  it('opens the share sheet with the address on native', async () => {
+    process.env.EXPO_PUBLIC_CONVEX_URL = 'https://accomplished-tapir-54.convex.cloud'
+    const share = jest.spyOn(Share, 'share').mockResolvedValue({ action: 'sharedAction', activityType: undefined })
+    const { getByLabelText } = render(<AthleteSettingsScreen />, { wrapper })
+    await act(async () => {
+      fireEvent.press(getByLabelText('Share connector address'))
+    })
+    expect(share).toHaveBeenCalledWith({
+      message: 'https://accomplished-tapir-54.convex.site/mcp',
+    })
+    share.mockRestore()
   })
 })
