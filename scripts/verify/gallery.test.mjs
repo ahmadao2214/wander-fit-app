@@ -110,22 +110,43 @@ describe("buildGallery", () => {
     expect(html).toContain("No evidence yet")
   })
 
-  it("flags web evidence that the run building the page did not upload", () => {
+  it("flags a flow the nightly uploaded nothing for, whichever run the shown evidence came from", () => {
     const model = buildGallery({
-      flows: ["sign-in", "history", "first-run"],
+      flows: ["sign-in", "history", "first-run", "workout-loop"],
       entries: [
+        // Older evidence; the nightly uploaded nothing for sign-in
         entry({ runId: 8, createdAt: "2026-11-15T07:30:00Z" }),
+        // The nightly's own upload
         entry({ flow: "history", runId: 9, createdAt: "2026-11-16T07:40:00Z" }),
-        // A main check that held the e2e-backend queue uploaded after the
-        // nightly started; the nightly itself uploaded nothing for this flow.
+        // Uploaded by a main check after the nightly started; the nightly
+        // itself uploaded nothing for first-run
         entry({ flow: "first-run", runId: 7, createdAt: "2026-11-16T07:25:00Z" }),
+        // The nightly uploaded workout-loop, then a newer main check
+        // superseded it: newer evidence, not missing evidence
+        entry({ flow: "workout-loop", runId: 10, createdAt: "2026-11-16T08:10:00Z" }),
       ],
-      run: { runId: 9, startedAt: "2026-11-16T07:17:00Z", platforms: ["web"] },
+      run: {
+        runId: 9,
+        startedAt: "2026-11-16T07:17:00Z",
+        platforms: ["web"],
+        uploaded: ["e2e-web-history", "e2e-web-workout-loop"],
+      },
     })
     expect(cellOf(model, "sign-in", "web").stale).toBe(true)
     expect(cellOf(model, "history", "web").stale).toBe(false)
     expect(cellOf(model, "first-run", "web").stale).toBe(true)
+    expect(cellOf(model, "workout-loop", "web").stale).toBe(false)
     expect(renderGallery(model)).toContain("uploaded no evidence for this flow")
+    expect(renderGallery(model)).not.toContain("older evidence")
+  })
+
+  it("flags nothing when the run did not record what it uploaded", () => {
+    const model = buildGallery({
+      flows: ["sign-in"],
+      entries: [entry({ runId: 8 })],
+      run: { runId: 9, startedAt: "2026-11-16T07:17:00Z", platforms: ["web"] },
+    })
+    expect(cellOf(model, "sign-in", "web").stale).toBe(false)
   })
 
   it("escapes flow names, file names and errors", () => {

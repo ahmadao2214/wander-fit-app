@@ -147,10 +147,10 @@ export function featureTitle(flow, dir = featuresDir) {
 // The page model. Every flow gets a row and every platform a cell, even with
 // no evidence, so a missing platform reads as not run instead of vanishing.
 // The newest entry per flow and platform wins, passing or not. When `run`
-// names the run building the gallery, evidence for a platform that run
-// covers is flagged stale unless that run uploaded it. Comparing run IDs, not
-// times: a main check that held the e2e-backend queue can upload after the
-// nightly started, and that is still not the nightly's evidence.
+// names the run building the gallery and lists what it uploaded, a cell for a
+// platform that run covers is flagged when the run uploaded nothing for that
+// flow. Its evidence may be older, or newer from a main check that ran while
+// the nightly waited; either way the nightly produced none.
 export function buildGallery({ flows, entries, run = null, titles = {} }) {
   const names = [...new Set([...flows, ...entries.map((entry) => entry.flow)])].sort()
   const newest = new Map()
@@ -168,7 +168,10 @@ export function buildGallery({ flows, entries, run = null, titles = {} }) {
     cells: platforms.map((platform) => {
       const entry = newest.get(`${platform.id}\u0000${flow}`) || null
       const stale = Boolean(
-        entry && run?.runId && ranPlatforms.includes(platform.id) && String(entry.runId) !== String(run.runId)
+        entry &&
+          Array.isArray(run?.uploaded) &&
+          ranPlatforms.includes(platform.id) &&
+          !run.uploaded.includes(artifactName(flow, platform.id))
       )
       return { platform: platform.id, label: platform.label, notRun: platform.notRun || "No evidence yet", entry, stale }
     }),
@@ -215,7 +218,7 @@ function renderCell(cell) {
     : `<span class="badge pass">Passed</span>`
   const error = failing && entry.error ? `<p class="error">${escapeHtml(entry.error)}</p>` : ""
   const stale = cell.stale
-    ? `<p class="stale">The latest nightly run uploaded no evidence for this flow. This is older evidence.</p>`
+    ? `<p class="stale">The latest nightly run uploaded no evidence for this flow. This evidence is from another run.</p>`
     : ""
   const poster = entry.screenshots[0] ? ` poster="${mediaUrl(sitePath(entry, entry.screenshots[0]))}"` : ""
   const video = entry.video
@@ -353,6 +356,11 @@ export function collect(evidenceDir, flows = listWebFlows()) {
       runUrl: `${server}/${repo}/actions/runs/${runId}`,
       startedAt: run.run_started_at || run.created_at,
       platforms: (process.env.GALLERY_RAN_PLATFORMS || "web").split(",").filter(Boolean),
+      // The evidence artifacts this run uploaded, so the page can tell a flow
+      // the nightly skipped from one a newer run superseded.
+      uploaded: JSON.parse(
+        gh(["api", `repos/${repo}/actions/runs/${runId}/artifacts?per_page=100`])
+      ).artifacts.map((artifact) => artifact.name),
     }
     fs.writeFileSync(path.join(evidenceDir, "run.json"), JSON.stringify(record, null, 2))
   }
