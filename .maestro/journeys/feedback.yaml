@@ -61,6 +61,10 @@ url: ${VERIFY_URL}
 - assertNotVisible:
     id: rating-error
 - takeScreenshot: 02-rating-submitted
+# The toast covers the next row's center; let it clear before tapping on.
+- extendedWaitUntil:
+    notVisible: "Thanks for the rating!"
+    timeout: 15000
 
 # 2. Bug report
 - tapOn:
@@ -97,6 +101,10 @@ url: ${VERIFY_URL}
 - assertNotVisible:
     id: bug-error
 - takeScreenshot: 03-bug-submitted
+# The toast covers the next row's center; let it clear before tapping on.
+- extendedWaitUntil:
+    notVisible: "Bug report sent"
+    timeout: 15000
 
 # 3. Feature request
 - tapOn:
