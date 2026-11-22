@@ -20,6 +20,13 @@ describe('sport icon generator', () => {
     expect(JSON.stringify(SPORTS.soccer())).toBe(JSON.stringify(SPORTS.soccer()))
   })
 
+  it('generates every icon procedurally with no external art files', () => {
+    expect(fs.existsSync(path.join(__dirname, 'art'))).toBe(false)
+    const soccerLayers = SPORTS.soccer().layers.map((l) => l.nm)
+    expect(soccerLayers).toContain('panels')
+    expect(soccerLayers).toContain('rig')
+  })
+
   it('keeps hops getting lower and ends with a rest of over two seconds', () => {
     const heights = BEATS.hops.map((hop) => hop.height)
     expect([...heights].sort((a, b) => b - a)).toEqual(heights)

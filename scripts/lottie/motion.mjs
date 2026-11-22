@@ -123,6 +123,41 @@ export function swing(degrees = 14) {
   return animated(keys)
 }
 
+/**
+ * Animated scalar track on the shared 150-frame loop. `keys` are `{ t, v, ease }`
+ * pairs; frame 0 and frame 150 are filled automatically from `rest` (or the final
+ * value for full-turn rotations).
+ */
+export function track(keys, { rest = 0, end = rest } = {}) {
+  const full = [
+    ...(keys[0]?.t === 0 ? [] : [{ t: 0, v: rest }]),
+    ...keys,
+    ...(keys[keys.length - 1]?.t === LOOP_FRAMES ? [] : [{ t: LOOP_FRAMES, v: end }]),
+  ]
+  return animated(dedupe(full))
+}
+
+/**
+ * Animated 2D/3D scale track in percent (`[sx, sy, 100]`), resting at `[100, 100, 100]`.
+ */
+export function scaleTrack(keys, rest = [100, 100]) {
+  const pad = (v) => [v[0], v[1], 100]
+  return track(
+    keys.map((k) => ({ ...k, v: pad(k.v) })),
+    { rest: pad(rest), end: pad(rest) },
+  )
+}
+
+/**
+ * Animated straight-line position track (X and Y split into separate properties
+ * so every player draws straight paths). `xKeys` / `yKeys` default to static.
+ */
+export function posTrack({ x = 0, y = 0, xKeys, yKeys } = {}) {
+  const tx = xKeys ? track(xKeys, { rest: x }) : x
+  const ty = yKeys ? track(yKeys, { rest: y }) : y
+  return splitPosition(tx, ty)
+}
+
 // The object's centre rests here, a little below the canvas centre to leave
 // room for the hop.
 export const REST_CENTER_Y = STAGE.groundY - STAGE.objectRadius
@@ -136,7 +171,7 @@ export const REST_CENTER_Y = STAGE.groundY - STAGE.objectRadius
  * - `bottom`: how far below the centre the object's lowest point is
  *   (defaults to the full radius, for a ball).
  * - `height` and `squash`: scale the hops and squash for heavier or rigid objects.
- * - `still`: no hop at all (for objects that only swing).
+ * - `still`: no hop at all (for objects that animate their own parts).
  */
 export function rigTransform({ artRadius, bottom = artRadius, height = 1, squash = 1, still = false }) {
   const scale = (STAGE.objectRadius / artRadius) * 100
