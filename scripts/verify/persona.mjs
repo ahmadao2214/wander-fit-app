@@ -31,7 +31,7 @@ export function isGeneratedEmail(email) {
   return typeof email === "string" && emailPatterns.some((pattern) => pattern.test(email))
 }
 
-export function signupEmail(run = Date.now()) {
+export function signupEmail(run = `${Date.now()}${crypto.randomInt(1000, 10000)}`) {
   return `e2e-${run}-signup+clerk_test@example.com`
 }
 
@@ -173,7 +173,7 @@ async function create() {
   if (!states.has(state)) fail(`Unknown persona state "${state}".`)
   const shouldSeedRef = process.argv.includes("--seed")
   convexInvocation()
-  const email = `e2e.${Date.now()}+clerk_test@example.com`
+  const email = `e2e.${Date.now()}${crypto.randomInt(1000, 10000)}+clerk_test@example.com`
   const secretPassword = generatePassword()
   const created = await clerk("/users", {
     method: "POST",

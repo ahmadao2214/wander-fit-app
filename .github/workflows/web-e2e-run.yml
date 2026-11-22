@@ -1,0 +1,195 @@
+# Reusable Web E2E execution workflow: deploys/seeds Convex once, exports the
+# web bundle once, and runs balanced Maestro shards in parallel. Called by
+# checks.yml's `e2e-run` job, which holds the backend concurrency lock for the
+# entire build + shard lifecycle while letting shards of the same run execute
+# in parallel.
+name: Web E2E Run
+
+on:
+  workflow_call:
+    inputs:
+      mode:
+        required: true
+        type: string
+      shards:
+        required: true
+        type: string
+      preview_name:
+        required: false
+        type: string
+        default: ""
+    secrets:
+      CLERK_SECRET_KEY:
+        required: false
+      CONVEX_DEPLOY_KEY_E2E:
+        required: false
+      CONVEX_PREVIEW_DEPLOY_KEY_E2E:
+        required: false
+
+jobs:
+  # Deploys/seeds Convex at most once and exports the web bundle once for all
+  # parallel E2E shards.
+  e2e-build:
+    name: Build Web E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      convex_url: ${{ steps.backend.outputs.convex_url }}
+    env:
+      EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.5
+      - run: bun install --frozen-lockfile
+      # Secrets go only to the steps that need them, not to install scripts.
+      # Preview PRs get only the preview key; main gets only the dev key;
+      # shared PRs skip deploy completely (no Convex keys needed for deploy).
+      - name: Deploy functions to wander-fit-e2e and seed
+        id: backend
+        env:
+          VERIFY_BACKEND_MODE: ${{ inputs.mode }}
+          EXPO_PUBLIC_CONVEX_URL_E2E: ${{ vars.EXPO_PUBLIC_CONVEX_URL_E2E }}
+          CONVEX_PREVIEW_NAME_E2E: ${{ inputs.preview_name }}
+          CONVEX_DEPLOY_KEY_E2E: ${{ inputs.mode == 'dev' && secrets.CONVEX_DEPLOY_KEY_E2E || '' }}
+          CONVEX_PREVIEW_DEPLOY_KEY_E2E: ${{ inputs.mode == 'preview' && secrets.CONVEX_PREVIEW_DEPLOY_KEY_E2E || '' }}
+        run: node scripts/verify/run.mjs deploy
+      - name: Export web bundle once
+        env:
+          EXPO_PUBLIC_CONVEX_URL_E2E: ${{ steps.backend.outputs.convex_url }}
+        run: node scripts/verify/run.mjs export
+      - name: Upload web export for shards
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-web-dist
+          path: dist-verify/
+          retention-days: 1
+
+  # Runs each balanced shard of Maestro web flows in parallel using the shared
+  # dist-verify/ artifact built by e2e-build.
+  e2e-shard:
+    name: Web E2E shard ${{ matrix.shard.id }}
+    needs: e2e-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJson(inputs.shards) }}
+    permissions:
+      contents: read
+      actions: read
+    env:
+      EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.5
+      - run: bun install --frozen-lockfile
+      - name: Install Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Download shared web export
+        uses: actions/download-artifact@v4
+        with:
+          name: e2e-web-dist
+          path: dist-verify/
+      - name: Run web flows
+        env:
+          EXPO_PUBLIC_CONVEX_URL_E2E: ${{ needs.e2e-build.outputs.convex_url }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          CONVEX_PREVIEW_NAME_E2E: ${{ inputs.preview_name }}
+          CONVEX_DEPLOY_KEY_E2E: ${{ inputs.mode != 'preview' && secrets.CONVEX_DEPLOY_KEY_E2E || '' }}
+          CONVEX_PREVIEW_DEPLOY_KEY_E2E: ${{ inputs.mode == 'preview' && secrets.CONVEX_PREVIEW_DEPLOY_KEY_E2E || '' }}
+        run: node scripts/verify/run.mjs all ${{ join(matrix.shard.flows, ' ') }}
+      # Deletes a persona a cancelled run left behind and redacts its password
+      # from the evidence. It must run before the uploads.
+      - name: Tear down
+        if: always()
+        env:
+          EXPO_PUBLIC_CONVEX_URL_E2E: ${{ needs.e2e-build.outputs.convex_url }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          CONVEX_PREVIEW_NAME_E2E: ${{ inputs.preview_name }}
+          CONVEX_DEPLOY_KEY_E2E: ${{ inputs.mode != 'preview' && secrets.CONVEX_DEPLOY_KEY_E2E || '' }}
+          CONVEX_PREVIEW_DEPLOY_KEY_E2E: ${{ inputs.mode == 'preview' && secrets.CONVEX_PREVIEW_DEPLOY_KEY_E2E || '' }}
+        run: node scripts/verify/run.mjs teardown
+      # One upload per flow under .maestro/web. scripts/verify/flows.test.mjs
+      # fails when a flow has no step here. The marker is written only after
+      # that flow's password scrub succeeds, so a failed scrub is not uploaded.
+      - name: Upload sign-in evidence
+        if: always() && hashFiles('e2e-artifacts/sign-in/web/.scrubbed') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-web-sign-in
+          path: e2e-artifacts/sign-in/web/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload first-run evidence
+        if: always() && hashFiles('e2e-artifacts/first-run/web/.scrubbed') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-web-first-run
+          path: e2e-artifacts/first-run/web/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload reassessment evidence
+        if: always() && hashFiles('e2e-artifacts/reassessment/web/.scrubbed') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-web-reassessment
+          path: e2e-artifacts/reassessment/web/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload history evidence
+        if: always() && hashFiles('e2e-artifacts/history/web/.scrubbed') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-web-history
+          path: e2e-artifacts/history/web/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload workout-exit-resume evidence
+        if: always() && hashFiles('e2e-artifacts/workout-exit-resume/web/.scrubbed') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-web-workout-exit-resume
+          path: e2e-artifacts/workout-exit-resume/web/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload app-settings evidence
+        if: always() && hashFiles('e2e-artifacts/app-settings/web/.scrubbed') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-web-app-settings
+          path: e2e-artifacts/app-settings/web/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload workout-loop evidence
+        if: always() && hashFiles('e2e-artifacts/workout-loop/web/.scrubbed') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-web-workout-loop
+          path: e2e-artifacts/workout-loop/web/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload shard results
+        if: always() && hashFiles('e2e-artifacts/web-results.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results-shard-${{ matrix.shard.id }}
+          path: e2e-artifacts/web-results.json
+          if-no-files-found: ignore
+          retention-days: 1

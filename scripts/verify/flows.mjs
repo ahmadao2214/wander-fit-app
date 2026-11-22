@@ -57,6 +57,145 @@ const flowPersonaModes = {
   reassessment: "phase-end",
 }
 
+// Recorded median run times (seconds) on GitHub Ubuntu runners, used to
+// balance parallel E2E shards via greedy LPT bin packing.
+export const FLOW_DURATION_SECONDS = {
+  "workout-loop": 175,
+  "first-run": 125,
+  "workout-exit-resume": 70,
+  reassessment: 60,
+  "app-settings": 58,
+  "sign-in": 46,
+  history: 39,
+}
+
+export const DEFAULT_FLOW_SECONDS = 60
+
+// Pure: distribute flows across up to `maxShards` shards so the longest shard
+// finishes as quickly as possible (longest-processing-time-first).
+export function balanceShards(flows, maxShards = 4, durations = FLOW_DURATION_SECONDS) {
+  const unique = [...new Set(flows || [])]
+  if (!unique.length) return []
+  const count = Math.max(1, Math.min(maxShards, unique.length))
+  const shards = Array.from({ length: count }, (_, index) => ({
+    id: index + 1,
+    flows: [],
+    estimatedSeconds: 0,
+  }))
+  const sorted = [...unique].sort((a, b) => {
+    const diff = (durations[b] ?? DEFAULT_FLOW_SECONDS) - (durations[a] ?? DEFAULT_FLOW_SECONDS)
+    return diff !== 0 ? diff : a.localeCompare(b)
+  })
+  for (const flow of sorted) {
+    shards.sort((a, b) => a.estimatedSeconds - b.estimatedSeconds || a.id - b.id)
+    shards[0].flows.push(flow)
+    shards[0].estimatedSeconds += durations[flow] ?? DEFAULT_FLOW_SECONDS
+  }
+  for (const shard of shards) shard.flows.sort()
+  return shards.sort((a, b) => a.id - b.id)
+}
+
+// Files that cannot affect the rendered web app or E2E flows.
+const IGNORED_E2E_PATTERNS = [
+  /\.md$/i,
+  /^docs\//,
+  /^tasks\//,
+  /^research\//,
+  /^\.claude\//,
+  /^\.cursor\//,
+  /^\.agents\//,
+  /^\.eas\//,
+  /^scripts\/sim\//,
+  /^scripts\/codemods\//,
+  /^scripts\/lottie\//,
+  /^jest\//,
+  /^jest\.config\.js$/,
+  /^biome\.json$/,
+  /^\.gitignore$/,
+  /(^|\/)__tests__\//,
+  /\.(test|spec)\.[cm]?[jt]sx?$/,
+]
+
+// Files strictly scoped to specific journeys (never shared across other routes
+// or Convex backend modules). Any non-ignored file that is in `runtimeFiles` or
+// does NOT match one of these narrow rules forces the full PR flow set.
+const ROUTE_FLOW_RULES = [
+  {
+    match: /^(app\/\(first-run\)\/|components\/first-run\/|lib\/sportFields\.ts$|assets\/lottie\/sports\/|\.maestro\/(web|journeys)\/first-run\.yaml$)/,
+    flows: ["first-run"],
+  },
+  {
+    match: /^(app\/\(reassessment\)\/|components\/reassessment\/|\.maestro\/(web|journeys)\/reassessment\.yaml$)/,
+    flows: ["reassessment"],
+  },
+  {
+    match: /^(app\/\(athlete\)\/history(\.tsx|\/)|\.maestro\/(web|journeys)\/history\.yaml$)/,
+    flows: ["history"],
+  },
+  {
+    match: /^(app\/\(athlete\)\/(settings|profile)(\.tsx|\/)|\.maestro\/(web|journeys)\/app-settings\.yaml$)/,
+    flows: ["app-settings", "sign-in"],
+  },
+  {
+    // ConfettiEffect is also imported by app/(reassessment)/celebration.tsx, so
+    // exclude it from the workout-only rule (falls back to full PR suite).
+    match: /^(app\/\(athlete\)\/workout\/|components\/workout\/(?!ConfettiEffect\b)|\.maestro\/(web|journeys)\/workout-exit-resume\.yaml$)/,
+    flows: ["workout-exit-resume"],
+  },
+  {
+    match: /^\.maestro\/(web|journeys)\/workout-loop\.yaml$/,
+    flows: ["workout-loop"],
+  },
+  {
+    match: /^(app\/\(auth\)\/|\.maestro\/(web|journeys)\/sign-in\.yaml$)/,
+    flows: ["sign-in"],
+  },
+]
+
+// Pure: choose which web flows a run must execute.
+// - main / manual runs always execute every available flow.
+// - pull requests skip E2E for docs/test-only diffs, run only the affected
+//   flows for strictly journey-isolated screen/journey diffs, and fall back to
+//   the full PR flow set whenever any backend runtime, shared, config, or
+//   unknown file changed or the diff is unavailable.
+export function selectAffectedFlows(
+  changedFiles,
+  { available = listWebFlows(), eventName = "pull_request", runtimeFiles = [] } = {}
+) {
+  if (eventName !== "pull_request") {
+    return { flows: [...available], reason: `full suite (${eventName || "local"})` }
+  }
+  const prFlows = defaultFlows(available, "pr")
+  if (!Array.isArray(changedFiles)) {
+    return { flows: prFlows, reason: "full PR suite (diff unavailable)" }
+  }
+  const runtimeSet = new Set(runtimeFiles)
+  const relevant = changedFiles.filter((file) => !IGNORED_E2E_PATTERNS.some((pattern) => pattern.test(file)))
+  if (relevant.length === 0) {
+    return { flows: [], reason: "skipped (docs/tests/tooling only)" }
+  }
+  const selected = new Set()
+  for (const file of relevant) {
+    if (runtimeSet.has(file)) {
+      return { flows: prFlows, reason: `full PR suite (backend runtime change: ${file})` }
+    }
+    const matched = ROUTE_FLOW_RULES.filter((rule) => rule.match.test(file))
+    if (matched.length === 0) {
+      return { flows: prFlows, reason: `full PR suite (shared change: ${file})` }
+    }
+    for (const rule of matched) {
+      for (const flow of rule.flows) {
+        if (available.includes(flow)) selected.add(flow)
+      }
+    }
+  }
+  const flows = [...selected].sort()
+  return {
+    flows,
+    reason: flows.length ? `affected flows (${flows.join(", ")})` : "skipped (no matching web flow)",
+  }
+}
+
 export function personaMode(flow) {
   return flowPersonaModes[flow] || "onboarded"
 }

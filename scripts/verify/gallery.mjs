@@ -87,7 +87,11 @@ export function readEvidence(dir) {
   }
   const meta = readJson("meta.json") || {}
   const result = readJson("result.json") || {}
-  const files = walkFiles(dir).map((full) => path.relative(dir, full).split(path.sep).join("/"))
+  const files = walkFiles(dir)
+    .map((full) => path.relative(dir, full).split(path.sep).join("/"))
+    // Ignore archived cold-start retry folders (`attempt-1/...`) when picking
+    // gallery media so only the final attempt's video and screenshots appear.
+    .filter((file) => !/^attempt-\d+\//.test(file))
   const video = files.find((file) => /(^|\/)startRecording\/recording\.mp4$/.test(file)) || null
   const screenshots = files
     .filter((file) => /(^|\/)takeScreenshot\/[^/]+\.png$/i.test(file))
