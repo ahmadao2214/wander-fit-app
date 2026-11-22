@@ -207,6 +207,19 @@ describe("evidence on disk", () => {
     expect([read.sha, read.runId, read.createdAt]).toEqual(["abc", 5, "2026-11-16T21:07:15Z"])
   })
 
+  it("ignores archived cold-start attempt folders when selecting gallery video and screenshots", () => {
+    const attempt1 = path.join(dir, "attempt-1", "2026-11-16_210500", "sign-in")
+    fs.mkdirSync(path.join(attempt1, "startRecording"), { recursive: true })
+    fs.writeFileSync(path.join(attempt1, "startRecording", "recording.mp4"), "partial-mp4")
+    writeArtifact(dir, {
+      result: { flow: "sign-in", status: "passed", seconds: 48 },
+      meta: { flow: "sign-in", platform: "web", runId: 5, sha: "abc", createdAt: "2026-11-16T21:07:15Z" },
+    })
+    const read = readEvidence(dir)
+    expect(read.video).toBe("2026-11-16_210520/sign-in/startRecording/recording.mp4")
+    expect(read.screenshots.map((file) => path.basename(file))).toEqual(["02-filled.png", "03-today.png"])
+  })
+
   it("treats evidence with no result.json as failing", () => {
     writeArtifact(dir, { meta: { flow: "sign-in", platform: "web" } })
     const read = readEvidence(dir)

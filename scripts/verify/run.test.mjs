@@ -6,6 +6,7 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { isGeneratedEmail } from "./persona.mjs"
 import {
+  archiveAttemptEvidence,
   assertFirstRun,
   assertWorkoutLoop,
   cleanupPending,
@@ -553,6 +554,31 @@ describe("evidence redaction", () => {
       expect(fs.readFileSync(keep, "utf8")).toBe("s3cretPW")
       expect(redactEvidence(dir, "")).toBe(0)
       expect(redactEvidence(path.join(dir, "missing"), "s3cretPW")).toBe(0)
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it("archives failed cold-start attempt logs before retry and scrubs passwords across both attempts", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "verify-retry-"))
+    try {
+      fs.mkdirSync(path.join(dir, "2026-11-22_150000/logs"), { recursive: true })
+      fs.writeFileSync(path.join(dir, "2026-11-22_150000/logs/maestro.log"), "crash with s3cretPW")
+      expect(archiveAttemptEvidence(dir, "attempt-1")).toBe(true)
+      expect(fs.existsSync(path.join(dir, "2026-11-22_150000"))).toBe(false)
+      expect(fs.existsSync(path.join(dir, "attempt-1/2026-11-22_150000/logs/maestro.log"))).toBe(true)
+
+      // Second attempt writes its own timestamped folder beside attempt-1/
+      fs.mkdirSync(path.join(dir, "2026-11-22_150010/logs"), { recursive: true })
+      fs.writeFileSync(path.join(dir, "2026-11-22_150010/logs/maestro.log"), "pass with s3cretPW")
+
+      expect(redactEvidence(dir, "s3cretPW")).toBe(2)
+      expect(fs.readFileSync(path.join(dir, "attempt-1/2026-11-22_150000/logs/maestro.log"), "utf8")).toBe(
+        "crash with [redacted]"
+      )
+      expect(fs.readFileSync(path.join(dir, "2026-11-22_150010/logs/maestro.log"), "utf8")).toBe(
+        "pass with [redacted]"
+      )
     } finally {
       fs.rmSync(dir, { recursive: true, force: true })
     }

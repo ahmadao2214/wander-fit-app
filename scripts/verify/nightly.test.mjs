@@ -16,7 +16,8 @@ describe("nightly E2E workflow", () => {
 
   it("waits in the same e2e-backend queue as main's web E2E", () => {
     expect(job.concurrency).toEqual({ group: "e2e-backend", "cancel-in-progress": false, queue: "max" })
-    expect(checks.jobs["e2e-build"].concurrency.group).toContain("'e2e-backend'")
+    expect(checks.jobs["e2e-run"].concurrency.group).toContain("'e2e-backend'")
+    expect(checks.jobs["e2e-run"].uses).toBe("./.github/workflows/web-e2e-run.yml")
   })
 
   it("uses the dev E2E key and never a preview key", () => {

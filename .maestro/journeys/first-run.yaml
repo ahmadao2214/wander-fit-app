@@ -102,18 +102,19 @@ url: ${VERIFY_URL}
 - extendedWaitUntil:
     visible: "Day 1 · .* · Lower Body A · About \\d+ min"
     timeout: 10000
-- extendedWaitUntil:
-    visible:
-      id: first-run-save
-    timeout: 10000
 - assertVisible: "36"
 - takeScreenshot: 07-plan
-# The plan runs past the 625px viewport, leaving Save half below the fold
-# of its ScrollView; swipe it into view, as on the season screen.
+# The plan runs past the 625px viewport, leaving Save below the fold of its
+# ScrollView; swipe it into view, as on the season screen, before asserting or
+# tapping Save.
 - swipe:
     start: 50%, 80%
     end: 50%, 20%
     duration: 800
+- extendedWaitUntil:
+    visible:
+      id: first-run-save
+    timeout: 10000
 - tapOn:
     id: first-run-save
 - extendedWaitUntil:

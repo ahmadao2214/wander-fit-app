@@ -116,11 +116,12 @@ const IGNORED_E2E_PATTERNS = [
   /\.(test|spec)\.[cm]?[jt]sx?$/,
 ]
 
-// Files scoped to specific journeys. Any non-ignored file that does NOT match
-// one of these rules forces the full PR flow set (fail-safe).
+// Files strictly scoped to specific journeys (never shared across other routes
+// or Convex backend modules). Any non-ignored file that is in `runtimeFiles` or
+// does NOT match one of these narrow rules forces the full PR flow set.
 const ROUTE_FLOW_RULES = [
   {
-    match: /^(app\/\(first-run\)\/|components\/first-run\/|hooks\/useFirstRunDraft|lib\/firstRun|lib\/sportFields|assets\/lottie\/sports\/|\.maestro\/(web|journeys)\/first-run\.yaml$)/,
+    match: /^(app\/\(first-run\)\/|components\/first-run\/|lib\/sportFields\.ts$|assets\/lottie\/sports\/|\.maestro\/(web|journeys)\/first-run\.yaml$)/,
     flows: ["first-run"],
   },
   {
@@ -128,15 +129,17 @@ const ROUTE_FLOW_RULES = [
     flows: ["reassessment"],
   },
   {
-    match: /^(app\/\(athlete\)\/history|lib\/weeksOnPlan|\.maestro\/(web|journeys)\/history\.yaml$)/,
+    match: /^(app\/\(athlete\)\/history(\.tsx|\/)|\.maestro\/(web|journeys)\/history\.yaml$)/,
     flows: ["history"],
   },
   {
-    match: /^(app\/\(athlete\)\/(settings|profile)|components\/SignOutButton|lib\/signOutScroll|\.maestro\/(web|journeys)\/app-settings\.yaml$)/,
+    match: /^(app\/\(athlete\)\/(settings|profile)(\.tsx|\/)|\.maestro\/(web|journeys)\/app-settings\.yaml$)/,
     flows: ["app-settings", "sign-in"],
   },
   {
-    match: /^(app\/\(athlete\)\/workout\/|components\/workout\/|lib\/executionOrder|lib\/sessionTiming|\.maestro\/(web|journeys)\/workout-exit-resume\.yaml$)/,
+    // ConfettiEffect is also imported by app/(reassessment)/celebration.tsx, so
+    // exclude it from the workout-only rule (falls back to full PR suite).
+    match: /^(app\/\(athlete\)\/workout\/|components\/workout\/(?!ConfettiEffect\b)|\.maestro\/(web|journeys)\/workout-exit-resume\.yaml$)/,
     flows: ["workout-exit-resume"],
   },
   {
@@ -152,10 +155,13 @@ const ROUTE_FLOW_RULES = [
 // Pure: choose which web flows a run must execute.
 // - main / manual runs always execute every available flow.
 // - pull requests skip E2E for docs/test-only diffs, run only the affected
-//   flows for isolated screen/journey diffs, and fall back to the full PR flow
-//   set whenever any shared/backend/config/unknown file changed or the diff is
-//   unavailable.
-export function selectAffectedFlows(changedFiles, { available = listWebFlows(), eventName = "pull_request" } = {}) {
+//   flows for strictly journey-isolated screen/journey diffs, and fall back to
+//   the full PR flow set whenever any backend runtime, shared, config, or
+//   unknown file changed or the diff is unavailable.
+export function selectAffectedFlows(
+  changedFiles,
+  { available = listWebFlows(), eventName = "pull_request", runtimeFiles = [] } = {}
+) {
   if (eventName !== "pull_request") {
     return { flows: [...available], reason: `full suite (${eventName || "local"})` }
   }
@@ -163,12 +169,16 @@ export function selectAffectedFlows(changedFiles, { available = listWebFlows(), 
   if (!Array.isArray(changedFiles)) {
     return { flows: prFlows, reason: "full PR suite (diff unavailable)" }
   }
+  const runtimeSet = new Set(runtimeFiles)
   const relevant = changedFiles.filter((file) => !IGNORED_E2E_PATTERNS.some((pattern) => pattern.test(file)))
   if (relevant.length === 0) {
     return { flows: [], reason: "skipped (docs/tests/tooling only)" }
   }
   const selected = new Set()
   for (const file of relevant) {
+    if (runtimeSet.has(file)) {
+      return { flows: prFlows, reason: `full PR suite (backend runtime change: ${file})` }
+    }
     const matched = ROUTE_FLOW_RULES.filter((rule) => rule.match.test(file))
     if (matched.length === 0) {
       return { flows: prFlows, reason: `full PR suite (shared change: ${file})` }

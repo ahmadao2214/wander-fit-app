@@ -840,6 +840,21 @@ function hasScreenshotFiles(dir) {
   return false
 }
 
+// Moves the failed first attempt's Maestro output into a dedicated subfolder
+// (e.g. `attempt-1/`) inside `outDir` before retrying, so crash logs from the
+// original cold-start failure survive and are scrubbed alongside attempt 2.
+export function archiveAttemptEvidence(outDir, attemptLabel = "attempt-1") {
+  if (!fs.existsSync(outDir)) return false
+  const entries = fs.readdirSync(outDir).filter((name) => !/^attempt-\d+$/.test(name))
+  if (!entries.length) return false
+  const archiveDir = path.join(outDir, attemptLabel)
+  fs.mkdirSync(archiveDir, { recursive: true })
+  for (const name of entries) {
+    fs.renameSync(path.join(outDir, name), path.join(archiveDir, name))
+  }
+  return true
+}
+
 function runMaestro(flowFile, outDir, url, persona) {
   const maestro = maestroBin()
   if (!maestro) fail("Maestro is not installed.")
@@ -850,9 +865,9 @@ function runMaestro(flowFile, outDir, url, persona) {
     args.push("-e", `PERSONA_EMAIL=${persona.email}`, "-e", `PERSONA_PASSWORD=${persona.password}`)
   }
   args.push(flowFile)
+  fs.rmSync(outDir, { recursive: true, force: true })
+  fs.mkdirSync(outDir, { recursive: true })
   for (let attempt = 0; attempt < 2; attempt++) {
-    fs.rmSync(outDir, { recursive: true, force: true })
-    fs.mkdirSync(outDir, { recursive: true })
     const started = Date.now()
     const result = spawnSync(maestro, args, { cwd: root, stdio: "inherit", env })
     if (result.status === 0) {
@@ -862,8 +877,9 @@ function runMaestro(flowFile, outDir, url, persona) {
     const elapsedMs = Date.now() - started
     const hasScreenshots = hasScreenshotFiles(outDir)
     if (shouldRetryColdStart({ elapsedMs, hasScreenshots, attempt })) {
+      archiveAttemptEvidence(outDir, `attempt-${attempt + 1}`)
       console.warn(
-        `retrying ${flowFile} once after cold-start Maestro exit ${result.status ?? 1} (${Math.round(elapsedMs / 1000)}s, no screenshots)`
+        `retrying ${flowFile} once after cold-start Maestro exit ${result.status ?? 1} (${Math.round(elapsedMs / 1000)}s, no screenshots); preserved attempt-${attempt + 1}/`
       )
       continue
     }
@@ -1201,13 +1217,20 @@ export function selectBackendMode({ eventName, changedFiles, runtimeFiles } = {}
   return needsConvexPreview(changedFiles, { runtimeFiles }) ? "preview" : "shared"
 }
 
+// Disable git rename detection so moves/renames report BOTH the deleted source
+// path and the added destination path (e.g. moving a route into docs/ still
+// sees the deleted route instead of skipping E2E).
+export function prChangedFilesArgs() {
+  return ["diff", "--no-renames", "--name-only", "HEAD^1", "HEAD"]
+}
+
 function prChangedFiles() {
   // GitHub's pull_request checkout is a synthetic merge commit (HEAD^1 = base,
   // HEAD^2 = PR head). Refuse non-merge commits so a single-commit diff never
   // misses earlier commits on a branch.
   const isMerge = spawnSync("git", ["rev-parse", "--verify", "--quiet", "HEAD^2"], { cwd: root, encoding: "utf8" })
   if (isMerge.status !== 0) return null
-  const diff = spawnSync("git", ["diff", "--name-only", "HEAD^1", "HEAD"], { cwd: root, encoding: "utf8" })
+  const diff = spawnSync("git", prChangedFilesArgs(), { cwd: root, encoding: "utf8" })
   if (diff.status !== 0) return null
   return (diff.stdout || "")
     .split("\n")
@@ -1224,8 +1247,13 @@ function backendMode() {
 }
 
 export function buildE2EPlan({ eventName, changedFiles, available = listWebFlows(), maxShards = 4, runtimeFiles } = {}) {
-  const mode = selectBackendMode({ eventName, changedFiles, runtimeFiles })
-  const { flows, reason } = selectAffectedFlows(changedFiles, { available, eventName })
+  const resolvedRuntimeFiles = runtimeFiles ?? convexRuntimeFiles()
+  const mode = selectBackendMode({ eventName, changedFiles, runtimeFiles: resolvedRuntimeFiles })
+  const { flows, reason } = selectAffectedFlows(changedFiles, {
+    available,
+    eventName,
+    runtimeFiles: resolvedRuntimeFiles,
+  })
   const shards = balanceShards(flows, maxShards)
   return {
     mode,

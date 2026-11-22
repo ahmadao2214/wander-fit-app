@@ -16,9 +16,11 @@ import {
 import { loadMergedResults, renderSummary } from "./summary.mjs"
 
 const checks = parse(fs.readFileSync(path.join(root, ".github/workflows/checks.yml"), "utf8"))
+const runWorkflow = parse(fs.readFileSync(path.join(root, ".github/workflows/web-e2e-run.yml"), "utf8"))
 const planJob = checks.jobs["e2e-plan"]
-const buildJob = checks.jobs["e2e-build"]
-const shardJob = checks.jobs["e2e-shard"]
+const runCallerJob = checks.jobs["e2e-run"]
+const buildJob = runWorkflow.jobs["e2e-build"]
+const shardJob = runWorkflow.jobs["e2e-shard"]
 const job = checks.jobs["web-e2e"]
 
 function expandFlow(file, seen = new Set()) {
@@ -205,7 +207,7 @@ describe("web flows", () => {
 })
 
 describe("web E2E job", () => {
-  it("plans, builds once, shards in parallel, summarizes under Web E2E (advisory), and does not cancel main", () => {
+  it("plans, holds the backend lock across build and parallel shards, summarizes under Web E2E (advisory), and does not cancel main", () => {
     expect(checks.concurrency["cancel-in-progress"]).toBe("${{ github.event_name == 'pull_request' }}")
     expect(planJob.outputs).toMatchObject({
       mode: "${{ steps.plan.outputs.mode }}",
@@ -214,34 +216,49 @@ describe("web E2E job", () => {
     })
     expect(JSON.stringify(planJob)).not.toContain("secrets.")
 
-    expect(buildJob.needs).toBe("e2e-plan")
-    expect(buildJob.concurrency).toEqual({
+    // Concurrency lives on the reusable-workflow caller job so the lock spans
+    // both e2e-build and every parallel e2e-shard without serializing shards
+    // of the same run against each other.
+    expect(runCallerJob.needs).toBe("e2e-plan")
+    expect(runCallerJob.uses).toBe("./.github/workflows/web-e2e-run.yml")
+    expect(runCallerJob.concurrency).toEqual({
       group:
         "${{ needs.e2e-plan.outputs.mode == 'preview' && format('e2e-preview-pr-{0}', github.event.pull_request.number) || 'e2e-backend' }}",
       "cancel-in-progress": false,
       queue: "max",
     })
-    expect(shardJob.needs).toEqual(["e2e-plan", "e2e-build"])
+    expect(runWorkflow.concurrency).toBeUndefined()
+    expect(buildJob.concurrency).toBeUndefined()
+    expect(shardJob.concurrency).toBeUndefined()
+
+    expect(shardJob.needs).toBe("e2e-build")
     expect(shardJob.strategy["fail-fast"]).toBe(false)
-    expect(shardJob.strategy.matrix.shard).toBe("${{ fromJson(needs.e2e-plan.outputs.shards) }}")
+    expect(shardJob.strategy.matrix.shard).toBe("${{ fromJson(inputs.shards) }}")
 
     expect(job.name).toBe("Web E2E (advisory)")
-    expect(job.needs).toEqual(["e2e-plan", "e2e-build", "e2e-shard"])
+    expect(job.needs).toEqual(["e2e-plan", "e2e-run"])
   })
 
   it("passes only the key each step needs across build and shard jobs", () => {
-    const previewOnly = "${{ needs.e2e-plan.outputs.mode == 'preview' && secrets.CONVEX_PREVIEW_DEPLOY_KEY_E2E || '' }}"
-    const devDeployOnly = "${{ needs.e2e-plan.outputs.mode == 'dev' && secrets.CONVEX_DEPLOY_KEY_E2E || '' }}"
-    const nonPreviewDev = "${{ needs.e2e-plan.outputs.mode != 'preview' && secrets.CONVEX_DEPLOY_KEY_E2E || '' }}"
-    const previewNameExpr = "${{ needs.e2e-plan.outputs.mode == 'preview' && format('pr-{0}', github.event.pull_request.number) || '' }}"
+    const callerPreviewName = "${{ needs.e2e-plan.outputs.mode == 'preview' && format('pr-{0}', github.event.pull_request.number) || '' }}"
+    expect(runCallerJob.with.preview_name).toBe(callerPreviewName)
+    expect(runCallerJob.secrets).toEqual({
+      CLERK_SECRET_KEY: "${{ secrets.CLERK_SECRET_KEY }}",
+      CONVEX_DEPLOY_KEY_E2E: "${{ secrets.CONVEX_DEPLOY_KEY_E2E }}",
+      CONVEX_PREVIEW_DEPLOY_KEY_E2E: "${{ secrets.CONVEX_PREVIEW_DEPLOY_KEY_E2E }}",
+    })
+
+    const previewOnly = "${{ inputs.mode == 'preview' && secrets.CONVEX_PREVIEW_DEPLOY_KEY_E2E || '' }}"
+    const devDeployOnly = "${{ inputs.mode == 'dev' && secrets.CONVEX_DEPLOY_KEY_E2E || '' }}"
+    const nonPreviewDev = "${{ inputs.mode != 'preview' && secrets.CONVEX_DEPLOY_KEY_E2E || '' }}"
 
     const deploy = buildJob.steps.find((step) => /run\.mjs deploy$/.test(step.run || ""))
     expect(deploy.id).toBe("backend")
-    expect(deploy.env.VERIFY_BACKEND_MODE).toBe("${{ needs.e2e-plan.outputs.mode }}")
+    expect(deploy.env.VERIFY_BACKEND_MODE).toBe("${{ inputs.mode }}")
     expect(deploy.env.EXPO_PUBLIC_CONVEX_URL_E2E).toBe("${{ vars.EXPO_PUBLIC_CONVEX_URL_E2E }}")
     expect(deploy.env.CONVEX_DEPLOY_KEY_E2E).toBe(devDeployOnly)
     expect(deploy.env.CONVEX_PREVIEW_DEPLOY_KEY_E2E).toBe(previewOnly)
-    expect(deploy.env.CONVEX_PREVIEW_NAME_E2E).toBe(previewNameExpr)
+    expect(deploy.env.CONVEX_PREVIEW_NAME_E2E).toBe("${{ inputs.preview_name }}")
 
     const exportStep = buildJob.steps.find((step) => /run\.mjs export$/.test(step.run || ""))
     expect(exportStep.env.EXPO_PUBLIC_CONVEX_URL_E2E).toBe("${{ steps.backend.outputs.convex_url }}")
@@ -252,7 +269,7 @@ describe("web E2E job", () => {
       expect(step.env.EXPO_PUBLIC_CONVEX_URL_E2E).toBe("${{ needs.e2e-build.outputs.convex_url }}")
       expect(step.env.CONVEX_DEPLOY_KEY_E2E).toBe(nonPreviewDev)
       expect(step.env.CONVEX_PREVIEW_DEPLOY_KEY_E2E).toBe(previewOnly)
-      expect(step.env.CONVEX_PREVIEW_NAME_E2E).toBe(previewNameExpr)
+      expect(step.env.CONVEX_PREVIEW_NAME_E2E).toBe("${{ inputs.preview_name }}")
     }
     expect(buildJob.env).not.toHaveProperty("EXPO_PUBLIC_CONVEX_URL_E2E")
     expect(shardJob.env).not.toHaveProperty("EXPO_PUBLIC_CONVEX_URL_E2E")
@@ -457,6 +474,19 @@ describe("sharding and affected-flow selection", () => {
     expect(selectAffectedFlows(["app/(first-run)/sport.tsx"], { available }).flows).toEqual(["first-run"])
     expect(selectAffectedFlows(["app/(athlete)/history.tsx"], { available }).flows).toEqual(["history"])
     expect(selectAffectedFlows(["app/(reassessment)/results.tsx"], { available }).flows).toEqual(["reassessment"])
+    expect(selectAffectedFlows(["components/workout/SetTracker.tsx"], { available }).flows).toEqual(["workout-exit-resume"])
+    // Shared/backend helpers must ALWAYS force the full PR suite
+    expect(selectAffectedFlows(["lib/firstRunRoutes.ts"], { available }).flows).toEqual(prAll)
+    expect(selectAffectedFlows(["lib/executionOrder.ts"], { available }).flows).toEqual(prAll)
+    expect(selectAffectedFlows(["lib/sessionTiming.ts"], { available }).flows).toEqual(prAll)
+    expect(selectAffectedFlows(["lib/weeksOnPlan.ts"], { available }).flows).toEqual(prAll)
+    expect(selectAffectedFlows(["hooks/useFirstRunDraft.ts"], { available }).flows).toEqual(prAll)
+    expect(selectAffectedFlows(["components/SignOutButton.tsx"], { available }).flows).toEqual(prAll)
+    expect(selectAffectedFlows(["components/workout/ConfettiEffect.tsx"], { available }).flows).toEqual(prAll)
+    // Any file in runtimeFiles forces the full PR suite even if it matches a narrow path
+    expect(
+      selectAffectedFlows(["lib/sportFields.ts"], { available, runtimeFiles: ["lib/sportFields.ts"] }).flows
+    ).toEqual(prAll)
     expect(selectAffectedFlows(["convex/workoutCalendar.ts"], { available }).flows).toEqual(prAll)
     expect(selectAffectedFlows(["app/_layout.tsx"], { available }).flows).toEqual(prAll)
     expect(selectAffectedFlows(null, { available }).flows).toEqual(prAll)

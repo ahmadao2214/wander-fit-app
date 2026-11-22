@@ -6,6 +6,7 @@ import {
   exportIsStale,
   exportStamp,
   needsConvexPreview,
+  prChangedFilesArgs,
   runEnsureSeeded,
   seedInputFiles,
   seedInputsHash,
@@ -311,6 +312,23 @@ describe("seed inputs and backend mode", () => {
     expect(planUi.runE2E).toBe(true)
     expect(planUi.flows).toEqual(["first-run"])
     expect(planUi.shards).toHaveLength(1)
+
+    const planShared = buildE2EPlan({
+      eventName: "pull_request",
+      changedFiles: ["lib/executionOrder.ts"],
+    })
+    expect(planShared.mode).toBe("preview")
+    expect(planShared.runE2E).toBe(true)
+    expect(planShared.flows.length).toBeGreaterThan(1)
+
+    const planFirstRunRoutes = buildE2EPlan({
+      eventName: "pull_request",
+      changedFiles: ["lib/firstRunRoutes.ts"],
+      runtimeFiles: ["convex/schema.ts"],
+    })
+    expect(planFirstRunRoutes.flows.length).toBeGreaterThan(1)
+
+    expect(prChangedFilesArgs()).toEqual(["diff", "--no-renames", "--name-only", "HEAD^1", "HEAD"])
 
     expect(shouldRetryColdStart({ elapsedMs: 3400, hasScreenshots: false, attempt: 0 })).toBe(true)
     expect(shouldRetryColdStart({ elapsedMs: 3400, hasScreenshots: false, attempt: 1 })).toBe(false)
