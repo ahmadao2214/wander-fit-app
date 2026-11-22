@@ -23,10 +23,24 @@ const IGNORED_FORMAT_PATTERNS = [
   /^bun\.lock$/,
 ]
 
+const ZERO_SHA = '0'.repeat(40)
+
 // Disable rename detection so moves/renames report both paths without fetching
-// blobs on `filter: blob:none` clones.
-export function formatDiffArgs() {
-  return ['diff', '--no-renames', '--name-only', 'HEAD^1', 'HEAD']
+// blobs on `filter: blob:none` clones, and use `-z` (NUL-separated output) so
+// Git never quotes or escapes filenames with non-ASCII characters or spaces.
+export function formatDiffArgs(baseRef = 'HEAD^1', headRef = 'HEAD') {
+  return ['diff', '--no-renames', '--name-only', '-z', baseRef, headRef]
+}
+
+export function resolveDiffBase({ eventName = '', pushBefore = '' } = {}) {
+  if (eventName === 'push' && /^[0-9a-f]{40}$/i.test(pushBefore) && pushBefore !== ZERO_SHA) {
+    return pushBefore
+  }
+  return 'HEAD^1'
+}
+
+export function parseNullSeparatedPaths(stdout) {
+  return (stdout || '').split('\0').filter(Boolean)
 }
 
 export function isFormattableFile(file) {
@@ -50,26 +64,23 @@ export function selectFormatTargets({
   return { mode: 'check', files, reason: `checking ${files.length} changed file(s)` }
 }
 
-function changedFilesFromGit(eventName) {
+function changedFilesFromGit(eventName, pushBefore) {
+  const baseRef = resolveDiffBase({ eventName, pushBefore })
   if (eventName === 'pull_request') {
     const isMerge = spawnSync('git', ['rev-parse', '--verify', '--quiet', 'HEAD^2'], {
       cwd: root,
       encoding: 'utf8',
     })
     if (isMerge.status !== 0) return null
-  } else {
-    const hasParent = spawnSync('git', ['rev-parse', '--verify', '--quiet', 'HEAD^1'], {
-      cwd: root,
-      encoding: 'utf8',
-    })
-    if (hasParent.status !== 0) return null
   }
-  const diff = spawnSync('git', formatDiffArgs(), { cwd: root, encoding: 'utf8' })
+  const hasBase = spawnSync('git', ['rev-parse', '--verify', '--quiet', baseRef], {
+    cwd: root,
+    encoding: 'utf8',
+  })
+  if (hasBase.status !== 0) return null
+  const diff = spawnSync('git', formatDiffArgs(baseRef, 'HEAD'), { cwd: root, encoding: 'utf8' })
   if (diff.status !== 0) return null
-  return (diff.stdout || '')
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
+  return parseNullSeparatedPaths(diff.stdout)
 }
 
 function main() {
@@ -80,7 +91,8 @@ function main() {
     process.exit(result.status ?? 1)
   }
   const eventName = process.env.GITHUB_EVENT_NAME || ''
-  const changedFiles = changedFilesFromGit(eventName)
+  const pushBefore = process.env.GITHUB_PUSH_BEFORE || ''
+  const changedFiles = changedFilesFromGit(eventName, pushBefore)
   const plan = selectFormatTargets({ changedFiles })
   console.log(`[format] ${plan.mode}: ${plan.reason}`)
   if (plan.mode === 'error') {

@@ -73,7 +73,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           filter: blob:none
-          fetch-depth: 2
+          fetch-depth: ${{ github.event_name == 'push' && 0 || 2 }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -91,6 +91,7 @@ jobs:
       - name: Run lint and format check (budgeted)
         env:
           GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_PUSH_BEFORE: ${{ github.event.before }}
         run: node scripts/ci/run-budgeted.mjs --name "Lint & format" --max-seconds 30 -- sh -c "bun run lint && bun run format:check"
 
   # Plans Web E2E: selects the backend mode ("preview", "shared", or "dev"),

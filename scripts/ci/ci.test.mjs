@@ -1,7 +1,13 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { parse } from 'yaml'
-import { formatDiffArgs, isFormattableFile, selectFormatTargets } from './check-format.mjs'
+import {
+  formatDiffArgs,
+  isFormattableFile,
+  parseNullSeparatedPaths,
+  resolveDiffBase,
+  selectFormatTargets,
+} from './check-format.mjs'
 import { evaluateBudget, parseBudgetArgs } from './run-budgeted.mjs'
 import { listConvexTestFiles, planUnitTests, prChangedFilesArgs, root } from './select-tests.mjs'
 
@@ -246,8 +252,36 @@ describe('select-tests', () => {
 })
 
 describe('check-format', () => {
-  it('uses --no-renames so moved files report both sides without blob fetches', () => {
-    expect(formatDiffArgs()).toEqual(['diff', '--no-renames', '--name-only', 'HEAD^1', 'HEAD'])
+  it('uses --no-renames and -z so moved and non-ASCII filenames are preserved without quoting', () => {
+    expect(formatDiffArgs()).toEqual([
+      'diff',
+      '--no-renames',
+      '--name-only',
+      '-z',
+      'HEAD^1',
+      'HEAD',
+    ])
+    expect(formatDiffArgs('abc123', 'HEAD')).toEqual([
+      'diff',
+      '--no-renames',
+      '--name-only',
+      '-z',
+      'abc123',
+      'HEAD',
+    ])
+    expect(parseNullSeparatedPaths('lib/café.ts\0app/(athlete)/index.tsx\0')).toEqual([
+      'lib/café.ts',
+      'app/(athlete)/index.tsx',
+    ])
+    expect(isFormattableFile('lib/café.ts')).toBe(true)
+  })
+
+  it('uses the push event before SHA on multi-commit pushes and HEAD^1 otherwise', () => {
+    const sha = 'a'.repeat(40)
+    expect(resolveDiffBase({ eventName: 'push', pushBefore: sha })).toBe(sha)
+    expect(resolveDiffBase({ eventName: 'push', pushBefore: '0'.repeat(40) })).toBe('HEAD^1')
+    expect(resolveDiffBase({ eventName: 'push', pushBefore: '' })).toBe('HEAD^1')
+    expect(resolveDiffBase({ eventName: 'pull_request', pushBefore: sha })).toBe('HEAD^1')
   })
 
   it('filters to formattable extensions and excludes generated/ignored folders', () => {
@@ -293,7 +327,7 @@ describe('CI workflow speed and budgets', () => {
 
     const lintCheckout = checks.jobs.lint.steps[0]
     expect(lintCheckout.with.filter).toBe('blob:none')
-    expect(lintCheckout.with['fetch-depth']).toBe(2)
+    expect(lintCheckout.with['fetch-depth']).toBe("${{ github.event_name == 'push' && 0 || 2 }}")
 
     const unitRun = checks.jobs.unit.steps.find((s) => (s.run || '').includes('select-tests.mjs'))
     expect(unitRun.run).toContain('run-budgeted.mjs')
@@ -308,6 +342,7 @@ describe('CI workflow speed and budgets', () => {
     expect(lintRun.run).toContain('run-budgeted.mjs')
     expect(lintRun.run).toContain('bun run format:check')
     expect(lintRun.env.GITHUB_EVENT_NAME).toBe('${{ github.event_name }}')
+    expect(lintRun.env.GITHUB_PUSH_BEFORE).toBe('${{ github.event.before }}')
 
     for (const current of [
       checks.jobs.unit,
