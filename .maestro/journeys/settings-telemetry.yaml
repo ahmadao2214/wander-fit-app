@@ -1,0 +1,63 @@
+url: ${VERIFY_URL}
+---
+- runFlow: ../subflows/_evidence-start.yaml
+- runFlow: ../subflows/_open-sign-in.yaml
+- runFlow: ../subflows/_sign-in.yaml
+- extendedWaitUntil:
+    visible:
+      id: today-workout-card
+    timeout: 90000
+- tapOn: "Profile"
+- extendedWaitUntil:
+    visible: "Training info"
+    timeout: 30000
+# Scroll Profile to bring App settings into the viewport, then tap the real card
+- evalScript: ${var base = VERIFY_URL; if (base.endsWith('/')) base = base.slice(0, -1); if (base.endsWith('/sign-in')) base = base.slice(0, -8); output.profileBottomUrl = base + '/profile#sign-out'}
+- openLink: ${output.profileBottomUrl}
+- extendedWaitUntil:
+    visible:
+      id: profile-app-settings
+    timeout: 30000
+- tapOn:
+    id: profile-app-settings
+- extendedWaitUntil:
+    visible: "App Settings"
+    timeout: 30000
+- assertVisible: "Privacy & telemetry"
+- assertVisible: "Share anonymous usage analytics"
+- assertVisible: "On"
+- takeScreenshot: 01-settings-telemetry
+# Toggle analytics off and verify it updates to Off
+- tapOn:
+    id: analytics-opt-in-switch
+- extendedWaitUntil:
+    visible: "Off"
+    timeout: 15000
+- takeScreenshot: 02-settings-opted-out
+# Navigate back to Profile, reopen App settings, and assert persistence (still Off)
+- tapOn:
+    id: "Back"
+- extendedWaitUntil:
+    visible: "Training info"
+    timeout: 30000
+- openLink: ${output.profileBottomUrl}
+- extendedWaitUntil:
+    visible:
+      id: profile-app-settings
+    timeout: 30000
+- tapOn:
+    id: profile-app-settings
+- extendedWaitUntil:
+    visible: "App Settings"
+    timeout: 30000
+- extendedWaitUntil:
+    visible: "Off"
+    timeout: 15000
+- takeScreenshot: 03-settings-persisted-off
+# Restore to On
+- tapOn:
+    id: analytics-opt-in-switch
+- extendedWaitUntil:
+    visible: "On"
+    timeout: 15000
+- runFlow: ../subflows/_evidence-stop.yaml

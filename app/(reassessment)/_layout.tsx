@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router'
 import { FlowErrorBoundary } from '../../components/FlowErrorBoundary'
+import { ReplayExcludedSurface } from '../../components/ReplayExcludedSurface'
 
 /**
  * Reassessment Flow Layout
@@ -12,22 +13,24 @@ import { FlowErrorBoundary } from '../../components/FlowErrorBoundary'
  */
 export default function ReassessmentLayout() {
   return (
-    <FlowErrorBoundary
-      flowName="reassessment"
-      fallbackRoute="/(athlete)"
-      errorMessage="Something went wrong during your phase check-in. Your training history is safe."
-    >
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          animation: 'slide_from_right',
-        }}
+    <ReplayExcludedSurface>
+      <FlowErrorBoundary
+        flowName="reassessment"
+        fallbackRoute="/(athlete)"
+        errorMessage="Something went wrong during your phase check-in. Your training history is safe."
       >
-        <Stack.Screen name="celebration" />
-        <Stack.Screen name="self-assessment" />
-        <Stack.Screen name="maxes" />
-        <Stack.Screen name="results" />
-      </Stack>
-    </FlowErrorBoundary>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            animation: 'slide_from_right',
+          }}
+        >
+          <Stack.Screen name="celebration" />
+          <Stack.Screen name="self-assessment" />
+          <Stack.Screen name="maxes" />
+          <Stack.Screen name="results" />
+        </Stack>
+      </FlowErrorBoundary>
+    </ReplayExcludedSurface>
   )
 }

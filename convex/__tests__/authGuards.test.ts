@@ -11,6 +11,8 @@ import * as sports from "../sports";
 import * as programTemplates from "../programTemplates";
 import * as users from "../users";
 import * as userPrograms from "../userPrograms";
+import * as pilotMetrics from "../pilotMetrics";
+import * as telemetry from "../telemetry";
 import { convexModules } from "../../jest/convexModules";
 
 const modules = convexModules();
@@ -35,7 +37,7 @@ function registeredFunctions(mod: Record<string, unknown>): [string, RegisteredF
 }
 
 describe("internal-only modules", () => {
-  const internalModules = { debug, seed, migrations, generateTemplates };
+  const internalModules = { debug, seed, migrations, generateTemplates, pilotMetrics, telemetry };
 
   for (const [moduleName, mod] of Object.entries(internalModules)) {
     it(`${moduleName}: every function is internal`, () => {
@@ -253,6 +255,22 @@ describe("gppWorkoutSessions.getById", () => {
     const { asClient, sessionId } = await setupGppSession();
     const session = await asClient.query(api.gppWorkoutSessions.getById, { sessionId });
     expect(session?._id).toBe(sessionId);
+  });
+
+  it("markWorkoutStarted rejects unauthenticated/other callers and persists workoutStartedAt idempotently", async () => {
+    const { t, asStranger, asClient, sessionId } = await setupGppSession();
+    await expect(
+      t.mutation(api.gppWorkoutSessions.markWorkoutStarted, { sessionId })
+    ).rejects.toThrow("Not authenticated");
+    await expect(
+      asStranger.mutation(api.gppWorkoutSessions.markWorkoutStarted, { sessionId })
+    ).rejects.toThrow("Not authorized");
+
+    const first = await asClient.mutation(api.gppWorkoutSessions.markWorkoutStarted, { sessionId });
+    expect(first).toEqual({ marked: true, alreadyStarted: false });
+
+    const second = await asClient.mutation(api.gppWorkoutSessions.markWorkoutStarted, { sessionId });
+    expect(second).toEqual({ marked: false, alreadyStarted: true });
   });
 });
 

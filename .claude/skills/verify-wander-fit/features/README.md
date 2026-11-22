@@ -48,6 +48,7 @@ Web, one file per flow under `.maestro/web/` (`scripts/verify/feature-map.test.m
 - [Workout exit and resume](./workout-exit-resume.md): X → Exit pauses the session, and Today resumes it with the logged sets.
 - [App Settings](./app-settings.md): opening App Settings from Profile, the chat connector address and Claude steps, and Back.
 - [Workout loop](./workout-loop.md): starting today's workout, logging every set, finishing, and seeing it on History, checked with `persona inspect`.
+- [Settings telemetry](./settings-telemetry.md): turning anonymous usage analytics off in App Settings, the choice surviving a reopen, and turning it back on.
 
 Native only (iPhone 17 simulator and a local build; unreachable from the web harness):
 

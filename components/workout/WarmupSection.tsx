@@ -26,10 +26,16 @@ export interface WarmupExercise {
   orderIndex: number
 }
 
+export interface WarmupOutcome {
+  skipped: boolean
+  completedPhases: number
+  totalPhases: number
+}
+
 interface WarmupSectionProps {
   exercises: WarmupExercise[]
   totalDuration: number
-  onComplete: () => void
+  onComplete: (outcome?: WarmupOutcome) => void
   onBack?: () => void
   mode: "preview" | "flow"
   /** Training phase (GPP/SPP/SSP): colors the step badges */
@@ -266,7 +272,13 @@ function WarmupFlow({ exercises, totalDuration, onComplete, onBack, trainingPhas
               color="$color11"
               fontWeight="600"
               rounded="$3"
-              onPress={onComplete}
+              onPress={() =>
+                onComplete({
+                  skipped: true,
+                  completedPhases: completedCount,
+                  totalPhases: activePhases.length,
+                })
+              }
               testID="warmup-skip"
               pressStyle={{ opacity: 0.7 }}
             >
@@ -328,7 +340,13 @@ function WarmupFlow({ exercises, totalDuration, onComplete, onBack, trainingPhas
             color="white"
             fontSize={18}
             fontWeight="700"
-            onPress={onComplete}
+            onPress={() =>
+              onComplete({
+                skipped: activePhases.length > 0 && completedCount === 0,
+                completedPhases: completedCount,
+                totalPhases: activePhases.length,
+              })
+            }
             icon={allComplete ? Check : undefined}
           >
             {buttonLabel}

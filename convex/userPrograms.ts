@@ -196,6 +196,7 @@ export const getCurrentProgramState = query({
       gppCategoryId: program.gppCategoryId,
       phase: program.currentPhase,
       skillLevel: program.skillLevel,
+      ageGroup: program.ageGroup ?? intake?.ageGroup ?? null,
       week: program.currentWeek,
       day: program.currentDay,
       programId: program._id,

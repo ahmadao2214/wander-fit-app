@@ -2,6 +2,7 @@ import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { Theme } from 'tamagui'
 import { FlowErrorBoundary } from '../../components/FlowErrorBoundary'
+import { ReplayExcludedSurface } from '../../components/ReplayExcludedSurface'
 import { useIntakeMotion } from '../../components/first-run/useIntakeMotion'
 import { PAGE_TURN_MS } from '../../components/first-run/intakeMotion'
 import { NIGHT } from '../../lib/firstRunStory'
@@ -21,29 +22,31 @@ export default function FirstRunLayout() {
   const animation = motion.pageTurn === 'slide' ? 'slide_from_right' : motion.pageTurn === 'fade' ? 'fade' : 'none'
 
   return (
-    <Theme name="dark">
-      <StatusBar style="light" />
-      <FlowErrorBoundary
-        flowName="first-run"
-        fallbackRoute="/(first-run)"
-        errorMessage="Something went wrong building your plan. Your answers are saved, so let's pick up again."
-      >
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            animation,
-            animationDuration: PAGE_TURN_MS,
-            contentStyle: { backgroundColor: NIGHT.ink },
-          }}
+    <ReplayExcludedSurface>
+      <Theme name="dark">
+        <StatusBar style="light" />
+        <FlowErrorBoundary
+          flowName="first-run"
+          fallbackRoute="/(first-run)"
+          errorMessage="Something went wrong building your plan. Your answers are saved, so let's pick up again."
         >
-          <Stack.Screen name="index" />
-          <Stack.Screen name="sport" />
-          <Stack.Screen name="season" />
-          <Stack.Screen name="days" />
-          <Stack.Screen name="about" />
-          <Stack.Screen name="reveal" />
-        </Stack>
-      </FlowErrorBoundary>
-    </Theme>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              animation,
+              animationDuration: PAGE_TURN_MS,
+              contentStyle: { backgroundColor: NIGHT.ink },
+            }}
+          >
+            <Stack.Screen name="index" />
+            <Stack.Screen name="sport" />
+            <Stack.Screen name="season" />
+            <Stack.Screen name="days" />
+            <Stack.Screen name="about" />
+            <Stack.Screen name="reveal" />
+          </Stack>
+        </FlowErrorBoundary>
+      </Theme>
+    </ReplayExcludedSurface>
   )
 }

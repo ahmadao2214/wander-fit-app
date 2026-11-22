@@ -268,6 +268,10 @@ export default defineSchema({
     onboardingCompletedAt: v.optional(v.number()), // null = needs onboarding
     onboardingProgress: v.optional(v.number()), // Current screen index (0-9) for resume
     onboardingSkipped: v.optional(v.boolean()), // True if user skipped onboarding
+
+    // Telemetry & privacy preferences (Thread B2)
+    analyticsOptOut: v.optional(v.boolean()), // Default false (undefined = opted in to zero-PII events)
+    sessionReplayOptIn: v.optional(v.boolean()), // Default false (explicit adult 18+ opt-in only)
   })
     .index("by_email", ["email"])
     .index("by_clerk", ["clerkId"])
@@ -410,6 +414,10 @@ export default defineSchema({
 
     // Session timing (timestamps in milliseconds)
     startedAt: v.number(),
+    // First-start telemetry marker (ADR 0005 / S5): set once when warm-up finishes
+    // OR the first non-skipped main set is logged, so workout_started never double-fires
+    // across reloads, autosave, or pause/resume cycles.
+    workoutStartedAt: v.optional(v.number()),
     completedAt: v.optional(v.number()),
     totalDurationSeconds: v.optional(v.number()), // Total workout time in seconds
 

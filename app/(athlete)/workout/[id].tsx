@@ -34,11 +34,13 @@ import DraggableFlatList, {
 } from 'react-native-draggable-flatlist'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { ExerciseAccordionItem } from '../../../components/ExerciseAccordionItem'
+import { ReplayExcludedSurface } from '../../../components/ReplayExcludedSurface'
 import { PerformanceReviewItem } from '../../../components/workout/PerformanceReviewItem'
 import { WarmupSection, type WarmupExercise } from '../../../components/workout/WarmupSection'
 import { WARMUP_PHASES } from '../../../convex/warmupSequences'
 import { workoutMetaLine } from '../../../lib/workoutMeta'
 import { PAUSED_SESSION_MESSAGE } from '../../../lib/sessionTiming'
+import { analytics } from '../../../lib/analytics'
 import {
   mainOrderToTemplateOrder,
   normalizeExerciseOrder,
@@ -279,6 +281,17 @@ export default function WorkoutDetailScreen() {
           ? mainOrderToTemplateOrder(orderIndices, template.exercises as any)
           : undefined,
       })
+
+      if (!result.isExisting) {
+        analytics.trackWorkoutOpened({
+          phase: template.phase,
+          week: template.week,
+          day: template.day,
+          intensity: session?.targetIntensity ?? 'Moderate',
+          is_redo: isCompleted,
+          has_custom_order: hasCustomOrder,
+        })
+      }
 
       // Navigate to execution screen with the session ID
       router.push({
@@ -610,6 +623,7 @@ export default function WorkoutDetailScreen() {
   }
 
   return (
+    <ReplayExcludedSurface>
     <GestureHandlerRootView style={styles.container}>
       <YStack flex={1} bg="$background">
         {/* Header: back + primary action, then the title on its own line */}
@@ -704,6 +718,7 @@ export default function WorkoutDetailScreen() {
         </View>
       </YStack>
     </GestureHandlerRootView>
+    </ReplayExcludedSurface>
   )
 }
 

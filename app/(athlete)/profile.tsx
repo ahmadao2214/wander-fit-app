@@ -7,6 +7,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { SignOutButton } from '../../components/SignOutButton'
 import { OneRepMaxSheet } from '../../components/OneRepMaxSheet'
 import { SentryDiagnosticsCard } from '../../components/SentryDiagnosticsCard'
+import { ReplayExcludedSurface } from '../../components/ReplayExcludedSurface'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   User,
@@ -87,6 +88,7 @@ export default function ProfilePage() {
   const latestIntake = intakeHistory?.[0]
 
   return (
+    <ReplayExcludedSurface>
     <YStack flex={1} bg="$background">
       <ScrollView flex={1} showsVerticalScrollIndicator={false}>
         <YStack
@@ -382,5 +384,6 @@ export default function ProfilePage() {
         />
       )}
     </YStack>
+    </ReplayExcludedSurface>
   )
 }

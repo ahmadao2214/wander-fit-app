@@ -8,6 +8,7 @@ import { useIntakeMotion } from '../../components/first-run/useIntakeMotion'
 import { useIntakeSport } from '../../components/first-run/useIntakeSport'
 import { useReachStep } from '../../components/first-run/useReachStep'
 import { useFirstRunDraft } from '../../hooks/useFirstRunDraft'
+import { analytics, FIRST_RUN_STEP_INDEX } from '../../lib/analytics'
 import { DEFAULT_SEASON_WEEKS, MAX_SEASON_WEEKS, seasonStartForWeeks, weeksUntilSeason } from '../../lib/firstRun'
 import { NIGHT, monthGrid } from '../../lib/firstRunStory'
 import { selectionFeedback } from '../../lib/haptics'
@@ -82,6 +83,11 @@ export default function FirstRunSeason() {
         disabled: !draft,
         onPress: async () => {
           await save({ seasonStart: noSeason ? null : picked })
+          analytics.trackFirstRunStepAdvanced({
+            step: 'season',
+            step_index: FIRST_RUN_STEP_INDEX.season,
+            weeks_until_season: noSeason ? DEFAULT_SEASON_WEEKS : weeks,
+          })
           router.push('/(first-run)/days')
         },
         testID: 'first-run-continue',
