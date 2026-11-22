@@ -62,7 +62,8 @@ export function RatingFeedbackSheet({
   }, [open])
 
   const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen && open && trigger === 'post_workout_prompt' && !isSubmitting) {
+    // Record the dismissal even mid-send: if that send then fails, the cooldown still holds.
+    if (!nextOpen && open && trigger === 'post_workout_prompt') {
       onDismiss?.()
     }
     onOpenChange(nextOpen)

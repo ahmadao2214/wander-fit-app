@@ -117,6 +117,38 @@ describe('Feedback sheets', () => {
       expect(onDismiss).toHaveBeenCalledTimes(1)
       expect(onOpenChange).toHaveBeenCalledWith(false)
     })
+
+    it('records the dismissal when the athlete closes the auto-prompt while a rating is still sending', async () => {
+      let rejectSubmit: (error: Error) => void = () => {}
+      mockSubmitRating.mockImplementationOnce(
+        () => new Promise((_resolve, reject) => (rejectSubmit = reject))
+      )
+      const onDismiss = jest.fn()
+      const { getByTestId, getByLabelText } = render(
+        <RatingFeedbackSheet
+          open
+          onOpenChange={jest.fn()}
+          trigger="post_workout_prompt"
+          screenRoute="/(athlete)"
+          onDismiss={onDismiss}
+        />,
+        { wrapper: AllTheProviders }
+      )
+      await act(async () => {})
+      fireEvent.press(getByTestId('rating-star-4'))
+      await act(async () => {
+        fireEvent.press(getByTestId('rating-submit-button'))
+      })
+
+      fireEvent.press(getByLabelText('Close'))
+      expect(onDismiss).toHaveBeenCalledTimes(1)
+
+      // The send then fails (e.g. the hourly limit); the dismissal still stands
+      await act(async () => {
+        rejectSubmit(new Error('Too many submissions'))
+      })
+      expect(onDismiss).toHaveBeenCalledTimes(1)
+    })
   })
 
   describe('BugReportSheet', () => {
