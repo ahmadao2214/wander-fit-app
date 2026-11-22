@@ -71,7 +71,7 @@ const DOC_ONLY_PATTERNS = [
 const EXTRA_TEST_RULES = [
   {
     match: /^\.github\/workflows\/(checks|web-e2e-run)\.yml$/,
-    tests: ["scripts/verify/flows.test.mjs", "scripts/verify/nightly.test.mjs"],
+    tests: ["scripts/ci/ci.test.mjs", "scripts/verify/flows.test.mjs", "scripts/verify/nightly.test.mjs"],
   },
   {
     match: /^\.github\/workflows\/nightly-e2e\.yml$/,

@@ -146,7 +146,11 @@ describe("select-tests", () => {
       convexTests,
       exists: allExist,
     })
-    expect(workflowPlan.targets).toEqual(["scripts/verify/flows.test.mjs", "scripts/verify/nightly.test.mjs"])
+    expect(workflowPlan.targets).toEqual([
+      "scripts/ci/ci.test.mjs",
+      "scripts/verify/flows.test.mjs",
+      "scripts/verify/nightly.test.mjs",
+    ])
 
     const lottiePlan = planUnitTests({
       eventName: "pull_request",
