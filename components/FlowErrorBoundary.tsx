@@ -95,12 +95,7 @@ function ErrorFallbackBugReport({
   )
 }
 
-function ErrorFallback({
-  error,
-  onRetry,
-  fallbackRoute = '/',
-  errorMessage
-}: ErrorFallbackProps) {
+function ErrorFallback({ error, onRetry, fallbackRoute = '/', errorMessage }: ErrorFallbackProps) {
   const insets = useSafeAreaInsets()
   const router = useRouter()
 
@@ -123,45 +118,23 @@ function ErrorFallback({
       pb={insets.bottom}
     >
       {/* Error Icon */}
-      <YStack
-        bg="$red3"
-        p="$4"
-        rounded="$6"
-        items="center"
-        justify="center"
-      >
+      <YStack bg="$red3" p="$4" rounded="$6" items="center" justify="center">
         <AlertTriangle size={48} color="$red10" />
       </YStack>
 
       {/* Error Message */}
       <YStack gap="$2" items="center">
-        <Text
-          fontSize="$7"
-          fontWeight="700"
-          color="$color12"
-          text="center"
-        >
+        <Text fontSize="$7" fontWeight="700" color="$color12" text="center">
           Something went wrong
         </Text>
-        <Text
-          fontSize="$4"
-          color="$color10"
-          text="center"
-          maxW={300}
-        >
+        <Text fontSize="$4" color="$color10" text="center" maxW={300}>
           {errorMessage || "We hit a snag. Don't worry, your progress is saved."}
         </Text>
       </YStack>
 
       {/* Debug info in development */}
       {__DEV__ && error && (
-        <YStack
-          bg="$gray3"
-          p="$3"
-          rounded="$3"
-          maxW={320}
-          maxH={120}
-        >
+        <YStack bg="$gray3" p="$3" rounded="$3" maxW={320} maxH={120}>
           <Text fontSize="$2" color="$gray11">
             {error.message.slice(0, 200)}
             {error.message.length > 200 ? '...' : ''}
@@ -171,12 +144,7 @@ function ErrorFallback({
 
       {/* Action Buttons */}
       <XStack gap="$3" mt="$2">
-        <Button
-          size="$4"
-          variant="outlined"
-          icon={<Home size={18} />}
-          onPress={handleGoHome}
-        >
+        <Button size="$4" variant="outlined" icon={<Home size={18} />} onPress={handleGoHome}>
           Go Home
         </Button>
         <Button
@@ -216,10 +184,7 @@ function ErrorFallback({
  *   <MyScreen />
  * </FlowErrorBoundary>
  */
-export class FlowErrorBoundary extends Component<
-  FlowErrorBoundaryProps,
-  FlowErrorBoundaryState
-> {
+export class FlowErrorBoundary extends Component<FlowErrorBoundaryProps, FlowErrorBoundaryState> {
   constructor(props: FlowErrorBoundaryProps) {
     super(props)
     this.state = { hasError: false, error: null }

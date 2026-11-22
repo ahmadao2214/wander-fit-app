@@ -1,16 +1,16 @@
 // Where web flows live, where their evidence goes, and what CI calls each artifact.
-import fs from "node:fs"
-import path from "node:path"
-import { fileURLToPath } from "node:url"
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
-export const artifactsDir = path.join(root, "e2e-artifacts")
-export const webFlowsDir = path.join(root, ".maestro/web")
-export const resultsFile = path.join(artifactsDir, "web-results.json")
-export const personaFile = path.join(artifactsDir, "persona-latest.json")
+export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
+export const artifactsDir = path.join(root, 'e2e-artifacts')
+export const webFlowsDir = path.join(root, '.maestro/web')
+export const resultsFile = path.join(artifactsDir, 'web-results.json')
+export const personaFile = path.join(artifactsDir, 'persona-latest.json')
 // Personas whose account delete or password scrub still has to be retried.
 // Separate from persona-latest.json, which the next create overwrites.
-export const pendingFile = path.join(artifactsDir, "persona-pending.json")
+export const pendingFile = path.join(artifactsDir, 'persona-pending.json')
 
 // Every *.yaml directly under .maestro/web is one web flow. Journey steps
 // live in .maestro/journeys, and shared subflows live in .maestro/subflows.
@@ -18,31 +18,31 @@ export function listWebFlows(dir = webFlowsDir) {
   if (!fs.existsSync(dir)) return []
   return fs
     .readdirSync(dir, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith(".yaml"))
-    .map((entry) => entry.name.replace(/\.yaml$/, ""))
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.yaml'))
+    .map((entry) => entry.name.replace(/\.yaml$/, ''))
     .sort()
 }
 
 // Flows too slow for the per-PR web job (AGENTS.md: when the per-PR suite
 // goes over 10 minutes, the slowest flows move to nightly). Pull request runs
 // leave them out. Main pushes, the nightly run and local runs keep them.
-export const nightlyOnlyFlows = ["workout-loop"]
+export const nightlyOnlyFlows = ['workout-loop']
 
 // The flows a run with no named flows covers. `set` is "pr" on pull request
 // runs (VERIFY_FLOW_SET in checks.yml) and anything else for every flow.
 export function defaultFlows(available, set) {
-  return set === "pr" ? available.filter((flow) => !nightlyOnlyFlows.includes(flow)) : available
+  return set === 'pr' ? available.filter((flow) => !nightlyOnlyFlows.includes(flow)) : available
 }
 
 export function webFlowFile(flow) {
-  return path.join(".maestro/web", `${flow}.yaml`)
+  return path.join('.maestro/web', `${flow}.yaml`)
 }
 
-export function evidenceDirFor(flow, platform = "web") {
+export function evidenceDirFor(flow, platform = 'web') {
   return path.join(artifactsDir, flow, platform)
 }
 
-export function artifactName(flow, platform = "web") {
+export function artifactName(flow, platform = 'web') {
   return `e2e-${platform}-${flow}`
 }
 
@@ -53,25 +53,25 @@ export function artifactName(flow, platform = "web") {
 // Every other flow signs in as an onboarded persona created before Maestro
 // runs.
 const flowPersonaModes = {
-  "first-run": "first-run",
-  history: "with-history",
-  reassessment: "phase-end",
-  "repeated-week": "repeated-week",
+  'first-run': 'first-run',
+  history: 'with-history',
+  reassessment: 'phase-end',
+  'repeated-week': 'repeated-week',
 }
 
 // Recorded median run times (seconds) on GitHub Ubuntu runners, used to
 // balance parallel E2E shards via greedy LPT bin packing.
 export const FLOW_DURATION_SECONDS = {
-  "workout-loop": 175,
+  'workout-loop': 175,
   feedback: 126,
-  "first-run": 125,
-  "workout-exit-resume": 70,
+  'first-run': 125,
+  'workout-exit-resume': 70,
   reassessment: 60,
-  "app-settings": 58,
-  "settings-telemetry": 55,
-  "sign-in": 46,
+  'app-settings': 58,
+  'settings-telemetry': 55,
+  'sign-in': 46,
   history: 39,
-  "repeated-week": 35,
+  'repeated-week': 35,
 }
 
 export const DEFAULT_FLOW_SECONDS = 60
@@ -126,39 +126,43 @@ const IGNORED_E2E_PATTERNS = [
 // does NOT match one of these narrow rules forces the full PR flow set.
 const ROUTE_FLOW_RULES = [
   {
-    match: /^(app\/\(first-run\)\/|components\/first-run\/|lib\/sportFields\.ts$|assets\/lottie\/sports\/|\.maestro\/(web|journeys)\/first-run\.yaml$)/,
-    flows: ["first-run"],
+    match:
+      /^(app\/\(first-run\)\/|components\/first-run\/|lib\/sportFields\.ts$|assets\/lottie\/sports\/|\.maestro\/(web|journeys)\/first-run\.yaml$)/,
+    flows: ['first-run'],
   },
   {
-    match: /^(app\/\(reassessment\)\/|components\/reassessment\/|\.maestro\/(web|journeys)\/reassessment\.yaml$)/,
-    flows: ["reassessment"],
+    match:
+      /^(app\/\(reassessment\)\/|components\/reassessment\/|\.maestro\/(web|journeys)\/reassessment\.yaml$)/,
+    flows: ['reassessment'],
   },
   {
     match: /^(app\/\(athlete\)\/history(\.tsx|\/)|\.maestro\/(web|journeys)\/history\.yaml$)/,
-    flows: ["history"],
+    flows: ['history'],
   },
   {
-    match: /^(app\/\(athlete\)\/(settings|profile)(\.tsx|\/)|components\/settings\/|\.maestro\/(web|journeys)\/(app-settings|settings-telemetry)\.yaml$)/,
-    flows: ["app-settings", "settings-telemetry", "sign-in"],
+    match:
+      /^(app\/\(athlete\)\/(settings|profile)(\.tsx|\/)|components\/settings\/|\.maestro\/(web|journeys)\/(app-settings|settings-telemetry)\.yaml$)/,
+    flows: ['app-settings', 'settings-telemetry', 'sign-in'],
   },
   {
     // Profile hosts the Feedback & support rows the feedback journey drives.
     match: /^(app\/\(athlete\)\/profile(\.tsx|\/)|\.maestro\/(web|journeys)\/feedback\.yaml$)/,
-    flows: ["feedback"],
+    flows: ['feedback'],
   },
   {
     // ConfettiEffect is also imported by app/(reassessment)/celebration.tsx, so
     // exclude it from the workout-only rule (falls back to full PR suite).
-    match: /^(app\/\(athlete\)\/workout\/|components\/workout\/(?!ConfettiEffect\b)|\.maestro\/(web|journeys)\/workout-exit-resume\.yaml$)/,
-    flows: ["workout-exit-resume"],
+    match:
+      /^(app\/\(athlete\)\/workout\/|components\/workout\/(?!ConfettiEffect\b)|\.maestro\/(web|journeys)\/workout-exit-resume\.yaml$)/,
+    flows: ['workout-exit-resume'],
   },
   {
     match: /^\.maestro\/(web|journeys)\/workout-loop\.yaml$/,
-    flows: ["workout-loop"],
+    flows: ['workout-loop'],
   },
   {
     match: /^(app\/\(auth\)\/|\.maestro\/(web|journeys)\/sign-in\.yaml$)/,
-    flows: ["sign-in"],
+    flows: ['sign-in'],
   },
 ]
 
@@ -170,19 +174,21 @@ const ROUTE_FLOW_RULES = [
 //   unknown file changed or the diff is unavailable.
 export function selectAffectedFlows(
   changedFiles,
-  { available = listWebFlows(), eventName = "pull_request", runtimeFiles = [] } = {}
+  { available = listWebFlows(), eventName = 'pull_request', runtimeFiles = [] } = {}
 ) {
-  if (eventName !== "pull_request") {
-    return { flows: [...available], reason: `full suite (${eventName || "local"})` }
+  if (eventName !== 'pull_request') {
+    return { flows: [...available], reason: `full suite (${eventName || 'local'})` }
   }
-  const prFlows = defaultFlows(available, "pr")
+  const prFlows = defaultFlows(available, 'pr')
   if (!Array.isArray(changedFiles)) {
-    return { flows: prFlows, reason: "full PR suite (diff unavailable)" }
+    return { flows: prFlows, reason: 'full PR suite (diff unavailable)' }
   }
   const runtimeSet = new Set(runtimeFiles)
-  const relevant = changedFiles.filter((file) => !IGNORED_E2E_PATTERNS.some((pattern) => pattern.test(file)))
+  const relevant = changedFiles.filter(
+    (file) => !IGNORED_E2E_PATTERNS.some((pattern) => pattern.test(file))
+  )
   if (relevant.length === 0) {
-    return { flows: [], reason: "skipped (docs/tests/tooling only)" }
+    return { flows: [], reason: 'skipped (docs/tests/tooling only)' }
   }
   const selected = new Set()
   for (const file of relevant) {
@@ -202,10 +208,12 @@ export function selectAffectedFlows(
   const flows = [...selected].sort()
   return {
     flows,
-    reason: flows.length ? `affected flows (${flows.join(", ")})` : "skipped (no matching web flow)",
+    reason: flows.length
+      ? `affected flows (${flows.join(', ')})`
+      : 'skipped (no matching web flow)',
   }
 }
 
 export function personaMode(flow) {
-  return flowPersonaModes[flow] || "onboarded"
+  return flowPersonaModes[flow] || 'onboarded'
 }

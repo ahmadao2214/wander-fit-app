@@ -159,9 +159,16 @@ describe('Feedback sheets', () => {
       )
       const onOpenChange = jest.fn()
       const sheet = (open: boolean) => (
-        <BugReportSheet open={open} onOpenChange={onOpenChange} source="profile" screenRoute="/(athlete)/profile" />
+        <BugReportSheet
+          open={open}
+          onOpenChange={onOpenChange}
+          source="profile"
+          screenRoute="/(athlete)/profile"
+        />
       )
-      const { getByTestId, getByLabelText, rerender } = render(sheet(true), { wrapper: AllTheProviders })
+      const { getByTestId, getByLabelText, rerender } = render(sheet(true), {
+        wrapper: AllTheProviders,
+      })
       await act(async () => {})
       fireEvent.changeText(getByTestId('bug-title-input'), 'Timer froze')
       fireEvent.changeText(getByTestId('bug-details-input'), 'Rest timer stopped at 0:42')
@@ -236,11 +243,7 @@ describe('Feedback sheets', () => {
     it('submits selected category, title, and details with confirmation toast only', async () => {
       const onOpenChange = jest.fn()
       const { getByTestId } = render(
-        <FeatureRequestSheet
-          open
-          onOpenChange={onOpenChange}
-          screenRoute="/(athlete)/profile"
-        />,
+        <FeatureRequestSheet open onOpenChange={onOpenChange} screenRoute="/(athlete)/profile" />,
         { wrapper: AllTheProviders }
       )
       await act(async () => {})

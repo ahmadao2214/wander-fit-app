@@ -30,7 +30,10 @@ export async function requestNativeStoreReview(options?: {
       isAvailableAsync?: () => Promise<boolean>
       requestReview?: () => Promise<void>
     }
-    if (typeof StoreReview?.isAvailableAsync !== 'function' || typeof StoreReview?.requestReview !== 'function') {
+    if (
+      typeof StoreReview?.isAvailableAsync !== 'function' ||
+      typeof StoreReview?.requestReview !== 'function'
+    ) {
       return false
     }
     const available = await StoreReview.isAvailableAsync()

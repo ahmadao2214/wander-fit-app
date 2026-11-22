@@ -3,6 +3,7 @@ import { Keyboard, Platform } from 'react-native'
 import { Button, ScrollView, Separator, Sheet, XStack, YStack } from 'tamagui'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X } from '@tamagui/lucide-icons'
+import { ReplayExcludedSurface } from '../ReplayExcludedSurface'
 import { Supporting, Title } from '../Typography'
 
 export interface FeedbackSheetFrameProps {
@@ -72,34 +73,36 @@ export function FeedbackSheetFrame({
         rounded="$5"
       >
         <Sheet.Handle />
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ grow: 1 }}
-        >
-          <YStack testID={testID} gap="$4" pt="$2" pb="$2">
-            <XStack items="flex-start" justify="space-between" gap="$3">
-              <YStack flex={1} gap="$1">
-                <Title accessibilityRole="header">{title}</Title>
-                {subtitle ? <Supporting color="$color10">{subtitle}</Supporting> : null}
-              </YStack>
-              <Button
-                size="$3"
-                circular
-                bg="$color3"
-                icon={X}
-                accessibilityLabel="Close"
-                onPress={() => onOpenChange(false)}
-                minW={44}
-                minH={44}
-              />
-            </XStack>
+        <ReplayExcludedSurface>
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ grow: 1 }}
+          >
+            <YStack testID={testID} gap="$4" pt="$2" pb="$2">
+              <XStack items="flex-start" justify="space-between" gap="$3">
+                <YStack flex={1} gap="$1">
+                  <Title accessibilityRole="header">{title}</Title>
+                  {subtitle ? <Supporting color="$color10">{subtitle}</Supporting> : null}
+                </YStack>
+                <Button
+                  size="$3"
+                  circular
+                  bg="$color3"
+                  icon={X}
+                  accessibilityLabel="Close"
+                  onPress={() => onOpenChange(false)}
+                  minW={44}
+                  minH={44}
+                />
+              </XStack>
 
-            <Separator />
+              <Separator />
 
-            {children}
-          </YStack>
-        </ScrollView>
+              {children}
+            </YStack>
+          </ScrollView>
+        </ReplayExcludedSurface>
       </Sheet.Frame>
     </Sheet>
   )

@@ -1,102 +1,83 @@
-import { defineSchema, defineTable } from "convex/server";
-import { v } from "convex/values";
+import { defineSchema, defineTable } from 'convex/server'
+import { v } from 'convex/values'
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SHARED VALIDATORS
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const skillLevelValidator = v.union(
-  v.literal("Novice"),
-  v.literal("Moderate"),
-  v.literal("Advanced")
-);
+  v.literal('Novice'),
+  v.literal('Moderate'),
+  v.literal('Advanced')
+)
 
-const ageGroupValidator = v.union(
-  v.literal("14-17"),
-  v.literal("18-35"),
-  v.literal("36+")
-);
+const ageGroupValidator = v.union(v.literal('14-17'), v.literal('18-35'), v.literal('36+'))
 
 /**
  * Phase Validator
- * 
+ *
  * GPP = General Physical Preparedness
  *   - Foundation phase focusing on overall fitness, movement quality, work capacity
  *   - Typically 4 weeks, prepares athlete for sport-specific training
- * 
+ *
  * SPP = Specific Physical Preparedness  
  *   - Sport-specific phase with movements that transfer to sport demands
  *   - Typically 4 weeks, bridges general fitness to competition readiness
- * 
+ *
  * SSP = Sport-Specific Preparedness (Competition/Peaking Phase)
  *   - Final preparation phase closest to competition
  *   - Typically 4 weeks, maintains fitness while reducing volume for freshness
  */
-const phaseValidator = v.union(
-  v.literal("GPP"),
-  v.literal("SPP"),
-  v.literal("SSP")
-);
+const phaseValidator = v.union(v.literal('GPP'), v.literal('SPP'), v.literal('SSP'))
 
 const sessionStatusValidator = v.union(
-  v.literal("in_progress"),
-  v.literal("completed"),
-  v.literal("abandoned")
-);
+  v.literal('in_progress'),
+  v.literal('completed'),
+  v.literal('abandoned')
+)
 
-const intensityValidator = v.union(
-  v.literal("Low"),
-  v.literal("Moderate"),
-  v.literal("High")
-);
+const intensityValidator = v.union(v.literal('Low'), v.literal('Moderate'), v.literal('High'))
 
 const oneRepMaxSourceValidator = v.union(
-  v.literal("user_input"),     // Athlete entered manually
-  v.literal("calculated"),     // Derived from workout history
-  v.literal("assessment")      // From dedicated assessment workout
-);
+  v.literal('user_input'), // Athlete entered manually
+  v.literal('calculated'), // Derived from workout history
+  v.literal('assessment') // From dedicated assessment workout
+)
 
-const feedbackPlatformValidator = v.union(
-  v.literal("ios"),
-  v.literal("android"),
-  v.literal("web")
-);
+const feedbackPlatformValidator = v.union(v.literal('ios'), v.literal('android'), v.literal('web'))
 
-const feedbackColorSchemeValidator = v.union(
-  v.literal("light"),
-  v.literal("dark")
-);
+const feedbackColorSchemeValidator = v.union(v.literal('light'), v.literal('dark'))
 
 const bugSeverityValidator = v.union(
-  v.literal("blocking"),
-  v.literal("annoying"),
-  v.literal("minor")
-);
+  v.literal('blocking'),
+  v.literal('annoying'),
+  v.literal('minor')
+)
 
 const bugStatusValidator = v.union(
-  v.literal("new"),
-  v.literal("triaged"),
-  v.literal("in_progress"),
-  v.literal("fixed"),
-  v.literal("wont_fix")
-);
+  v.literal('new'),
+  v.literal('triaged'),
+  v.literal('in_progress'),
+  v.literal('fixed'),
+  v.literal('wont_fix')
+)
 
 const featureCategoryValidator = v.union(
-  v.literal("workouts_exercises"),
-  v.literal("program_schedule"),
-  v.literal("progress_maxes"),
-  v.literal("equipment_gym_home"),
-  v.literal("app_experience"),
-  v.literal("other")
-);
+  v.literal('workouts_exercises'),
+  v.literal('program_schedule'),
+  v.literal('progress_maxes'),
+  v.literal('equipment_gym_home'),
+  v.literal('app_experience'),
+  v.literal('other')
+)
 
 const featureStatusValidator = v.union(
-  v.literal("new"),
-  v.literal("under_review"),
-  v.literal("planned"),
-  v.literal("shipped"),
-  v.literal("declined")
-);
+  v.literal('new'),
+  v.literal('under_review'),
+  v.literal('planned'),
+  v.literal('shipped'),
+  v.literal('declined')
+)
 
 const feedbackContextValidator = v.object({
   platform: feedbackPlatformValidator,
@@ -105,43 +86,45 @@ const feedbackContextValidator = v.object({
   buildNumber: v.optional(v.string()),
   screenRoute: v.string(),
   colorScheme: v.optional(feedbackColorSchemeValidator),
-  programContext: v.optional(v.object({
-    phase: phaseValidator,
-    week: v.number(),
-    day: v.number(),
-    skillLevel: skillLevelValidator,
-  })),
-});
+  programContext: v.optional(
+    v.object({
+      phase: phaseValidator,
+      week: v.number(),
+      day: v.number(),
+      skillLevel: skillLevelValidator,
+    })
+  ),
+})
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // GPP TABLES (MVP)
-// 
+//
 // ARCHITECTURE (Confirmed by Co-founder):
-// 
+//
 // 1. Workout Access: HYBRID
 //    - Athletes see ALL workouts for their training block
 //    - Can ONLY input data (sets, reps, weight, RPE) on scheduled workout of day
 //    - Browse for planning, execute on schedule
-// 
+//
 // 2. Phase Access: SEQUENTIAL (Linear Progression)
 //    - Athletes access programming based on intake assignment
 //    - Must complete GPP → SPP → SSP in order
-// 
+//
 // 3. Skill Level: AUTO + MANUAL + PROGRESSION
 //    - Auto-calculated from intake assessment
 //    - Manual override allowed
 //    - Advances on training block completion (via re-assessment)
-// 
+//
 // 4. Rest Days: Clearly indicated with no structured exercise
 //    - May include recommendations: caloric surplus, foam rolling, 8+ hours sleep
-// 
+//
 // 5. Program Reset: After 2+ weeks absence, restart from beginning
 //    - Pause/freeze feature possible with coach approval
-// 
+//
 // 6. Progress Metrics:
 //    - Completion: individual days → weeks → training blocks
 //    - Re-evaluation: strength endurance, cardio fitness, mobility, athleticism
-// 
+//
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export default defineSchema({
@@ -152,7 +135,7 @@ export default defineSchema({
   /**
    * exercises - Static exercise library
    * Contains all movements available in the program.
-   * 
+   *
    * Tags can include: body part, movement pattern, warmup/cooldown suitability
    * Examples: ["lower_body", "squat", "bilateral", "warmup", "mobility"]
    */
@@ -162,32 +145,31 @@ export default defineSchema({
     instructions: v.optional(v.string()), // Markdown formatted
     tags: v.array(v.string()), // Flexible tagging system
     equipment: v.optional(v.array(v.string())), // ["dumbbell", "kettlebell"]
-    difficulty: v.optional(v.union(
-      v.literal("beginner"),
-      v.literal("intermediate"),
-      v.literal("advanced")
-    )),
+    difficulty: v.optional(
+      v.union(v.literal('beginner'), v.literal('intermediate'), v.literal('advanced'))
+    ),
     // Progressions for bodyweight intensity scaling
     // At Low intensity: use easier variant if available
     // At High intensity: use harder variant if available
-    progressions: v.optional(v.object({
-      easier: v.optional(v.string()), // Slug of easier variant
-      harder: v.optional(v.string()), // Slug of harder variant
-    })),
+    progressions: v.optional(
+      v.object({
+        easier: v.optional(v.string()), // Slug of easier variant
+        harder: v.optional(v.string()), // Slug of harder variant
+      })
+    ),
     // FUTURE: videoUrl, thumbnailUrl (with blob storage)
-  })
-    .index("by_slug", ["slug"]),
+  }).index('by_slug', ['slug']),
 
   /**
    * user_maxes - 1RM (One Rep Max) tracking for key lifts
-   * 
+   *
    * Athletes need a way to establish their 1RM for key lifts to calculate intensity.
-   * 
+   *
    * 1RM Capture Methods (in priority order):
    * 1. user_input - Athlete entered manually (they know their max)
    * 2. calculated - Derived from workout history (e.g., Epley formula: 1RM = weight × (1 + reps/30))
    * 3. assessment - From dedicated assessment workout
-   * 
+   *
    * Key Lifts for 1RM Tracking:
    * - Back Squat
    * - Trap Bar Deadlift / Romanian Deadlift
@@ -195,15 +177,15 @@ export default defineSchema({
    * - Overhead Press
    */
   user_maxes: defineTable({
-    userId: v.id("users"),
-    exerciseId: v.id("exercises"),       // e.g., back_squat, bench_press, deadlift
-    oneRepMax: v.number(),               // in lbs or kg (user preference)
+    userId: v.id('users'),
+    exerciseId: v.id('exercises'), // e.g., back_squat, bench_press, deadlift
+    oneRepMax: v.number(), // in lbs or kg (user preference)
     source: oneRepMaxSourceValidator,
-    recordedAt: v.number(),              // timestamp
+    recordedAt: v.number(), // timestamp
     notes: v.optional(v.string()),
   })
-    .index("by_user", ["userId"])
-    .index("by_user_exercise", ["userId", "exerciseId"]),
+    .index('by_user', ['userId'])
+    .index('by_user_exercise', ['userId', 'exerciseId']),
 
   /**
    * sports - Maps sports to GPP categories for intake flow
@@ -212,7 +194,7 @@ export default defineSchema({
    *   2: Explosive/Vertical (Basketball, Volleyball)
    *   3: Rotational/Unilateral (Baseball, Tennis, Golf)
    *   4: General Strength (Wrestling, Football, General)
-   * 
+   *
    * NOTE: MVP won't delve into sport positions (e.g., QB vs Linebacker).
    * All positions benefit from their sport's GPP category for general adaptations.
    */
@@ -221,8 +203,8 @@ export default defineSchema({
     gppCategoryId: v.number(), // 1-4
     description: v.optional(v.string()),
   })
-    .index("by_category", ["gppCategoryId"])
-    .index("by_name", ["name"]),
+    .index('by_category', ['gppCategoryId'])
+    .index('by_name', ['name']),
 
   /**
    * gpp_categories - Reference data for GPP category definitions
@@ -234,8 +216,7 @@ export default defineSchema({
     shortName: v.string(), // "Endurance"
     description: v.string(),
     tags: v.array(v.string()), // Focus areas: ["high_rep", "single_leg", "rotational_core"]
-  })
-    .index("by_category_id", ["categoryId"]),
+  }).index('by_category_id', ['categoryId']),
 
   // ─────────────────────────────────────────────────────────────────────────────
   // PROGRAM TEMPLATES (The Logic Engine)
@@ -243,10 +224,10 @@ export default defineSchema({
 
   /**
    * program_templates - The workout prescription matrix
-   * 
+   *
    * Formula: 4 Categories × 3 Phases × 3 Skill Levels × 4 Weeks × 7 Days
    * (Rest days have no template - they are gaps in the schedule)
-   * 
+   *
    * CONFIRMED: Athletes can VIEW all workouts but only INPUT on scheduled day.
    */
   program_templates: defineTable({
@@ -266,37 +247,43 @@ export default defineSchema({
      * exercises - The workout prescription
      * Order determined by orderIndex. Warmup/cooldown indicated via notes.
      */
-    exercises: v.array(v.object({
-      exerciseId: v.id("exercises"),
-      sets: v.number(),
-      reps: v.string(), // "10-12", "5", "AMRAP", "30s", "2 min"
-      tempo: v.optional(v.string()), // "3010", "X010" (X = explosive)
-      restSeconds: v.number(), // Seconds between sets
-      notes: v.optional(v.string()), // "Focus on depth", "Warmup pace"
-      orderIndex: v.number(),
-      superset: v.optional(v.string()), // Group ID for supersets: "A", "B"
-      // Basketball program additions
-      intensityPercent: v.optional(v.number()), // e.g., 65 for "65% of 1RM"
-      section: v.optional(v.union(
-        v.literal("warmup"),
-        v.literal("main"),
-        v.literal("circuit"),
-        v.literal("finisher")
-      )), // Workout section grouping
-      warmupPhase: v.optional(v.union(
-        v.literal("foam_rolling"),
-        v.literal("mobility"),
-        v.literal("core_isometric"),
-        v.literal("core_dynamic"),
-        v.literal("walking_drills"),
-        v.literal("movement_prep"),
-        v.literal("power_primer")
-      )), // Warmup phase within section: "warmup"
-    })),
+    exercises: v.array(
+      v.object({
+        exerciseId: v.id('exercises'),
+        sets: v.number(),
+        reps: v.string(), // "10-12", "5", "AMRAP", "30s", "2 min"
+        tempo: v.optional(v.string()), // "3010", "X010" (X = explosive)
+        restSeconds: v.number(), // Seconds between sets
+        notes: v.optional(v.string()), // "Focus on depth", "Warmup pace"
+        orderIndex: v.number(),
+        superset: v.optional(v.string()), // Group ID for supersets: "A", "B"
+        // Basketball program additions
+        intensityPercent: v.optional(v.number()), // e.g., 65 for "65% of 1RM"
+        section: v.optional(
+          v.union(
+            v.literal('warmup'),
+            v.literal('main'),
+            v.literal('circuit'),
+            v.literal('finisher')
+          )
+        ), // Workout section grouping
+        warmupPhase: v.optional(
+          v.union(
+            v.literal('foam_rolling'),
+            v.literal('mobility'),
+            v.literal('core_isometric'),
+            v.literal('core_dynamic'),
+            v.literal('walking_drills'),
+            v.literal('movement_prep'),
+            v.literal('power_primer')
+          )
+        ), // Warmup phase within section: "warmup"
+      })
+    ),
   })
-    .index("by_assignment", ["gppCategoryId", "phase", "skillLevel", "week", "day"])
-    .index("by_category_phase", ["gppCategoryId", "phase"])
-    .index("by_category_skill", ["gppCategoryId", "skillLevel"]),
+    .index('by_assignment', ['gppCategoryId', 'phase', 'skillLevel', 'week', 'day'])
+    .index('by_category_phase', ['gppCategoryId', 'phase'])
+    .index('by_category_skill', ['gppCategoryId', 'skillLevel']),
 
   // ─────────────────────────────────────────────────────────────────────────────
   // USER DATA
@@ -312,8 +299,8 @@ export default defineSchema({
     createdAt: v.number(),
 
     // DEPRECATED: Will be removed after migration
-    role: v.optional(v.union(v.literal("trainer"), v.literal("client"))),
-    trainerId: v.optional(v.id("users")),
+    role: v.optional(v.union(v.literal('trainer'), v.literal('client'))),
+    trainerId: v.optional(v.id('users')),
 
     // GPP intake tracking
     intakeCompletedAt: v.optional(v.number()), // null = needs intake flow
@@ -321,7 +308,7 @@ export default defineSchema({
     // the intake so time from first launch to Day 1 can be measured.
     firstLaunchAt: v.optional(v.number()),
 
-// Onboarding flow tracking (educational screens after intake)
+    // Onboarding flow tracking (educational screens after intake)
     onboardingCompletedAt: v.optional(v.number()), // null = needs onboarding
     onboardingProgress: v.optional(v.number()), // Current screen index (0-9) for resume
     onboardingSkipped: v.optional(v.boolean()), // True if user skipped onboarding
@@ -330,9 +317,9 @@ export default defineSchema({
     analyticsOptOut: v.optional(v.boolean()), // Default false (undefined = opted in to zero-PII events)
     sessionReplayOptIn: v.optional(v.boolean()), // Default false (explicit adult 18+ opt-in only)
   })
-    .index("by_email", ["email"])
-    .index("by_clerk", ["clerkId"])
-    .index("by_trainer", ["trainerId"]),
+    .index('by_email', ['email'])
+    .index('by_clerk', ['clerkId'])
+    .index('by_trainer', ['trainerId']),
 
   /**
    * intake_responses - Stores all intake questionnaire answers
@@ -345,10 +332,10 @@ export default defineSchema({
    * Each intake creates a new record; latest is used for current program.
    */
   intake_responses: defineTable({
-    userId: v.id("users"),
+    userId: v.id('users'),
 
     // Core intake questions
-    sportId: v.id("sports"),
+    sportId: v.id('sports'),
     yearsOfExperience: v.number(), // How many years of training
     preferredTrainingDaysPerWeek: v.number(), // 1-7
     selectedTrainingDays: v.optional(v.array(v.number())), // [1, 3, 5] = Mon, Wed, Fri (0=Sun, 6=Sat)
@@ -366,47 +353,47 @@ export default defineSchema({
 
     // Assessment type
     intakeType: v.union(
-      v.literal("initial"),      // First time intake
-      v.literal("reassessment")  // After training block completion
+      v.literal('initial'), // First time intake
+      v.literal('reassessment') // After training block completion
     ),
 
     // Reassessment-specific fields (only present for intakeType: "reassessment")
-    selfAssessment: v.optional(v.object({
-      phaseDifficulty: v.union(
-        v.literal("too_easy"),
-        v.literal("just_right"),
-        v.literal("challenging"),
-        v.literal("too_hard")
-      ),
-      energyLevel: v.optional(v.union(
-        v.literal("low"),
-        v.literal("moderate"),
-        v.literal("high")
-      )),
-      completionRate: v.optional(v.number()),
-      notes: v.optional(v.string()),
-    })),
+    selfAssessment: v.optional(
+      v.object({
+        phaseDifficulty: v.union(
+          v.literal('too_easy'),
+          v.literal('just_right'),
+          v.literal('challenging'),
+          v.literal('too_hard')
+        ),
+        energyLevel: v.optional(
+          v.union(v.literal('low'), v.literal('moderate'), v.literal('high'))
+        ),
+        completionRate: v.optional(v.number()),
+        notes: v.optional(v.string()),
+      })
+    ),
     previousSkillLevel: v.optional(skillLevelValidator),
     skillLevelChanged: v.optional(v.boolean()),
     completedPhase: v.optional(phaseValidator),
     maxesUpdated: v.optional(v.boolean()),
     // What the athlete chose after the check-in: start the next phase or run
     // the same block again. Missing on older records, which always moved on.
-    reassessmentDecision: v.optional(v.union(v.literal("move_on"), v.literal("repeat"))),
+    reassessmentDecision: v.optional(v.union(v.literal('move_on'), v.literal('repeat'))),
 
     // Meta
     completedAt: v.number(),
   })
-    .index("by_user", ["userId"])
-    .index("by_user_type", ["userId", "intakeType"]),
+    .index('by_user', ['userId'])
+    .index('by_user_type', ['userId', 'intakeType']),
 
   /**
    * user_programs - Active program state for each athlete
    * Links to the most recent intake_response for assignment data.
    */
   user_programs: defineTable({
-    userId: v.id("users"),
-    intakeResponseId: v.id("intake_responses"), // Links to intake that created this
+    userId: v.id('users'),
+    intakeResponseId: v.id('intake_responses'), // Links to intake that created this
 
     // Assignment Results (from linked intake)
     gppCategoryId: v.number(), // 1-4
@@ -438,11 +425,13 @@ export default defineSchema({
     phaseStartDate: v.number(),
     // Where the calendar counts each phase's slots from, set at each check-in
     // (convex/blockCompletion.ts). Missing phases count from createdAt.
-    calendarAnchors: v.optional(v.object({
-      GPP: v.optional(v.number()),
-      SPP: v.optional(v.number()),
-      SSP: v.optional(v.number()),
-    })),
+    calendarAnchors: v.optional(
+      v.object({
+        GPP: v.optional(v.number()),
+        SPP: v.optional(v.number()),
+        SSP: v.optional(v.number()),
+      })
+    ),
 
     // Pause/Freeze (2+ weeks absence = restart)
     pausedAt: v.optional(v.number()),
@@ -451,8 +440,7 @@ export default defineSchema({
     // Meta
     createdAt: v.number(),
     updatedAt: v.number(),
-  })
-    .index("by_user", ["userId"]),
+  }).index('by_user', ['userId']),
 
   // ─────────────────────────────────────────────────────────────────────────────
   // EXECUTION TRACKING
@@ -460,14 +448,14 @@ export default defineSchema({
 
   /**
    * gpp_workout_sessions - Tracks workout execution against templates
-   * 
+   *
    * Athletes can only create sessions for their SCHEDULED workout of the day
    * (unless injury exception approved by coach - future feature)
    */
   gpp_workout_sessions: defineTable({
-    userId: v.id("users"),
-    templateId: v.id("program_templates"),
-    userProgramId: v.id("user_programs"),
+    userId: v.id('users'),
+    templateId: v.id('program_templates'),
+    userProgramId: v.id('user_programs'),
 
     // Session timing (timestamps in milliseconds)
     startedAt: v.number(),
@@ -491,20 +479,24 @@ export default defineSchema({
     targetIntensity: v.optional(intensityValidator),
 
     // Exercise completion tracking
-    exercises: v.array(v.object({
-      exerciseId: v.id("exercises"),
-      completed: v.boolean(),
-      skipped: v.boolean(),
-      notes: v.optional(v.string()),
-      sets: v.array(v.object({
-        repsCompleted: v.optional(v.number()),
-        durationSeconds: v.optional(v.number()), // For timed exercises
-        weight: v.optional(v.number()), // Weight used (future: unit preference)
-        rpe: v.optional(v.number()), // Rating of Perceived Exertion (1-10)
+    exercises: v.array(
+      v.object({
+        exerciseId: v.id('exercises'),
         completed: v.boolean(),
         skipped: v.boolean(),
-      })),
-    })),
+        notes: v.optional(v.string()),
+        sets: v.array(
+          v.object({
+            repsCompleted: v.optional(v.number()),
+            durationSeconds: v.optional(v.number()), // For timed exercises
+            weight: v.optional(v.number()), // Weight used (future: unit preference)
+            rpe: v.optional(v.number()), // Rating of Perceived Exertion (1-10)
+            completed: v.boolean(),
+            skipped: v.boolean(),
+          })
+        ),
+      })
+    ),
 
     // Exercise order (indices into template.exercises array)
     // Allows athletes to reorder exercises during workout execution
@@ -521,13 +513,15 @@ export default defineSchema({
      */
     redo: v.optional(v.boolean()),
 
-    templateSnapshot: v.optional(v.object({
-      name: v.string(),
-      phase: phaseValidator,
-      week: v.number(),
-      day: v.number(),
-      workoutDate: v.number(), // The actual date this workout was done
-    })),
+    templateSnapshot: v.optional(
+      v.object({
+        name: v.string(),
+        phase: phaseValidator,
+        week: v.number(),
+        day: v.number(),
+        workoutDate: v.number(), // The actual date this workout was done
+      })
+    ),
 
     /**
      * scalingSnapshot - Captures athlete profile at time of workout
@@ -538,18 +532,20 @@ export default defineSchema({
      *
      * @see convex/intensityScaling.ts for getCategoryExerciseParameters()
      */
-    scalingSnapshot: v.optional(v.object({
-      categoryId: v.number(), // 1-4 (Endurance, Power, Rotational, Strength)
-      phase: phaseValidator,  // GPP, SPP, SSP
-      ageGroup: ageGroupValidator, // 14-17, 18-35, 36+
-      yearsOfExperience: v.number(), // Used to determine experience bucket
-    })),
+    scalingSnapshot: v.optional(
+      v.object({
+        categoryId: v.number(), // 1-4 (Endurance, Power, Rotational, Strength)
+        phase: phaseValidator, // GPP, SPP, SSP
+        ageGroup: ageGroupValidator, // 14-17, 18-35, 36+
+        yearsOfExperience: v.number(), // Used to determine experience bucket
+      })
+    ),
   })
-    .index("by_user", ["userId"])
-    .index("by_user_status", ["userId", "status"])
-    .index("by_template", ["templateId"])
-    .index("by_user_template", ["userId", "templateId"])
-    .index("by_user_program", ["userProgramId"]),
+    .index('by_user', ['userId'])
+    .index('by_user_status', ['userId', 'status'])
+    .index('by_template', ['templateId'])
+    .index('by_user_template', ['userId', 'templateId'])
+    .index('by_user_program', ['userProgramId']),
 
   // ─────────────────────────────────────────────────────────────────────────────
   // PROGRESS TRACKING (New)
@@ -557,7 +553,7 @@ export default defineSchema({
 
   /**
    * user_progress - Aggregated progress metrics
-   * 
+   *
    * Tracks:
    * - Unique exercises performed
    * - Consistency (workouts per week)
@@ -565,28 +561,28 @@ export default defineSchema({
    * - Exercise library coverage
    */
   user_progress: defineTable({
-    userId: v.id("users"),
-    userProgramId: v.id("user_programs"),
-    
+    userId: v.id('users'),
+    userProgramId: v.id('user_programs'),
+
     // Completion metrics
     daysCompleted: v.number(), // Individual workout days
     weeksCompleted: v.number(), // Full weeks
     blocksCompleted: v.number(), // Training blocks (typically 4 weeks)
-    
+
     // Exercise coverage
-    uniqueExercisesPerformed: v.array(v.id("exercises")),
+    uniqueExercisesPerformed: v.array(v.id('exercises')),
     totalExercisesInCategory: v.number(), // For calculating coverage %
-    
+
     // Consistency
     averageWorkoutsPerWeek: v.number(),
     currentStreak: v.number(), // Consecutive scheduled workouts completed
     longestStreak: v.number(),
-    
+
     // Last updated
     updatedAt: v.number(),
   })
-    .index("by_user", ["userId"])
-    .index("by_program", ["userProgramId"]),
+    .index('by_user', ['userId'])
+    .index('by_program', ['userProgramId']),
 
   // ─────────────────────────────────────────────────────────────────────────────
   // SCHEDULE OVERRIDES (User Customization)
@@ -594,50 +590,56 @@ export default defineSchema({
 
   /**
    * user_schedule_overrides - Stores user's schedule customizations
-   * 
+   *
    * Allows athletes to:
    * 1. Set a different workout as "today's focus" (override scheduled workout)
    * 2. Swap/reorder workouts within a phase
-   * 
+   *
    * DESIGN:
    * - One record per user program
    * - todayFocusTemplateId: temporary override for what to work on today
    * - slotOverrides: persistent swaps within phases (same phase only)
    */
   user_schedule_overrides: defineTable({
-    userId: v.id("users"),
-    userProgramId: v.id("user_programs"),
-    
+    userId: v.id('users'),
+    userProgramId: v.id('user_programs'),
+
     // Today's workout focus (optional)
     // If set, this template is shown as "today's workout" instead of default
-    todayFocusTemplateId: v.optional(v.id("program_templates")),
+    todayFocusTemplateId: v.optional(v.id('program_templates')),
     todayFocusSetAt: v.optional(v.number()), // Timestamp when focus was set
-    
+
     // Slot overrides within phases
     // Each entry maps a specific slot (phase/week/day) to a different template
     // Used for persistent swaps - when you swap A and B, both slots get entries
-    slotOverrides: v.array(v.object({
-      phase: phaseValidator,
-      week: v.number(),
-      day: v.number(),
-      templateId: v.id("program_templates"), // The workout assigned to this slot
-    })),
+    slotOverrides: v.array(
+      v.object({
+        phase: phaseValidator,
+        week: v.number(),
+        day: v.number(),
+        templateId: v.id('program_templates'), // The workout assigned to this slot
+      })
+    ),
 
     // Date overrides - move workouts to specific calendar dates
     // When a workout is moved to a different day (e.g., rest day), store the override here
     // The key is the slot (phase/week/day), the value is the target date
-    dateOverrides: v.optional(v.array(v.object({
-      phase: phaseValidator,
-      week: v.number(),
-      day: v.number(),
-      dateISO: v.string(), // Target date in YYYY-MM-DD format
-    }))),
+    dateOverrides: v.optional(
+      v.array(
+        v.object({
+          phase: phaseValidator,
+          week: v.number(),
+          day: v.number(),
+          dateISO: v.string(), // Target date in YYYY-MM-DD format
+        })
+      )
+    ),
 
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_user", ["userId"])
-    .index("by_user_program", ["userProgramId"]),
+    .index('by_user', ['userId'])
+    .index('by_user_program', ['userProgramId']),
 
   // ─────────────────────────────────────────────────────────────────────────────
   // IN-APP FEEDBACK (Ratings, Bug Reports, Feature Requests & Prompt Cooldowns)
@@ -650,44 +652,41 @@ export default defineSchema({
    * to comply with Apple and Google review policies.
    */
   athlete_ratings: defineTable({
-    userId: v.id("users"),
+    userId: v.id('users'),
     isInternal: v.boolean(),
     stars: v.number(), // 1..5 integer
     note: v.optional(v.string()),
-    trigger: v.union(
-      v.literal("post_workout_prompt"),
-      v.literal("profile_manual")
-    ),
+    trigger: v.union(v.literal('post_workout_prompt'), v.literal('profile_manual')),
     completedWorkoutsAtSubmission: v.number(),
     context: feedbackContextValidator,
     createdAt: v.number(),
   })
-    .index("by_user", ["userId"])
-    .index("by_user_createdAt", ["userId", "createdAt"])
-    .index("by_createdAt", ["createdAt"])
-    .index("by_internal_createdAt", ["isInternal", "createdAt"]),
+    .index('by_user', ['userId'])
+    .index('by_user_createdAt', ['userId', 'createdAt'])
+    .index('by_createdAt', ['createdAt'])
+    .index('by_internal_createdAt', ['isInternal', 'createdAt']),
 
   /**
    * bug_reports - Structured zero-PII bug reports with triage status
    */
   bug_reports: defineTable({
-    userId: v.id("users"),
+    userId: v.id('users'),
     isInternal: v.boolean(),
     title: v.string(),
     details: v.string(),
     severity: bugSeverityValidator,
     source: v.union(
-      v.literal("profile"),
-      v.literal("error_boundary"),
-      v.literal("workout_detail"),
-      v.literal("workout_execute")
+      v.literal('profile'),
+      v.literal('error_boundary'),
+      v.literal('workout_detail'),
+      v.literal('workout_execute')
     ),
     context: feedbackContextValidator,
     workoutContext: v.optional(
       v.object({
-        gppSessionId: v.optional(v.id("gpp_workout_sessions")),
-        templateId: v.optional(v.id("program_templates")),
-        exerciseId: v.optional(v.id("exercises")),
+        gppSessionId: v.optional(v.id('gpp_workout_sessions')),
+        templateId: v.optional(v.id('program_templates')),
+        exerciseId: v.optional(v.id('exercises')),
         exerciseName: v.optional(v.string()),
       })
     ),
@@ -698,16 +697,16 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_user", ["userId"])
-    .index("by_user_createdAt", ["userId", "createdAt"])
-    .index("by_status_createdAt", ["status", "createdAt"])
-    .index("by_internal_status", ["isInternal", "status", "createdAt"]),
+    .index('by_user', ['userId'])
+    .index('by_user_createdAt', ['userId', 'createdAt'])
+    .index('by_status_createdAt', ['status', 'createdAt'])
+    .index('by_internal_status', ['isInternal', 'status', 'createdAt']),
 
   /**
    * feature_requests - Categorized Athlete feature ideas with triage status
    */
   feature_requests: defineTable({
-    userId: v.id("users"),
+    userId: v.id('users'),
     isInternal: v.boolean(),
     category: featureCategoryValidator,
     title: v.string(),
@@ -718,17 +717,17 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_user", ["userId"])
-    .index("by_user_createdAt", ["userId", "createdAt"])
-    .index("by_status_createdAt", ["status", "createdAt"])
-    .index("by_category_status", ["category", "status", "createdAt"])
-    .index("by_internal_status", ["isInternal", "status", "createdAt"]),
+    .index('by_user', ['userId'])
+    .index('by_user_createdAt', ['userId', 'createdAt'])
+    .index('by_status_createdAt', ['status', 'createdAt'])
+    .index('by_category_status', ['category', 'status', 'createdAt'])
+    .index('by_internal_status', ['isInternal', 'status', 'createdAt']),
 
   /**
    * feedback_prompt_state - Per-Athlete cooldowns for private rating & store review prompts
    */
   feedback_prompt_state: defineTable({
-    userId: v.id("users"),
+    userId: v.id('users'),
     lastRatingPromptedAt: v.optional(v.number()),
     lastRatingSubmittedAt: v.optional(v.number()),
     lastRatingDismissedAt: v.optional(v.number()),
@@ -736,8 +735,7 @@ export default defineSchema({
     lastStoreReviewRequestedAt: v.optional(v.number()),
     storeReviewRequestCount: v.number(),
     updatedAt: v.number(),
-  })
-    .index("by_user", ["userId"]),
+  }).index('by_user', ['userId']),
 
   // ═══════════════════════════════════════════════════════════════════════════════
   // LEGACY TABLES (Kept for backward compatibility during migration)
@@ -745,8 +743,8 @@ export default defineSchema({
 
   /** @deprecated Use program_templates instead */
   workouts: defineTable({
-    trainerId: v.id("users"),
-    clientId: v.id("users"),
+    trainerId: v.id('users'),
+    clientId: v.id('users'),
     name: v.string(),
     description: v.optional(v.string()),
     exercises: v.array(
@@ -764,14 +762,14 @@ export default defineSchema({
     createdAt: v.number(),
     isActive: v.boolean(),
   })
-    .index("by_client", ["clientId"])
-    .index("by_trainer", ["trainerId"])
-    .index("by_client_active", ["clientId", "isActive"]),
+    .index('by_client', ['clientId'])
+    .index('by_trainer', ['trainerId'])
+    .index('by_client_active', ['clientId', 'isActive']),
 
   /** @deprecated Use gpp_workout_sessions instead */
   workoutSessions: defineTable({
-    workoutId: v.id("workouts"),
-    clientId: v.id("users"),
+    workoutId: v.id('workouts'),
+    clientId: v.id('users'),
     startedAt: v.number(),
     completedAt: v.optional(v.number()),
     totalDuration: v.optional(v.number()),
@@ -793,44 +791,40 @@ export default defineSchema({
       })
     ),
   })
-    .index("by_client", ["clientId"])
-    .index("by_workout", ["workoutId"])
-    .index("by_client_status", ["clientId", "status"]),
+    .index('by_client', ['clientId'])
+    .index('by_workout', ['workoutId'])
+    .index('by_client_status', ['clientId', 'status']),
 
   /** @deprecated No longer needed in GPP model */
   trainerClientRelationships: defineTable({
-    trainerId: v.id("users"),
-    clientId: v.id("users"),
-    status: v.union(
-      v.literal("active"),
-      v.literal("pending"),
-      v.literal("inactive")
-    ),
+    trainerId: v.id('users'),
+    clientId: v.id('users'),
+    status: v.union(v.literal('active'), v.literal('pending'), v.literal('inactive')),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_trainer", ["trainerId"])
-    .index("by_client", ["clientId"])
-    .index("by_trainer_status", ["trainerId", "status"])
-    .index("by_client_status", ["clientId", "status"]),
+    .index('by_trainer', ['trainerId'])
+    .index('by_client', ['clientId'])
+    .index('by_trainer_status', ['trainerId', 'status'])
+    .index('by_client_status', ['clientId', 'status']),
 
   /** @deprecated No longer needed in GPP model */
   clientInvitations: defineTable({
     email: v.string(),
     name: v.string(),
-    trainerId: v.id("users"),
+    trainerId: v.id('users'),
     status: v.union(
-      v.literal("pending"),
-      v.literal("accepted"),
-      v.literal("expired"),
-      v.literal("cancelled")
+      v.literal('pending'),
+      v.literal('accepted'),
+      v.literal('expired'),
+      v.literal('cancelled')
     ),
     createdAt: v.number(),
     expiresAt: v.number(),
     acceptedAt: v.optional(v.number()),
   })
-    .index("by_email", ["email"])
-    .index("by_trainer", ["trainerId"])
-    .index("by_status", ["status"])
-    .index("by_email_status", ["email", "status"]),
-});
+    .index('by_email', ['email'])
+    .index('by_trainer', ['trainerId'])
+    .index('by_status', ['status'])
+    .index('by_email_status', ['email', 'status']),
+})

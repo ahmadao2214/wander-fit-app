@@ -1,11 +1,13 @@
 import React from 'react'
 import { act, renderHook } from '@testing-library/react-native'
 
-let mockEligibility: {
-  shouldShowPrivateRatingPrompt: boolean
-  shouldRequestStoreReview: boolean
-  completedWorkoutsCount: number
-} | undefined
+let mockEligibility:
+  | {
+      shouldShowPrivateRatingPrompt: boolean
+      shouldRequestStoreReview: boolean
+      completedWorkoutsCount: number
+    }
+  | undefined
 
 const mockDismissRatingPrompt = jest.fn().mockResolvedValue({ ok: true })
 const mockRecordStoreReviewRequested = jest.fn().mockResolvedValue({ ok: true })
@@ -56,9 +58,7 @@ describe('useFeedbackPrompts', () => {
     }
     mockIsStoreReviewEnabledByEnv.mockReturnValue(false)
 
-    const { result } = renderHook(() =>
-      useFeedbackPrompts({ enabled: true, isFocused: true })
-    )
+    const { result } = renderHook(() => useFeedbackPrompts({ enabled: true, isFocused: true }))
     await act(async () => {})
 
     expect(mockRequestNativeStoreReview).not.toHaveBeenCalled()
@@ -74,9 +74,7 @@ describe('useFeedbackPrompts', () => {
     mockIsStoreReviewEnabledByEnv.mockReturnValue(true)
     mockRequestNativeStoreReview.mockResolvedValue(false)
 
-    const { result } = renderHook(() =>
-      useFeedbackPrompts({ enabled: true, isFocused: true })
-    )
+    const { result } = renderHook(() => useFeedbackPrompts({ enabled: true, isFocused: true }))
     await act(async () => {})
 
     expect(mockRequestNativeStoreReview).toHaveBeenCalledTimes(1)
@@ -93,9 +91,7 @@ describe('useFeedbackPrompts', () => {
     mockIsStoreReviewEnabledByEnv.mockReturnValue(true)
     mockRequestNativeStoreReview.mockResolvedValue(true)
 
-    const { result } = renderHook(() =>
-      useFeedbackPrompts({ enabled: true, isFocused: true })
-    )
+    const { result } = renderHook(() => useFeedbackPrompts({ enabled: true, isFocused: true }))
     await act(async () => {})
 
     expect(mockRequestNativeStoreReview).toHaveBeenCalledTimes(1)
@@ -111,8 +107,7 @@ describe('useFeedbackPrompts', () => {
     }
 
     const { result, rerender } = renderHook(
-      ({ isFocused }: { isFocused: boolean }) =>
-        useFeedbackPrompts({ enabled: true, isFocused }),
+      ({ isFocused }: { isFocused: boolean }) => useFeedbackPrompts({ enabled: true, isFocused }),
       { initialProps: { isFocused: false } }
     )
     await act(async () => {})
@@ -149,8 +144,7 @@ describe('useFeedbackPrompts', () => {
     )
 
     const { rerender } = renderHook(
-      ({ isFocused }: { isFocused: boolean }) =>
-        useFeedbackPrompts({ enabled: true, isFocused }),
+      ({ isFocused }: { isFocused: boolean }) => useFeedbackPrompts({ enabled: true, isFocused }),
       { initialProps: { isFocused: true } }
     )
 
@@ -232,9 +226,7 @@ describe('useFeedbackPrompts', () => {
         })
     )
 
-    const { unmount } = renderHook(() =>
-      useFeedbackPrompts({ enabled: true, isFocused: true })
-    )
+    const { unmount } = renderHook(() => useFeedbackPrompts({ enabled: true, isFocused: true }))
 
     unmount()
     await act(async () => {

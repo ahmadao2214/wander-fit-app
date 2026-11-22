@@ -43,9 +43,7 @@ export function RatingFeedbackSheet({
 }: RatingFeedbackSheetProps) {
   const colorScheme = useColorScheme()
   const toast = useFeedbackToast()
-  const submitRating = useMutation(
-    api.feedback?.submitRating as typeof api.feedback.submitRating
-  )
+  const submitRating = useMutation(api.feedback?.submitRating as typeof api.feedback.submitRating)
 
   const [stars, setStars] = useState<number>(0)
   const [note, setNote] = useState('')
@@ -104,12 +102,16 @@ export function RatingFeedbackSheet({
         source: trigger,
       })
 
-      toast.show('Thanks for the rating!', 'Your private feedback goes straight to the WanderFit team.')
+      toast.show(
+        'Thanks for the rating!',
+        'Your private feedback goes straight to the WanderFit team.'
+      )
       onSubmitted?.()
       // The athlete may have closed (and reopened) the sheet while this was sending.
       if (sheetSession.current === session) onOpenChange(false)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not send rating. Please try again.'
+      const message =
+        err instanceof Error ? err.message : 'Could not send rating. Please try again.'
       setError(message)
     } finally {
       setIsSubmitting(false)
@@ -158,7 +160,10 @@ export function RatingFeedbackSheet({
               )
             })}
           </XStack>
-          <Supporting color={stars > 0 ? '$color12' : '$color10'} fontWeight={stars > 0 ? '600' : '400'}>
+          <Supporting
+            color={stars > 0 ? '$color12' : '$color10'}
+            fontWeight={stars > 0 ? '600' : '400'}
+          >
             {stars > 0 ? STAR_LABELS[stars - 1] : 'Tap a star to rate'}
           </Supporting>
         </YStack>

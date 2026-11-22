@@ -104,7 +104,14 @@ export function useFeedbackPrompts(options: {
     }
 
     openPrivateRatingIfEligible()
-  }, [enabled, isFocused, suppressPrompts, eligibility, ratingSheetOpen, recordStoreReviewRequested])
+  }, [
+    enabled,
+    isFocused,
+    suppressPrompts,
+    eligibility,
+    ratingSheetOpen,
+    recordStoreReviewRequested,
+  ])
 
   const handleDismissRatingPrompt = useCallback(() => {
     if (!hasFeedbackApi) return

@@ -96,8 +96,7 @@ export function FeatureRequestSheet({
       // The athlete may have closed (and reopened) the sheet while this was sending.
       if (sheetSession.current === session) onOpenChange(false)
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Could not send idea. Please try again.'
+      const message = err instanceof Error ? err.message : 'Could not send idea. Please try again.'
       setError(message)
     } finally {
       setIsSubmitting(false)

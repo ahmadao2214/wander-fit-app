@@ -522,10 +522,19 @@ describe('sharding and affected-flow selection', () => {
         flows: ['app-settings', 'settings-telemetry', 'sign-in'],
       })
     }
-    expect(selectAffectedFlows([".maestro/journeys/feedback.yaml"], { available }).flows).toEqual(["feedback"])
-    expect(selectAffectedFlows(["app/(athlete)/profile.tsx"], { available }).flows).toEqual(["app-settings", "feedback", "sign-in"])
+    expect(selectAffectedFlows(['.maestro/journeys/feedback.yaml'], { available }).flows).toEqual([
+      'feedback',
+    ])
+    expect(selectAffectedFlows(['app/(athlete)/profile.tsx'], { available }).flows).toEqual([
+      'app-settings',
+      'feedback',
+      'settings-telemetry',
+      'sign-in',
+    ])
     // The feedback sheets are also opened from workout screens and the crash screen.
-    expect(selectAffectedFlows(["components/feedback/BugReportSheet.tsx"], { available }).flows).toEqual(prAll)
+    expect(
+      selectAffectedFlows(['components/feedback/BugReportSheet.tsx'], { available }).flows
+    ).toEqual(prAll)
     // Shared/backend helpers must ALWAYS force the full PR suite
     expect(selectAffectedFlows(['lib/firstRunRoutes.ts'], { available }).flows).toEqual(prAll)
     expect(selectAffectedFlows(['lib/executionOrder.ts'], { available }).flows).toEqual(prAll)

@@ -1,5 +1,5 @@
-import type { QueryCtx } from "./_generated/server";
-import type { Doc } from "./_generated/dataModel";
+import type { QueryCtx } from './_generated/server'
+import type { Doc } from './_generated/dataModel'
 
 /**
  * Shared auth checks for public Convex functions.
@@ -11,42 +11,42 @@ import type { Doc } from "./_generated/dataModel";
  */
 
 /** The caller's users row, or null when unauthenticated or not yet created. */
-export async function getCurrentUser(ctx: QueryCtx): Promise<Doc<"users"> | null> {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) return null;
+export async function getCurrentUser(ctx: QueryCtx): Promise<Doc<'users'> | null> {
+  const identity = await ctx.auth.getUserIdentity()
+  if (!identity) return null
 
   return await ctx.db
-    .query("users")
-    .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
-    .first();
+    .query('users')
+    .withIndex('by_clerk', (q) => q.eq('clerkId', identity.subject))
+    .first()
 }
 
 /** The caller's users row; throws when unauthenticated or missing. */
-export async function requireCurrentUser(ctx: QueryCtx): Promise<Doc<"users">> {
-  const identity = await ctx.auth.getUserIdentity();
+export async function requireCurrentUser(ctx: QueryCtx): Promise<Doc<'users'>> {
+  const identity = await ctx.auth.getUserIdentity()
   if (!identity) {
-    throw new Error("Not authenticated");
+    throw new Error('Not authenticated')
   }
 
   const user = await ctx.db
-    .query("users")
-    .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
-    .first();
+    .query('users')
+    .withIndex('by_clerk', (q) => q.eq('clerkId', identity.subject))
+    .first()
 
   if (!user) {
-    throw new Error("User not found");
+    throw new Error('User not found')
   }
 
-  return user;
+  return user
 }
 
 /** Parse comma-separated internal team emails from `INTERNAL_EMAILS`. */
 export function parseInternalEmails(raw: string | undefined): string[] {
-  if (!raw) return [];
+  if (!raw) return []
   return raw
-    .split(",")
+    .split(',')
     .map((entry) => entry.trim().toLowerCase())
-    .filter((entry) => entry.length > 0);
+    .filter((entry) => entry.length > 0)
 }
 
 /**
@@ -55,12 +55,12 @@ export function parseInternalEmails(raw: string | undefined): string[] {
  * cutover without redeploys and prevents spoofing via unverified email claims.
  */
 export async function isInternalTester(ctx: QueryCtx): Promise<boolean> {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) return false;
-  if (identity.emailVerified !== true || !identity.email) return false;
+  const identity = await ctx.auth.getUserIdentity()
+  if (!identity) return false
+  if (identity.emailVerified !== true || !identity.email) return false
 
-  const allowlist = parseInternalEmails(process.env.INTERNAL_EMAILS);
-  if (allowlist.length === 0) return false;
+  const allowlist = parseInternalEmails(process.env.INTERNAL_EMAILS)
+  if (allowlist.length === 0) return false
 
-  return allowlist.includes(identity.email.trim().toLowerCase());
+  return allowlist.includes(identity.email.trim().toLowerCase())
 }
