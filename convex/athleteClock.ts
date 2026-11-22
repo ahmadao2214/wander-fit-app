@@ -1,5 +1,4 @@
 import { v } from "convex/values";
-import type { CalendarAnchors, ScheduleProgram } from "./blockCompletion";
 
 /**
  * The athlete's own day, for the server's date math.
@@ -8,9 +7,11 @@ import type { CalendarAnchors, ScheduleProgram } from "./blockCompletion";
  * (getDate, setHours). Convex runs in UTC, so on its own the server's
  * "today" is the UTC day, and a US athlete's evening is already tomorrow.
  * The app sends its local date and UTC offset (lib/weeksOnPlan
- * localDayArgs), and these helpers move timestamps so the local getters read
- * the athlete's wall clock. Both args are optional: builds that don't send
- * them keep the runtime's day, as before.
+ * localDayArgs): "today" and the day a workout was done follow the
+ * athlete's clock. The program's slot dates don't: they count from the
+ * stored anchors as they always have, so a saved schedule never moves when
+ * the offset changes (travel, daylight saving time). Both args are
+ * optional: builds that don't send them keep the runtime's day, as before.
  */
 export const athleteDayArgs = {
   /** The athlete's local date, YYYY-MM-DD. */
@@ -46,24 +47,4 @@ export function isoDate(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const dayOfMonth = String(date.getDate()).padStart(2, "0");
   return `${date.getFullYear()}-${month}-${dayOfMonth}`;
-}
-
-/**
- * The program with its calendar anchors on the athlete's clock, for
- * phaseAnchor, calendarStart and slotOnDate. Only the anchors move: block
- * starts (phaseStartDate) are compared as timestamps and stay as they are.
- */
-export function athleteClockProgram<P extends ScheduleProgram>(program: P, day: AthleteDay): P {
-  if (day.timezoneOffsetMinutes === undefined) return program;
-  const shift = (ts: number) => athleteDate(ts, day).getTime();
-  const anchors = program.calendarAnchors;
-  return {
-    ...program,
-    createdAt: shift(program.createdAt),
-    calendarAnchors: anchors
-      ? (Object.fromEntries(
-          Object.entries(anchors).map(([phase, ts]) => [phase, ts === undefined ? ts : shift(ts)]),
-        ) as CalendarAnchors)
-      : anchors,
-  };
 }

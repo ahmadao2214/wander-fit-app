@@ -1,7 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { calendarStart, countsAsDone, phaseAnchor, slotOnDate } from "./blockCompletion";
 import { loadProgramCompletion } from "./programCompletion";
-import { athleteClockProgram, athleteDate, athleteDayArgs, athleteToday } from "./athleteClock";
+import { athleteDate, athleteDayArgs, athleteToday } from "./athleteClock";
 import { countMainExercises } from "../lib/today";
 import { v } from "convex/values";
 import { mapUserWeekToTemplateWeek } from "./weekMapping";
@@ -1112,8 +1112,6 @@ export const moveWorkoutToDate = mutation({
       DEFAULT_TRAINING_DAYS[3];
 
     const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
-    // Dates on the athlete's clock, as the calendar shows them
-    const clock = athleteClockProgram(program, args);
 
     // Validate source slot
     if (args.sourceWeek < 1 || args.sourceWeek > weeksPerPhase) {
@@ -1145,7 +1143,7 @@ export const moveWorkoutToDate = mutation({
     // Get the source slot's current effective date
     const sourceKey = `${args.sourcePhase}-${args.sourceWeek}-${args.sourceDay}`;
     const sourceCurrentDate = dateOverrideLookup.get(sourceKey) ??
-      formatDateISO(getDateForWorkout(phaseAnchor(clock, args.sourcePhase), trainingDays, {
+      formatDateISO(getDateForWorkout(phaseAnchor(program, args.sourcePhase), trainingDays, {
         phase: args.sourcePhase,
         week: args.sourceWeek,
         day: args.sourceDay,
@@ -1173,7 +1171,7 @@ export const moveWorkoutToDate = mutation({
       week: weeksPerPhase,
       day: trainingDays.length,
     };
-    const programEndDate = getDateForWorkout(phaseAnchor(clock, "SSP"), trainingDays, lastWorkoutSlot, weeksPerPhase);
+    const programEndDate = getDateForWorkout(phaseAnchor(program, "SSP"), trainingDays, lastWorkoutSlot, weeksPerPhase);
     const isLastWeek = isSameWeek(sourceDate, programEndDate);
 
     if (isLastWeek) {
@@ -1202,7 +1200,7 @@ export const moveWorkoutToDate = mutation({
           if (slotKey === sourceKey) continue;
 
           const slotDate = dateOverrideLookup.get(slotKey) ??
-            formatDateISO(getDateForWorkout(phaseAnchor(clock, slot.phase), trainingDays, slot, weeksPerPhase));
+            formatDateISO(getDateForWorkout(phaseAnchor(program, slot.phase), trainingDays, slot, weeksPerPhase));
 
           if (slotDate === args.targetDateISO) {
             targetSlot = slot;
@@ -1423,9 +1421,7 @@ export const getFullProgramCalendar = query({
     // Get dynamic weeks per phase (fallback to 4 for existing users)
     const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
 
-    // Dates on the athlete's clock, not the server's (see athleteClock)
-    const clock = athleteClockProgram(program, args);
-    const programStartDate = calendarStart(clock);
+    const programStartDate = calendarStart(program);
 
     // Calculate program end date (last workout of SSP)
     const lastWorkoutSlot: WorkoutSlot = {
@@ -1433,7 +1429,7 @@ export const getFullProgramCalendar = query({
       week: weeksPerPhase,
       day: trainingDays.length,
     };
-    const programEndDate = getDateForWorkout(phaseAnchor(clock, "SSP"),
+    const programEndDate = getDateForWorkout(phaseAnchor(program, "SSP"),
       trainingDays,
       lastWorkoutSlot,
       weeksPerPhase
@@ -1558,7 +1554,7 @@ export const getFullProgramCalendar = query({
           if (dateOverride) {
             effectiveDate = parseDateISO(dateOverride);
           } else {
-            effectiveDate = getDateForWorkout(phaseAnchor(clock, slot.phase), trainingDays, slot, weeksPerPhase);
+            effectiveDate = getDateForWorkout(phaseAnchor(program, slot.phase), trainingDays, slot, weeksPerPhase);
           }
           const effectiveDateISO = formatDateISO(effectiveDate);
 
@@ -1600,7 +1596,7 @@ export const getFullProgramCalendar = query({
               isToday: isTodayDate && !isCompleted,
               isInProgress,
               isLocked,
-              completedOnDate: doneBy?.completedAt ? formatDateISO(new Date(doneBy.completedAt)) : undefined,
+              completedOnDate: doneBy?.completedAt ? formatDateISO(athleteDate(doneBy.completedAt, args)) : undefined,
             });
           } else {
             // Template not found - this usually means templates need to be regenerated

@@ -1,7 +1,7 @@
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { countsAsDone, slotOnDate } from "./blockCompletion";
 import { loadProgramCompletion } from "./programCompletion";
-import { athleteClockProgram, athleteDayArgs, athleteToday } from "./athleteClock";
+import { athleteDayArgs, athleteToday } from "./athleteClock";
 import { getWorkoutForDate } from "./workoutCalendar";
 import { DEFAULT_WEEKS_PER_PHASE, mapUserWeekToTemplateWeek } from "./weekMapping";
 import { v } from "convex/values";
@@ -848,7 +848,7 @@ export const startSession = mutation({
         const weeksPerPhase = userProgram.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
 
         // Today's slot, with the calendar's own mapping
-        const todaySlot = slotOnDate(athleteClockProgram(userProgram, args), (anchor) =>
+        const todaySlot = slotOnDate(userProgram, (anchor) =>
           getWorkoutForDate(anchor, trainingDays, today, weeksPerPhase)
         );
 

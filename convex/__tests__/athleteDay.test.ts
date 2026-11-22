@@ -170,4 +170,24 @@ describe("the calendar on the athlete's day", () => {
     });
     expect(result.success).toBe(true);
   });
+
+  it("dates a finished workout by the athlete's day, on its card and in history alike", async () => {
+    const { ids, t, asAthlete } = await setup();
+    const doneAt = Date.now() - 60 * MINUTE;
+    await t.run((ctx) =>
+      ctx.db.insert("gpp_workout_sessions", {
+        userId: ids.userId, templateId: ids.templates.W1D1, userProgramId: ids.programId,
+        startedAt: doneAt - 30 * MINUTE, completedAt: doneAt, status: "completed",
+        templateSnapshot: { name: "W1D1", phase: "GPP", week: 1, day: 1, workoutDate: doneAt },
+        exercises: [],
+      }),
+    );
+    const day = behind();
+    const calendar = await asAthlete.query(api.workoutCalendar.getFullProgramCalendar, day);
+    const dates = Object.values(calendar!.calendarData)
+      .flatMap((d) => d.workouts)
+      .filter((w) => w.name === "W1D1" && w.week === 1 && w.isCompleted)
+      .map((w) => w.completedOnDate);
+    expect(new Set(dates)).toEqual(new Set([isoDate(athleteDate(doneAt, day))]));
+  });
 });
