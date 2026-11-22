@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Platform, Pressable, Share, StyleSheet } from 'react-native'
+import { Platform, Pressable, Share, StyleSheet, Text } from 'react-native'
 import { Button, Card, ScrollView, Separator, XStack, YStack } from 'tamagui'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -52,6 +52,7 @@ function AddressAction({ address }: { address: string }) {
   const Icon = isWeb ? (copied ? Check : Copy) : ShareIcon
 
   return (
+    <>
     <Button
       size="$3"
       minH={44}
@@ -70,6 +71,13 @@ function AddressAction({ address }: { address: string }) {
         {label}
       </Body>
     </Button>
+    {isWeb ? (
+      // Mounted before the copy so screen readers pick up the change
+      <Text role="status" testID="mcp-address-status" style={styles.srOnly}>
+        {copied ? 'Connector address copied' : ''}
+      </Text>
+    ) : null}
+    </>
   )
 }
 
@@ -188,5 +196,13 @@ const styles = StyleSheet.create({
     marginLeft: -10,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // Visually hidden, still read by screen readers
+  srOnly: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    overflow: 'hidden',
+    opacity: 0,
   },
 })

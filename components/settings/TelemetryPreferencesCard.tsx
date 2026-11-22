@@ -114,7 +114,7 @@ export function TelemetryPreferencesCard({
               <Body fontWeight="600">Share anonymous usage analytics</Body>
               <Supporting color="$color10" testID="analytics-opt-in-status">
                 {analyticsEnabled
-                  ? 'Helps us make workouts better. Never includes your name, email or anything personal.'
+                  ? 'Helps us make workouts better. Never includes your name or email.'
                   : "Off. Wander Fit doesn't send usage data from this account."}
               </Supporting>
             </YStack>
