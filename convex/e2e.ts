@@ -56,6 +56,38 @@ async function clearProgramRows(ctx: MutationCtx, userId: Id<"users">) {
   for (const intake of intakes) {
     await ctx.db.delete(intake._id);
   }
+
+  const ratings = await ctx.db
+    .query("athlete_ratings")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .collect();
+  for (const rating of ratings) {
+    await ctx.db.delete(rating._id);
+  }
+
+  const bugReports = await ctx.db
+    .query("bug_reports")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .collect();
+  for (const bug of bugReports) {
+    await ctx.db.delete(bug._id);
+  }
+
+  const featureRequests = await ctx.db
+    .query("feature_requests")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .collect();
+  for (const request of featureRequests) {
+    await ctx.db.delete(request._id);
+  }
+
+  const promptStates = await ctx.db
+    .query("feedback_prompt_state")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .collect();
+  for (const state of promptStates) {
+    await ctx.db.delete(state._id);
+  }
 }
 
 export const provision = internalMutation({

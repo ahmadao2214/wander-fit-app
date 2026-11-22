@@ -56,6 +56,63 @@ const oneRepMaxSourceValidator = v.union(
   v.literal("assessment")      // From dedicated assessment workout
 );
 
+const feedbackPlatformValidator = v.union(
+  v.literal("ios"),
+  v.literal("android"),
+  v.literal("web")
+);
+
+const feedbackColorSchemeValidator = v.union(
+  v.literal("light"),
+  v.literal("dark")
+);
+
+const bugSeverityValidator = v.union(
+  v.literal("blocking"),
+  v.literal("annoying"),
+  v.literal("minor")
+);
+
+const bugStatusValidator = v.union(
+  v.literal("new"),
+  v.literal("triaged"),
+  v.literal("in_progress"),
+  v.literal("fixed"),
+  v.literal("wont_fix")
+);
+
+const featureCategoryValidator = v.union(
+  v.literal("workouts_exercises"),
+  v.literal("program_schedule"),
+  v.literal("progress_maxes"),
+  v.literal("equipment_gym_home"),
+  v.literal("app_experience"),
+  v.literal("other")
+);
+
+const featureStatusValidator = v.union(
+  v.literal("new"),
+  v.literal("under_review"),
+  v.literal("planned"),
+  v.literal("shipped"),
+  v.literal("declined")
+);
+
+const feedbackContextValidator = v.object({
+  platform: feedbackPlatformValidator,
+  osVersion: v.optional(v.string()),
+  appVersion: v.string(),
+  buildNumber: v.optional(v.string()),
+  screenRoute: v.string(),
+  colorScheme: v.optional(feedbackColorSchemeValidator),
+  programContext: v.optional(v.object({
+    phase: phaseValidator,
+    week: v.number(),
+    day: v.number(),
+    skillLevel: skillLevelValidator,
+  })),
+});
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // GPP TABLES (MVP)
 // 
@@ -581,6 +638,106 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_user_program", ["userProgramId"]),
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // IN-APP FEEDBACK (Ratings, Bug Reports, Feature Requests & Prompt Cooldowns)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * athlete_ratings - Private in-app 1-5 star ratings
+   *
+   * Strictly decoupled from native App Store / Google Play review prompts
+   * to comply with Apple and Google review policies.
+   */
+  athlete_ratings: defineTable({
+    userId: v.id("users"),
+    isInternal: v.boolean(),
+    stars: v.number(), // 1..5 integer
+    note: v.optional(v.string()),
+    trigger: v.union(
+      v.literal("post_workout_prompt"),
+      v.literal("profile_manual")
+    ),
+    completedWorkoutsAtSubmission: v.number(),
+    context: feedbackContextValidator,
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_createdAt", ["userId", "createdAt"])
+    .index("by_createdAt", ["createdAt"])
+    .index("by_internal_createdAt", ["isInternal", "createdAt"]),
+
+  /**
+   * bug_reports - Structured zero-PII bug reports with triage status
+   */
+  bug_reports: defineTable({
+    userId: v.id("users"),
+    isInternal: v.boolean(),
+    title: v.string(),
+    details: v.string(),
+    severity: bugSeverityValidator,
+    source: v.union(
+      v.literal("profile"),
+      v.literal("error_boundary"),
+      v.literal("workout_detail"),
+      v.literal("workout_execute")
+    ),
+    context: feedbackContextValidator,
+    workoutContext: v.optional(
+      v.object({
+        gppSessionId: v.optional(v.id("gpp_workout_sessions")),
+        templateId: v.optional(v.id("program_templates")),
+        exerciseId: v.optional(v.id("exercises")),
+        exerciseName: v.optional(v.string()),
+      })
+    ),
+    errorCode: v.optional(v.string()),
+    posthogSessionId: v.optional(v.string()),
+    status: bugStatusValidator,
+    triageNotes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_createdAt", ["userId", "createdAt"])
+    .index("by_status_createdAt", ["status", "createdAt"])
+    .index("by_internal_status", ["isInternal", "status", "createdAt"]),
+
+  /**
+   * feature_requests - Categorized Athlete feature ideas with triage status
+   */
+  feature_requests: defineTable({
+    userId: v.id("users"),
+    isInternal: v.boolean(),
+    category: featureCategoryValidator,
+    title: v.string(),
+    details: v.string(),
+    context: feedbackContextValidator,
+    status: featureStatusValidator,
+    triageNotes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_createdAt", ["userId", "createdAt"])
+    .index("by_status_createdAt", ["status", "createdAt"])
+    .index("by_category_status", ["category", "status", "createdAt"])
+    .index("by_internal_status", ["isInternal", "status", "createdAt"]),
+
+  /**
+   * feedback_prompt_state - Per-Athlete cooldowns for private rating & store review prompts
+   */
+  feedback_prompt_state: defineTable({
+    userId: v.id("users"),
+    lastRatingPromptedAt: v.optional(v.number()),
+    lastRatingSubmittedAt: v.optional(v.number()),
+    lastRatingDismissedAt: v.optional(v.number()),
+    ratingDismissCount: v.number(),
+    lastStoreReviewRequestedAt: v.optional(v.number()),
+    storeReviewRequestCount: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"]),
 
   // ═══════════════════════════════════════════════════════════════════════════════
   // LEGACY TABLES (Kept for backward compatibility during migration)

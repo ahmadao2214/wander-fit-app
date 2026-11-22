@@ -8,6 +8,11 @@ import { SignOutButton } from '../../components/SignOutButton'
 import { OneRepMaxSheet } from '../../components/OneRepMaxSheet'
 import { SentryDiagnosticsCard } from '../../components/SentryDiagnosticsCard'
 import { ReplayExcludedSurface } from '../../components/ReplayExcludedSurface'
+import {
+  RatingFeedbackSheet,
+  BugReportSheet,
+  FeatureRequestSheet,
+} from '../../components/feedback'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   User,
@@ -25,6 +30,9 @@ import {
   CalendarDays,
   TrendingUp,
   ClipboardCheck,
+  Star,
+  Bug,
+  Sparkles,
 } from '@tamagui/lucide-icons'
 import { PHASE_NAMES } from '../../types'
 import { experienceLabel, trainingDaysLabel } from '../../lib/profile'
@@ -47,6 +55,11 @@ export default function ProfilePage() {
     slug: string
     currentMax: number | null
   } | null>(null)
+
+  // Feedback sheets (submit + toast only; no in-app history list)
+  const [ratingSheetOpen, setRatingSheetOpen] = useState(false)
+  const [bugSheetOpen, setBugSheetOpen] = useState(false)
+  const [featureSheetOpen, setFeatureSheetOpen] = useState(false)
 
   const programState = useQuery(
     api.userPrograms.getCurrentProgramState,
@@ -336,6 +349,88 @@ export default function ProfilePage() {
             </Card>
           </YStack>
 
+          {/* Feedback & Support Section (submit + confirmation toast only) */}
+          <YStack gap="$3">
+            <SectionTitle>Feedback & support</SectionTitle>
+
+            <Card
+              bg="$surface"
+              rounded="$4"
+              borderWidth={1}
+              borderColor="$borderColor"
+              overflow="hidden"
+            >
+              <YStack>
+                <Card
+                  testID="feedback-row-rate"
+                  px="$4"
+                  py="$3"
+                  bg="$surface"
+                  rounded={0}
+                  pressStyle={{ bg: '$surfaceHover' }}
+                  onPress={() => setRatingSheetOpen(true)}
+                >
+                  <XStack items="center" gap="$3" minH={36}>
+                    <YStack bg="$orange3" p="$2" rounded="$10">
+                      <Star size={18} color="$orange10" />
+                    </YStack>
+                    <YStack flex={1}>
+                      <Body fontWeight="500">Rate WanderFit</Body>
+                      <Supporting color="$color10">Share a quick private rating</Supporting>
+                    </YStack>
+                    <ChevronRight size={20} color="$color9" />
+                  </XStack>
+                </Card>
+
+                <Card
+                  testID="feedback-row-bug"
+                  px="$4"
+                  py="$3"
+                  bg="$surface"
+                  rounded={0}
+                  borderTopWidth={1}
+                  borderColor="$borderColor"
+                  pressStyle={{ bg: '$surfaceHover' }}
+                  onPress={() => setBugSheetOpen(true)}
+                >
+                  <XStack items="center" gap="$3" minH={36}>
+                    <YStack bg="$red3" p="$2" rounded="$10">
+                      <Bug size={18} color="$red10" />
+                    </YStack>
+                    <YStack flex={1}>
+                      <Body fontWeight="500">Report a bug</Body>
+                      <Supporting color="$color10">Flag something broken or off</Supporting>
+                    </YStack>
+                    <ChevronRight size={20} color="$color9" />
+                  </XStack>
+                </Card>
+
+                <Card
+                  testID="feedback-row-feature"
+                  px="$4"
+                  py="$3"
+                  bg="$surface"
+                  rounded={0}
+                  borderTopWidth={1}
+                  borderColor="$borderColor"
+                  pressStyle={{ bg: '$surfaceHover' }}
+                  onPress={() => setFeatureSheetOpen(true)}
+                >
+                  <XStack items="center" gap="$3" minH={36}>
+                    <YStack bg="$brand2" p="$2" rounded="$10">
+                      <Sparkles size={18} color="$primaryText" />
+                    </YStack>
+                    <YStack flex={1}>
+                      <Body fontWeight="500">Request a feature</Body>
+                      <Supporting color="$color10">Suggest an improvement</Supporting>
+                    </YStack>
+                    <ChevronRight size={20} color="$color9" />
+                  </XStack>
+                </Card>
+              </YStack>
+            </Card>
+          </YStack>
+
           {/* Settings Section */}
           <YStack gap="$3">
             <SectionTitle>Settings</SectionTitle>
@@ -383,6 +478,63 @@ export default function ProfilePage() {
           onComplete={() => setSelectedExercise(null)}
         />
       )}
+
+      {/* Feedback Sheets (submit + confirmation toast only) */}
+      {ratingSheetOpen ? (
+        <RatingFeedbackSheet
+          open={ratingSheetOpen}
+          onOpenChange={setRatingSheetOpen}
+          trigger="profile_manual"
+          screenRoute="/(athlete)/profile"
+          programContext={
+            programState
+              ? {
+                  phase: programState.phase as 'GPP' | 'SPP' | 'SSP',
+                  week: programState.week,
+                  day: programState.day,
+                  skillLevel: programState.skillLevel,
+                }
+              : undefined
+          }
+        />
+      ) : null}
+
+      {bugSheetOpen ? (
+        <BugReportSheet
+          open={bugSheetOpen}
+          onOpenChange={setBugSheetOpen}
+          source="profile"
+          screenRoute="/(athlete)/profile"
+          programContext={
+            programState
+              ? {
+                  phase: programState.phase as 'GPP' | 'SPP' | 'SSP',
+                  week: programState.week,
+                  day: programState.day,
+                  skillLevel: programState.skillLevel,
+                }
+              : undefined
+          }
+        />
+      ) : null}
+
+      {featureSheetOpen ? (
+        <FeatureRequestSheet
+          open={featureSheetOpen}
+          onOpenChange={setFeatureSheetOpen}
+          screenRoute="/(athlete)/profile"
+          programContext={
+            programState
+              ? {
+                  phase: programState.phase as 'GPP' | 'SPP' | 'SSP',
+                  week: programState.week,
+                  day: programState.day,
+                  skillLevel: programState.skillLevel,
+                }
+              : undefined
+          }
+        />
+      ) : null}
     </YStack>
     </ReplayExcludedSurface>
   )

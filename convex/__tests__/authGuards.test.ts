@@ -13,6 +13,7 @@ import * as users from "../users";
 import * as userPrograms from "../userPrograms";
 import * as pilotMetrics from "../pilotMetrics";
 import * as telemetry from "../telemetry";
+import * as feedback from "../feedback";
 import { convexModules } from "../../jest/convexModules";
 
 const modules = convexModules();
@@ -62,6 +63,13 @@ describe("reference data writes and unused user lookups are internal", () => {
     ["programTemplates.remove", programTemplates.remove as RegisteredFn],
     ["users.getUserById", users.getUserById as RegisteredFn],
     ["userPrograms.getByUserId", userPrograms.getByUserId as RegisteredFn],
+    ["feedback.listBugsForTriage", feedback.listBugsForTriage as RegisteredFn],
+    ["feedback.listFeatureRequestsForTriage", feedback.listFeatureRequestsForTriage as RegisteredFn],
+    ["feedback.listRatingsForTriage", feedback.listRatingsForTriage as RegisteredFn],
+    ["feedback.getFeedbackSummary", feedback.getFeedbackSummary as RegisteredFn],
+    ["feedback.updateBugStatus", feedback.updateBugStatus as RegisteredFn],
+    ["feedback.updateFeatureRequestStatus", feedback.updateFeatureRequestStatus as RegisteredFn],
+    ["feedback.notifyWebhook", feedback.notifyWebhook as RegisteredFn],
   ];
 
   for (const [name, fn] of cases) {
@@ -339,5 +347,66 @@ describe("workoutSessions.getHistory (compatibility path for installed builds)",
   it("returns nothing for other users", async () => {
     const { asStranger } = await setupCompletedSession();
     expect(await asStranger.query(api.workoutSessions.getHistory, {})).toEqual([]);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// feedback
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("feedback auth guards", () => {
+  const sampleContext = {
+    platform: "ios" as const,
+    appVersion: "1.0.0",
+    screenRoute: "/(athlete)/profile",
+  };
+
+  it("rejects unauthenticated calls on every public feedback mutation", async () => {
+    const { t } = await setup();
+
+    await expect(
+      t.mutation(api.feedback.submitRating, {
+        stars: 5,
+        trigger: "profile_manual",
+        context: sampleContext,
+      })
+    ).rejects.toThrow("Not authenticated");
+
+    await expect(t.mutation(api.feedback.dismissRatingPrompt, {})).rejects.toThrow(
+      "Not authenticated"
+    );
+
+    await expect(t.mutation(api.feedback.recordStoreReviewRequested, {})).rejects.toThrow(
+      "Not authenticated"
+    );
+
+    await expect(
+      t.mutation(api.feedback.submitBugReport, {
+        title: "Crash",
+        details: "Steps",
+        severity: "blocking",
+        source: "profile",
+        context: sampleContext,
+      })
+    ).rejects.toThrow("Not authenticated");
+
+    await expect(
+      t.mutation(api.feedback.submitFeatureRequest, {
+        category: "other",
+        title: "Idea",
+        details: "Why",
+        context: sampleContext,
+      })
+    ).rejects.toThrow("Not authenticated");
+  });
+
+  it("returns safe defaults for unauthenticated feedback queries", async () => {
+    const { t } = await setup();
+    expect(await t.query(api.feedback.getAccess, {})).toEqual({ isInternal: false });
+    expect(await t.query(api.feedback.getPromptEligibility, {})).toEqual({
+      shouldShowPrivateRatingPrompt: false,
+      shouldRequestStoreReview: false,
+      completedWorkoutsCount: 0,
+    });
   });
 });

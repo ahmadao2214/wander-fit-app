@@ -27,7 +27,9 @@ import {
   ListChecks,
   ClipboardList,
   Bell,
+  Flag,
 } from '@tamagui/lucide-icons'
+import { BugReportSheet } from '../../../components/feedback'
 import DraggableFlatList, {
   ScaleDecorator,
   RenderItemParams,
@@ -103,6 +105,7 @@ export default function WorkoutDetailScreen() {
 
   // All hooks must be called before any early returns
   const [isStarting, setIsStarting] = useState(false)
+  const [bugSheetOpen, setBugSheetOpen] = useState(false)
 
   // Safe back navigation - respects where the user came from
   const handleBack = useCallback(() => {
@@ -638,37 +641,54 @@ export default function WorkoutDetailScreen() {
             >
               <ChevronLeft size={28} color="$color" />
             </Pressable>
-            {isPhaseUnlocked && !isCompleted && (
-              <Button
-                size="$4"
-                bg="$primary"
-                color="white"
-                onPress={startWorkout}
-                testID="workout-start"
-                icon={isStarting ? undefined : Play}
-                fontSize={18}
-                fontWeight="700"
-                disabled={isStarting}
-                pressStyle={{ scale: 0.97, bg: '$primaryPress' }}
+            <XStack items="center" gap="$2">
+              <Pressable
+                onPress={() => setBugSheetOpen(true)}
+                hitSlop={8}
+                testID="workout-detail-report-issue"
+                accessibilityRole="button"
+                accessibilityLabel="Report an issue with this workout"
+                style={{
+                  minWidth: 44,
+                  minHeight: 44,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
               >
-                {isStarting ? '…' : isPaused ? 'Resume' : 'Start'}
-              </Button>
-            )}
-            {isPhaseUnlocked && isCompleted && (
-              <Button
-                size="$4"
-                bg="$color4"
-                borderWidth={2}
-                borderColor="$primary"
-                color="$primaryText"
-                onPress={startWorkout}
-                icon={isStarting ? undefined : RotateCcw}
-                fontWeight="600"
-                disabled={isStarting}
-              >
-                {isStarting ? '…' : 'Redo'}
-              </Button>
-            )}
+                <Flag size={20} color="$color9" />
+              </Pressable>
+              {isPhaseUnlocked && !isCompleted && (
+                <Button
+                  size="$4"
+                  bg="$primary"
+                  color="white"
+                  onPress={startWorkout}
+                  testID="workout-start"
+                  icon={isStarting ? undefined : Play}
+                  fontSize={18}
+                  fontWeight="700"
+                  disabled={isStarting}
+                  pressStyle={{ scale: 0.97, bg: '$primaryPress' }}
+                >
+                  {isStarting ? '…' : isPaused ? 'Resume' : 'Start'}
+                </Button>
+              )}
+              {isPhaseUnlocked && isCompleted && (
+                <Button
+                  size="$4"
+                  bg="$color4"
+                  borderWidth={2}
+                  borderColor="$primary"
+                  color="$primaryText"
+                  onPress={startWorkout}
+                  icon={isStarting ? undefined : RotateCcw}
+                  fontWeight="600"
+                  disabled={isStarting}
+                >
+                  {isStarting ? '…' : 'Redo'}
+                </Button>
+              )}
+            </XStack>
           </XStack>
           <YStack gap="$1">
             {/* The one display moment on this screen; long names wrap rather than truncate */}
@@ -716,6 +736,19 @@ export default function WorkoutDetailScreen() {
             />
           )}
         </View>
+
+        {bugSheetOpen ? (
+          <BugReportSheet
+            open={bugSheetOpen}
+            onOpenChange={setBugSheetOpen}
+            source="workout_detail"
+            screenRoute="/(athlete)/workout/[id]"
+            workoutContext={{
+              templateId: template._id,
+              ...(session?._id ? { gppSessionId: session._id } : {}),
+            }}
+          />
+        ) : null}
       </YStack>
     </GestureHandlerRootView>
     </ReplayExcludedSurface>

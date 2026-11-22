@@ -3,7 +3,7 @@ import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
 import { SignOutButton } from '../../components/SignOutButton'
-import { useRouter } from 'expo-router'
+import { useIsFocused, useRouter } from 'expo-router'
 import { useState } from 'react'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
@@ -23,6 +23,8 @@ import { analytics } from '../../lib/analytics'
 import type { Phase } from '../../types'
 import { Display, Title, Body, Supporting, Caption, numeric } from '../../components/Typography'
 import { localDayArgs } from '../../lib/weeksOnPlan'
+import { RatingFeedbackSheet } from '../../components/feedback'
+import { useFeedbackPrompts } from '../../hooks/useFeedbackPrompts'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PHASE PROGRESS
@@ -173,6 +175,7 @@ function DiscardPausedWorkout({ onDiscard }: { onDiscard: () => Promise<void> })
 export default function AthleteDashboard() {
   const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
+  const isFocused = useIsFocused()
   const insets = useSafeAreaInsets()
   const today = useCurrentDate()
 
@@ -215,6 +218,16 @@ export default function AthleteDashboard() {
 
   // Discard a paused session (the athlete's explicit choice; Exit only pauses)
   const abandonSession = useMutation(api.gppWorkoutSessions.abandonSession)
+
+  const {
+    ratingSheetOpen,
+    setRatingSheetOpen,
+    handleDismissRatingPrompt,
+  } = useFeedbackPrompts({
+    enabled: Boolean(user && programState),
+    isFocused,
+    suppressPrompts: Boolean(reassessmentStatus?.reassessmentPending || activeSession),
+  })
 
   // Phase colors: one brand hue, deepening GPP → SSP (lib/phase.ts)
   const phase = phaseTokens(programState?.phase)
@@ -490,6 +503,27 @@ export default function AthleteDashboard() {
 
         </YStack>
       </ScrollView>
+
+      {/* Auto-triggered private rating prompt (2nd completed workout; decoupled from OS store review) */}
+      {ratingSheetOpen ? (
+        <RatingFeedbackSheet
+          open={ratingSheetOpen}
+          onOpenChange={setRatingSheetOpen}
+          trigger="post_workout_prompt"
+          screenRoute="/(athlete)"
+          programContext={
+            programState
+              ? {
+                  phase: programState.phase as Phase,
+                  week: programState.week,
+                  day: programState.day,
+                  skillLevel: programState.skillLevel,
+                }
+              : undefined
+          }
+          onDismiss={handleDismissRatingPrompt}
+        />
+      ) : null}
     </YStack>
   )
 }

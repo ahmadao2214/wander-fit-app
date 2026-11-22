@@ -21,7 +21,9 @@ import {
   Check,
   Trophy,
   Timer,
+  Flag,
 } from '@tamagui/lucide-icons'
+import { BugReportSheet } from '../../../../components/feedback'
 import { ExerciseTypeIcon } from '../../../../components/workout/ExerciseTypeIcon'
 import { SetTracker } from '../../../../components/workout/SetTracker'
 import { InstructionsAccordion } from '../../../../components/workout/InstructionsAccordion'
@@ -105,6 +107,7 @@ export default function WorkoutExecutionScreen() {
   const [elapsedTime, setElapsedTime] = useState(0)
   const [showExitDialog, setShowExitDialog] = useState(false)
   const [queueOpen, setQueueOpen] = useState(false)
+  const [bugSheetOpen, setBugSheetOpen] = useState(false)
   const [showCompletionDialog, setShowCompletionDialog] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)
 
@@ -894,11 +897,28 @@ export default function WorkoutExecutionScreen() {
           </XStack>
           </Pressable>
 
-          <XStack items="center" gap="$1.5">
-            <Timer size={16} color="$color10" />
-            <TimerDisplay color="$color10">
-              {formatTime(elapsedTime)}
-            </TimerDisplay>
+          <XStack items="center" gap="$2">
+            <XStack items="center" gap="$1.5">
+              <Timer size={16} color="$color10" />
+              <TimerDisplay color="$color10">
+                {formatTime(elapsedTime)}
+              </TimerDisplay>
+            </XStack>
+            <Pressable
+              onPress={() => setBugSheetOpen(true)}
+              hitSlop={8}
+              testID="execute-report-issue"
+              accessibilityRole="button"
+              accessibilityLabel="Report an issue with this exercise"
+              style={{
+                minWidth: 44,
+                minHeight: 44,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Flag size={18} color="$color9" />
+            </Pressable>
           </XStack>
         </XStack>
 
@@ -1329,6 +1349,21 @@ export default function WorkoutExecutionScreen() {
           </AlertDialog.Content>
         </AlertDialog.Portal>
       </AlertDialog>
+      {/* Contextual Bug Report Sheet (auto-attaches session, template & exercise) */}
+      {bugSheetOpen ? (
+        <BugReportSheet
+          open={bugSheetOpen}
+          onOpenChange={setBugSheetOpen}
+          source="workout_execute"
+          screenRoute="/(athlete)/workout/execute/[id]"
+          workoutContext={{
+            gppSessionId: session._id,
+            templateId: session.templateId,
+            exerciseId: currentExercise.exerciseId as Id<'exercises'>,
+            exerciseName: exerciseDetails?.name,
+          }}
+        />
+      ) : null}
     </YStack>
   )
 }

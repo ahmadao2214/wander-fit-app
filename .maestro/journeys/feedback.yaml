@@ -1,0 +1,101 @@
+url: ${VERIFY_URL}
+---
+# In-app feedback journey:
+# Signs in as an onboarded athlete, opens Profile -> Feedback & support,
+# submits a private star rating, a bug report, and a feature request,
+# and confirms no in-app "My feedback" history list is shown.
+- runFlow: ../subflows/_evidence-start.yaml
+- runFlow: ../subflows/_open-sign-in.yaml
+- runFlow: ../subflows/_sign-in.yaml
+- extendedWaitUntil:
+    visible:
+      id: today-workout-card
+    timeout: 90000
+- tapOn: "Profile"
+- extendedWaitUntil:
+    visible: "Training info"
+    timeout: 30000
+# Scroll down Profile ScrollView to bring Feedback & support into view
+- swipe:
+    start: "50%, 80%"
+    end: "50%, 25%"
+    duration: 500
+- extendedWaitUntil:
+    visible: "Feedback & support"
+    timeout: 15000
+- assertNotVisible: "(?i)my feedback|my submissions"
+- takeScreenshot: 01-profile-feedback
+
+# 1. Private star rating
+- tapOn:
+    id: feedback-row-rate
+- extendedWaitUntil:
+    visible:
+      id: rating-submit-button
+    timeout: 15000
+# Web reports aria-label ("5 stars") as id; native reports testID ("rating-star-5").
+- tapOn:
+    id: "rating-star-5|5 stars"
+- tapOn:
+    id: rating-note-input
+- inputText: "Great training plan"
+- tapOn:
+    id: rating-submit-button
+- extendedWaitUntil:
+    notVisible:
+      id: rating-submit-button
+    timeout: 15000
+- assertNotVisible:
+    id: rating-error
+- takeScreenshot: 02-rating-submitted
+
+# 2. Bug report
+- tapOn:
+    id: feedback-row-bug
+- extendedWaitUntil:
+    visible:
+      id: bug-submit-button
+    timeout: 15000
+- tapOn:
+    id: bug-title-input
+- inputText: "Timer label clipped"
+- tapOn:
+    id: bug-details-input
+- inputText: "Noticed minor clipping on narrow viewport"
+- tapOn:
+    id: bug-severity-minor
+- tapOn:
+    id: bug-submit-button
+- extendedWaitUntil:
+    notVisible:
+      id: bug-submit-button
+    timeout: 15000
+- assertNotVisible:
+    id: bug-error
+- takeScreenshot: 03-bug-submitted
+
+# 3. Feature request
+- tapOn:
+    id: feedback-row-feature
+- extendedWaitUntil:
+    visible:
+      id: feature-submit-button
+    timeout: 15000
+- tapOn:
+    id: feature-category-progress_maxes
+- tapOn:
+    id: feature-title-input
+- inputText: "Rest timer audio cue"
+- tapOn:
+    id: feature-details-input
+- inputText: "Short chime when rest finishes"
+- tapOn:
+    id: feature-submit-button
+- extendedWaitUntil:
+    notVisible:
+      id: feature-submit-button
+    timeout: 15000
+- assertNotVisible:
+    id: feature-error
+- takeScreenshot: 04-feature-submitted
+- runFlow: ../subflows/_evidence-stop.yaml

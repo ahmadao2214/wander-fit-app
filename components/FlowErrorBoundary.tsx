@@ -1,9 +1,11 @@
-import React, { Component, ReactNode } from 'react'
+import React, { Component, ReactNode, useState } from 'react'
 import { YStack, Text, Button, XStack } from 'tamagui'
-import { AlertTriangle, RefreshCw, Home } from '@tamagui/lucide-icons'
+import { AlertTriangle, RefreshCw, Home, Bug } from '@tamagui/lucide-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { captureBoundaryError } from '../lib/sentry'
+import { useConvexAuth } from 'convex/react'
+import { BugReportSheet } from './feedback'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -33,6 +35,64 @@ interface ErrorFallbackProps {
   onRetry: () => void
   fallbackRoute?: string
   errorMessage?: string
+}
+
+/**
+ * Isolated bug-report trigger for ErrorFallback so rendering FlowErrorBoundary
+ * outside a ConvexProvider (e.g. during early boot or isolated unit tests)
+ * degrades silently instead of breaking the fallback UI.
+ */
+class SilentGuard extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false }
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+  render() {
+    return this.state.failed ? null : this.props.children
+  }
+}
+
+function sanitizeErrorCode(error: Error | null): string {
+  const rawName = error?.name?.trim() ?? ''
+  const cleaned = rawName.replace(/[^A-Za-z0-9_.-]/g, '').slice(0, 64)
+  return cleaned || 'UnknownError'
+}
+
+function ErrorFallbackBugReport({
+  errorCode,
+  fallbackRoute,
+}: {
+  errorCode: string
+  fallbackRoute?: string
+}) {
+  const { isAuthenticated } = useConvexAuth()
+  const [bugSheetOpen, setBugSheetOpen] = useState(false)
+
+  if (!isAuthenticated) return null
+
+  return (
+    <>
+      <Button
+        testID="error-boundary-report-bug"
+        size="$3"
+        chromeless
+        color="$color10"
+        icon={<Bug size={16} color="$color10" />}
+        onPress={() => setBugSheetOpen(true)}
+      >
+        Report a bug
+      </Button>
+      {bugSheetOpen ? (
+        <BugReportSheet
+          open={bugSheetOpen}
+          onOpenChange={setBugSheetOpen}
+          source="error_boundary"
+          screenRoute={fallbackRoute || '/error-boundary'}
+          errorCode={errorCode}
+        />
+      ) : null}
+    </>
+  )
 }
 
 function ErrorFallback({
@@ -129,6 +189,13 @@ function ErrorFallback({
           Try Again
         </Button>
       </XStack>
+
+      <SilentGuard>
+        <ErrorFallbackBugReport
+          errorCode={sanitizeErrorCode(error)}
+          fallbackRoute={fallbackRoute}
+        />
+      </SilentGuard>
     </YStack>
   )
 }
