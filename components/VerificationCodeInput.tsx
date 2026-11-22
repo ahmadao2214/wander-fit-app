@@ -39,31 +39,35 @@ export function VerificationCodeInput({
   }, [value])
 
   // Create styles using theme values
-  const styles = React.useMemo(() => StyleSheet.create({
-    // Boxes share the row and cap at 56pt, so six fit a narrow sheet.
-    input: {
-      flexGrow: 1,
-      flexShrink: 1,
-      flexBasis: 0,
-      maxWidth: 56,
-      minWidth: 0,
-      height: 64,
-      borderRadius: 12,
-      borderWidth: 2,
-      borderColor: theme.borderColor?.val as string || '#e5e5e5',
-      backgroundColor: theme.surface?.val as string || '#f5f5f5',
-      textAlign: 'center',
-      fontSize: 24,
-      fontWeight: '600',
-      color: theme.color12?.val as string || '#000',
-    },
-    inputFocused: {
-      borderColor: theme.primary?.val as string || '#2563eb',
-    },
-    inputFilled: {
-      borderColor: theme.primary?.val as string || '#2563eb',
-    },
-  }), [theme])
+  const styles = React.useMemo(
+    () =>
+      StyleSheet.create({
+        // Boxes share the row and cap at 56pt, so six fit a narrow sheet.
+        input: {
+          flexGrow: 1,
+          flexShrink: 1,
+          flexBasis: 0,
+          maxWidth: 56,
+          minWidth: 0,
+          height: 64,
+          borderRadius: 12,
+          borderWidth: 2,
+          borderColor: (theme.borderColor?.val as string) || '#e5e5e5',
+          backgroundColor: (theme.surface?.val as string) || '#f5f5f5',
+          textAlign: 'center',
+          fontSize: 24,
+          fontWeight: '600',
+          color: (theme.color12?.val as string) || '#000',
+        },
+        inputFocused: {
+          borderColor: (theme.primary?.val as string) || '#2563eb',
+        },
+        inputFilled: {
+          borderColor: (theme.primary?.val as string) || '#2563eb',
+        },
+      }),
+    [theme]
+  )
 
   // Split the value into individual digits
   const digits = value.split('').slice(0, length)
@@ -121,7 +125,7 @@ export function VerificationCodeInput({
     if (fromPaste || numericText.length > 1) {
       // When pasting, fill from the first empty box or from the beginning
       const pastedDigits = numericText.split('').slice(0, length)
-      const newDigits = new Array(length).fill('')
+      const newDigits = Array.from({ length }, () => '')
 
       pastedDigits.forEach((digit, i) => {
         if (i < length) {
@@ -196,7 +200,9 @@ export function VerificationCodeInput({
           value={digit}
           onChange={(event) => {
             // inputType exists only on web, where nativeEvent is the DOM InputEvent.
-            const nativeEvent = event?.nativeEvent as { text?: string; inputType?: string } | undefined
+            const nativeEvent = event?.nativeEvent as
+              | { text?: string; inputType?: string }
+              | undefined
             const inputType = nativeEvent?.inputType
             if (inputType !== 'insertFromPaste' && inputType !== 'insertFromDrop') return
             const text = nativeEvent?.text ?? ''

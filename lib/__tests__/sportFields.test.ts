@@ -10,7 +10,9 @@ describe('sportField', () => {
   it('gives each sport at least three marks with finite coordinates', () => {
     const bad = SPORTS.map((s) => s.name).filter((name) => {
       const marks = sportField(name)
-      return marks.length < 3 || marks.some((mk) => /NaN|Infinity/.test(mk.d) || !/^M/.test(mk.d))
+      return (
+        marks.length < 3 || marks.some((mk) => /NaN|Infinity/.test(mk.d) || !mk.d.startsWith('M'))
+      )
     })
     expect(bad).toEqual([])
   })

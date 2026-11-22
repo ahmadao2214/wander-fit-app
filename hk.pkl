@@ -1,0 +1,27 @@
+// Git hooks managed by hk (https://hk.jdx.dev):
+//   hk install     # install pre-commit and pre-push hooks
+//   hk check       # run pre-commit checks on staged/changed files
+//   hk fix         # format and lint staged/changed files
+amends "package://github.com/jdx/hk/releases/download/v1.18.0/hk@1.18.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.18.0/hk@1.18.0#/Builtins.pkl"
+
+hooks {
+  ["pre-commit"] {
+    fix = true
+    stash = "git"
+    steps {
+      ["oxfmt"] = Builtins.oxfmt
+      ["oxlint"] = Builtins.oxlint
+    }
+  }
+  ["pre-push"] {
+    steps {
+      ["lint"] {
+        check = "bun run lint"
+      }
+      ["typecheck"] {
+        check = "bun run typecheck"
+      }
+    }
+  }
+}

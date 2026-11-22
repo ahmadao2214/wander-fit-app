@@ -19,26 +19,34 @@
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export type Intensity = "Low" | "Moderate" | "High";
-export type AgeGroup = "14-17" | "18-35" | "36+";
-export type Phase = "GPP" | "SPP" | "SSP";
+export type Intensity = 'Low' | 'Moderate' | 'High'
+export type AgeGroup = '14-17' | '18-35' | '36+'
+export type Phase = 'GPP' | 'SPP' | 'SSP'
 
 // Category-specific intensity types
-export type CategoryId = 1 | 2 | 3 | 4;
-export type ExperienceBucket = "0-1" | "2-5" | "6+";
-export type ExerciseFocus = "strength" | "power" | "bodyweight";
+export type CategoryId = 1 | 2 | 3 | 4
+export type ExperienceBucket = '0-1' | '2-5' | '6+'
+export type ExerciseFocus = 'strength' | 'power' | 'bodyweight'
 export type ExercisePrescriptionProfile =
-  | "bodyweight"
-  | "power"
-  | "general_strength"
-  | "primary_loaded_lift"
-  | "unilateral_accessory"
-  | "anti_rotation"
-  | "upper_body_accessory"
-  | "core_accessory"
-  | "mobility_recovery"
-  | "power_conditioning";
-export type PositionType = "lowest" | "lowest_plus_1" | "lowest_plus_2" | "second_lowest" | "middle" | "max_minus_2" | "max_minus_1" | "max";
+  | 'bodyweight'
+  | 'power'
+  | 'general_strength'
+  | 'primary_loaded_lift'
+  | 'unilateral_accessory'
+  | 'anti_rotation'
+  | 'upper_body_accessory'
+  | 'core_accessory'
+  | 'mobility_recovery'
+  | 'power_conditioning'
+export type PositionType =
+  | 'lowest'
+  | 'lowest_plus_1'
+  | 'lowest_plus_2'
+  | 'second_lowest'
+  | 'middle'
+  | 'max_minus_2'
+  | 'max_minus_1'
+  | 'max'
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // AGE GROUP NORMALIZATION (Legacy Migration Safety)
@@ -51,9 +59,9 @@ export type PositionType = "lowest" | "lowest_plus_1" | "lowest_plus_2" | "secon
  * so old values pass through reads and crash when used as config map keys.
  */
 const LEGACY_AGE_GROUP_MAP: Record<string, AgeGroup> = {
-  "10-13": "14-17",
-  "18+": "18-35",
-};
+  '10-13': '14-17',
+  '18+': '18-35',
+}
 
 /**
  * Normalize an age group value, converting legacy values to current ones.
@@ -62,64 +70,64 @@ const LEGACY_AGE_GROUP_MAP: Record<string, AgeGroup> = {
  * - Null/undefined/unknown defaults to "18-35"
  */
 export function normalizeAgeGroup(ageGroup: string | null | undefined): AgeGroup {
-  if (!ageGroup) return "18-35";
-  if (ageGroup in LEGACY_AGE_GROUP_MAP) return LEGACY_AGE_GROUP_MAP[ageGroup];
-  const valid: AgeGroup[] = ["14-17", "18-35", "36+"];
-  return valid.includes(ageGroup as AgeGroup) ? (ageGroup as AgeGroup) : "18-35";
+  if (!ageGroup) return '18-35'
+  if (ageGroup in LEGACY_AGE_GROUP_MAP) return LEGACY_AGE_GROUP_MAP[ageGroup]
+  const valid: AgeGroup[] = ['14-17', '18-35', '36+']
+  return valid.includes(ageGroup as AgeGroup) ? (ageGroup as AgeGroup) : '18-35'
 }
 
 export interface IntensityConfig {
-  oneRepMaxPercent: { min: number; max: number };
-  setsMultiplier: number;
-  repsMultiplier: number;
-  restMultiplier: number;
-  rpeTarget: { min: number; max: number };
+  oneRepMaxPercent: { min: number; max: number }
+  setsMultiplier: number
+  repsMultiplier: number
+  restMultiplier: number
+  rpeTarget: { min: number; max: number }
 }
 
 export interface WeightedPrescription {
-  sets: number;
-  reps: number;
-  restSeconds: number;
+  sets: number
+  reps: number
+  restSeconds: number
 }
 
 export interface ScaledWeightedPrescription {
-  sets: number;
-  reps: number;
-  restSeconds: number;
-  weight?: number;
-  percentOf1RM: number;
-  rpeTarget: { min: number; max: number };
+  sets: number
+  reps: number
+  restSeconds: number
+  weight?: number
+  percentOf1RM: number
+  rpeTarget: { min: number; max: number }
 }
 
 export interface BodyweightPrescription {
-  reps: string;
-  restSeconds: number;
+  reps: string
+  restSeconds: number
 }
 
 export interface ExerciseProgressions {
-  easier?: string;
-  harder?: string;
+  easier?: string
+  harder?: string
 }
 
 export interface ScaledBodyweightPrescription {
-  exerciseSlug: string;
-  isSubstituted: boolean;
-  reps: string;
-  restSeconds: number;
-  rpeTarget: { min: number; max: number };
+  exerciseSlug: string
+  isSubstituted: boolean
+  reps: string
+  restSeconds: number
+  rpeTarget: { min: number; max: number }
 }
 
 export interface AgeIntensityRules {
-  maxIntensity: Intensity;
-  oneRepMaxCeiling: number;
-  plyometricAllowed: boolean;
-  maxSetsPerExercise: number;
-  maxRepsMultiplier: number;
+  maxIntensity: Intensity
+  oneRepMaxCeiling: number
+  plyometricAllowed: boolean
+  maxSetsPerExercise: number
+  maxRepsMultiplier: number
 }
 
 export interface PhaseIntensityRange {
-  min: number;
-  max: number;
+  min: number
+  max: number
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -127,46 +135,46 @@ export interface PhaseIntensityRange {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export interface ParameterRange {
-  min: number;
-  max: number;
+  min: number
+  max: number
 }
 
 export interface Tempo {
-  eccentric: number | "x";
-  isometric: number | "x";
-  concentric: number | "x";
+  eccentric: number | 'x'
+  isometric: number | 'x'
+  concentric: number | 'x'
 }
 
 export interface CategoryPhaseConfig {
   oneRepMaxPercent: {
-    strength: ParameterRange;
-    power: ParameterRange;
-  };
+    strength: ParameterRange
+    power: ParameterRange
+  }
   reps: {
-    strength: ParameterRange;
-    power: ParameterRange;
-  };
-  sets: ParameterRange;
+    strength: ParameterRange
+    power: ParameterRange
+  }
+  sets: ParameterRange
   restSeconds: {
-    strength: number;
-    power: number;
-  };
-  tempo: Tempo;
-  rpe: ParameterRange;
+    strength: number
+    power: number
+  }
+  tempo: Tempo
+  rpe: ParameterRange
 }
 
 export interface AgeExperienceModifier {
-  setsPosition: PositionType;
-  repsPosition: PositionType;
+  setsPosition: PositionType
+  repsPosition: PositionType
 }
 
 export interface ScaledCategoryParameters {
-  oneRepMaxPercent: ParameterRange;
-  sets: number;
-  reps: number | string;
-  restSeconds: number;
-  tempo: Tempo;
-  rpe: ParameterRange;
+  oneRepMaxPercent: ParameterRange
+  sets: number
+  reps: number | string
+  restSeconds: number
+  tempo: Tempo
+  rpe: ParameterRange
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -186,27 +194,27 @@ export interface ScaledCategoryParameters {
  */
 export const INTENSITY_CONFIG: Record<Intensity, IntensityConfig> = {
   Low: {
-    oneRepMaxPercent: { min: 0.60, max: 0.70 },
+    oneRepMaxPercent: { min: 0.6, max: 0.7 },
     setsMultiplier: 0.75,
     repsMultiplier: 1.0,
     restMultiplier: 1.25,
     rpeTarget: { min: 5, max: 6 },
   },
   Moderate: {
-    oneRepMaxPercent: { min: 0.75, max: 0.80 },
+    oneRepMaxPercent: { min: 0.75, max: 0.8 },
     setsMultiplier: 1.0,
     repsMultiplier: 1.0,
     restMultiplier: 1.0,
     rpeTarget: { min: 6, max: 7 },
   },
   High: {
-    oneRepMaxPercent: { min: 0.85, max: 0.90 },
+    oneRepMaxPercent: { min: 0.85, max: 0.9 },
     setsMultiplier: 1.25,
     repsMultiplier: 0.85,
     restMultiplier: 0.75,
     rpeTarget: { min: 8, max: 9 },
   },
-};
+}
 
 /**
  * Bodyweight-specific intensity modifiers for reps/duration scaling
@@ -217,7 +225,10 @@ export const INTENSITY_CONFIG: Record<Intensity, IntensityConfig> = {
  * | Moderate  | 1x              | 1x                |
  * | High      | 1.33x (≈4/3)    | 1.33x (≈4/3)      |
  */
-export const BODYWEIGHT_INTENSITY_CONFIG: Record<Intensity, { repsMultiplier: number; durationMultiplier: number }> = {
+export const BODYWEIGHT_INTENSITY_CONFIG: Record<
+  Intensity,
+  { repsMultiplier: number; durationMultiplier: number }
+> = {
   Low: {
     repsMultiplier: 0.67,
     durationMultiplier: 0.67,
@@ -230,7 +241,7 @@ export const BODYWEIGHT_INTENSITY_CONFIG: Record<Intensity, { repsMultiplier: nu
     repsMultiplier: 1.33,
     durationMultiplier: 1.33,
   },
-};
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // AGE-BASED INTENSITY RULES
@@ -253,28 +264,28 @@ export const BODYWEIGHT_INTENSITY_CONFIG: Record<Intensity, { repsMultiplier: nu
  * | 36+       | High          | 90%         | Yes         | 6        |
  */
 export const AGE_INTENSITY_RULES: Record<AgeGroup, AgeIntensityRules> = {
-  "14-17": {
-    maxIntensity: "High",
+  '14-17': {
+    maxIntensity: 'High',
     oneRepMaxCeiling: 0.85,
     plyometricAllowed: true,
     maxSetsPerExercise: 5,
     maxRepsMultiplier: 1.0,
   },
-  "18-35": {
-    maxIntensity: "High",
-    oneRepMaxCeiling: 0.90,
+  '18-35': {
+    maxIntensity: 'High',
+    oneRepMaxCeiling: 0.9,
     plyometricAllowed: true,
     maxSetsPerExercise: 6,
     maxRepsMultiplier: 1.0,
   },
-  "36+": {
-    maxIntensity: "High",
-    oneRepMaxCeiling: 0.90, // Same as 18-35 for now
+  '36+': {
+    maxIntensity: 'High',
+    oneRepMaxCeiling: 0.9, // Same as 18-35 for now
     plyometricAllowed: true,
     maxSetsPerExercise: 6,
     maxRepsMultiplier: 1.0,
   },
-};
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PHASE-BASED INTENSITY RANGES
@@ -292,10 +303,10 @@ export const AGE_INTENSITY_RULES: Record<AgeGroup, AgeIntensityRules> = {
  * | SSP   | 85-90%    | Peaking, maintain gains, competition prep |
  */
 export const PHASE_INTENSITY_RANGES: Record<Phase, PhaseIntensityRange> = {
-  GPP: { min: 0.60, max: 0.75 },
+  GPP: { min: 0.6, max: 0.75 },
   SPP: { min: 0.75, max: 0.85 },
-  SSP: { min: 0.85, max: 0.90 },
-};
+  SSP: { min: 0.85, max: 0.9 },
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CATEGORY-SPECIFIC INTENSITY CONFIGURATION
@@ -317,7 +328,7 @@ export const CATEGORY_PHASE_CONFIG: Record<CategoryId, Record<Phase, CategoryPha
   // Category 1: Endurance (Soccer, Hockey, Lacrosse)
   1: {
     GPP: {
-      oneRepMaxPercent: { strength: { min: 0.50, max: 0.65 }, power: { min: 0.30, max: 0.30 } },
+      oneRepMaxPercent: { strength: { min: 0.5, max: 0.65 }, power: { min: 0.3, max: 0.3 } },
       reps: { strength: { min: 10, max: 14 }, power: { min: 6, max: 8 } },
       sets: { min: 4, max: 6 },
       restSeconds: { strength: 30, power: 60 },
@@ -325,7 +336,7 @@ export const CATEGORY_PHASE_CONFIG: Record<CategoryId, Record<Phase, CategoryPha
       rpe: { min: 6, max: 7 },
     },
     SPP: {
-      oneRepMaxPercent: { strength: { min: 0.65, max: 0.75 }, power: { min: 0.40, max: 0.40 } },
+      oneRepMaxPercent: { strength: { min: 0.65, max: 0.75 }, power: { min: 0.4, max: 0.4 } },
       reps: { strength: { min: 6, max: 8 }, power: { min: 4, max: 6 } },
       sets: { min: 4, max: 6 },
       restSeconds: { strength: 60, power: 60 },
@@ -333,11 +344,11 @@ export const CATEGORY_PHASE_CONFIG: Record<CategoryId, Record<Phase, CategoryPha
       rpe: { min: 7, max: 8 },
     },
     SSP: {
-      oneRepMaxPercent: { strength: { min: 0.75, max: 0.80 }, power: { min: 0.55, max: 0.55 } },
+      oneRepMaxPercent: { strength: { min: 0.75, max: 0.8 }, power: { min: 0.55, max: 0.55 } },
       reps: { strength: { min: 4, max: 6 }, power: { min: 4, max: 6 } },
       sets: { min: 3, max: 5 },
       restSeconds: { strength: 60, power: 60 },
-      tempo: { eccentric: "x", isometric: "x", concentric: "x" },
+      tempo: { eccentric: 'x', isometric: 'x', concentric: 'x' },
       rpe: { min: 8, max: 9 },
     },
   },
@@ -352,7 +363,7 @@ export const CATEGORY_PHASE_CONFIG: Record<CategoryId, Record<Phase, CategoryPha
       rpe: { min: 6, max: 7 },
     },
     SPP: {
-      oneRepMaxPercent: { strength: { min: 0.65, max: 0.80 }, power: { min: 0.45, max: 0.45 } },
+      oneRepMaxPercent: { strength: { min: 0.65, max: 0.8 }, power: { min: 0.45, max: 0.45 } },
       reps: { strength: { min: 8, max: 12 }, power: { min: 4, max: 6 } },
       sets: { min: 4, max: 6 },
       restSeconds: { strength: 60, power: 60 },
@@ -360,18 +371,18 @@ export const CATEGORY_PHASE_CONFIG: Record<CategoryId, Record<Phase, CategoryPha
       rpe: { min: 7, max: 8 },
     },
     SSP: {
-      oneRepMaxPercent: { strength: { min: 0.80, max: 0.90 }, power: { min: 0.50, max: 0.60 } },
+      oneRepMaxPercent: { strength: { min: 0.8, max: 0.9 }, power: { min: 0.5, max: 0.6 } },
       reps: { strength: { min: 4, max: 6 }, power: { min: 3, max: 6 } },
       sets: { min: 4, max: 6 },
       restSeconds: { strength: 120, power: 120 },
-      tempo: { eccentric: "x", isometric: "x", concentric: "x" },
+      tempo: { eccentric: 'x', isometric: 'x', concentric: 'x' },
       rpe: { min: 9, max: 9 },
     },
   },
   // Category 3: Rotational (Baseball, Tennis, Golf)
   3: {
     GPP: {
-      oneRepMaxPercent: { strength: { min: 0.50, max: 0.60 }, power: { min: 0.30, max: 0.30 } },
+      oneRepMaxPercent: { strength: { min: 0.5, max: 0.6 }, power: { min: 0.3, max: 0.3 } },
       reps: { strength: { min: 10, max: 14 }, power: { min: 8, max: 10 } },
       sets: { min: 2, max: 4 },
       restSeconds: { strength: 40, power: 60 },
@@ -379,7 +390,7 @@ export const CATEGORY_PHASE_CONFIG: Record<CategoryId, Record<Phase, CategoryPha
       rpe: { min: 6, max: 7 },
     },
     SPP: {
-      oneRepMaxPercent: { strength: { min: 0.60, max: 0.70 }, power: { min: 0.35, max: 0.40 } },
+      oneRepMaxPercent: { strength: { min: 0.6, max: 0.7 }, power: { min: 0.35, max: 0.4 } },
       reps: { strength: { min: 8, max: 12 }, power: { min: 6, max: 8 } },
       sets: { min: 3, max: 5 },
       restSeconds: { strength: 90, power: 60 },
@@ -387,18 +398,18 @@ export const CATEGORY_PHASE_CONFIG: Record<CategoryId, Record<Phase, CategoryPha
       rpe: { min: 7, max: 8 },
     },
     SSP: {
-      oneRepMaxPercent: { strength: { min: 0.70, max: 0.85 }, power: { min: 0.50, max: 0.50 } },
+      oneRepMaxPercent: { strength: { min: 0.7, max: 0.85 }, power: { min: 0.5, max: 0.5 } },
       reps: { strength: { min: 4, max: 6 }, power: { min: 3, max: 6 } },
       sets: { min: 4, max: 6 },
       restSeconds: { strength: 120, power: 120 },
-      tempo: { eccentric: "x", isometric: "x", concentric: "x" },
+      tempo: { eccentric: 'x', isometric: 'x', concentric: 'x' },
       rpe: { min: 8, max: 9 },
     },
   },
   // Category 4: Strength (Wrestling, Football)
   4: {
     GPP: {
-      oneRepMaxPercent: { strength: { min: 0.60, max: 0.70 }, power: { min: 0.35, max: 0.40 } },
+      oneRepMaxPercent: { strength: { min: 0.6, max: 0.7 }, power: { min: 0.35, max: 0.4 } },
       reps: { strength: { min: 10, max: 12 }, power: { min: 6, max: 8 } },
       sets: { min: 3, max: 5 },
       restSeconds: { strength: 30, power: 60 },
@@ -406,7 +417,7 @@ export const CATEGORY_PHASE_CONFIG: Record<CategoryId, Record<Phase, CategoryPha
       rpe: { min: 7, max: 7 },
     },
     SPP: {
-      oneRepMaxPercent: { strength: { min: 0.70, max: 0.85 }, power: { min: 0.45, max: 0.50 } },
+      oneRepMaxPercent: { strength: { min: 0.7, max: 0.85 }, power: { min: 0.45, max: 0.5 } },
       reps: { strength: { min: 8, max: 12 }, power: { min: 4, max: 6 } },
       sets: { min: 4, max: 5 },
       restSeconds: { strength: 90, power: 60 },
@@ -414,15 +425,15 @@ export const CATEGORY_PHASE_CONFIG: Record<CategoryId, Record<Phase, CategoryPha
       rpe: { min: 7, max: 9 },
     },
     SSP: {
-      oneRepMaxPercent: { strength: { min: 0.85, max: 0.90 }, power: { min: 0.55, max: 0.55 } },
+      oneRepMaxPercent: { strength: { min: 0.85, max: 0.9 }, power: { min: 0.55, max: 0.55 } },
       reps: { strength: { min: 3, max: 5 }, power: { min: 3, max: 6 } },
       sets: { min: 4, max: 6 },
       restSeconds: { strength: 120, power: 120 },
-      tempo: { eccentric: "x", isometric: "x", concentric: "x" },
+      tempo: { eccentric: 'x', isometric: 'x', concentric: 'x' },
       rpe: { min: 8, max: 9 },
     },
   },
-};
+}
 
 /**
  * Age + Experience Matrix
@@ -433,23 +444,26 @@ export const CATEGORY_PHASE_CONFIG: Record<CategoryId, Record<Phase, CategoryPha
  * - "middle" = 5
  * - "max" = 6
  */
-export const AGE_EXPERIENCE_MATRIX: Record<AgeGroup, Record<ExperienceBucket, AgeExperienceModifier>> = {
-  "14-17": {
-    "0-1": { setsPosition: "middle", repsPosition: "middle" },
-    "2-5": { setsPosition: "max", repsPosition: "max_minus_1" },
-    "6+": { setsPosition: "max", repsPosition: "max" },
+export const AGE_EXPERIENCE_MATRIX: Record<
+  AgeGroup,
+  Record<ExperienceBucket, AgeExperienceModifier>
+> = {
+  '14-17': {
+    '0-1': { setsPosition: 'middle', repsPosition: 'middle' },
+    '2-5': { setsPosition: 'max', repsPosition: 'max_minus_1' },
+    '6+': { setsPosition: 'max', repsPosition: 'max' },
   },
-  "18-35": {
-    "0-1": { setsPosition: "max", repsPosition: "max_minus_2" },
-    "2-5": { setsPosition: "max", repsPosition: "max_minus_1" },
-    "6+": { setsPosition: "max", repsPosition: "max" },
+  '18-35': {
+    '0-1': { setsPosition: 'max', repsPosition: 'max_minus_2' },
+    '2-5': { setsPosition: 'max', repsPosition: 'max_minus_1' },
+    '6+': { setsPosition: 'max', repsPosition: 'max' },
   },
-  "36+": {
-    "0-1": { setsPosition: "max", repsPosition: "max_minus_2" },
-    "2-5": { setsPosition: "max", repsPosition: "max_minus_1" },
-    "6+": { setsPosition: "max", repsPosition: "max" },
+  '36+': {
+    '0-1': { setsPosition: 'max', repsPosition: 'max_minus_2' },
+    '2-5': { setsPosition: 'max', repsPosition: 'max_minus_1' },
+    '6+': { setsPosition: 'max', repsPosition: 'max' },
   },
-};
+}
 
 /**
  * Age Group Safety Constraints
@@ -458,11 +472,14 @@ export const AGE_EXPERIENCE_MATRIX: Record<AgeGroup, Record<ExperienceBucket, Ag
  * - 14-17: Uses category ranges with 85% 1RM ceiling
  * - 18-35 and 36+: Use full category ranges (no additional caps)
  */
-export const AGE_SAFETY_CONSTRAINTS: Record<AgeGroup, { maxSets: number | null; oneRepMaxCeiling: number }> = {
-  "14-17": { maxSets: null, oneRepMaxCeiling: 0.85 },
-  "18-35": { maxSets: null, oneRepMaxCeiling: 0.90 },
-  "36+": { maxSets: null, oneRepMaxCeiling: 0.90 },
-};
+export const AGE_SAFETY_CONSTRAINTS: Record<
+  AgeGroup,
+  { maxSets: number | null; oneRepMaxCeiling: number }
+> = {
+  '14-17': { maxSets: null, oneRepMaxCeiling: 0.85 },
+  '18-35': { maxSets: null, oneRepMaxCeiling: 0.9 },
+  '36+': { maxSets: null, oneRepMaxCeiling: 0.9 },
+}
 
 /**
  * Bodyweight Progression Variant Matrix
@@ -472,23 +489,26 @@ export const AGE_SAFETY_CONSTRAINTS: Record<AgeGroup, { maxSets: number | null; 
  * - "base": Use base exercise
  * - "harder": Use harder progression variant
  */
-export const BODYWEIGHT_VARIANT_MATRIX: Record<Phase, Record<ExperienceBucket, "easier" | "base" | "harder">> = {
+export const BODYWEIGHT_VARIANT_MATRIX: Record<
+  Phase,
+  Record<ExperienceBucket, 'easier' | 'base' | 'harder'>
+> = {
   GPP: {
-    "0-1": "easier",
-    "2-5": "base",
-    "6+": "base",
+    '0-1': 'easier',
+    '2-5': 'base',
+    '6+': 'base',
   },
   SPP: {
-    "0-1": "base",
-    "2-5": "base",
-    "6+": "base",
+    '0-1': 'base',
+    '2-5': 'base',
+    '6+': 'base',
   },
   SSP: {
-    "0-1": "base",
-    "2-5": "base",
-    "6+": "harder",
+    '0-1': 'base',
+    '2-5': 'base',
+    '6+': 'harder',
   },
-};
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // REPS/DURATION PARSING AND SCALING
@@ -506,59 +526,59 @@ export const BODYWEIGHT_VARIANT_MATRIX: Record<Phase, Record<ExperienceBucket, "
  * - "5 each side" → { value: 5, unit: "reps", suffix: " each side" }
  */
 export function parseRepsString(reps: string): {
-  value: number;
-  unit: "reps" | "seconds";
-  suffix?: string;
+  value: number
+  unit: 'reps' | 'seconds'
+  suffix?: string
 } | null {
-  const trimmed = reps.trim().toLowerCase();
+  const trimmed = reps.trim().toLowerCase()
 
   // Handle AMRAP - cannot scale
-  if (trimmed === "amrap") {
-    return null;
+  if (trimmed === 'amrap') {
+    return null
   }
 
   // Handle "each side", "per side", "each leg", etc.
-  const sideMatch = reps.match(/^([\d\s\-]+)\s*(each|per)\s+(side|leg|arm)/i);
+  const sideMatch = reps.match(/^([\d\s-]+)\s*(each|per)\s+(side|leg|arm)/i)
   if (sideMatch) {
-    const numPart = sideMatch[1].trim();
-    const suffix = reps.substring(numPart.length);
-    
+    const numPart = sideMatch[1].trim()
+    const suffix = reps.substring(numPart.length)
+
     // Parse the numeric part
-    if (numPart.includes("-")) {
-      const [min, max] = numPart.split("-").map(Number);
-      return { value: Math.round((min + max) / 2), unit: "reps", suffix };
+    if (numPart.includes('-')) {
+      const [min, max] = numPart.split('-').map(Number)
+      return { value: Math.round((min + max) / 2), unit: 'reps', suffix }
     }
-    return { value: parseInt(numPart, 10), unit: "reps", suffix };
+    return { value: parseInt(numPart, 10), unit: 'reps', suffix }
   }
 
   // Handle minutes: "2 min", "2min", "2 minutes"
-  const minMatch = reps.match(/^(\d+(?:\.\d+)?)\s*min(?:utes?)?$/i);
+  const minMatch = reps.match(/^(\d+(?:\.\d+)?)\s*min(?:utes?)?$/i)
   if (minMatch) {
-    return { value: parseFloat(minMatch[1]) * 60, unit: "seconds" };
+    return { value: parseFloat(minMatch[1]) * 60, unit: 'seconds' }
   }
 
   // Handle seconds: "30s", "30 sec", "30 seconds"
-  const secMatch = reps.match(/^(\d+(?:\.\d+)?)\s*s(?:ec(?:onds?)?)?$/i);
+  const secMatch = reps.match(/^(\d+(?:\.\d+)?)\s*s(?:ec(?:onds?)?)?$/i)
   if (secMatch) {
-    return { value: parseFloat(secMatch[1]), unit: "seconds" };
+    return { value: parseFloat(secMatch[1]), unit: 'seconds' }
   }
 
   // Handle ranges: "10-12" (use midpoint)
-  const rangeMatch = reps.match(/^(\d+)\s*-\s*(\d+)$/);
+  const rangeMatch = reps.match(/^(\d+)\s*-\s*(\d+)$/)
   if (rangeMatch) {
-    const min = parseInt(rangeMatch[1], 10);
-    const max = parseInt(rangeMatch[2], 10);
-    return { value: Math.round((min + max) / 2), unit: "reps" };
+    const min = parseInt(rangeMatch[1], 10)
+    const max = parseInt(rangeMatch[2], 10)
+    return { value: Math.round((min + max) / 2), unit: 'reps' }
   }
 
   // Handle plain numbers: "10"
-  const numMatch = reps.match(/^(\d+)$/);
+  const numMatch = reps.match(/^(\d+)$/)
   if (numMatch) {
-    return { value: parseInt(numMatch[1], 10), unit: "reps" };
+    return { value: parseInt(numMatch[1], 10), unit: 'reps' }
   }
 
   // Cannot parse
-  return null;
+  return null
 }
 
 /**
@@ -566,37 +586,37 @@ export function parseRepsString(reps: string): {
  */
 export function formatScaledValue(
   value: number,
-  unit: "reps" | "seconds",
+  unit: 'reps' | 'seconds',
   suffix?: string
 ): string {
-  if (unit === "seconds") {
+  if (unit === 'seconds') {
     // Round to nearest 5 seconds for cleaner display
-    const rounded = Math.round(value / 5) * 5;
-    const clampedSeconds = Math.max(5, rounded);
-    
+    const rounded = Math.round(value / 5) * 5
+    const clampedSeconds = Math.max(5, rounded)
+
     if (clampedSeconds >= 60 && clampedSeconds % 60 === 0) {
-      return `${clampedSeconds / 60} min`;
+      return `${clampedSeconds / 60} min`
     }
-    return `${clampedSeconds}s`;
+    return `${clampedSeconds}s`
   }
 
   // Reps - round to nearest whole number
-  const rounded = Math.max(1, Math.round(value));
-  return suffix ? `${rounded}${suffix}` : String(rounded);
+  const rounded = Math.max(1, Math.round(value))
+  return suffix ? `${rounded}${suffix}` : String(rounded)
 }
 
 /**
  * Scale a reps/duration string by a multiplier.
  */
 export function scaleRepsOrDuration(reps: string, multiplier: number): string {
-  const parsed = parseRepsString(reps);
+  const parsed = parseRepsString(reps)
   if (!parsed) {
     // Cannot scale (e.g., AMRAP), return original
-    return reps;
+    return reps
   }
 
-  const scaledValue = parsed.value * multiplier;
-  return formatScaledValue(scaledValue, parsed.unit, parsed.suffix);
+  const scaledValue = parsed.value * multiplier
+  return formatScaledValue(scaledValue, parsed.unit, parsed.suffix)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -621,12 +641,12 @@ export function applyIntensityToWeighted(
   intensity: Intensity,
   oneRepMax?: number
 ): ScaledWeightedPrescription {
-  const config = INTENSITY_CONFIG[intensity];
-  const avgPercent = (config.oneRepMaxPercent.min + config.oneRepMaxPercent.max) / 2;
+  const config = INTENSITY_CONFIG[intensity]
+  const avgPercent = (config.oneRepMaxPercent.min + config.oneRepMaxPercent.max) / 2
 
-  const scaledSets = Math.max(1, Math.round(prescription.sets * config.setsMultiplier));
-  const scaledReps = Math.max(1, Math.round(prescription.reps * config.repsMultiplier));
-  const scaledRest = Math.max(15, Math.round(prescription.restSeconds * config.restMultiplier));
+  const scaledSets = Math.max(1, Math.round(prescription.sets * config.setsMultiplier))
+  const scaledReps = Math.max(1, Math.round(prescription.reps * config.repsMultiplier))
+  const scaledRest = Math.max(15, Math.round(prescription.restSeconds * config.restMultiplier))
 
   return {
     sets: scaledSets,
@@ -635,7 +655,7 @@ export function applyIntensityToWeighted(
     weight: oneRepMax ? Math.round(oneRepMax * avgPercent) : undefined,
     percentOf1RM: Math.round(avgPercent * 100),
     rpeTarget: config.rpeTarget,
-  };
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -655,30 +675,29 @@ export function applyIntensityToBodyweight(
   baseExerciseSlug: string,
   exerciseProgressions?: ExerciseProgressions
 ): ScaledBodyweightPrescription {
-  const config = INTENSITY_CONFIG[intensity];
-  const bwConfig = BODYWEIGHT_INTENSITY_CONFIG[intensity];
+  const config = INTENSITY_CONFIG[intensity]
+  const bwConfig = BODYWEIGHT_INTENSITY_CONFIG[intensity]
 
   // Parse to determine if this is a duration or rep-based exercise
-  const parsed = parseRepsString(prescription.reps);
-  const multiplier = parsed?.unit === "seconds" 
-    ? bwConfig.durationMultiplier 
-    : bwConfig.repsMultiplier;
+  const parsed = parseRepsString(prescription.reps)
+  const multiplier =
+    parsed?.unit === 'seconds' ? bwConfig.durationMultiplier : bwConfig.repsMultiplier
 
   // Scale the reps/duration
-  const scaledReps = scaleRepsOrDuration(prescription.reps, multiplier);
+  const scaledReps = scaleRepsOrDuration(prescription.reps, multiplier)
 
   // Determine which exercise variant to use based on intensity
-  let exerciseSlug: string;
+  let exerciseSlug: string
   switch (intensity) {
-    case "Low":
-      exerciseSlug = exerciseProgressions?.easier ?? baseExerciseSlug;
-      break;
-    case "Moderate":
-      exerciseSlug = baseExerciseSlug;
-      break;
-    case "High":
-      exerciseSlug = exerciseProgressions?.harder ?? baseExerciseSlug;
-      break;
+    case 'Low':
+      exerciseSlug = exerciseProgressions?.easier ?? baseExerciseSlug
+      break
+    case 'Moderate':
+      exerciseSlug = baseExerciseSlug
+      break
+    case 'High':
+      exerciseSlug = exerciseProgressions?.harder ?? baseExerciseSlug
+      break
   }
 
   return {
@@ -687,7 +706,7 @@ export function applyIntensityToBodyweight(
     reps: scaledReps,
     restSeconds: Math.max(15, Math.round(prescription.restSeconds * config.restMultiplier)),
     rpeTarget: config.rpeTarget,
-  };
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -700,23 +719,23 @@ export function applyIntensityToBodyweight(
  */
 export function calculateOneRepMax(weight: number, reps: number): number {
   if (reps <= 0 || weight <= 0) {
-    return 0;
-  }
-  
-  if (reps === 1) {
-    return weight;
+    return 0
   }
 
-  return Math.round(weight * (1 + reps / 30));
+  if (reps === 1) {
+    return weight
+  }
+
+  return Math.round(weight * (1 + reps / 30))
 }
 
 /**
  * Calculate target weight for a given percentage of 1RM.
  */
 export function calculateTargetWeight(oneRepMax: number, percent: number): number {
-  const targetWeight = oneRepMax * percent;
+  const targetWeight = oneRepMax * percent
   // Round to nearest 2.5 lbs (common weight increments)
-  return Math.round(targetWeight / 2.5) * 2.5;
+  return Math.round(targetWeight / 2.5) * 2.5
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -728,24 +747,24 @@ export function calculateTargetWeight(oneRepMax: number, percent: number): numbe
  */
 export function isBodyweightExercise(equipment?: string[]): boolean {
   if (!equipment || equipment.length === 0) {
-    return true;
+    return true
   }
-  return equipment.length === 1 && equipment[0] === "bodyweight";
+  return equipment.length === 1 && equipment[0] === 'bodyweight'
 }
 
 /**
  * Get the average 1RM percentage for an intensity level.
  */
 export function getAvgOneRepMaxPercent(intensity: Intensity): number {
-  const config = INTENSITY_CONFIG[intensity];
-  return (config.oneRepMaxPercent.min + config.oneRepMaxPercent.max) / 2;
+  const config = INTENSITY_CONFIG[intensity]
+  return (config.oneRepMaxPercent.min + config.oneRepMaxPercent.max) / 2
 }
 
 /**
  * Get the RPE target for an intensity level.
  */
 export function getRpeTarget(intensity: Intensity): { min: number; max: number } {
-  return INTENSITY_CONFIG[intensity].rpeTarget;
+  return INTENSITY_CONFIG[intensity].rpeTarget
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -757,53 +776,50 @@ export function getRpeTarget(intensity: Intensity): { min: number; max: number }
  * Takes the minimum of the age ceiling and phase max to ensure safety.
  */
 export function getEffectiveOneRepMaxCeiling(ageGroup: AgeGroup, phase: Phase): number {
-  const ageRules = AGE_INTENSITY_RULES[ageGroup];
-  const phaseRanges = PHASE_INTENSITY_RANGES[phase];
-  return Math.min(ageRules.oneRepMaxCeiling, phaseRanges.max);
+  const ageRules = AGE_INTENSITY_RULES[ageGroup]
+  const phaseRanges = PHASE_INTENSITY_RANGES[phase]
+  return Math.min(ageRules.oneRepMaxCeiling, phaseRanges.max)
 }
 
 /**
  * Get the 1RM range for a given age group and phase.
  * Adjusts the phase range based on age ceiling.
  */
-export function getOneRepMaxRange(
-  ageGroup: AgeGroup,
-  phase: Phase
-): { min: number; max: number } {
-  const phaseRanges = PHASE_INTENSITY_RANGES[phase];
-  const effectiveCeiling = getEffectiveOneRepMaxCeiling(ageGroup, phase);
+export function getOneRepMaxRange(ageGroup: AgeGroup, phase: Phase): { min: number; max: number } {
+  const phaseRanges = PHASE_INTENSITY_RANGES[phase]
+  const effectiveCeiling = getEffectiveOneRepMaxCeiling(ageGroup, phase)
   return {
     min: phaseRanges.min,
     max: effectiveCeiling,
-  };
+  }
 }
 
 /**
  * Get the maximum intensity allowed for an age group.
  */
 export function getMaxIntensityForAge(ageGroup: AgeGroup): Intensity {
-  return AGE_INTENSITY_RULES[ageGroup].maxIntensity;
+  return AGE_INTENSITY_RULES[ageGroup].maxIntensity
 }
 
 /**
  * Cap the intensity based on age group restrictions.
  */
 export function capIntensityForAge(intensity: Intensity, ageGroup: AgeGroup): Intensity {
-  const maxIntensity = AGE_INTENSITY_RULES[ageGroup].maxIntensity;
+  const maxIntensity = AGE_INTENSITY_RULES[ageGroup].maxIntensity
 
   // Intensity ordering: Low < Moderate < High
-  const intensityOrder: Intensity[] = ["Low", "Moderate", "High"];
-  const requestedIndex = intensityOrder.indexOf(intensity);
-  const maxIndex = intensityOrder.indexOf(maxIntensity);
+  const intensityOrder: Intensity[] = ['Low', 'Moderate', 'High']
+  const requestedIndex = intensityOrder.indexOf(intensity)
+  const maxIndex = intensityOrder.indexOf(maxIntensity)
 
-  return intensityOrder[Math.min(requestedIndex, maxIndex)];
+  return intensityOrder[Math.min(requestedIndex, maxIndex)]
 }
 
 /**
  * Get the maximum sets allowed for an exercise based on age group.
  */
 export function getMaxSetsForAge(ageGroup: AgeGroup): number {
-  return AGE_INTENSITY_RULES[ageGroup].maxSetsPerExercise;
+  return AGE_INTENSITY_RULES[ageGroup].maxSetsPerExercise
 }
 
 /**
@@ -811,38 +827,38 @@ export function getMaxSetsForAge(ageGroup: AgeGroup): number {
  */
 export function applyAgeModifiers(
   prescription: {
-    sets: number;
-    reps: string;
-    intensity?: Intensity;
+    sets: number
+    reps: string
+    intensity?: Intensity
   },
   ageGroup: AgeGroup,
   phase: Phase
 ): {
-  sets: number;
-  reps: string;
-  intensity: Intensity;
-  oneRepMaxRange: { min: number; max: number };
+  sets: number
+  reps: string
+  intensity: Intensity
+  oneRepMaxRange: { min: number; max: number }
 } {
-  const ageRules = AGE_INTENSITY_RULES[ageGroup];
+  const ageRules = AGE_INTENSITY_RULES[ageGroup]
   const cappedIntensity = prescription.intensity
     ? capIntensityForAge(prescription.intensity, ageGroup)
-    : "Moderate";
+    : 'Moderate'
 
   // Cap sets based on age
-  const cappedSets = Math.min(prescription.sets, ageRules.maxSetsPerExercise);
+  const cappedSets = Math.min(prescription.sets, ageRules.maxSetsPerExercise)
 
   // Scale reps for younger athletes (they do more reps at lower weight)
   const scaledReps =
     ageRules.maxRepsMultiplier !== 1.0
       ? scaleRepsOrDuration(prescription.reps, ageRules.maxRepsMultiplier)
-      : prescription.reps;
+      : prescription.reps
 
   return {
     sets: cappedSets,
     reps: scaledReps,
     intensity: cappedIntensity,
     oneRepMaxRange: getOneRepMaxRange(ageGroup, phase),
-  };
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -852,85 +868,92 @@ export function applyAgeModifiers(
 /**
  * Tags that indicate a power/explosive exercise
  */
-const POWER_TAGS = ["power", "explosive", "plyometric", "reactive"];
-const PRIMARY_LOADED_EQUIPMENT = ["barbell", "trap_bar"];
-const PRIMARY_LOADED_TAGS = ["compound", "squat", "hinge", "push", "bilateral"];
-const UNILATERAL_TAGS = ["unilateral", "single_leg"];
-const ANTI_ROTATION_TAGS = ["anti_rotation", "dynamic"];
-const UPPER_BODY_ACCESSORY_TAGS = ["upper_body", "push", "pull"];
-const CORE_ACCESSORY_TAGS = ["core", "anti_extension", "anti_lateral_flexion", "hip_flexor"];
-const MOBILITY_RECOVERY_TAGS = ["mobility", "cooldown", "warmup"];
-const POWER_CONDITIONING_TAGS = ["carry", "conditioning", "power", "explosive", "plyometric", "reactive"];
+const POWER_TAGS = ['power', 'explosive', 'plyometric', 'reactive']
+const PRIMARY_LOADED_EQUIPMENT = ['barbell', 'trap_bar']
+const PRIMARY_LOADED_TAGS = ['compound', 'squat', 'hinge', 'push', 'bilateral']
+const UNILATERAL_TAGS = ['unilateral', 'single_leg']
+const ANTI_ROTATION_TAGS = ['anti_rotation', 'dynamic']
+const UPPER_BODY_ACCESSORY_TAGS = ['upper_body', 'push', 'pull']
+const CORE_ACCESSORY_TAGS = ['core', 'anti_extension', 'anti_lateral_flexion', 'hip_flexor']
+const MOBILITY_RECOVERY_TAGS = ['mobility', 'cooldown', 'warmup']
+const POWER_CONDITIONING_TAGS = [
+  'carry',
+  'conditioning',
+  'power',
+  'explosive',
+  'plyometric',
+  'reactive',
+]
 const PRIMARY_LOADED_REPS_BY_PHASE: Record<Phase, number> = {
   GPP: 10,
   SPP: 8,
   SSP: 6,
-};
+}
 const PRIMARY_LOADED_SETS_BY_EXPERIENCE: Record<ExperienceBucket, number> = {
-  "0-1": 3,
-  "2-5": 4,
-  "6+": 4,
-};
-const PRIMARY_LOADED_PERCENT_BY_PHASE: Record<"general" | "max_strength", Record<Phase, number>> = {
+  '0-1': 3,
+  '2-5': 4,
+  '6+': 4,
+}
+const PRIMARY_LOADED_PERCENT_BY_PHASE: Record<'general' | 'max_strength', Record<Phase, number>> = {
   general: {
     GPP: 0.65,
-    SPP: 0.70,
+    SPP: 0.7,
     SSP: 0.75,
   },
   max_strength: {
     GPP: 0.65,
     SPP: 0.75,
-    SSP: 0.80,
+    SSP: 0.8,
   },
-};
+}
 const UNILATERAL_REPS_BY_PHASE: Record<Phase, number> = {
   GPP: 8,
   SPP: 8,
   SSP: 6,
-};
+}
 const ANTI_ROTATION_SETS_BY_EXPERIENCE: Record<ExperienceBucket, number> = {
-  "0-1": 3,
-  "2-5": 4,
-  "6+": 4,
-};
+  '0-1': 3,
+  '2-5': 4,
+  '6+': 4,
+}
 const ANTI_ROTATION_REPS_BY_PHASE: Record<Phase, string> = {
-  GPP: "6 steps",
-  SPP: "6 steps",
-  SSP: "6 steps",
-};
+  GPP: '6 steps',
+  SPP: '6 steps',
+  SSP: '6 steps',
+}
 const UPPER_BODY_ACCESSORY_SETS_BY_EXPERIENCE: Record<ExperienceBucket, number> = {
-  "0-1": 3,
-  "2-5": 4,
-  "6+": 4,
-};
+  '0-1': 3,
+  '2-5': 4,
+  '6+': 4,
+}
 const UPPER_BODY_ACCESSORY_REPS_BY_PHASE: Record<Phase, number> = {
   GPP: 8,
   SPP: 8,
   SSP: 6,
-};
+}
 const CORE_ACCESSORY_REPS_BY_PHASE: Record<Phase, number> = {
   GPP: 8,
   SPP: 8,
   SSP: 6,
-};
+}
 const POWER_CONDITIONING_SETS_BY_EXPERIENCE: Record<ExperienceBucket, number> = {
-  "0-1": 3,
-  "2-5": 4,
-  "6+": 4,
-};
+  '0-1': 3,
+  '2-5': 4,
+  '6+': 4,
+}
 const POWER_CONDITIONING_REPS_BY_PHASE: Record<Phase, number> = {
   GPP: 6,
   SPP: 6,
   SSP: 6,
-};
+}
 
 /**
  * Convert years of experience to an experience bucket.
  */
 export function getExperienceBucket(yearsOfExperience: number): ExperienceBucket {
-  if (yearsOfExperience <= 1) return "0-1";
-  if (yearsOfExperience <= 5) return "2-5";
-  return "6+";
+  if (yearsOfExperience <= 1) return '0-1'
+  if (yearsOfExperience <= 5) return '2-5'
+  return '6+'
 }
 
 /**
@@ -941,28 +964,28 @@ export function getExperienceBucket(yearsOfExperience: number): ExperienceBucket
  * @returns The calculated value
  */
 export function getValueFromPosition(range: ParameterRange, position: PositionType): number {
-  const { min, max } = range;
-  const spread = max - min;
+  const { min, max } = range
+  const spread = max - min
 
   switch (position) {
-    case "lowest":
-      return min;
-    case "lowest_plus_1":
-      return min + 1;
-    case "lowest_plus_2":
-      return min + 2;
-    case "second_lowest":
-      return min + 1;
-    case "middle":
-      return Math.round((min + max) / 2);
-    case "max_minus_2":
-      return Math.max(min, max - 2);
-    case "max_minus_1":
-      return Math.max(min, max - 1);
-    case "max":
-      return max;
+    case 'lowest':
+      return min
+    case 'lowest_plus_1':
+      return min + 1
+    case 'lowest_plus_2':
+      return min + 2
+    case 'second_lowest':
+      return min + 1
+    case 'middle':
+      return Math.round((min + max) / 2)
+    case 'max_minus_2':
+      return Math.max(min, max - 2)
+    case 'max_minus_1':
+      return Math.max(min, max - 1)
+    case 'max':
+      return max
     default:
-      return Math.round((min + max) / 2);
+      return Math.round((min + max) / 2)
   }
 }
 
@@ -975,17 +998,17 @@ export function getValueFromPosition(range: ParameterRange, position: PositionTy
  */
 export function getExerciseFocus(tags?: string[], equipment?: string[]): ExerciseFocus {
   // Check for power/explosive tags
-  if (tags?.some(tag => POWER_TAGS.includes(tag.toLowerCase()))) {
-    return "power";
+  if (tags?.some((tag) => POWER_TAGS.includes(tag.toLowerCase()))) {
+    return 'power'
   }
 
   // Check if bodyweight
   if (isBodyweightExercise(equipment)) {
-    return "bodyweight";
+    return 'bodyweight'
   }
 
   // Default to strength
-  return "strength";
+  return 'strength'
 }
 
 /**
@@ -999,68 +1022,60 @@ export function getExercisePrescriptionProfile(
   tags?: string[],
   equipment?: string[]
 ): ExercisePrescriptionProfile {
-  const normalizedTags = (tags ?? []).map((tag) => tag.toLowerCase());
-  const normalizedEquipment = (equipment ?? []).map((item) => item.toLowerCase());
+  const normalizedTags = (tags ?? []).map((tag) => tag.toLowerCase())
+  const normalizedEquipment = (equipment ?? []).map((item) => item.toLowerCase())
 
   const usesPrimaryImplement = normalizedEquipment.some((item) =>
     PRIMARY_LOADED_EQUIPMENT.includes(item)
-  );
-  const matchesPrimaryPattern = normalizedTags.some((tag) =>
-    PRIMARY_LOADED_TAGS.includes(tag)
-  );
-  const isUnilateralAccessory = normalizedTags.some((tag) =>
-    UNILATERAL_TAGS.includes(tag)
-  );
-  const isAntiRotationDrill = normalizedTags.includes("anti_rotation");
-  const isDynamicAntiRotation = isAntiRotationDrill && normalizedTags.some((tag) =>
-    ANTI_ROTATION_TAGS.includes(tag)
-  );
-  const isMobilityRecovery = normalizedTags.some((tag) =>
-    MOBILITY_RECOVERY_TAGS.includes(tag)
-  );
+  )
+  const matchesPrimaryPattern = normalizedTags.some((tag) => PRIMARY_LOADED_TAGS.includes(tag))
+  const isUnilateralAccessory = normalizedTags.some((tag) => UNILATERAL_TAGS.includes(tag))
+  const isAntiRotationDrill = normalizedTags.includes('anti_rotation')
+  const isDynamicAntiRotation =
+    isAntiRotationDrill && normalizedTags.some((tag) => ANTI_ROTATION_TAGS.includes(tag))
+  const isMobilityRecovery = normalizedTags.some((tag) => MOBILITY_RECOVERY_TAGS.includes(tag))
   const isUpperBodyAccessory =
-    normalizedTags.includes("upper_body") &&
-    normalizedTags.some((tag) => UPPER_BODY_ACCESSORY_TAGS.includes(tag));
+    normalizedTags.includes('upper_body') &&
+    normalizedTags.some((tag) => UPPER_BODY_ACCESSORY_TAGS.includes(tag))
   const isCoreAccessory =
-    normalizedTags.includes("core") &&
-    normalizedTags.some((tag) => CORE_ACCESSORY_TAGS.includes(tag));
+    normalizedTags.includes('core') &&
+    normalizedTags.some((tag) => CORE_ACCESSORY_TAGS.includes(tag))
   const isPowerConditioning =
-    exerciseFocus === "power" ||
-    normalizedTags.some((tag) => POWER_CONDITIONING_TAGS.includes(tag));
+    exerciseFocus === 'power' || normalizedTags.some((tag) => POWER_CONDITIONING_TAGS.includes(tag))
 
   if (isMobilityRecovery) {
-    return "mobility_recovery";
+    return 'mobility_recovery'
   }
 
   if (usesPrimaryImplement && matchesPrimaryPattern) {
-    return "primary_loaded_lift";
+    return 'primary_loaded_lift'
   }
 
   if (isPowerConditioning) {
-    return "power_conditioning";
+    return 'power_conditioning'
   }
 
   if (isUnilateralAccessory) {
-    return "unilateral_accessory";
+    return 'unilateral_accessory'
   }
 
   if (isDynamicAntiRotation) {
-    return "anti_rotation";
+    return 'anti_rotation'
   }
 
   if (isUpperBodyAccessory) {
-    return "upper_body_accessory";
+    return 'upper_body_accessory'
   }
 
   if (isCoreAccessory) {
-    return "core_accessory";
+    return 'core_accessory'
   }
 
-  if (exerciseFocus === "bodyweight") {
-    return "bodyweight";
+  if (exerciseFocus === 'bodyweight') {
+    return 'bodyweight'
   }
 
-  return "general_strength";
+  return 'general_strength'
 }
 
 function getPrimaryLoadedLiftParameters(
@@ -1070,13 +1085,13 @@ function getPrimaryLoadedLiftParameters(
   experienceBucket: ExperienceBucket,
   config: CategoryPhaseConfig
 ): ScaledCategoryParameters {
-  const safetyConstraints = AGE_SAFETY_CONSTRAINTS[ageGroup];
-  const intensityTrack = categoryId === 4 ? "max_strength" : "general";
-  const phaseTargetPercent = PRIMARY_LOADED_PERCENT_BY_PHASE[intensityTrack][phase];
+  const safetyConstraints = AGE_SAFETY_CONSTRAINTS[ageGroup]
+  const intensityTrack = categoryId === 4 ? 'max_strength' : 'general'
+  const phaseTargetPercent = PRIMARY_LOADED_PERCENT_BY_PHASE[intensityTrack][phase]
   const targetPercent = Math.min(
-    experienceBucket === "0-1" ? 0.65 : phaseTargetPercent,
+    experienceBucket === '0-1' ? 0.65 : phaseTargetPercent,
     safetyConstraints.oneRepMaxCeiling
-  );
+  )
 
   return {
     oneRepMaxPercent: {
@@ -1088,7 +1103,7 @@ function getPrimaryLoadedLiftParameters(
     restSeconds: config.restSeconds.strength,
     tempo: config.tempo,
     rpe: config.rpe,
-  };
+  }
 }
 
 function getUnilateralAccessoryParameters(
@@ -1096,8 +1111,8 @@ function getUnilateralAccessoryParameters(
   phase: Phase,
   config: CategoryPhaseConfig
 ): ScaledCategoryParameters {
-  const safetyConstraints = AGE_SAFETY_CONSTRAINTS[ageGroup];
-  const oneRepMaxRange = config.oneRepMaxPercent.strength;
+  const safetyConstraints = AGE_SAFETY_CONSTRAINTS[ageGroup]
+  const oneRepMaxRange = config.oneRepMaxPercent.strength
 
   return {
     oneRepMaxPercent: {
@@ -1109,7 +1124,7 @@ function getUnilateralAccessoryParameters(
     restSeconds: config.restSeconds.strength,
     tempo: config.tempo,
     rpe: config.rpe,
-  };
+  }
 }
 
 function getAntiRotationParameters(
@@ -1118,8 +1133,8 @@ function getAntiRotationParameters(
   experienceBucket: ExperienceBucket,
   config: CategoryPhaseConfig
 ): ScaledCategoryParameters {
-  const safetyConstraints = AGE_SAFETY_CONSTRAINTS[ageGroup];
-  const oneRepMaxRange = config.oneRepMaxPercent.strength;
+  const safetyConstraints = AGE_SAFETY_CONSTRAINTS[ageGroup]
+  const oneRepMaxRange = config.oneRepMaxPercent.strength
 
   return {
     oneRepMaxPercent: {
@@ -1131,7 +1146,7 @@ function getAntiRotationParameters(
     restSeconds: config.restSeconds.strength,
     tempo: config.tempo,
     rpe: config.rpe,
-  };
+  }
 }
 
 function getUpperBodyAccessoryParameters(
@@ -1140,8 +1155,8 @@ function getUpperBodyAccessoryParameters(
   experienceBucket: ExperienceBucket,
   config: CategoryPhaseConfig
 ): ScaledCategoryParameters {
-  const safetyConstraints = AGE_SAFETY_CONSTRAINTS[ageGroup];
-  const oneRepMaxRange = config.oneRepMaxPercent.strength;
+  const safetyConstraints = AGE_SAFETY_CONSTRAINTS[ageGroup]
+  const oneRepMaxRange = config.oneRepMaxPercent.strength
 
   return {
     oneRepMaxPercent: {
@@ -1153,7 +1168,7 @@ function getUpperBodyAccessoryParameters(
     restSeconds: config.restSeconds.strength,
     tempo: config.tempo,
     rpe: config.rpe,
-  };
+  }
 }
 
 function getCoreAccessoryParameters(
@@ -1161,8 +1176,8 @@ function getCoreAccessoryParameters(
   phase: Phase,
   config: CategoryPhaseConfig
 ): ScaledCategoryParameters {
-  const safetyConstraints = AGE_SAFETY_CONSTRAINTS[ageGroup];
-  const oneRepMaxRange = config.oneRepMaxPercent.strength;
+  const safetyConstraints = AGE_SAFETY_CONSTRAINTS[ageGroup]
+  const oneRepMaxRange = config.oneRepMaxPercent.strength
 
   return {
     oneRepMaxPercent: {
@@ -1174,18 +1189,18 @@ function getCoreAccessoryParameters(
     restSeconds: config.restSeconds.strength,
     tempo: config.tempo,
     rpe: config.rpe,
-  };
+  }
 }
 
 function getMobilityRecoveryParameters(): ScaledCategoryParameters {
   return {
     oneRepMaxPercent: { min: 0, max: 0 },
     sets: 1,
-    reps: "30s each side",
+    reps: '30s each side',
     restSeconds: 30,
     tempo: { eccentric: 2, isometric: 0, concentric: 2 },
     rpe: { min: 2, max: 3 },
-  };
+  }
 }
 
 function getPowerConditioningParameters(
@@ -1194,8 +1209,8 @@ function getPowerConditioningParameters(
   experienceBucket: ExperienceBucket,
   config: CategoryPhaseConfig
 ): ScaledCategoryParameters {
-  const safetyConstraints = AGE_SAFETY_CONSTRAINTS[ageGroup];
-  const oneRepMaxRange = config.oneRepMaxPercent.power;
+  const safetyConstraints = AGE_SAFETY_CONSTRAINTS[ageGroup]
+  const oneRepMaxRange = config.oneRepMaxPercent.power
 
   return {
     oneRepMaxPercent: {
@@ -1207,7 +1222,7 @@ function getPowerConditioningParameters(
     restSeconds: config.restSeconds.power,
     tempo: config.tempo,
     rpe: config.rpe,
-  };
+  }
 }
 
 /**
@@ -1233,74 +1248,68 @@ export function getCategoryExerciseParameters(
   exerciseTags?: string[],
   exerciseEquipment?: string[]
 ): ScaledCategoryParameters {
-  const config = CATEGORY_PHASE_CONFIG[categoryId][phase];
-  const expBucket = getExperienceBucket(yearsOfExperience);
-  const ageExpModifier = AGE_EXPERIENCE_MATRIX[ageGroup][expBucket];
-  const safetyConstraints = AGE_SAFETY_CONSTRAINTS[ageGroup];
+  const config = CATEGORY_PHASE_CONFIG[categoryId][phase]
+  const expBucket = getExperienceBucket(yearsOfExperience)
+  const ageExpModifier = AGE_EXPERIENCE_MATRIX[ageGroup][expBucket]
+  const safetyConstraints = AGE_SAFETY_CONSTRAINTS[ageGroup]
   const prescriptionProfile = getExercisePrescriptionProfile(
     exerciseFocus,
     exerciseTags,
     exerciseEquipment
-  );
+  )
 
-  if (prescriptionProfile === "primary_loaded_lift") {
-    return getPrimaryLoadedLiftParameters(
-      categoryId,
-      phase,
-      ageGroup,
-      expBucket,
-      config
-    );
+  if (prescriptionProfile === 'primary_loaded_lift') {
+    return getPrimaryLoadedLiftParameters(categoryId, phase, ageGroup, expBucket, config)
   }
 
-  if (prescriptionProfile === "unilateral_accessory") {
-    return getUnilateralAccessoryParameters(ageGroup, phase, config);
+  if (prescriptionProfile === 'unilateral_accessory') {
+    return getUnilateralAccessoryParameters(ageGroup, phase, config)
   }
 
-  if (prescriptionProfile === "anti_rotation") {
-    return getAntiRotationParameters(ageGroup, phase, expBucket, config);
+  if (prescriptionProfile === 'anti_rotation') {
+    return getAntiRotationParameters(ageGroup, phase, expBucket, config)
   }
 
-  if (prescriptionProfile === "upper_body_accessory") {
-    return getUpperBodyAccessoryParameters(ageGroup, phase, expBucket, config);
+  if (prescriptionProfile === 'upper_body_accessory') {
+    return getUpperBodyAccessoryParameters(ageGroup, phase, expBucket, config)
   }
 
-  if (prescriptionProfile === "core_accessory") {
-    return getCoreAccessoryParameters(ageGroup, phase, config);
+  if (prescriptionProfile === 'core_accessory') {
+    return getCoreAccessoryParameters(ageGroup, phase, config)
   }
 
-  if (prescriptionProfile === "mobility_recovery") {
-    return getMobilityRecoveryParameters();
+  if (prescriptionProfile === 'mobility_recovery') {
+    return getMobilityRecoveryParameters()
   }
 
-  if (prescriptionProfile === "power_conditioning") {
-    return getPowerConditioningParameters(ageGroup, phase, expBucket, config);
+  if (prescriptionProfile === 'power_conditioning') {
+    return getPowerConditioningParameters(ageGroup, phase, expBucket, config)
   }
 
   // Determine which config values to use based on exercise focus
-  const focusKey = exerciseFocus === "power" ? "power" : "strength";
+  const focusKey = exerciseFocus === 'power' ? 'power' : 'strength'
 
   // Calculate sets from range using age+experience position
-  let sets = getValueFromPosition(config.sets, ageExpModifier.setsPosition);
+  let sets = getValueFromPosition(config.sets, ageExpModifier.setsPosition)
 
   // Apply age safety cap if applicable
   if (safetyConstraints.maxSets !== null) {
-    sets = Math.min(sets, safetyConstraints.maxSets);
+    sets = Math.min(sets, safetyConstraints.maxSets)
   }
 
   // Calculate reps from range using age+experience position
-  const repsRange = config.reps[focusKey];
-  const reps = getValueFromPosition(repsRange, ageExpModifier.repsPosition);
+  const repsRange = config.reps[focusKey]
+  const reps = getValueFromPosition(repsRange, ageExpModifier.repsPosition)
 
   // Get rest seconds based on exercise focus
-  const restSeconds = config.restSeconds[focusKey];
+  const restSeconds = config.restSeconds[focusKey]
 
   // Calculate 1RM% range with age safety ceiling applied
-  const oneRepMaxRange = config.oneRepMaxPercent[focusKey];
+  const oneRepMaxRange = config.oneRepMaxPercent[focusKey]
   const cappedOneRepMaxPercent: ParameterRange = {
     min: Math.min(oneRepMaxRange.min, safetyConstraints.oneRepMaxCeiling),
     max: Math.min(oneRepMaxRange.max, safetyConstraints.oneRepMaxCeiling),
-  };
+  }
 
   return {
     oneRepMaxPercent: cappedOneRepMaxPercent,
@@ -1309,7 +1318,7 @@ export function getCategoryExerciseParameters(
     restSeconds,
     tempo: config.tempo,
     rpe: config.rpe,
-  };
+  }
 }
 
 /**
@@ -1323,7 +1332,7 @@ export function applyAgeSafetyConstraints(
   params: ScaledCategoryParameters,
   ageGroup: AgeGroup
 ): ScaledCategoryParameters {
-  const constraints = AGE_SAFETY_CONSTRAINTS[ageGroup];
+  const constraints = AGE_SAFETY_CONSTRAINTS[ageGroup]
 
   return {
     ...params,
@@ -1332,7 +1341,7 @@ export function applyAgeSafetyConstraints(
       min: Math.min(params.oneRepMaxPercent.min, constraints.oneRepMaxCeiling),
       max: Math.min(params.oneRepMaxPercent.max, constraints.oneRepMaxCeiling),
     },
-  };
+  }
 }
 
 /**
@@ -1350,33 +1359,33 @@ export function getBodyweightVariant(
   experienceBucket: ExperienceBucket,
   progressions?: ExerciseProgressions
 ): { slug: string; isSubstituted: boolean } {
-  const variantType = BODYWEIGHT_VARIANT_MATRIX[phase][experienceBucket];
+  const variantType = BODYWEIGHT_VARIANT_MATRIX[phase][experienceBucket]
 
   switch (variantType) {
-    case "easier":
+    case 'easier':
       if (progressions?.easier) {
-        return { slug: progressions.easier, isSubstituted: true };
+        return { slug: progressions.easier, isSubstituted: true }
       }
-      break;
-    case "harder":
+      break
+    case 'harder':
       if (progressions?.harder) {
-        return { slug: progressions.harder, isSubstituted: true };
+        return { slug: progressions.harder, isSubstituted: true }
       }
-      break;
+      break
   }
 
   // Default to base exercise
-  return { slug: baseExerciseSlug, isSubstituted: false };
+  return { slug: baseExerciseSlug, isSubstituted: false }
 }
 
 /**
  * Format a tempo object to a string (e.g., "2.1.2" or "x.x.x").
  */
 export function formatTempo(tempo: Tempo): string {
-  const ecc = tempo.eccentric === "x" ? "x" : String(tempo.eccentric);
-  const iso = tempo.isometric === "x" ? "x" : String(tempo.isometric);
-  const con = tempo.concentric === "x" ? "x" : String(tempo.concentric);
-  return `${ecc}.${iso}.${con}`;
+  const ecc = tempo.eccentric === 'x' ? 'x' : String(tempo.eccentric)
+  const iso = tempo.isometric === 'x' ? 'x' : String(tempo.isometric)
+  const con = tempo.concentric === 'x' ? 'x' : String(tempo.concentric)
+  return `${ecc}.${iso}.${con}`
 }
 
 /**
@@ -1384,12 +1393,12 @@ export function formatTempo(tempo: Tempo): string {
  */
 export function getCategoryName(categoryId: CategoryId): string {
   const names: Record<CategoryId, string> = {
-    1: "Endurance",
-    2: "Power",
-    3: "Rotational",
-    4: "Strength",
-  };
-  return names[categoryId];
+    1: 'Endurance',
+    2: 'Power',
+    3: 'Rotational',
+    4: 'Strength',
+  }
+  return names[categoryId]
 }
 
 /**
@@ -1397,10 +1406,10 @@ export function getCategoryName(categoryId: CategoryId): string {
  */
 export function getCategorySports(categoryId: CategoryId): string[] {
   const sports: Record<CategoryId, string[]> = {
-    1: ["Soccer", "Hockey", "Lacrosse"],
-    2: ["Basketball", "Volleyball"],
-    3: ["Baseball", "Tennis", "Golf"],
-    4: ["Wrestling", "Football"],
-  };
-  return sports[categoryId];
+    1: ['Soccer', 'Hockey', 'Lacrosse'],
+    2: ['Basketball', 'Volleyball'],
+    3: ['Baseball', 'Tennis', 'Golf'],
+    4: ['Wrestling', 'Football'],
+  }
+  return sports[categoryId]
 }
