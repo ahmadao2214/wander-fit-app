@@ -1,4 +1,5 @@
 import {
+  buildE2EPlan,
   clerkFrontendApi,
   convexRuntimeFiles,
   evaluateDoctor,
@@ -9,6 +10,7 @@ import {
   seedInputFiles,
   seedInputsHash,
   selectBackendMode,
+  shouldRetryColdStart,
   shouldSeed,
   sourceStamp,
   stampDiffArgs,
@@ -289,5 +291,30 @@ describe("seed inputs and backend mode", () => {
     expect(selectBackendMode({ eventName: "pull_request", changedFiles: ["README.md"], runtimeFiles: runtime })).toBe("shared")
     expect(selectBackendMode({ eventName: "pull_request", changedFiles: ["convex/schema.ts"], runtimeFiles: runtime })).toBe("preview")
     expect(selectBackendMode({ eventName: "pull_request", changedFiles: null, runtimeFiles: runtime })).toBe("preview")
+  })
+
+  it("builds balanced E2E plans and retries only cold-start Maestro crashes with no screenshots", () => {
+    const planDocs = buildE2EPlan({
+      eventName: "pull_request",
+      changedFiles: ["docs/BUILDS.md"],
+      runtimeFiles: ["convex/schema.ts"],
+    })
+    expect(planDocs.runE2E).toBe(false)
+    expect(planDocs.shards).toEqual([])
+
+    const planUi = buildE2EPlan({
+      eventName: "pull_request",
+      changedFiles: ["app/(first-run)/sport.tsx"],
+      runtimeFiles: ["convex/schema.ts"],
+    })
+    expect(planUi.mode).toBe("shared")
+    expect(planUi.runE2E).toBe(true)
+    expect(planUi.flows).toEqual(["first-run"])
+    expect(planUi.shards).toHaveLength(1)
+
+    expect(shouldRetryColdStart({ elapsedMs: 3400, hasScreenshots: false, attempt: 0 })).toBe(true)
+    expect(shouldRetryColdStart({ elapsedMs: 3400, hasScreenshots: false, attempt: 1 })).toBe(false)
+    expect(shouldRetryColdStart({ elapsedMs: 25000, hasScreenshots: false, attempt: 0 })).toBe(false)
+    expect(shouldRetryColdStart({ elapsedMs: 5000, hasScreenshots: true, attempt: 0 })).toBe(false)
   })
 })

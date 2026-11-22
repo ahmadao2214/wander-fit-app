@@ -2,10 +2,23 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import { parse } from "yaml"
-import { artifactName, defaultFlows, evidenceDirFor, listWebFlows, nightlyOnlyFlows, personaMode, root } from "./flows.mjs"
-import { renderSummary } from "./summary.mjs"
+import {
+  artifactName,
+  balanceShards,
+  defaultFlows,
+  evidenceDirFor,
+  listWebFlows,
+  nightlyOnlyFlows,
+  personaMode,
+  root,
+  selectAffectedFlows,
+} from "./flows.mjs"
+import { loadMergedResults, renderSummary } from "./summary.mjs"
 
 const checks = parse(fs.readFileSync(path.join(root, ".github/workflows/checks.yml"), "utf8"))
+const planJob = checks.jobs["e2e-plan"]
+const buildJob = checks.jobs["e2e-build"]
+const shardJob = checks.jobs["e2e-shard"]
 const job = checks.jobs["web-e2e"]
 
 function expandFlow(file, seen = new Set()) {
@@ -175,7 +188,7 @@ describe("web flows", () => {
   })
 
   it("has an upload step in the checks workflow for every web flow", () => {
-    const uploads = job.steps
+    const uploads = shardJob.steps
       .filter((step) => String(step.uses || "").startsWith("actions/upload-artifact@"))
       .map((step) => ({ name: step.with.name, path: step.with.path, if: step.if }))
     for (const flow of listWebFlows()) {
@@ -192,52 +205,61 @@ describe("web flows", () => {
 })
 
 describe("web E2E job", () => {
-  it("runs in parallel with unit tests, does not cancel main runs, and locks shared runs under e2e-backend", () => {
-    const modeJob = checks.jobs["backend-mode"]
-    expect(modeJob).toBeDefined()
-    expect(modeJob.outputs.mode).toBe("${{ steps.detect.outputs.mode }}")
-    expect(JSON.stringify(modeJob)).not.toContain("secrets.")
-
-    expect(job.needs).toBe("backend-mode")
+  it("plans, builds once, shards in parallel, summarizes under Web E2E (advisory), and does not cancel main", () => {
     expect(checks.concurrency["cancel-in-progress"]).toBe("${{ github.event_name == 'pull_request' }}")
-    expect(job.concurrency).toEqual({
+    expect(planJob.outputs).toMatchObject({
+      mode: "${{ steps.plan.outputs.mode }}",
+      run_e2e: "${{ steps.plan.outputs.run_e2e }}",
+      shards: "${{ steps.plan.outputs.shards }}",
+    })
+    expect(JSON.stringify(planJob)).not.toContain("secrets.")
+
+    expect(buildJob.needs).toBe("e2e-plan")
+    expect(buildJob.concurrency).toEqual({
       group:
-        "${{ needs.backend-mode.outputs.mode == 'preview' && format('e2e-preview-pr-{0}', github.event.pull_request.number) || 'e2e-backend' }}",
+        "${{ needs.e2e-plan.outputs.mode == 'preview' && format('e2e-preview-pr-{0}', github.event.pull_request.number) || 'e2e-backend' }}",
       "cancel-in-progress": false,
       queue: "max",
     })
+    expect(shardJob.needs).toEqual(["e2e-plan", "e2e-build"])
+    expect(shardJob.strategy["fail-fast"]).toBe(false)
+    expect(shardJob.strategy.matrix.shard).toBe("${{ fromJson(needs.e2e-plan.outputs.shards) }}")
+
+    expect(job.name).toBe("Web E2E (advisory)")
+    expect(job.needs).toEqual(["e2e-plan", "e2e-build", "e2e-shard"])
   })
 
-  it("selects backend mode before web-e2e and passes only the key each step needs", () => {
-    const modeJob = checks.jobs["backend-mode"]
-    const modeStep = modeJob.steps.find((step) => /run\.mjs backend-mode$/.test(step.run || ""))
-    expect(modeStep).toBeDefined()
-    expect(modeStep.id).toBe("detect")
+  it("passes only the key each step needs across build and shard jobs", () => {
+    const previewOnly = "${{ needs.e2e-plan.outputs.mode == 'preview' && secrets.CONVEX_PREVIEW_DEPLOY_KEY_E2E || '' }}"
+    const devDeployOnly = "${{ needs.e2e-plan.outputs.mode == 'dev' && secrets.CONVEX_DEPLOY_KEY_E2E || '' }}"
+    const nonPreviewDev = "${{ needs.e2e-plan.outputs.mode != 'preview' && secrets.CONVEX_DEPLOY_KEY_E2E || '' }}"
+    const previewNameExpr = "${{ needs.e2e-plan.outputs.mode == 'preview' && format('pr-{0}', github.event.pull_request.number) || '' }}"
 
-    const previewOnly = "${{ needs.backend-mode.outputs.mode == 'preview' && secrets.CONVEX_PREVIEW_DEPLOY_KEY_E2E || '' }}"
-    const devDeployOnly = "${{ needs.backend-mode.outputs.mode == 'dev' && secrets.CONVEX_DEPLOY_KEY_E2E || '' }}"
-    const nonPreviewDev = "${{ needs.backend-mode.outputs.mode != 'preview' && secrets.CONVEX_DEPLOY_KEY_E2E || '' }}"
-    const previewNameExpr = "${{ needs.backend-mode.outputs.mode == 'preview' && format('pr-{0}', github.event.pull_request.number) || '' }}"
-
-    const convexSteps = job.steps.filter((step) => /run\.mjs (deploy|all|teardown)$/.test(step.run || ""))
-    expect(convexSteps.length).toBe(3)
-    const [deploy, ...after] = convexSteps
+    const deploy = buildJob.steps.find((step) => /run\.mjs deploy$/.test(step.run || ""))
     expect(deploy.id).toBe("backend")
-    expect(deploy.env.VERIFY_BACKEND_MODE).toBe("${{ needs.backend-mode.outputs.mode }}")
+    expect(deploy.env.VERIFY_BACKEND_MODE).toBe("${{ needs.e2e-plan.outputs.mode }}")
     expect(deploy.env.EXPO_PUBLIC_CONVEX_URL_E2E).toBe("${{ vars.EXPO_PUBLIC_CONVEX_URL_E2E }}")
     expect(deploy.env.CONVEX_DEPLOY_KEY_E2E).toBe(devDeployOnly)
     expect(deploy.env.CONVEX_PREVIEW_DEPLOY_KEY_E2E).toBe(previewOnly)
     expect(deploy.env.CONVEX_PREVIEW_NAME_E2E).toBe(previewNameExpr)
-    for (const step of after) {
-      expect(step.env.EXPO_PUBLIC_CONVEX_URL_E2E).toBe("${{ steps.backend.outputs.convex_url }}")
+
+    const exportStep = buildJob.steps.find((step) => /run\.mjs export$/.test(step.run || ""))
+    expect(exportStep.env.EXPO_PUBLIC_CONVEX_URL_E2E).toBe("${{ steps.backend.outputs.convex_url }}")
+
+    const shardSteps = shardJob.steps.filter((step) => /run\.mjs (all\b|teardown$)/.test(step.run || ""))
+    expect(shardSteps.length).toBe(2)
+    for (const step of shardSteps) {
+      expect(step.env.EXPO_PUBLIC_CONVEX_URL_E2E).toBe("${{ needs.e2e-build.outputs.convex_url }}")
       expect(step.env.CONVEX_DEPLOY_KEY_E2E).toBe(nonPreviewDev)
       expect(step.env.CONVEX_PREVIEW_DEPLOY_KEY_E2E).toBe(previewOnly)
       expect(step.env.CONVEX_PREVIEW_NAME_E2E).toBe(previewNameExpr)
     }
-    expect(job.env).not.toHaveProperty("EXPO_PUBLIC_CONVEX_URL_E2E")
+    expect(buildJob.env).not.toHaveProperty("EXPO_PUBLIC_CONVEX_URL_E2E")
+    expect(shardJob.env).not.toHaveProperty("EXPO_PUBLIC_CONVEX_URL_E2E")
   })
 
   it("is skipped on fork pull requests", () => {
+    expect(planJob.if).toContain("github.event.pull_request.head.repo.full_name == github.repository")
     expect(job.if).toContain("github.event.pull_request.head.repo.full_name == github.repository")
   })
 
@@ -246,21 +268,32 @@ describe("web E2E job", () => {
     expect(checks.on.push.branches).toEqual(["main"])
   })
 
-  it("deploys, runs the flows, then tears down before uploading", () => {
-    const runs = job.steps.map((step) => step.run || step.uses || "")
-    const index = (text) => runs.findIndex((run) => run.includes(text))
-    expect(index("run.mjs deploy")).toBeGreaterThan(-1)
-    expect(index("run.mjs deploy")).toBeLessThan(index("run.mjs all"))
+  it("deploys and exports in build, downloads and tears down before uploading in shards, and summarizes last", () => {
+    const buildRuns = buildJob.steps.map((step) => step.run || step.uses || "")
+    expect(buildRuns.findIndex((r) => r.includes("run.mjs deploy"))).toBeLessThan(
+      buildRuns.findIndex((r) => r.includes("run.mjs export"))
+    )
+    expect(buildRuns.findIndex((r) => r.includes("run.mjs export"))).toBeLessThan(
+      buildRuns.findIndex((r) => r.includes("actions/upload-artifact@"))
+    )
+
+    const shardRuns = shardJob.steps.map((step) => step.run || step.uses || "")
+    const index = (text) => shardRuns.findIndex((run) => run.includes(text))
+    expect(index("actions/download-artifact@")).toBeLessThan(index("run.mjs all"))
     expect(index("run.mjs all")).toBeLessThan(index("run.mjs teardown"))
     expect(index("run.mjs teardown")).toBeLessThan(index("actions/upload-artifact@"))
-    expect(index("actions/upload-artifact@")).toBeLessThan(index("summary.mjs"))
+
+    const summaryRuns = job.steps.map((step) => step.run || step.uses || "")
+    expect(summaryRuns.some((r) => r.includes("summary.mjs"))).toBe(true)
   })
 
   it("keeps secrets out of the install steps", () => {
-    expect(JSON.stringify(job.env || {})).not.toContain("secrets.")
-    for (const step of job.steps) {
-      const usesSecrets = JSON.stringify(step.env || {}).includes("secrets.")
-      if (usesSecrets) expect(step.run).toMatch(/^node scripts\/verify\/run\.mjs (deploy|all|teardown)$/)
+    for (const current of [planJob, buildJob, shardJob, job]) {
+      expect(JSON.stringify(current.env || {})).not.toContain("secrets.")
+      for (const step of current.steps) {
+        const usesSecrets = JSON.stringify(step.env || {}).includes("secrets.")
+        if (usesSecrets) expect(step.run).toMatch(/^node scripts\/verify\/run\.mjs (deploy|all\b|teardown)/)
+      }
     }
   })
 })
@@ -390,8 +423,65 @@ describe("nightly-only flows", () => {
     expect(nightlyOnlyFlows.filter((flow) => !listWebFlows().includes(flow))).toEqual([])
   })
 
-  it("sets the PR flow set only on pull request runs of the web job", () => {
-    const step = job.steps.find((s) => /run\.mjs all$/.test(s.run || ""))
-    expect(step.env.VERIFY_FLOW_SET).toBe("${{ github.event_name == 'pull_request' && 'pr' || 'all' }}")
+  it("plans PR runs via run.mjs plan and passes shard flows to run.mjs all", () => {
+    const planStep = planJob.steps.find((s) => /run\.mjs plan$/.test(s.run || ""))
+    expect(planStep).toBeDefined()
+    const shardStep = shardJob.steps.find((s) => /run\.mjs all /.test(s.run || ""))
+    expect(shardStep.run).toBe("node scripts/verify/run.mjs all ${{ join(matrix.shard.flows, ' ') }}")
+  })
+})
+
+describe("sharding and affected-flow selection", () => {
+  it("balances flows across shards by recorded duration", () => {
+    const shards = balanceShards(
+      ["first-run", "workout-exit-resume", "reassessment", "app-settings", "sign-in", "history"],
+      4
+    )
+    expect(shards).toHaveLength(4)
+    expect(shards.flatMap((s) => s.flows).sort()).toEqual([
+      "app-settings",
+      "first-run",
+      "history",
+      "reassessment",
+      "sign-in",
+      "workout-exit-resume",
+    ])
+    expect(Math.max(...shards.map((s) => s.estimatedSeconds))).toBeLessThanOrEqual(130)
+    expect(balanceShards([], 4)).toEqual([])
+  })
+
+  it("skips docs/test PRs, narrows isolated screen PRs, and fails safe on shared/backend/unknown changes", () => {
+    const available = listWebFlows()
+    const prAll = defaultFlows(available, "pr")
+    expect(selectAffectedFlows(["README.md", "docs/BUILDS.md", "lib/__tests__/foo.test.ts"], { available }).flows).toEqual([])
+    expect(selectAffectedFlows(["app/(first-run)/sport.tsx"], { available }).flows).toEqual(["first-run"])
+    expect(selectAffectedFlows(["app/(athlete)/history.tsx"], { available }).flows).toEqual(["history"])
+    expect(selectAffectedFlows(["app/(reassessment)/results.tsx"], { available }).flows).toEqual(["reassessment"])
+    expect(selectAffectedFlows(["convex/workoutCalendar.ts"], { available }).flows).toEqual(prAll)
+    expect(selectAffectedFlows(["app/_layout.tsx"], { available }).flows).toEqual(prAll)
+    expect(selectAffectedFlows(null, { available }).flows).toEqual(prAll)
+    expect(selectAffectedFlows(["README.md"], { available, eventName: "push" }).flows).toEqual(available)
+  })
+
+  it("merges shard results from disk and renders a skipped summary cleanly", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "verify-shards-"))
+    try {
+      fs.mkdirSync(path.join(dir, "e2e-results-shard-1"), { recursive: true })
+      fs.mkdirSync(path.join(dir, "e2e-results-shard-2"), { recursive: true })
+      fs.writeFileSync(
+        path.join(dir, "e2e-results-shard-1/web-results.json"),
+        JSON.stringify({ flows: [{ flow: "first-run", status: "passed", seconds: 120 }] })
+      )
+      fs.writeFileSync(
+        path.join(dir, "e2e-results-shard-2/web-results.json"),
+        JSON.stringify({ flows: [{ flow: "sign-in", status: "passed", seconds: 45 }] })
+      )
+      const merged = loadMergedResults({ file: path.join(dir, "missing.json"), resultsDir: dir })
+      expect(merged.map((f) => f.flow).sort()).toEqual(["first-run", "sign-in"])
+      const skipped = renderSummary({ flows: ["sign-in"], results: [], artifacts: {}, runUrl: "", skippedReason: "docs only" })
+      expect(skipped).toContain("Skipped on this PR: docs only")
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
   })
 })

@@ -14,15 +14,16 @@ function cell(text) {
 
 // flows: every flow under .maestro/web. results: what the runner recorded.
 // artifacts: { [artifactName]: url } for artifacts this run uploaded.
-export function renderSummary({ flows, results, artifacts, runUrl }) {
+export function renderSummary({ flows, results, artifacts, runUrl, skippedReason = "" }) {
   const byFlow = new Map((results || []).map((result) => [result.flow, result]))
   const names = [...new Set([...flows, ...byFlow.keys()])]
-  const lines = [
-    "## Web E2E (advisory)",
-    "",
-    "| Flow | Result | Time | Evidence | Notes |",
-    "| --- | --- | --- | --- | --- |",
-  ]
+  const lines = ["## Web E2E (advisory)", ""]
+  if (skippedReason) {
+    lines.push(`Skipped on this PR: ${cell(skippedReason)}. \`main\` and nightly runs execute every flow.`)
+    if (runUrl) lines.push("", `Run: ${runUrl}`)
+    return `${lines.join("\n")}\n`
+  }
+  lines.push("| Flow | Result | Time | Evidence | Notes |", "| --- | --- | --- | --- | --- |")
   for (const flow of names) {
     const result = byFlow.get(flow)
     const status = result?.status || "not run"
@@ -41,6 +42,33 @@ export function renderSummary({ flows, results, artifacts, runUrl }) {
     "Evidence is Maestro's step screenshots, `commands.json`, `logs/maestro.log`, and `startRecording/recording.mp4`, with the persona password redacted."
   )
   return `${lines.join("\n")}\n`
+}
+
+// Reads either a single web-results.json file or merges every JSON result file
+// downloaded from parallel shard jobs under `resultsDir`.
+export function loadMergedResults({ file = resultsFile, resultsDir = "" } = {}) {
+  const collected = []
+  let foundAny = false
+  if (resultsDir && fs.existsSync(resultsDir)) {
+    const walk = (dir) => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name)
+        if (entry.isDirectory()) walk(full)
+        else if (entry.isFile() && entry.name.endsWith(".json")) {
+          foundAny = true
+          const parsed = JSON.parse(fs.readFileSync(full, "utf8"))
+          if (Array.isArray(parsed?.flows)) collected.push(...parsed.flows)
+        }
+      }
+    }
+    walk(resultsDir)
+  }
+  if (!foundAny && file && fs.existsSync(file)) {
+    foundAny = true
+    const parsed = JSON.parse(fs.readFileSync(file, "utf8"))
+    if (Array.isArray(parsed?.flows)) collected.push(...parsed.flows)
+  }
+  return foundAny ? collected : null
 }
 
 async function uploadedArtifacts() {
@@ -70,9 +98,10 @@ async function uploadedArtifacts() {
 }
 
 async function main() {
-  const results = fs.existsSync(resultsFile)
-    ? JSON.parse(fs.readFileSync(resultsFile, "utf8")).flows
-    : null
+  const skippedReason = process.env.VERIFY_E2E_SKIPPED === "true" ? process.env.VERIFY_E2E_REASON || "no affected flows" : ""
+  const results = skippedReason
+    ? []
+    : loadMergedResults({ file: resultsFile, resultsDir: process.env.VERIFY_RESULTS_DIR || "" })
   const { GITHUB_REPOSITORY, GITHUB_RUN_ID, GITHUB_SERVER_URL } = process.env
   const runUrl =
     GITHUB_REPOSITORY && GITHUB_RUN_ID
@@ -81,8 +110,9 @@ async function main() {
   const markdown = renderSummary({
     flows: listWebFlows(),
     results,
-    artifacts: await uploadedArtifacts(),
+    artifacts: skippedReason ? {} : await uploadedArtifacts(),
     runUrl,
+    skippedReason,
   })
   if (process.env.GITHUB_STEP_SUMMARY) {
     fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, markdown)

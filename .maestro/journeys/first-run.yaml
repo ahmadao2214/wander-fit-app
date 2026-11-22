@@ -26,8 +26,10 @@ url: ${VERIFY_URL}
     start: 50%, 80%
     end: 50%, 20%
     duration: 800
+# Web reports TextInput's accessibilityLabel ("Search sports") as id while
+# native uses testID ("sport-search"). Match both.
 - tapOn:
-    id: sport-search
+    id: "Search sports|sport-search"
 - inputText: "hockey"
 - extendedWaitUntil:
     visible: "Ice Hockey"

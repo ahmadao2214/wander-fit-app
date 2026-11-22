@@ -15,6 +15,7 @@ import {
   previewName,
 } from "./targets.mjs"
 import {
+  balanceShards,
   defaultFlows,
   artifactName,
   artifactsDir,
@@ -25,6 +26,7 @@ import {
   personaMode,
   resultsFile,
   root,
+  selectAffectedFlows,
   webFlowFile,
 } from "./flows.mjs"
 import {
@@ -816,10 +818,31 @@ export function redactEvidence(dir, secret, skip = []) {
   return changed
 }
 
+// Maestro's beta web driver occasionally crashes in Chromium/CDP within a few
+// seconds of launchApp before any screenshot is taken (e.g. #88 main run
+// 44995849336 failing at 3.4s on a 90s extendedWaitUntil). Retry once ONLY on
+// that cold-start signature; real assertion failures take >20s or happen after
+// screenshots exist and are never retried.
+export function shouldRetryColdStart({ elapsedMs, hasScreenshots, attempt }) {
+  return attempt === 0 && elapsedMs < 20_000 && !hasScreenshots
+}
+
+function hasScreenshotFiles(dir) {
+  if (!fs.existsSync(dir)) return false
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name)
+    if (entry.isDirectory()) {
+      if (hasScreenshotFiles(full)) return true
+    } else if (/\.png$/i.test(entry.name)) {
+      return true
+    }
+  }
+  return false
+}
+
 function runMaestro(flowFile, outDir, url, persona) {
   const maestro = maestroBin()
   if (!maestro) fail("Maestro is not installed.")
-  fs.mkdirSync(outDir, { recursive: true })
   const args = ["test", "--headless", "--test-output-dir", outDir, "-e", `VERIFY_URL=${url}`]
   const env = { ...process.env, MAESTRO_CLI_NO_ANALYTICS: "1" }
   delete env.PERSONA_PASSWORD
@@ -827,13 +850,27 @@ function runMaestro(flowFile, outDir, url, persona) {
     args.push("-e", `PERSONA_EMAIL=${persona.email}`, "-e", `PERSONA_PASSWORD=${persona.password}`)
   }
   args.push(flowFile)
-  const result = spawnSync(maestro, args, { cwd: root, stdio: "inherit", env })
-  if (result.status !== 0) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    fs.rmSync(outDir, { recursive: true, force: true })
+    fs.mkdirSync(outDir, { recursive: true })
+    const started = Date.now()
+    const result = spawnSync(maestro, args, { cwd: root, stdio: "inherit", env })
+    if (result.status === 0) {
+      console.log(`evidence: ${outDir}`)
+      return
+    }
+    const elapsedMs = Date.now() - started
+    const hasScreenshots = hasScreenshotFiles(outDir)
+    if (shouldRetryColdStart({ elapsedMs, hasScreenshots, attempt })) {
+      console.warn(
+        `retrying ${flowFile} once after cold-start Maestro exit ${result.status ?? 1} (${Math.round(elapsedMs / 1000)}s, no screenshots)`
+      )
+      continue
+    }
     const error = new Error(`Maestro exited ${result.status ?? 1}`)
     error.exitStatus = result.status ?? 1
     throw error
   }
-  console.log(`evidence: ${outDir}`)
 }
 
 function drive(url, submitting = submitMode(), flow = "sign-in") {
@@ -1186,6 +1223,40 @@ function backendMode() {
   if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `mode=${mode}\n`)
 }
 
+export function buildE2EPlan({ eventName, changedFiles, available = listWebFlows(), maxShards = 4, runtimeFiles } = {}) {
+  const mode = selectBackendMode({ eventName, changedFiles, runtimeFiles })
+  const { flows, reason } = selectAffectedFlows(changedFiles, { available, eventName })
+  const shards = balanceShards(flows, maxShards)
+  return {
+    mode,
+    runE2E: flows.length > 0,
+    flows,
+    shards,
+    reason,
+  }
+}
+
+function planE2E() {
+  const eventName = process.env.GITHUB_EVENT_NAME || ""
+  const changedFiles = eventName === "pull_request" ? prChangedFiles() : []
+  const maxShards = Number(process.env.VERIFY_MAX_SHARDS || 4)
+  const plan = buildE2EPlan({ eventName, changedFiles, maxShards })
+  console.log(`e2e plan: mode=${plan.mode}, run_e2e=${plan.runE2E}, flows=${plan.flows.length}, shards=${plan.shards.length} (${plan.reason})`)
+  if (process.env.GITHUB_OUTPUT) {
+    fs.appendFileSync(
+      process.env.GITHUB_OUTPUT,
+      [
+        `mode=${plan.mode}`,
+        `run_e2e=${plan.runE2E}`,
+        `flows=${JSON.stringify(plan.flows)}`,
+        `shards=${JSON.stringify(plan.shards)}`,
+        `reason=${plan.reason}`,
+        "",
+      ].join("\n")
+    )
+  }
+}
+
 function seedTemplates(env, previewName) {
   for (const categoryId of TEMPLATE_CATEGORIES) {
     const seeded = convexCli(templateSeedArgs(categoryId, previewName), env)
@@ -1473,6 +1544,8 @@ async function main() {
     console.log(`left evidence in ${screenEvidenceDir}`)
   } else if (command === "backend-mode") {
     backendMode()
+  } else if (command === "plan") {
+    planE2E()
   } else if (command === "deploy") {
     deployBackend()
   } else if (command === "record-url") {
@@ -1491,7 +1564,9 @@ async function main() {
     }
     const flows = selectFlows(process.argv.slice(3))
     await doctor({ server: false })
-    exportWeb()
+    // launch() reuses a fresh dist-verify/ built for this exact checkout and
+    // Convex host (such as the shared artifact built by e2e-build in CI), and
+    // exports automatically whenever the build is missing or stale.
     const url = launch()
     let results
     try {
