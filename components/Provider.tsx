@@ -8,6 +8,7 @@ import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { CurrentToast } from './CurrentToast'
+import { SentryAthleteSync } from './SentryAthleteSync'
 import { config } from '../tamagui.config'
 
 // Create the Convex client ONCE outside the component to prevent re-creation on every render
@@ -44,6 +45,7 @@ export function Provider({ children, ...rest }: Omit<TamaguiProviderProps, 'conf
               publishableKey={process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!}
               tokenCache={tokenCache}
             >
+              <SentryAthleteSync />
               <ConvexProviderWithClerk client={convexClient} useAuth={useAuth}>
                 {children}
               </ConvexProviderWithClerk>

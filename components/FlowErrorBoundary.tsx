@@ -3,6 +3,7 @@ import { YStack, Text, Button, XStack } from 'tamagui'
 import { AlertTriangle, RefreshCw, Home } from '@tamagui/lucide-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
+import { captureBoundaryError } from '../lib/sentry'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -10,10 +11,12 @@ import { useRouter } from 'expo-router'
 
 interface FlowErrorBoundaryProps {
   children: ReactNode
-  /** Where to redirect when user taps "Go Home" */
+  /** Where to redirect when the athlete taps "Go Home" */
   fallbackRoute?: string
   /** Custom error message */
   errorMessage?: string
+  /** Flow identifier tagged on Sentry error reports (e.g. "first-run", "reassessment") */
+  flowName?: string
 }
 
 interface FlowErrorBoundaryState {
@@ -163,8 +166,11 @@ export class FlowErrorBoundary extends Component<
       console.error('Component stack:', errorInfo.componentStack)
     }
 
-    // TODO: Add production error reporting here (e.g., Sentry)
-    // analytics.captureException(error, { extra: { componentStack: errorInfo.componentStack } })
+    captureBoundaryError(error, {
+      boundary: this.props.flowName ?? 'flow',
+      componentStack: errorInfo.componentStack,
+      route: this.props.fallbackRoute,
+    })
   }
 
   handleRetry = () => {

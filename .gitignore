@@ -51,3 +51,8 @@ e2e-artifacts/
 
 # EAS Simulator session credentials, written by eas-cli. Never commit.
 .env.eas-simulator
+
+# Local Sentry build tokens and generated native options. Never commit.
+.env.sentry-build-plugin
+sentry.options.json
+

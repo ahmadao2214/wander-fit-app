@@ -24,6 +24,7 @@ export default function FirstRunLayout() {
     <Theme name="dark">
       <StatusBar style="light" />
       <FlowErrorBoundary
+        flowName="first-run"
         fallbackRoute="/(first-run)"
         errorMessage="Something went wrong building your plan. Your answers are saved, so let's pick up again."
       >

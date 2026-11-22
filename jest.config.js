@@ -67,7 +67,7 @@ module.exports = {
         '^react-native/setup-env$': '<rootDir>/node_modules/@react-native/jest-preset/jest/mocks/InitializeCore.js',
       },
       transformIgnorePatterns: [
-        'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|tamagui|@tamagui/.*)',
+        'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|@sentry/.*|native-base|react-native-svg|tamagui|@tamagui/.*)',
       ],
       testPathIgnorePatterns: ['/node_modules/'],
       modulePathIgnorePatterns,
