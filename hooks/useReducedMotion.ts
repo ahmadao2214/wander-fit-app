@@ -13,14 +13,25 @@ function remember(value: boolean) {
   lastKnown = value
 }
 
-/** Ask once at boot, so the first screen after the splash usually knows. */
+let appListener: { remove: () => void } | undefined
+
+/**
+ * Ask once at boot, so the first screen after the splash usually knows, and
+ * keep listening for the app's life. The cache then stays current even while
+ * no screen that reads it is mounted.
+ */
 export function primeReducedMotion(): void {
   AccessibilityInfo.isReduceMotionEnabled().then(remember, () => remember(false))
+  if (!appListener) {
+    appListener = AccessibilityInfo.addEventListener('reduceMotionChanged', remember)
+  }
 }
 
 /** Tests only: forget the cached answer between cases. */
 export function resetReducedMotionCache(): void {
   lastKnown = null
+  appListener?.remove()
+  appListener = undefined
 }
 
 /**

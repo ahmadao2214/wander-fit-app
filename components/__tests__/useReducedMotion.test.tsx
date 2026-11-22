@@ -3,17 +3,22 @@ import { act, renderHook, waitFor } from '@testing-library/react-native'
 import { primeReducedMotion, resetReducedMotionCache, useReducedMotion } from '../../hooks/useReducedMotion'
 
 let listener: ((value: boolean) => void) | undefined
+/** Listeners still subscribed (removed ones drop out, like the real API). */
+const live = new Set<(value: boolean) => void>()
+const emit = (value: boolean) => live.forEach((cb) => cb(value))
 function mockSetting(value: boolean) {
   jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(value)
   jest.spyOn(AccessibilityInfo, 'addEventListener').mockImplementation(((_event: string, cb: (value: boolean) => void) => {
     listener = cb
-    return { remove: jest.fn() }
+    live.add(cb)
+    return { remove: () => live.delete(cb) }
   }) as typeof AccessibilityInfo.addEventListener)
 }
 
 beforeEach(() => {
   resetReducedMotionCache()
   listener = undefined
+  live.clear()
 })
 afterEach(() => jest.restoreAllMocks())
 
@@ -45,6 +50,20 @@ describe('useReducedMotion', () => {
     jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockReturnValue(new Promise(() => {}))
     const second = renderHook(() => useReducedMotion())
     expect(second.result.current).toBe(true)
+  })
+
+  it('a change while no screen is mounted still reaches the next screen (regression)', async () => {
+    mockSetting(false)
+    primeReducedMotion()
+    await act(async () => {})
+    const first = renderHook(() => useReducedMotion())
+    first.unmount()
+
+    // The screen's own listener is gone; the app-level one must hear this
+    jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockReturnValue(new Promise(() => {}))
+    act(() => emit(true))
+    const next = renderHook(() => useReducedMotion())
+    expect(next.result.current).toBe(true)
   })
 
   it('treats a platform that cannot answer as motion allowed', async () => {
