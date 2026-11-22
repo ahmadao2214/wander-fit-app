@@ -192,33 +192,38 @@ describe("web flows", () => {
 })
 
 describe("web E2E job", () => {
-  it("runs in parallel with unit tests, does not cancel main runs, and keeps e2e-backend queue", () => {
-    expect(job.needs).toBeUndefined()
+  it("runs in parallel with unit tests, does not cancel main runs, and locks shared runs under e2e-backend", () => {
+    const modeJob = checks.jobs["backend-mode"]
+    expect(modeJob).toBeDefined()
+    expect(modeJob.outputs.mode).toBe("${{ steps.detect.outputs.mode }}")
+    expect(JSON.stringify(modeJob)).not.toContain("secrets.")
+
+    expect(job.needs).toBe("backend-mode")
     expect(checks.concurrency["cancel-in-progress"]).toBe("${{ github.event_name == 'pull_request' }}")
     expect(job.concurrency).toEqual({
       group:
-        "${{ github.event_name == 'pull_request' && format('e2e-preview-pr-{0}', github.event.pull_request.number) || 'e2e-backend' }}",
+        "${{ needs.backend-mode.outputs.mode == 'preview' && format('e2e-preview-pr-{0}', github.event.pull_request.number) || 'e2e-backend' }}",
       "cancel-in-progress": false,
       queue: "max",
     })
   })
 
-  it("selects backend mode before deploy and passes only the key each step needs", () => {
-    const modeStep = job.steps.find((step) => /run\.mjs backend-mode$/.test(step.run || ""))
+  it("selects backend mode before web-e2e and passes only the key each step needs", () => {
+    const modeJob = checks.jobs["backend-mode"]
+    const modeStep = modeJob.steps.find((step) => /run\.mjs backend-mode$/.test(step.run || ""))
     expect(modeStep).toBeDefined()
-    expect(modeStep.id).toBe("backend-mode")
-    expect(JSON.stringify(modeStep.env || {})).not.toContain("secrets.")
+    expect(modeStep.id).toBe("detect")
 
-    const previewOnly = "${{ steps.backend-mode.outputs.mode == 'preview' && secrets.CONVEX_PREVIEW_DEPLOY_KEY_E2E || '' }}"
-    const devDeployOnly = "${{ steps.backend-mode.outputs.mode == 'dev' && secrets.CONVEX_DEPLOY_KEY_E2E || '' }}"
-    const nonPreviewDev = "${{ steps.backend-mode.outputs.mode != 'preview' && secrets.CONVEX_DEPLOY_KEY_E2E || '' }}"
-    const previewNameExpr = "${{ steps.backend-mode.outputs.mode == 'preview' && format('pr-{0}', github.event.pull_request.number) || '' }}"
+    const previewOnly = "${{ needs.backend-mode.outputs.mode == 'preview' && secrets.CONVEX_PREVIEW_DEPLOY_KEY_E2E || '' }}"
+    const devDeployOnly = "${{ needs.backend-mode.outputs.mode == 'dev' && secrets.CONVEX_DEPLOY_KEY_E2E || '' }}"
+    const nonPreviewDev = "${{ needs.backend-mode.outputs.mode != 'preview' && secrets.CONVEX_DEPLOY_KEY_E2E || '' }}"
+    const previewNameExpr = "${{ needs.backend-mode.outputs.mode == 'preview' && format('pr-{0}', github.event.pull_request.number) || '' }}"
 
     const convexSteps = job.steps.filter((step) => /run\.mjs (deploy|all|teardown)$/.test(step.run || ""))
     expect(convexSteps.length).toBe(3)
     const [deploy, ...after] = convexSteps
     expect(deploy.id).toBe("backend")
-    expect(deploy.env.VERIFY_BACKEND_MODE).toBe("${{ steps.backend-mode.outputs.mode }}")
+    expect(deploy.env.VERIFY_BACKEND_MODE).toBe("${{ needs.backend-mode.outputs.mode }}")
     expect(deploy.env.EXPO_PUBLIC_CONVEX_URL_E2E).toBe("${{ vars.EXPO_PUBLIC_CONVEX_URL_E2E }}")
     expect(deploy.env.CONVEX_DEPLOY_KEY_E2E).toBe(devDeployOnly)
     expect(deploy.env.CONVEX_PREVIEW_DEPLOY_KEY_E2E).toBe(previewOnly)

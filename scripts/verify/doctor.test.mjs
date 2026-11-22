@@ -5,6 +5,7 @@ import {
   exportIsStale,
   exportStamp,
   needsConvexPreview,
+  runEnsureSeeded,
   seedInputFiles,
   seedInputsHash,
   selectBackendMode,
@@ -212,6 +213,57 @@ describe("seed inputs and backend mode", () => {
     expect(shouldSeed({ marker: "h0", hash: "h1", hasTemplates: true })).toBe(true)
     expect(shouldSeed({ marker: "", hash: "h1", hasTemplates: true })).toBe(true)
     expect(shouldSeed({ marker: "h1", hash: "h1", hasTemplates: false })).toBe(true)
+  })
+
+  it("clears the seed marker before writing and only sets it after every seed step succeeds", () => {
+    const calls = []
+    const skipped = runEnsureSeeded({
+      hash: "h1",
+      host: "modest-kudu-493.convex.cloud",
+      readMarker: () => "h1",
+      hasTemplates: () => true,
+      clearMarker: () => calls.push("clear"),
+      seedAll: () => calls.push("seedAll"),
+      seedTemplates: () => calls.push("seedTemplates"),
+      setMarker: (h) => calls.push(`set:${h}`),
+      log: () => {},
+    })
+    expect(skipped).toEqual({ seeded: false })
+    expect(calls).toEqual([])
+
+    const seeded = runEnsureSeeded({
+      hash: "h2",
+      host: "modest-kudu-493.convex.cloud",
+      readMarker: () => "h1",
+      hasTemplates: () => true,
+      clearMarker: () => calls.push("clear"),
+      seedAll: () => calls.push("seedAll"),
+      seedTemplates: () => calls.push("seedTemplates"),
+      setMarker: (h) => calls.push(`set:${h}`),
+      log: () => {},
+    })
+    expect(seeded).toEqual({ seeded: true })
+    expect(calls).toEqual(["clear", "seedAll", "seedTemplates", "set:h2"])
+
+    // Interrupted seed clears the old marker first and never writes the new one
+    const failCalls = []
+    expect(() =>
+      runEnsureSeeded({
+        hash: "h2",
+        host: "modest-kudu-493.convex.cloud",
+        readMarker: () => "h1",
+        hasTemplates: () => true,
+        clearMarker: () => failCalls.push("clear"),
+        seedAll: () => failCalls.push("seedAll"),
+        seedTemplates: () => {
+          failCalls.push("seedTemplates")
+          throw new Error("category 2 failed")
+        },
+        setMarker: (h) => failCalls.push(`set:${h}`),
+        log: () => {},
+      })
+    ).toThrow(/category 2 failed/)
+    expect(failCalls).toEqual(["clear", "seedAll", "seedTemplates"])
   })
 
   it("collects real convex runtime files plus shared lib/ files imported by convex/", () => {

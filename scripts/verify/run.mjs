@@ -1195,30 +1195,66 @@ function seedTemplates(env, previewName) {
   }
 }
 
+export function runEnsureSeeded({
+  hash,
+  host,
+  readMarker,
+  hasTemplates,
+  clearMarker,
+  seedAll,
+  seedTemplates,
+  setMarker,
+  log = console.log,
+}) {
+  const marker = readMarker()
+  if (!shouldSeed({ marker, hash, hasTemplates: hasTemplates() })) {
+    log(`seed inputs unchanged (${hash}); ${host} keeps its seed`)
+    return { seeded: false }
+  }
+  log(`seeding ${host} (inputs ${hash}, last seeded from ${marker || "nothing recorded"})`)
+  // Clear the marker before the first write so an interrupted/failed seed can
+  // never leave mixed templates behind an older matching hash.
+  clearMarker()
+  seedAll()
+  seedTemplates()
+  setMarker(hash)
+  return { seeded: true }
+}
+
 function ensureSeeded({ env, host, previewName = "" }) {
   const target = previewName ? ["--preview-name", previewName] : []
-  const hash = seedInputsHash()
-  const markerResult = convexOutput(["env", "get", ...target, SEED_MARKER], env)
-  const marker = markerResult.status === 0 ? markerResult.stdout : ""
-  const statusResult = convexOutput(["run", ...target, "programTemplates:seedStatus", "{}"], env)
-  let hasTemplates = false
-  if (statusResult.status === 0) {
-    try {
-      hasTemplates = parseRunResult(statusResult.stdout)?.hasTemplates === true
-    } catch {
-      hasTemplates = false
-    }
-  }
-  if (!shouldSeed({ marker, hash, hasTemplates })) {
-    console.log(`seed inputs unchanged (${hash}); ${host} keeps its seed`)
-    return
-  }
-  console.log(`seeding ${host} (inputs ${hash}, last seeded from ${marker || "nothing recorded"})`)
-  const seeded = convexCli(["run", ...target, "seed:seedAll", "{}"], env)
-  if (seeded.status !== 0) fail(`seed:seedAll exited ${seeded.status ?? 1}`)
-  seedTemplates(env, previewName)
-  const marked = convexCli(["env", "set", ...target, SEED_MARKER, hash], env)
-  if (marked.status !== 0) fail(`convex env set ${SEED_MARKER} exited ${marked.status ?? 1}`)
+  return runEnsureSeeded({
+    hash: seedInputsHash(),
+    host,
+    readMarker() {
+      const markerResult = convexOutput(["env", "get", ...target, SEED_MARKER], env)
+      return markerResult.status === 0 ? markerResult.stdout : ""
+    },
+    hasTemplates() {
+      const statusResult = convexOutput(["run", ...target, "programTemplates:seedStatus", "{}"], env)
+      if (statusResult.status !== 0) return false
+      try {
+        return parseRunResult(statusResult.stdout)?.hasTemplates === true
+      } catch {
+        return false
+      }
+    },
+    clearMarker() {
+      const cleared = convexCli(["env", "remove", ...target, SEED_MARKER], env)
+      if (cleared.status !== 0) fail(`convex env remove ${SEED_MARKER} exited ${cleared.status ?? 1}`)
+    },
+    seedAll() {
+      const seeded = convexCli(["run", ...target, "seed:seedAll", "{}"], env)
+      if (seeded.status !== 0) fail(`seed:seedAll exited ${seeded.status ?? 1}`)
+    },
+    seedTemplates() {
+      seedTemplates(env, previewName)
+    },
+    setMarker(hash) {
+      const marked = convexCli(["env", "set", ...target, SEED_MARKER, hash], env)
+      if (marked.status !== 0) fail(`convex env set ${SEED_MARKER} exited ${marked.status ?? 1}`)
+    },
+  })
 }
 
 // Pull request runs that touch Convex: push this checkout's convex/ functions
