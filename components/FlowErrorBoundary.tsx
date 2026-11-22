@@ -46,6 +46,9 @@ function ErrorFallback({
 
   const handleGoHome = () => {
     router.replace(fallbackRoute as any)
+    // The fallback can sit inside this boundary's own flow (the First Run's
+    // does), so clear the error too, or the boundary keeps showing it there.
+    onRetry()
   }
 
   return (

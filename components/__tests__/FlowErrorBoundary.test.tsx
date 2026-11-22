@@ -86,4 +86,22 @@ describe('FlowErrorBoundary', () => {
     fireEvent.press(getByText('Go Home'))
     expect(mockReplace).toHaveBeenCalledWith('/(first-run)')
   })
+
+  it('leaves the error screen when Go Home lands inside the same flow (regression)', () => {
+    // The First Run's fallback is its own first screen, so the boundary stays
+    // mounted after the navigation and has to drop the error itself.
+    mockReplace.mockImplementationOnce(() => {
+      shouldThrow = false
+    })
+    const { getByText, queryByText } = render(
+      <FlowErrorBoundary fallbackRoute="/(first-run)">
+        <FlakyChild />
+      </FlowErrorBoundary>,
+      { wrapper: AllTheProviders }
+    )
+
+    fireEvent.press(getByText('Go Home'))
+    expect(queryByText('Something went wrong')).toBeNull()
+    expect(getByText('Recovered screen')).toBeTruthy()
+  })
 })

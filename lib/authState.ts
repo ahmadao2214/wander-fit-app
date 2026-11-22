@@ -17,19 +17,19 @@ interface ConvexUser {
 /**
  * Auth input state from Clerk and Convex
  */
-export interface AuthInputState {
+export interface AuthInputState<U extends ConvexUser = ConvexUser> {
   isClerkLoading: boolean;
   clerkUser: { id: string } | null | undefined;
-  convexUser: ConvexUser | null | undefined;
+  convexUser: U | null | undefined;
 }
 
 /**
  * Computed auth state
  */
-export interface ComputedAuthState {
+export interface ComputedAuthState<U extends ConvexUser = ConvexUser> {
   isLoading: boolean;
   isAuthenticated: boolean;
-  user: ConvexUser | null;
+  user: U | null;
   role: string | null;
   needsSetup: boolean;
   needsIntake: boolean;
@@ -46,8 +46,15 @@ export interface ComputedAuthState {
  * 3. Clerk user, Convex undefined → isLoading: true (still fetching)
  * 4. Clerk user, Convex null → needsSetup: true
  * 5. Both exist → fully authenticated
+ *
+ * State 3 also covers a Clerk user whose token Convex hasn't accepted. Right
+ * after sign-in, Convex reports "not loading, not authenticated" until the
+ * backend accepts the token, so that state must read as loading, not as
+ * signed out, or every sign-in would flash the sign-in screen.
  */
-export function computeAuthState(input: AuthInputState): ComputedAuthState {
+export function computeAuthState<U extends ConvexUser>(
+  input: AuthInputState<U>
+): ComputedAuthState<U> {
   const { isClerkLoading, clerkUser, convexUser } = input;
 
   // If Clerk is still loading, we're loading
