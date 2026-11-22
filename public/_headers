@@ -1,0 +1,8 @@
+# Cloudflare Pages response headers for the WanderFit Mobile Web SPA.
+#
+# Cloudflare Pages falls back to index.html when there is no top-level 404.html.
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
