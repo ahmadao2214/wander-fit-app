@@ -18,6 +18,8 @@ export VERIFY_READY_FILE="$TMPDIR/wander-fit-verify.ready"
 export VERIFY_LOG_FILE="$TMPDIR/wander-fit-verify.log"
 ```
 
+Ports and state files keep servers apart, not checkouts: two runs in one checkout still share `dist-verify/` and `e2e-artifacts/persona-latest.json`, so one can replace the other's bundle or persona. Run at most one verify run per checkout at a time, and give parallel runs their own worktrees.
+
 The defaults are port 4173 and `/tmp/wander-fit-verify.*`. The env files `.env`, `.env.local` and `.env.e2e` are gitignored; in a fresh worktree, symlink them from the main checkout.
 
 ## Launch

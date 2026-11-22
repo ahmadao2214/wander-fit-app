@@ -1,4 +1,4 @@
-import { clerkFrontendApi, evaluateDoctor, exportIsStale, sourceStamp } from "./run.mjs"
+import { clerkFrontendApi, evaluateDoctor, exportIsStale, exportStamp, sourceStamp, stampDiffArgs } from "./run.mjs"
 
 const encode = (text) => Buffer.from(text, "utf8").toString("base64")
 
@@ -27,6 +27,7 @@ function healthy(overrides = {}) {
 function liveServer(overrides = {}) {
   return {
     pid: 42,
+    port: 4273,
     alive: true,
     owned: true,
     pageStatus: 200,
@@ -102,6 +103,8 @@ describe("evaluateDoctor", () => {
       evaluateDoctor(healthy({ server: liveServer({ build: { ...liveServer().build, convexHost: "other.convex.cloud" } }) })).problems.join()
     ).toMatch(/talks to other.convex.cloud/)
     expect(evaluateDoctor(healthy({ server: liveServer({ build: null }) })).problems.join()).toMatch(/no verify-build.json/)
+    // Launched on another port than the one doctor probes
+    expect(evaluateDoctor(healthy({ server: liveServer({ port: 4173 }) })).problems.join()).toMatch(/listens on port 4173/)
   })
 })
 
@@ -134,5 +137,22 @@ describe("exportIsStale", () => {
     expect(exportIsStale(null, expected)).toBe(true)
     expect(exportIsStale({ stamp: "s0", convexHost: expected.convexHost }, expected)).toBe(true)
     expect(exportIsStale({ stamp: "s1", convexHost: "wander-fit-e2e.invalid" }, expected)).toBe(true)
+  })
+})
+
+describe("exportStamp", () => {
+  it("keeps the stamp taken before the export when nothing changed", () => {
+    expect(exportStamp("stamp-1", "stamp-1")).toBe("stamp-1")
+  })
+
+  it("refuses an export when the source changed while it ran", () => {
+    expect(() => exportStamp("stamp-1", "stamp-2")).toThrow(/changed while the web export ran/)
+  })
+})
+
+describe("stampDiffArgs", () => {
+  it("leaves the stylesheet the export rewrites out of the source stamp", () => {
+    expect(stampDiffArgs()).toContain(":(exclude)tamagui-web.css")
+    expect(stampDiffArgs().slice(0, 3)).toEqual(["diff", "HEAD", "--binary"])
   })
 })

@@ -155,10 +155,19 @@ export function sourceStamp({ commit, diff, untracked, read = (file) => fs.readF
   return hash.digest("hex").slice(0, 16)
 }
 
+// Tracked files the web export itself rewrites (Metro regenerates the Tamagui
+// stylesheet). They are output, not source: stamping them would make every
+// export look changed while it ran, and a restored copy look like an edit.
+export const EXPORT_WRITES = ["tamagui-web.css"]
+
+export function stampDiffArgs() {
+  return ["diff", "HEAD", "--binary", "--", ".", ...EXPORT_WRITES.map((file) => `:(exclude)${file}`)]
+}
+
 function currentStamp() {
   return sourceStamp({
     commit: gitCommit(),
-    diff: git(["diff", "HEAD", "--binary"]),
+    diff: git(stampDiffArgs()),
     untracked: git(["ls-files", "--others", "--exclude-standard"]),
   })
 }
@@ -262,6 +271,7 @@ async function gatherDoctorFacts({ server }) {
       }
       facts.server = {
         pid: state.pid,
+        port: state.port,
         alive: pidAlive(state.pid),
         owned: ownServerReady(ready, state.pid),
         pageStatus: page.status,
@@ -319,6 +329,9 @@ export function evaluateDoctor(facts) {
     lines.push(`server: pid ${s.pid} ${s.alive ? "alive" : "gone"}, ${s.owned ? "owns" : "does not own"} port ${facts.port}, page HTTP ${s.pageStatus}`)
     if (!s.alive || !s.owned || s.pageStatus !== 200) {
       problems.push("The recorded verify server is not the one answering. Run cleanup, then launch again.")
+    }
+    if (s.port !== undefined && s.port !== facts.port) {
+      problems.push(`The recorded verify server listens on port ${s.port}, but VERIFY_PORT is ${facts.port}; doctor may be checking another server. Use the same VERIFY_PORT as launch, or run cleanup and launch again.`)
     }
     if (!s.build) {
       problems.push("The served export has no verify-build.json. Export again with run.mjs launch after cleanup.")
@@ -383,10 +396,22 @@ function scanExport() {
   return hits
 }
 
+// Pure: the stamp an export may record. The source must not have changed
+// between the start and the end of the export.
+export function exportStamp(before, after) {
+  if (before !== after) {
+    throw new Error("The checkout changed while the web export ran. Run launch again.")
+  }
+  return before
+}
+
 function exportWeb() {
   const url = convexUrl()
   const key = clerkKey()
   if (!key) fail("Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY.")
+  // Stamp the source before Expo reads it. A file saved during the export
+  // would otherwise give the old bundle the new stamp.
+  const stampBefore = currentStamp()
   fs.rmSync(distDir, { recursive: true, force: true })
   const env = { ...process.env, CI: "1", EXPO_NO_DOTENV: "1" }
   delete env.CLERK_SECRET_KEY
@@ -407,9 +432,16 @@ function exportWeb() {
     for (const hit of hits) console.error(`- ${hit}`)
     process.exit(1)
   }
+  let stamp = ""
+  try {
+    stamp = exportStamp(stampBefore, currentStamp())
+  } catch (error) {
+    fs.rmSync(distDir, { recursive: true, force: true })
+    fail(error.message)
+  }
   fs.writeFileSync(
     path.join(distDir, "verify-build.json"),
-    JSON.stringify({ convexHost: convexHost(url), commit: gitCommit(), stamp: currentStamp(), builtAt: new Date().toISOString() }, null, 2)
+    JSON.stringify({ convexHost: convexHost(url), commit: gitCommit(), stamp, builtAt: new Date().toISOString() }, null, 2)
   )
 }
 
@@ -493,6 +525,9 @@ function launch() {
   const hits = scanExport()
   if (hits.length) fail(`Refusing to serve a tainted export:\n${hits.join("\n")}`)
   cleanupServer()
+  // The log, ready and state files may sit in a directory that does not exist
+  // yet (the nightly recipe uses $TMPDIR/verify-nightly/).
+  for (const file of [logFile, readyFile, stateFile]) fs.mkdirSync(path.dirname(file), { recursive: true })
   const log = fs.openSync(logFile, "a")
   const child = spawn(process.execPath, [fileURLToPath(import.meta.url), "serve"], {
     cwd: root,
@@ -500,7 +535,6 @@ function launch() {
     stdio: ["ignore", log, log],
   })
   child.unref()
-  fs.mkdirSync(path.dirname(stateFile), { recursive: true })
   fs.writeFileSync(stateFile, JSON.stringify({ pid: child.pid, port }))
   const url = verifyUrl()
   const deadline = Date.now() + 15000
