@@ -66,6 +66,14 @@ jest.mock('../../hooks/useAuth', () => ({
   useAuth: () => ({ user: { _id: 'user_1', name: 'Test Athlete' }, isLoading: false }),
 }))
 jest.mock('../../components/SignOutButton', () => ({ SignOutButton: () => null }))
+const mockUseFeedbackPrompts = jest.fn((_options: { suppressPrompts?: boolean }) => ({
+  ratingSheetOpen: false,
+  setRatingSheetOpen: jest.fn(),
+  handleDismissRatingPrompt: jest.fn(),
+}))
+jest.mock('../../hooks/useFeedbackPrompts', () => ({
+  useFeedbackPrompts: (options: { suppressPrompts?: boolean }) => mockUseFeedbackPrompts(options),
+}))
 
 import { fireEvent } from '@testing-library/react-native'
 import AthleteDashboard from '../(athlete)/index'
@@ -123,6 +131,28 @@ describe('Today card', () => {
       jest.setSystemTime(new Date(2026, 10, 16, 8, 0, 0))
       act(() => onChange('active'))
       expect(getByText('Monday, Nov 16')).toBeTruthy()
+    })
+  })
+
+  // A paused session can arrive after eligibility; the rating sheet must not
+  // open over it in that window.
+  describe('feedback prompts', () => {
+    afterEach(() => {
+      mockCurrentSession = null
+    })
+    const lastSuppress = () =>
+      mockUseFeedbackPrompts.mock.calls[mockUseFeedbackPrompts.mock.calls.length - 1][0].suppressPrompts
+
+    it('holds prompts while the current session is still loading', () => {
+      mockCurrentSession = undefined
+      render(<AthleteDashboard />, { wrapper: AllTheProviders })
+      expect(lastSuppress()).toBe(true)
+    })
+
+    it('allows prompts once the athlete has no session in progress', () => {
+      mockCurrentSession = null
+      render(<AthleteDashboard />, { wrapper: AllTheProviders })
+      expect(lastSuppress()).toBe(false)
     })
   })
 

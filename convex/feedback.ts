@@ -10,7 +10,12 @@ import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { getCurrentUser, isInternalTester, requireCurrentUser } from "./authHelpers";
-import { evaluateFeedbackPrompts } from "../lib/feedbackEligibility";
+import {
+  evaluateFeedbackPrompts,
+  PRIVATE_RATING_MIN_WORKOUTS,
+  STORE_REVIEW_MIN_REASSESSMENTS,
+  STORE_REVIEW_MIN_WORKOUTS,
+} from "../lib/feedbackEligibility";
 import {
   FEEDBACK_DETAILS_MAX,
   FEEDBACK_ERROR_CODE_MAX,
@@ -240,13 +245,15 @@ export const getPromptEligibility = query({
       ctx.db
         .query("gpp_workout_sessions")
         .withIndex("by_user_status", (q) => q.eq("userId", user._id).eq("status", "completed"))
-        .collect(),
+        // Eligibility only needs to know whether the highest milestone is
+        // reached, so read at most that many instead of the whole history.
+        .take(Math.max(PRIVATE_RATING_MIN_WORKOUTS, STORE_REVIEW_MIN_WORKOUTS)),
       ctx.db
         .query("intake_responses")
         .withIndex("by_user_type", (q) =>
           q.eq("userId", user._id).eq("intakeType", "reassessment")
         )
-        .collect(),
+        .take(STORE_REVIEW_MIN_REASSESSMENTS),
       ctx.db
         .query("user_programs")
         .withIndex("by_user", (q) => q.eq("userId", user._id))

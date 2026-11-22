@@ -226,7 +226,12 @@ export default function AthleteDashboard() {
   } = useFeedbackPrompts({
     enabled: Boolean(user && programState),
     isFocused,
-    suppressPrompts: Boolean(reassessmentStatus?.reassessmentPending || activeSession),
+    // Still-loading queries count as suppressed, so a paused session that
+    // arrives after eligibility can never be covered by the rating sheet.
+    suppressPrompts:
+      reassessmentStatus === undefined ||
+      activeSession === undefined ||
+      Boolean(reassessmentStatus?.reassessmentPending || activeSession),
   })
 
   // Phase colors: one brand hue, deepening GPP → SSP (lib/phase.ts)
