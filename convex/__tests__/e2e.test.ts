@@ -2,6 +2,7 @@ import { convexTest } from "convex-test";
 import schema from "../schema";
 import { api, internal } from "../_generated/api";
 import { convexModules } from "../../jest/convexModules";
+import { isPrivateRatingEligible } from "../../lib/feedbackEligibility";
 
 const modules = convexModules();
 const newTest = () => convexTest(schema, modules);
@@ -34,6 +35,34 @@ async function rowsFor(t: TestConvex) {
 }
 
 describe("e2e persona provisioning", () => {
+  // The Today rating auto-prompt once covered the history journey's persona
+  it("starts every persona inside the rating-prompt cooldown", async () => {
+    const t = newTest();
+    await seedBasketball(t);
+    await t.mutation(internal.e2e.provision, { ...persona, state: "onboarded" });
+    await t.mutation(internal.e2e.provision, { ...persona, state: "onboarded" });
+
+    const states = await t.run(async (ctx) => {
+      const user = await ctx.db
+        .query("users")
+        .withIndex("by_email", (q) => q.eq("email", email))
+        .first();
+      return ctx.db
+        .query("feedback_prompt_state")
+        .withIndex("by_user", (q) => q.eq("userId", user!._id))
+        .collect();
+    });
+    expect(states).toHaveLength(1);
+    expect(
+      isPrivateRatingEligible({
+        completedWorkoutsCount: 15,
+        reassessmentPending: false,
+        promptState: states[0],
+        now: Date.now(),
+      })
+    ).toBe(false);
+  });
+
   it("new writes a user row only", async () => {
     const t = newTest();
     await seedBasketball(t);

@@ -121,6 +121,17 @@ export const provision = internalMutation({
     // Every state starts from the user row alone. new stops there.
     await clearProgramRows(ctx, userId);
 
+    // Personas start inside the private-rating cooldown, so the Today
+    // auto-prompt never covers another journey. The feedback journey opens
+    // the rating sheet from Profile instead.
+    await ctx.db.insert("feedback_prompt_state", {
+      userId,
+      lastRatingDismissedAt: now,
+      ratingDismissCount: 0,
+      storeReviewRequestCount: 0,
+      updatedAt: now,
+    });
+
     if (args.state === "new") {
       await ctx.db.patch(userId, {
         intakeCompletedAt: undefined,

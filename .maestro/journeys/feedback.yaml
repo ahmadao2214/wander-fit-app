@@ -15,14 +15,16 @@ url: ${VERIFY_URL}
 - extendedWaitUntil:
     visible: "Training info"
     timeout: 30000
-# Scroll down Profile ScrollView to bring Feedback & support into view
-- swipe:
-    start: "50%, 80%"
-    end: "50%, 25%"
-    duration: 500
+# Feedback & support sits just above Settings and Sign Out, below the 625px
+# viewport. Profile scrolls inside the page (a single swipe falls short on web),
+# so follow the #sign-out link the app-settings journey uses.
+- evalScript: ${var base = VERIFY_URL; if (base.endsWith('/')) base = base.slice(0, -1); if (base.endsWith('/sign-in')) base = base.slice(0, -8); output.signOutUrl = base + '/profile#sign-out'}
+- openLink: ${output.signOutUrl}
 - extendedWaitUntil:
-    visible: "Feedback & support"
-    timeout: 15000
+    visible:
+      id: feedback-row-rate
+    timeout: 30000
+- assertVisible: "Feedback & support"
 - assertNotVisible: "(?i)my feedback|my submissions"
 - takeScreenshot: 01-profile-feedback
 
