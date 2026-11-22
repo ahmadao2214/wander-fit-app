@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Local web tracer. Same command runs in CI: export, serve, Maestro, keep evidence.
 import { spawn, spawnSync } from "node:child_process"
+import { createHash } from "node:crypto"
 import fs from "node:fs"
 import http from "node:http"
 import path from "node:path"
@@ -42,6 +43,7 @@ const guardedFiles = [".env", ".env.local", ".gitignore"]
 // Tests set these so cleanup does not kill a live server.
 const stateFile = process.env.VERIFY_STATE_FILE || "/tmp/wander-fit-verify.json"
 const readyFile = process.env.VERIFY_READY_FILE || "/tmp/wander-fit-verify.ready"
+const logFile = process.env.VERIFY_LOG_FILE || "/tmp/wander-fit-verify.log"
 const port = Number(process.env.VERIFY_PORT || 4173)
 
 function readDotenv(file) {
@@ -112,32 +114,250 @@ function fail(message) {
   process.exit(1)
 }
 
-function doctor() {
-  const problems = []
-  if (!clerkKey()) {
-    problems.push(
-      "Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY. The sign-in screen stays on Loading without it."
-    )
-  }
-  if (!maestroBin()) {
-    problems.push(
-      "Maestro is not installed. Install it with: curl -Ls \"https://get.maestro.mobile.dev\" | bash"
-    )
-  }
-  const java = spawnSync("java", ["-version"], { encoding: "utf8" })
-  if (java.status !== 0) problems.push("Java is not installed. Maestro needs Java 17.")
+// A Clerk publishable key is pk_test_ or pk_live_ plus base64 of the
+// Frontend API host and a trailing "$". Anything else never loads Clerk.
+export function clerkFrontendApi(key) {
+  const match = /^pk_(test|live)_([A-Za-z0-9+/=_-]+)$/.exec(String(key || "").trim())
+  if (!match) return ""
+  let decoded = ""
   try {
-    const host = convexHost(convexUrl())
-    console.log(`convex host: ${host}`)
-    if (host === convexHost(PLACEHOLDER_CONVEX_URL)) {
-      console.log("convex mode: screen only (no wander-fit-e2e project configured)")
-    }
-  } catch (error) {
-    problems.push(error.message)
+    decoded = Buffer.from(match[2], "base64").toString("utf8")
+  } catch {
+    return ""
   }
-  console.log(`clerk publishable key: ${clerkKey() ? "present" : "missing"}`)
-  console.log(`maestro: ${maestroBin() || "missing"}`)
-  console.log(`port: ${port}`)
+  if (!decoded.endsWith("$")) return ""
+  const host = decoded.slice(0, -1)
+  return /^[a-z0-9.-]+\.[a-z]{2,}$/i.test(host) ? host : ""
+}
+
+function git(args) {
+  const result = spawnSync("git", args, { cwd: root, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })
+  return result.status === 0 ? result.stdout : ""
+}
+
+function gitCommit() {
+  return git(["rev-parse", "HEAD"]).trim()
+}
+
+// What the export was built from: HEAD plus any uncommitted or untracked
+// change, so an agent verifying an edit it has not committed never drives an
+// older bundle. Gitignored output (dist-verify/, e2e-artifacts/) is left out.
+export function sourceStamp({ commit, diff, untracked, read = (file) => fs.readFileSync(path.join(root, file)) }) {
+  const hash = createHash("sha256").update(`${commit}\n`).update(diff)
+  for (const file of untracked.split("\n").filter(Boolean).sort()) {
+    hash.update(`\0${file}\0`)
+    try {
+      hash.update(read(file))
+    } catch {
+      hash.update("missing")
+    }
+  }
+  return hash.digest("hex").slice(0, 16)
+}
+
+// Tracked files the web export itself rewrites (Metro regenerates the Tamagui
+// stylesheet). They are output, not source: stamping them would make every
+// export look changed while it ran, and a restored copy look like an edit.
+export const EXPORT_WRITES = ["tamagui-web.css"]
+
+export function stampDiffArgs() {
+  return ["diff", "HEAD", "--binary", "--", ".", ...EXPORT_WRITES.map((file) => `:(exclude)${file}`)]
+}
+
+function currentStamp() {
+  return sourceStamp({
+    commit: gitCommit(),
+    diff: git(stampDiffArgs()),
+    untracked: git(["ls-files", "--others", "--exclude-standard"]),
+  })
+}
+
+// Doctor's network probes. Each returns facts, never throws, and never sends
+// a credential: the Convex queries are public and the Clerk call is the
+// browser's own unauthenticated environment fetch.
+async function probe(url, init = {}) {
+  try {
+    const response = await fetch(url, { ...init, signal: AbortSignal.timeout(8000) })
+    const text = await response.text()
+    return { status: response.status, text }
+  } catch (error) {
+    return { status: 0, text: "", error: error?.cause?.code || error?.message || String(error) }
+  }
+}
+
+async function convexQuery(url, name) {
+  const result = await probe(`${url.replace(/\/$/, "")}/api/query`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ path: name, args: {}, format: "json" }),
+  })
+  try {
+    const parsed = JSON.parse(result.text)
+    return parsed.status === "success" ? { ok: true, value: parsed.value } : { ok: false, error: parsed.errorMessage || "query failed" }
+  } catch {
+    return { ok: false, error: result.error || `HTTP ${result.status}` }
+  }
+}
+
+function readServerState() {
+  if (!fs.existsSync(stateFile)) return null
+  try {
+    return JSON.parse(fs.readFileSync(stateFile, "utf8"))
+  } catch {
+    return { pid: 0 }
+  }
+}
+
+function pidAlive(pid) {
+  if (!(Number(pid) > 0)) return false
+  try {
+    process.kill(Number(pid), 0)
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function gatherDoctorFacts({ server }) {
+  const key = clerkKey()
+  const facts = {
+    clerkKeyPresent: Boolean(key),
+    clerkFrontendApi: clerkFrontendApi(key),
+    clerkStatus: null,
+    maestro: maestroBin(),
+    java: spawnSync("java", ["-version"], { encoding: "utf8" }).status === 0,
+    convexHost: "",
+    convexError: "",
+    screenOnly: false,
+    backendStatus: null,
+    templates: null,
+    sports: null,
+    seedError: "",
+    expectedCommit: gitCommit(),
+    expectedStamp: currentStamp(),
+    server: null,
+    port,
+  }
+  let url = ""
+  try {
+    url = convexUrl()
+    facts.convexHost = convexHost(url)
+    facts.screenOnly = facts.convexHost === convexHost(PLACEHOLDER_CONVEX_URL)
+  } catch (error) {
+    facts.convexError = error.message
+  }
+  if (facts.clerkFrontendApi) {
+    facts.clerkStatus = (await probe(`https://${facts.clerkFrontendApi}/v1/environment`)).status
+  }
+  if (url && !facts.screenOnly) {
+    facts.backendStatus = (await probe(`${url.replace(/\/$/, "")}/version`)).status
+    const templates = await convexQuery(url, "programTemplates:getCount")
+    const sports = await convexQuery(url, "sports:list")
+    if (templates.ok) facts.templates = Number(templates.value)
+    if (sports.ok) facts.sports = Array.isArray(sports.value) ? sports.value.length : 0
+    facts.seedError = [templates, sports].filter((r) => !r.ok).map((r) => r.error).join("; ")
+  }
+  if (server) {
+    const state = readServerState()
+    if (state) {
+      const ready = fs.existsSync(readyFile) ? fs.readFileSync(readyFile, "utf8") : ""
+      const page = await probe(verifyUrl())
+      const build = await probe(`${verifyUrl()}verify-build.json`)
+      let buildInfo = null
+      try {
+        buildInfo = JSON.parse(build.text)
+      } catch {
+        buildInfo = null
+      }
+      facts.server = {
+        pid: state.pid,
+        port: state.port,
+        alive: pidAlive(state.pid),
+        owned: ownServerReady(ready, state.pid),
+        pageStatus: page.status,
+        build: buildInfo,
+      }
+    }
+  }
+  return facts
+}
+
+// Pure: turns the gathered facts into report lines and problems. A screen-only
+// run (no e2e URL) skips the backend and seed checks. A server is checked only
+// when this checkout's launch recorded one.
+export function evaluateDoctor(facts) {
+  const lines = []
+  const problems = []
+  lines.push(`clerk publishable key: ${facts.clerkKeyPresent ? "present" : "missing"}`)
+  if (!facts.clerkKeyPresent) {
+    problems.push("Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY. The sign-in screen stays on Loading without it.")
+  } else if (!facts.clerkFrontendApi) {
+    problems.push("EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY is not a valid Clerk publishable key (pk_test_/pk_live_ + encoded Frontend API host).")
+  } else {
+    lines.push(`clerk frontend api: ${facts.clerkStatus === 200 ? "reachable" : `HTTP ${facts.clerkStatus}`}`)
+    if (facts.clerkStatus !== 200) {
+      problems.push(`Clerk rejected the publishable key or is unreachable (environment returned ${facts.clerkStatus || "no response"}).`)
+    }
+  }
+  lines.push(`maestro: ${facts.maestro || "missing"}`)
+  if (!facts.maestro) {
+    problems.push('Maestro is not installed. Install it with: curl -Ls "https://get.maestro.mobile.dev" | bash')
+  }
+  if (!facts.java) problems.push("Java is not installed. Maestro needs Java 17.")
+  if (facts.convexError) {
+    problems.push(facts.convexError)
+  } else {
+    lines.push(`convex host: ${facts.convexHost}`)
+    if (facts.screenOnly) {
+      lines.push("convex mode: screen only (no wander-fit-e2e project configured)")
+    } else {
+      lines.push(`backend: ${facts.backendStatus === 200 ? "reachable" : `HTTP ${facts.backendStatus}`}`)
+      if (facts.backendStatus !== 200) {
+        problems.push(`The e2e Convex deployment did not answer /version (${facts.backendStatus || "no response"}).`)
+      }
+      lines.push(`seed: ${facts.templates ?? "?"} program templates, ${facts.sports ?? "?"} sports`)
+      if (facts.seedError) {
+        problems.push(`Seed status query failed: ${facts.seedError}`)
+      } else if (!(facts.templates > 0) || !(facts.sports > 0)) {
+        problems.push("The e2e deployment is not seeded (no program templates or sports). Seeding is run.mjs deploy, which the founder or CI runs.")
+      }
+    }
+  }
+  lines.push(`port: ${facts.port}`)
+  if (facts.server) {
+    const s = facts.server
+    lines.push(`server: pid ${s.pid} ${s.alive ? "alive" : "gone"}, ${s.owned ? "owns" : "does not own"} port ${facts.port}, page HTTP ${s.pageStatus}`)
+    if (!s.alive || !s.owned || s.pageStatus !== 200) {
+      problems.push("The recorded verify server is not the one answering. Run cleanup, then launch again.")
+    }
+    if (s.port !== undefined && s.port !== facts.port) {
+      problems.push(`The recorded verify server listens on port ${s.port}, but VERIFY_PORT is ${facts.port}; doctor may be checking another server. Use the same VERIFY_PORT as launch, or run cleanup and launch again.`)
+    }
+    if (!s.build) {
+      problems.push("The served export has no verify-build.json. Export again with run.mjs launch after cleanup.")
+    } else {
+      const commit = s.build.commit || "unknown"
+      lines.push(`build: commit ${commit.slice(0, 12)}, convex ${s.build.convexHost}`)
+      if (!facts.convexError && s.build.convexHost !== facts.convexHost) {
+        problems.push(`The served build talks to ${s.build.convexHost}, not ${facts.convexHost}.`)
+      }
+      if (facts.expectedCommit && s.build.commit !== facts.expectedCommit) {
+        problems.push(`The served build is from ${commit.slice(0, 12)}, not HEAD ${facts.expectedCommit.slice(0, 12)}. Run cleanup, then launch again (launch re-exports).`)
+      } else if (facts.expectedStamp && s.build.stamp !== facts.expectedStamp) {
+        problems.push("The checkout changed since the served build was exported. Run cleanup, then launch again (launch re-exports).")
+      }
+    }
+  } else {
+    lines.push("server: not running (launch starts it)")
+  }
+  return { lines, problems }
+}
+
+// server: false before this run's own launch, so a stale record from an
+// earlier run does not fail the pre-flight check; launch replaces it.
+async function doctor({ server = true } = {}) {
+  const { lines, problems } = evaluateDoctor(await gatherDoctorFacts({ server }))
+  for (const line of lines) console.log(line)
   if (problems.length) {
     for (const problem of problems) console.error(`- ${problem}`)
     process.exit(1)
@@ -176,10 +396,22 @@ function scanExport() {
   return hits
 }
 
+// Pure: the stamp an export may record. The source must not have changed
+// between the start and the end of the export.
+export function exportStamp(before, after) {
+  if (before !== after) {
+    throw new Error("The checkout changed while the web export ran. Run launch again.")
+  }
+  return before
+}
+
 function exportWeb() {
   const url = convexUrl()
   const key = clerkKey()
   if (!key) fail("Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY.")
+  // Stamp the source before Expo reads it. A file saved during the export
+  // would otherwise give the old bundle the new stamp.
+  const stampBefore = currentStamp()
   fs.rmSync(distDir, { recursive: true, force: true })
   const env = { ...process.env, CI: "1", EXPO_NO_DOTENV: "1" }
   delete env.CLERK_SECRET_KEY
@@ -200,9 +432,16 @@ function exportWeb() {
     for (const hit of hits) console.error(`- ${hit}`)
     process.exit(1)
   }
+  let stamp = ""
+  try {
+    stamp = exportStamp(stampBefore, currentStamp())
+  } catch (error) {
+    fs.rmSync(distDir, { recursive: true, force: true })
+    fail(error.message)
+  }
   fs.writeFileSync(
     path.join(distDir, "verify-build.json"),
-    JSON.stringify({ convexHost: convexHost(url), builtAt: new Date().toISOString() }, null, 2)
+    JSON.stringify({ convexHost: convexHost(url), commit: gitCommit(), stamp, builtAt: new Date().toISOString() }, null, 2)
   )
 }
 
@@ -253,6 +492,22 @@ function startServer() {
   return server
 }
 
+function readBuildInfo() {
+  const file = path.join(distDir, "verify-build.json")
+  if (!fs.existsSync(path.join(distDir, "index.html")) || !fs.existsSync(file)) return null
+  try {
+    return JSON.parse(fs.readFileSync(file, "utf8"))
+  } catch {
+    return null
+  }
+}
+
+// Launch reuses dist-verify/ only when it was built from this exact source
+// and for this backend.
+export function exportIsStale(built, expected) {
+  return !built || built.stamp !== expected.stamp || built.convexHost !== expected.convexHost
+}
+
 // Curl can succeed against a different process already bound to this port.
 // The child writes its pid only after listen succeeds.
 export function ownServerReady(readyText, pid) {
@@ -266,18 +521,20 @@ function verifyUrl() {
 }
 
 function launch() {
-  if (!fs.existsSync(path.join(distDir, "index.html"))) exportWeb()
+  if (exportIsStale(readBuildInfo(), { stamp: currentStamp(), convexHost: convexHost(convexUrl()) })) exportWeb()
   const hits = scanExport()
   if (hits.length) fail(`Refusing to serve a tainted export:\n${hits.join("\n")}`)
   cleanupServer()
-  const log = fs.openSync("/tmp/wander-fit-verify.log", "a")
+  // The log, ready and state files may sit in a directory that does not exist
+  // yet (the nightly recipe uses $TMPDIR/verify-nightly/).
+  for (const file of [logFile, readyFile, stateFile]) fs.mkdirSync(path.dirname(file), { recursive: true })
+  const log = fs.openSync(logFile, "a")
   const child = spawn(process.execPath, [fileURLToPath(import.meta.url), "serve"], {
     cwd: root,
     detached: true,
     stdio: ["ignore", log, log],
   })
   child.unref()
-  fs.mkdirSync(path.dirname(stateFile), { recursive: true })
   fs.writeFileSync(stateFile, JSON.stringify({ pid: child.pid, port }))
   const url = verifyUrl()
   const deadline = Date.now() + 15000
@@ -968,7 +1225,7 @@ export function runDrive(url, submitting = submitMode()) {
   }
 }
 
-function main() {
+async function main() {
   const command = process.argv[2] || "all"
 
   if (command === "serve") {
@@ -979,7 +1236,7 @@ function main() {
       console.log(`verify server on 127.0.0.1:${port}`)
     })
   } else if (command === "doctor") {
-    doctor()
+    await doctor()
   } else if (command === "export") {
     exportWeb()
   } else if (command === "launch") {
@@ -991,7 +1248,7 @@ function main() {
     cleanupServer()
     console.log(`left evidence in ${artifactsDir}`)
   } else if (command === "screen") {
-    doctor()
+    await doctor({ server: false })
     exportWeb()
     runDrive(launch(), false)
     console.log(`left evidence in ${screenEvidenceDir}`)
@@ -1012,7 +1269,7 @@ function main() {
       )
     }
     const flows = selectFlows(process.argv.slice(3))
-    doctor()
+    await doctor({ server: false })
     exportWeb()
     const url = launch()
     let results
@@ -1033,10 +1290,8 @@ const invokedDirectly =
   process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 
 if (invokedDirectly) {
-  try {
-    main()
-  } catch (error) {
+  main().catch((error) => {
     console.error(error.message || error)
     process.exit(error.exitStatus ?? 1)
-  }
+  })
 }

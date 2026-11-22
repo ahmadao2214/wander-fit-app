@@ -1,7 +1,7 @@
 # Regression: finishing an exercise's last set must not move on by itself.
 # PR #106 removed a 1.5 s auto-advance; the athlete taps Next.
 # Starts on Today with an unlocked, uncompleted workout (see
-# .cursor/skills/verify-wander-fit/features/workout-no-auto-advance.md).
+# .claude/skills/verify-wander-fit/features/workout-no-auto-advance.md).
 appId: com.offseason.asrafit
 ---
 - assertVisible:

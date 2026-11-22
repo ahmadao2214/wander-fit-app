@@ -2,7 +2,7 @@
 # Start and the logged sets were lost, though the dialog promised a resume.
 # Exit now pauses: Today shows Resume, and the logged set is still there.
 # Starts on Today with an unlocked, uncompleted workout and no paused session
-# (see .cursor/skills/verify-wander-fit/features/workout-exit-resume.md).
+# (see .claude/skills/verify-wander-fit/features/workout-exit-resume.md).
 appId: com.offseason.asrafit
 ---
 - assertVisible:
