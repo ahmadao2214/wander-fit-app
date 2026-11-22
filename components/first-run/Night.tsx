@@ -12,6 +12,7 @@ import LottieView from 'lottie-react-native'
 import { getSportAnimation } from '../../lib/sportAnimations'
 import { NIGHT } from '../../lib/firstRunStory'
 import { PAGE_EASE } from './intakeMotion'
+import { SportField } from './SportField'
 
 /**
  * Game-night building blocks shared by every First Run screen: the huge
@@ -163,9 +164,10 @@ export function SportShape({
 }
 
 /**
- * Your sport becomes the world: from the Season screen on, the picked icon
- * sits large, cropped and faint in the corner and sways slowly. With `fly`
- * it arrives from the tile, growing in as the page turns.
+ * Your sport becomes the world: from the Season screen on, the picked sport's
+ * field sits large, cropped and faint in the corner, in chalk lines, and
+ * drifts slowly. With `fly` it arrives from the tile, growing in as the page
+ * turns.
  */
 export function SportBackdrop({ name, moving, fly = false }: { name: string; moving: boolean; fly?: boolean }) {
   const enter = useSharedValue(fly && moving ? 0 : 1)
@@ -180,7 +182,7 @@ export function SportBackdrop({ name, moving, fly = false }: { name: string; mov
     sway.value = withRepeat(withTiming(1, { duration: 14000, easing: Easing.inOut(Easing.sin) }), -1, true)
   }, [moving, enter, sway])
   const style = useAnimatedStyle(() => ({
-    opacity: 1 - enter.value * 0.87,
+    opacity: 1 - enter.value * 0.9,
     transform: [
       { translateX: -22 * sway.value - (1 - enter.value) * 260 },
       { translateY: -14 * sway.value - (1 - enter.value) * 300 },
@@ -195,7 +197,7 @@ export function SportBackdrop({ name, moving, fly = false }: { name: string; mov
       style={[{ position: 'absolute', width: 560, height: 560, right: -190, bottom: 70 }, style]}
       testID="sport-backdrop"
     >
-      <SportShape name={name} size={560} />
+      <SportField name={name} size={560} color={NIGHT.fg} />
     </Animated.View>
   )
 }

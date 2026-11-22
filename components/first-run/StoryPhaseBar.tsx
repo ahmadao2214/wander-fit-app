@@ -6,7 +6,7 @@ import type { Phase } from '../../types'
 import { BODY_BOLD, DISPLAY } from './Night'
 import { PAGE_EASE } from './intakeMotion'
 
-export const PHASE_BAR_HEIGHT = 60
+export const PHASE_BAR_HEIGHT = 68
 
 /**
  * The small line under a phase name: just "GPP" on the reveal, where the
@@ -64,14 +64,15 @@ function Segment({
           flex: 1,
           backgroundColor: NIGHT_PHASE_FILL[phase],
           paddingHorizontal: 8,
-          paddingVertical: 8,
+          paddingTop: 8,
+          paddingBottom: 6,
           justifyContent: 'space-between',
           borderTopLeftRadius: first ? 8 : 4,
           borderBottomLeftRadius: first ? 8 : 4,
           borderTopRightRadius: last ? 8 : 4,
           borderBottomRightRadius: last ? 8 : 4,
-          borderBottomWidth: selected ? 3 : 0,
-          borderBottomColor: '#FFFFFF',
+          borderBottomWidth: 3,
+          borderBottomColor: selected ? '#FFFFFF' : 'transparent',
           transformOrigin: 'left',
         },
         style,

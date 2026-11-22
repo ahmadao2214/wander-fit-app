@@ -62,15 +62,21 @@ describe('First Run sport', () => {
     expect(screen.getByTestId('first-run-continue')).toBeDisabled()
   })
 
-  it('search narrows All sports and leaves the Popular row alone', async () => {
+  it('search covers every sport and folds the Popular row away', async () => {
     await renderSport()
     fireEvent.changeText(screen.getByTestId('sport-search'), 'fit')
     expect(screen.getByTestId('sport-General Fitness')).toBeTruthy()
-    // Popular sports stay put while searching.
+    // The Popular row hides so matches sit right under the field.
+    expect(screen.queryByText('POPULAR')).toBeNull()
+    expect(screen.queryByTestId('sport-Basketball')).toBeNull()
+    // A Popular sport is still found by name.
+    fireEvent.changeText(screen.getByTestId('sport-search'), 'basket')
     expect(screen.getByTestId('sport-Basketball')).toBeTruthy()
     fireEvent.changeText(screen.getByTestId('sport-search'), 'curling')
     expect(screen.queryByTestId('sport-General Fitness')).toBeNull()
     expect(screen.getByText(/General Fitness if yours isn't listed/)).toBeTruthy()
+    fireEvent.changeText(screen.getByTestId('sport-search'), '')
+    expect(screen.getByText('POPULAR')).toBeTruthy()
   })
 
   it('a tap stores the sport, plays only its icon once, and Continue turns to Season', async () => {

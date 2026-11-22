@@ -90,7 +90,7 @@ const CategoryTile = forwardRef<ComponentRef<typeof View>, {
     k.value = settled ? (lit ? 1 : 0) : withTiming(lit ? 1 : 0, { duration: 400, easing: PAGE_EASE })
     fade.value = settled ? (dim ? 1 : 0) : withTiming(dim ? 1 : 0, { duration: 400, easing: PAGE_EASE })
   }, [lit, dim, settled, k, fade])
-  const tileStyle = useAnimatedStyle(() => ({ opacity: 1 - fade.value * 0.75 }))
+  const tileStyle = useAnimatedStyle(() => ({ opacity: 1 - fade.value * 0.55 }))
   const litStyle = useAnimatedStyle(() => ({ opacity: k.value }))
   return (
     <Animated.View
@@ -102,11 +102,11 @@ const CategoryTile = forwardRef<ComponentRef<typeof View>, {
       testID={`category-tile-${cat.id}`}
     >
       <Animated.View style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: cat.color }, litStyle]} />
-      <View style={{ position: 'absolute', left: 8, right: 8, top: 6, bottom: 40 }}>
+      <View style={{ position: 'absolute', left: 8, right: 8, top: 6, bottom: 48 }}>
         <Athlete cat={cat.id} lit={lit} tile={lit ? cat.color : NIGHT.ink2} play={playMove} settled={settled && lit} />
       </View>
       <RNText
-        style={{ position: 'absolute', left: 14, bottom: 12, fontFamily: DISPLAY, fontSize: 30, lineHeight: 30, color: lit ? '#FFFFFF' : NIGHT.fg2 }}
+        style={{ position: 'absolute', left: 14, bottom: 10, fontFamily: DISPLAY, fontSize: 30, lineHeight: 30, color: lit ? '#FFFFFF' : NIGHT.fg2 }}
       >
         {cat.name.toUpperCase()}
       </RNText>
@@ -182,7 +182,12 @@ export function CategoryStory({
     <View style={{ flex: 1 }} testID="reveal-category">
       <Animated.View style={[{ marginTop: 'auto' }, leaveStyle]}>
         <Beat at={CATEGORY_BEATS.lead} play={play}>
-          <RNText style={{ fontFamily: DISPLAY, fontSize: 30, lineHeight: 32, color: NIGHT.fg2, letterSpacing: 1 }}>
+          <RNText
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.72}
+            style={{ fontFamily: DISPLAY, fontSize: 30, lineHeight: 32, color: NIGHT.fg2, letterSpacing: 1 }}
+          >
             {`${sportName.toUpperCase()} TRAINS FOR`}
           </RNText>
         </Beat>

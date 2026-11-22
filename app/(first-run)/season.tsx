@@ -106,7 +106,7 @@ export default function FirstRunSeason() {
           </RNText>
         </View>
 
-        <View style={{ marginTop: 8 }} testID="season-calendar">
+        <View style={{ marginTop: 8, padding: 8, borderRadius: 12, backgroundColor: NIGHT.ink2 }} testID="season-calendar">
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <Pressable
               onPress={() => canPrev && shift(-1)}
