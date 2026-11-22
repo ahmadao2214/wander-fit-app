@@ -15,6 +15,7 @@ import {
   previewName,
 } from "./targets.mjs"
 import {
+  defaultFlows,
   artifactName,
   artifactsDir,
   evidenceDirFor,
@@ -899,7 +900,7 @@ export function runSuite(flows, steps, now = Date.now) {
 function selectFlows(requested) {
   const available = listWebFlows()
   if (!available.length) fail("No flows under .maestro/web.")
-  if (!requested.length) return available
+  if (!requested.length) return defaultFlows(available, process.env.VERIFY_FLOW_SET)
   const unknown = requested.filter((flow) => !available.includes(flow))
   if (unknown.length) fail(`Unknown web flow: ${unknown.join(", ")}. Flows: ${available.join(", ")}`)
   return requested

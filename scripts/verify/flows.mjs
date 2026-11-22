@@ -23,6 +23,17 @@ export function listWebFlows(dir = webFlowsDir) {
     .sort()
 }
 
+// Flows too slow for the per-PR web job (AGENTS.md: when the per-PR suite
+// goes over 10 minutes, the slowest flows move to nightly). Pull request runs
+// leave them out. Main pushes, the nightly run and local runs keep them.
+export const nightlyOnlyFlows = ["workout-loop"]
+
+// The flows a run with no named flows covers. `set` is "pr" on pull request
+// runs (VERIFY_FLOW_SET in checks.yml) and anything else for every flow.
+export function defaultFlows(available, set) {
+  return set === "pr" ? available.filter((flow) => !nightlyOnlyFlows.includes(flow)) : available
+}
+
 export function webFlowFile(flow) {
   return path.join(".maestro/web", `${flow}.yaml`)
 }
