@@ -3,17 +3,16 @@ import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
 import { SignOutButton } from '../../components/SignOutButton'
-import { useRouter } from 'expo-router'
+import { useIsFocused, useRouter } from 'expo-router'
 import { useState } from 'react'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Play, Target, CheckCircle, RotateCcw, Bell } from '@tamagui/lucide-icons'
 import {
-  Play,
-  Target,
-  CheckCircle,
-  RotateCcw,
-  Bell,
-} from '@tamagui/lucide-icons'
-import { todayHeading, phaseWeekSegments, progressCaption, countMainExercises } from '../../lib/today'
+  todayHeading,
+  phaseWeekSegments,
+  progressCaption,
+  countMainExercises,
+} from '../../lib/today'
 import { useCurrentDate } from '../../hooks/useCurrentDate'
 import { workoutMetaLine } from '../../lib/workoutMeta'
 import { DEFAULT_WEEKS_PER_PHASE } from '../../lib/calendarUtils'
@@ -23,6 +22,8 @@ import { analytics } from '../../lib/analytics'
 import type { Phase } from '../../types'
 import { Display, Title, Body, Supporting, Caption, numeric } from '../../components/Typography'
 import { localDayArgs } from '../../lib/weeksOnPlan'
+import { RatingFeedbackSheet } from '../../components/feedback'
+import { useFeedbackPrompts } from '../../hooks/useFeedbackPrompts'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PHASE PROGRESS
@@ -49,7 +50,9 @@ function PhaseProgress({
     <YStack gap="$2.5" testID="phase-progress">
       {/* The full name wraps on narrow phones or large text; the week count keeps its width */}
       <XStack justify="space-between" items="flex-end" gap="$3">
-        <Body fontWeight="600" style={{ flex: 1 }}>{PHASE_NAMES[phase]}</Body>
+        <Body fontWeight="600" style={{ flex: 1 }}>
+          {PHASE_NAMES[phase]}
+        </Body>
         <Supporting fontWeight="600" style={[numeric, { flexShrink: 0 }]}>
           Week {Math.min(week, segments.length)} of {segments.length}
         </Supporting>
@@ -68,13 +71,10 @@ function PhaseProgress({
           />
         ))}
       </XStack>
-      {caption && (
-        <Supporting color="$color10">{caption}</Supporting>
-      )}
+      {caption && <Supporting color="$color10">{caption}</Supporting>}
     </YStack>
   )
 }
-
 
 /**
  * Discard a paused workout. Exit only pauses, so ending a session for good
@@ -163,58 +163,58 @@ function DiscardPausedWorkout({ onDiscard }: { onDiscard: () => Promise<void> })
 
 /**
  * Athlete Dashboard - "Today" Tab
- * 
+ *
  * HYBRID MODEL:
  * - Shows the scheduled "next workout" prominently
  * - Quick access to start the workout
  * - Progress summary at a glance
- * 
+ *
  */
 export default function AthleteDashboard() {
   const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
+  const isFocused = useIsFocused()
   const insets = useSafeAreaInsets()
   const today = useCurrentDate()
 
   // Get current program state
-  const programState = useQuery(
-    api.userPrograms.getCurrentProgramState,
-    user ? {} : "skip"
-  )
+  const programState = useQuery(api.userPrograms.getCurrentProgramState, user ? {} : 'skip')
 
   // Get progress summary
-  const progress = useQuery(
-    api.userPrograms.getProgressSummary,
-    user ? {} : "skip"
-  )
+  const progress = useQuery(api.userPrograms.getProgressSummary, user ? {} : 'skip')
 
   // Get today's workout (with override support)
   const todayWorkout = useQuery(
     api.scheduleOverrides.getTodayWorkout,
     // The athlete's day: a Today pick lasts until midnight, local time
-    user ? localDayArgs(today) : "skip"
+    user ? localDayArgs(today) : 'skip'
   )
 
   // Check for pending reassessment
-  const reassessmentStatus = useQuery(
-    api.userPrograms.getReassessmentStatus,
-    user ? {} : "skip"
-  )
+  const reassessmentStatus = useQuery(api.userPrograms.getReassessmentStatus, user ? {} : 'skip')
 
   // Check for active GPP session (in-progress)
-  const activeSession = useQuery(
-    api.gppWorkoutSessions.getCurrentSession,
-    user ? {} : "skip"
-  )
+  const activeSession = useQuery(api.gppWorkoutSessions.getCurrentSession, user ? {} : 'skip')
 
   // Check for session on today's scheduled workout (any status)
   const todaySession = useQuery(
     api.gppWorkoutSessions.getSessionForTemplate,
-    todayWorkout ? { templateId: todayWorkout._id } : "skip"
+    todayWorkout ? { templateId: todayWorkout._id } : 'skip'
   )
 
   // Discard a paused session (the athlete's explicit choice; Exit only pauses)
   const abandonSession = useMutation(api.gppWorkoutSessions.abandonSession)
+
+  const { ratingSheetOpen, setRatingSheetOpen, handleDismissRatingPrompt } = useFeedbackPrompts({
+    enabled: Boolean(user && programState),
+    isFocused,
+    // Still-loading queries count as suppressed, so a paused session that
+    // arrives after eligibility can never be covered by the rating sheet.
+    suppressPrompts:
+      reassessmentStatus === undefined ||
+      activeSession === undefined ||
+      Boolean(reassessmentStatus?.reassessmentPending || activeSession),
+  })
 
   // Phase colors: one brand hue, deepening GPP → SSP (lib/phase.ts)
   const phase = phaseTokens(programState?.phase)
@@ -245,23 +245,12 @@ export default function AthleteDashboard() {
   if (!programState) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$5" px="$4">
-        <YStack 
-          bg="$brand2" 
-          p="$4" 
-          rounded="$10" 
-          items="center" 
-          justify="center"
-        >
+        <YStack bg="$brand2" p="$4" rounded="$10" items="center" justify="center">
           <Target size={48} color="$primaryText" />
         </YStack>
         <YStack items="center" gap="$2">
           <Display text="center">Complete your setup</Display>
-          <Text 
-            color="$color10" 
-            text="center" 
-            fontFamily="$body"
-            maxW={280}
-          >
+          <Text color="$color10" text="center" fontFamily="$body" maxW={280}>
             Let's get you started with a personalized training program tailored to your sport.
           </Text>
         </YStack>
@@ -269,7 +258,8 @@ export default function AthleteDashboard() {
           size="$5"
           bg="$primary"
           color="white"
-          fontFamily="$body" fontWeight="700"
+          fontFamily="$body"
+          fontWeight="700"
           pressStyle={{ bg: '$primaryPress', scale: 0.98 }}
           onPress={() => router.replace('/')}
         >
@@ -283,9 +273,8 @@ export default function AthleteDashboard() {
   // from: Today offers Resume (or Discard) rather than a fresh Start.
   const pausedSession = activeSession ?? null
   const pausedElsewhere = !!pausedSession && pausedSession.templateId !== todayWorkout?._id
-  const isCompleted = !pausedSession && todaySession &&
-    todaySession.status === 'completed' &&
-    todayWorkout
+  const isCompleted =
+    !pausedSession && todaySession && todaySession.status === 'completed' && todayWorkout
 
   const cardWorkoutName = pausedElsewhere
     ? (pausedSession.templateSnapshot?.name ?? pausedSession.template?.name ?? 'Your workout')
@@ -325,26 +314,21 @@ export default function AthleteDashboard() {
               borderCurve="continuous"
             >
               <XStack items="center" gap="$3">
-                <YStack
-                  bg="$primary"
-                  p="$2"
-                  rounded="$10"
-                >
+                <YStack bg="$primary" p="$2" rounded="$10">
                   <Bell color="white" size={20} />
                 </YStack>
                 <YStack flex={1}>
                   <Body fontWeight="600" color="$brand9">
                     Your {reassessmentStatus.pendingForPhase} block is over
                   </Body>
-                  <Supporting color="$brand8">
-                    Check in to choose what's next
-                  </Supporting>
+                  <Supporting color="$brand8">Check in to choose what's next</Supporting>
                 </YStack>
                 <Button
                   size="$3"
                   bg="$primary"
                   color="white"
-                  fontFamily="$body" fontWeight="700"
+                  fontFamily="$body"
+                  fontWeight="700"
                   rounded="$3"
                   pressStyle={{ bg: '$primaryPress' }}
                   onPress={() => {
@@ -399,7 +383,8 @@ export default function AthleteDashboard() {
                 )}
                 {pausedSession && (
                   <Supporting testID="today-paused">
-                    {pausedLabel(pausedSession.pausedAt ?? pausedSession.startedAt, today)} · your sets are saved
+                    {pausedLabel(pausedSession.pausedAt ?? pausedSession.startedAt, today)} · your
+                    sets are saved
                   </Supporting>
                 )}
               </YStack>
@@ -412,7 +397,8 @@ export default function AthleteDashboard() {
                   borderColor="$borderColor"
                   borderWidth={2}
                   icon={CheckCircle}
-                  fontFamily="$body" fontWeight="700"
+                  fontFamily="$body"
+                  fontWeight="700"
                   color="$color11"
                   rounded="$4"
                   onPress={() => {
@@ -431,7 +417,8 @@ export default function AthleteDashboard() {
                     color="white"
                     icon={RotateCcw}
                     fontSize={18}
-                    fontFamily="$body" fontWeight="700"
+                    fontFamily="$body"
+                    fontWeight="700"
                     rounded="$4"
                     pressStyle={{ bg: '$primaryPress', scale: 0.98 }}
                     onPress={() => {
@@ -460,7 +447,8 @@ export default function AthleteDashboard() {
                   bg="$primary"
                   color="white"
                   icon={Play}
-                  fontFamily="$body" fontWeight="700"
+                  fontFamily="$body"
+                  fontWeight="700"
                   rounded="$4"
                   pressStyle={{ bg: '$primaryPress', scale: 0.98 }}
                   onPress={() => {
@@ -482,14 +470,32 @@ export default function AthleteDashboard() {
             week={programState.week}
             weeksPerPhase={programState.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE}
             caption={
-              progress
-                ? progressCaption({ workoutsCompleted: progress.daysCompleted })
-                : null
+              progress ? progressCaption({ workoutsCompleted: progress.daysCompleted }) : null
             }
           />
-
         </YStack>
       </ScrollView>
+
+      {/* Auto-triggered private rating prompt (2nd completed workout; decoupled from OS store review) */}
+      {ratingSheetOpen ? (
+        <RatingFeedbackSheet
+          open={ratingSheetOpen}
+          onOpenChange={setRatingSheetOpen}
+          trigger="post_workout_prompt"
+          screenRoute="/(athlete)"
+          programContext={
+            programState
+              ? {
+                  phase: programState.phase as Phase,
+                  week: programState.week,
+                  day: programState.day,
+                  skillLevel: programState.skillLevel,
+                }
+              : undefined
+          }
+          onDismiss={handleDismissRatingPrompt}
+        />
+      ) : null}
     </YStack>
   )
 }

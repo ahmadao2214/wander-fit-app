@@ -21,6 +21,7 @@ import type * as clerkOAuth from "../clerkOAuth.js";
 import type * as debug from "../debug.js";
 import type * as e2e from "../e2e.js";
 import type * as exercises from "../exercises.js";
+import type * as feedback from "../feedback.js";
 import type * as generateTemplates from "../generateTemplates.js";
 import type * as gppWorkoutSessions from "../gppWorkoutSessions.js";
 import type * as http from "../http.js";
@@ -64,6 +65,7 @@ declare const fullApi: ApiFromModules<{
   debug: typeof debug;
   e2e: typeof e2e;
   exercises: typeof exercises;
+  feedback: typeof feedback;
   generateTemplates: typeof generateTemplates;
   gppWorkoutSessions: typeof gppWorkoutSessions;
   http: typeof http;

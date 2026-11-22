@@ -58,7 +58,10 @@ jest.mock('../../convex/_generated/api', () => ({
   },
 }))
 
-jest.mock('expo-router', () => ({ useRouter: () => ({ push: mockPush }) }))
+jest.mock('expo-router', () => ({
+  useRouter: () => ({ push: mockPush }),
+  useIsFocused: () => true,
+}))
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 44, bottom: 34, left: 0, right: 0 }),
 }))
@@ -66,6 +69,14 @@ jest.mock('../../hooks/useAuth', () => ({
   useAuth: () => ({ user: { _id: 'user_1', name: 'Test Athlete' }, isLoading: false }),
 }))
 jest.mock('../../components/SignOutButton', () => ({ SignOutButton: () => null }))
+const mockUseFeedbackPrompts = jest.fn((_options: { suppressPrompts?: boolean }) => ({
+  ratingSheetOpen: false,
+  setRatingSheetOpen: jest.fn(),
+  handleDismissRatingPrompt: jest.fn(),
+}))
+jest.mock('../../hooks/useFeedbackPrompts', () => ({
+  useFeedbackPrompts: (options: { suppressPrompts?: boolean }) => mockUseFeedbackPrompts(options),
+}))
 
 import { fireEvent } from '@testing-library/react-native'
 import AthleteDashboard from '../(athlete)/index'
@@ -88,7 +99,9 @@ describe('Today card', () => {
   })
 
   it("shows the athlete's scheduled week, not the template's lookup week", () => {
-    const { getByTestId, getByText, queryByText } = render(<AthleteDashboard />, { wrapper: AllTheProviders })
+    const { getByTestId, getByText, queryByText } = render(<AthleteDashboard />, {
+      wrapper: AllTheProviders,
+    })
     expect(getByTestId('today-workout-meta')).toBeTruthy()
     expect(getByText('GPP W2 D1')).toBeTruthy()
     expect(queryByText(/W4/)).toBeNull()
@@ -112,7 +125,10 @@ describe('Today card', () => {
 
     it('re-reads the date when the app comes back to the foreground', () => {
       let onChange: (state: string) => void = () => {}
-      jest.spyOn(AppState, 'addEventListener').mockImplementation(((_type: string, handler: (state: string) => void) => {
+      jest.spyOn(AppState, 'addEventListener').mockImplementation(((
+        _type: string,
+        handler: (state: string) => void
+      ) => {
         onChange = handler
         return { remove: jest.fn() }
       }) as any)
@@ -123,6 +139,29 @@ describe('Today card', () => {
       jest.setSystemTime(new Date(2026, 10, 16, 8, 0, 0))
       act(() => onChange('active'))
       expect(getByText('Monday, Nov 16')).toBeTruthy()
+    })
+  })
+
+  // A paused session can arrive after eligibility; the rating sheet must not
+  // open over it in that window.
+  describe('feedback prompts', () => {
+    afterEach(() => {
+      mockCurrentSession = null
+    })
+    const lastSuppress = () =>
+      mockUseFeedbackPrompts.mock.calls[mockUseFeedbackPrompts.mock.calls.length - 1][0]
+        .suppressPrompts
+
+    it('holds prompts while the current session is still loading', () => {
+      mockCurrentSession = undefined
+      render(<AthleteDashboard />, { wrapper: AllTheProviders })
+      expect(lastSuppress()).toBe(true)
+    })
+
+    it('allows prompts once the athlete has no session in progress', () => {
+      mockCurrentSession = null
+      render(<AthleteDashboard />, { wrapper: AllTheProviders })
+      expect(lastSuppress()).toBe(false)
     })
   })
 
@@ -168,7 +207,9 @@ describe('Today card', () => {
 
     it('discards only after the athlete confirms', async () => {
       mockCurrentSession = paused('template_0', 'Lower Body Foundation')
-      const { getByTestId, findByTestId } = render(<AthleteDashboard />, { wrapper: AllTheProviders })
+      const { getByTestId, findByTestId } = render(<AthleteDashboard />, {
+        wrapper: AllTheProviders,
+      })
       fireEvent.press(getByTestId('today-discard'))
       expect(mockAbandon).not.toHaveBeenCalled()
       const confirm = await findByTestId('today-discard-confirm')
