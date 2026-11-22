@@ -252,9 +252,9 @@ async function gatherDoctorFacts({ server }) {
   }
   if (url && !facts.screenOnly) {
     facts.backendStatus = (await probe(`${url.replace(/\/$/, "")}/version`)).status
-    const templates = await convexQuery(url, "programTemplates:getCount")
+    const templates = await convexQuery(url, "programTemplates:seedStatus")
     const sports = await convexQuery(url, "sports:list")
-    if (templates.ok) facts.templates = Number(templates.value)
+    if (templates.ok) facts.templates = templates.value?.hasTemplates === true
     if (sports.ok) facts.sports = Array.isArray(sports.value) ? sports.value.length : 0
     facts.seedError = [templates, sports].filter((r) => !r.ok).map((r) => r.error).join("; ")
   }
@@ -316,10 +316,12 @@ export function evaluateDoctor(facts) {
       if (facts.backendStatus !== 200) {
         problems.push(`The e2e Convex deployment did not answer /version (${facts.backendStatus || "no response"}).`)
       }
-      lines.push(`seed: ${facts.templates ?? "?"} program templates, ${facts.sports ?? "?"} sports`)
+      lines.push(
+        `seed: program templates ${facts.templates === true ? "present" : facts.templates === false ? "missing" : "?"}, ${facts.sports ?? "?"} sports`
+      )
       if (facts.seedError) {
         problems.push(`Seed status query failed: ${facts.seedError}`)
-      } else if (!(facts.templates > 0) || !(facts.sports > 0)) {
+      } else if (facts.templates !== true || !(facts.sports > 0)) {
         problems.push("The e2e deployment is not seeded (no program templates or sports). Seeding is run.mjs deploy, which the founder or CI runs.")
       }
     }
@@ -994,6 +996,16 @@ function convexCli(args, env) {
   }
 }
 
+function convexOutput(args, env) {
+  const snapshot = snapshotFiles(guardedFiles)
+  try {
+    const result = spawnSync("npx", ["convex", ...args], { cwd: root, env, encoding: "utf8" })
+    return { status: result.status, stdout: (result.stdout || "").trim() }
+  } finally {
+    restoreFiles(snapshot)
+  }
+}
+
 // The deploy step hands the deployment URL to the later steps as a step
 // output (convex_url). Locally it is only printed.
 function publishConvexUrl(url) {
@@ -1006,13 +1018,13 @@ function publishConvexUrl(url) {
 const previewUrlFile = path.join(artifactsDir, "convex-preview-url.txt")
 const previewUrlVar = "EXPO_PUBLIC_CONVEX_URL_E2E"
 
+// Seeding is handled after deploy by ensureSeeded(), which skips re-seeding
+// unchanged preview deployments via E2E_SEED_HASH.
 export function previewDeployArgs(name) {
   return [
     "deploy",
     "--preview-create",
     name,
-    "--preview-run",
-    "seed:seedAll",
     "--codegen",
     "disable",
     "--typecheck",
@@ -1041,6 +1053,139 @@ export function templateSeedArgs(categoryId, previewName) {
   ]
 }
 
+// The source files the seed and the template generator are built from:
+// seed.ts and generateTemplates.ts plus every repo file they import,
+// followed transitively. A change to any of them must reseed.
+export const SEED_ROOTS = ["convex/seed.ts", "convex/generateTemplates.ts"]
+
+// The deployment env var that records the seed inputs it was last seeded
+// from. Env vars cost no database bandwidth and need no table.
+export const SEED_MARKER = "E2E_SEED_HASH"
+
+function resolveImport(fromFile, spec, exists) {
+  const base = path.posix.normalize(path.posix.join(path.posix.dirname(fromFile), spec))
+  const stripped = base.replace(/\.(js|mjs|cjs)$/, "")
+  for (const candidate of [base, `${base}.ts`, `${base}.tsx`, `${base}.js`, `${base}/index.ts`, `${stripped}.ts`, `${stripped}.tsx`]) {
+    if (exists(candidate)) return candidate
+  }
+  return null
+}
+
+function walkRelativeImports({
+  roots,
+  read = (file) => fs.readFileSync(path.join(root, file), "utf8"),
+  exists = (file) => fs.existsSync(path.join(root, file)) && fs.statSync(path.join(root, file)).isFile(),
+}) {
+  const seen = new Set()
+  const queue = [...roots]
+  while (queue.length) {
+    const file = queue.shift()
+    if (seen.has(file)) continue
+    seen.add(file)
+    for (const [, spec] of read(file).matchAll(/(?:from|import)\s*\(?\s*["'](\.{1,2}\/[^"']+)["']/g)) {
+      const resolved = resolveImport(file, spec, exists)
+      if (resolved && !resolved.includes("/_generated/")) queue.push(resolved)
+    }
+  }
+  return [...seen].sort()
+}
+
+export function seedInputFiles({
+  roots = SEED_ROOTS,
+  read = (file) => fs.readFileSync(path.join(root, file), "utf8"),
+  exists = (file) => fs.existsSync(path.join(root, file)) && fs.statSync(path.join(root, file)).isFile(),
+} = {}) {
+  return walkRelativeImports({ roots, read, exists })
+}
+
+export function seedInputsHash({
+  files = seedInputFiles(),
+  read = (file) => fs.readFileSync(path.join(root, file)),
+} = {}) {
+  const hash = createHash("sha256").update(JSON.stringify(TEMPLATE_CATEGORIES))
+  for (const file of files) hash.update(`\0${file}\0`).update(read(file))
+  return hash.digest("hex").slice(0, 16)
+}
+
+// Pure: reseed unless the deployment holds templates across all categories and
+// was last seeded from exactly these inputs. Seeding reads and rewrites all
+// 1,008 templates (~6 MB of database I/O), so skipping it when unchanged keeps
+// CI inside Convex's free 1 GB/month DB bandwidth cap.
+export function shouldSeed({ marker, hash, hasTemplates }) {
+  return !(hasTemplates && marker && marker === hash)
+}
+
+function listConvexSourceFiles(dir = path.join(root, "convex"), prefix = "convex") {
+  if (!fs.existsSync(dir)) return []
+  const out = []
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const rel = `${prefix}/${entry.name}`
+    if (entry.isDirectory()) {
+      if (entry.name === "__tests__" || entry.name === "_generated") continue
+      out.push(...listConvexSourceFiles(path.join(dir, entry.name), rel))
+    } else if (/\.(ts|tsx|js|mjs)$/.test(entry.name)) {
+      out.push(rel)
+    }
+  }
+  return out.sort()
+}
+
+// Every repo file that feeds Convex deployment code: all non-test files under
+// convex/ plus every relative import they reach (e.g. lib/today.ts, types/).
+export function convexRuntimeFiles({
+  roots = listConvexSourceFiles(),
+  read = (file) => fs.readFileSync(path.join(root, file), "utf8"),
+  exists = (file) => fs.existsSync(path.join(root, file)) && fs.statSync(path.join(root, file)).isFile(),
+} = {}) {
+  return walkRelativeImports({ roots, read, exists })
+}
+
+const CONVEX_CONFIG_FILES = new Set(["convex.json", "package.json", "bun.lock"])
+
+// Pure: a PR only needs its own Convex preview deployment when its diff touches
+// Convex runtime code, a file imported by Convex, or package/convex config.
+// When changedFiles is missing (e.g. shallow clone error), fail safe to preview.
+export function needsConvexPreview(changedFiles, { runtimeFiles = convexRuntimeFiles() } = {}) {
+  if (!Array.isArray(changedFiles)) return true
+  const runtimeSet = new Set(runtimeFiles)
+  return changedFiles.some((file) => {
+    if (CONVEX_CONFIG_FILES.has(file)) return true
+    if (file.startsWith("convex/") && !file.startsWith("convex/__tests__/") && file !== "convex/README.md") {
+      return true
+    }
+    return runtimeSet.has(file)
+  })
+}
+
+// Pure: picks "dev" (main/manual), "preview" (PR touching Convex runtime), or
+// "shared" (PR with no Convex runtime changes, reusing wander-fit-e2e).
+export function selectBackendMode({ eventName, changedFiles, runtimeFiles } = {}) {
+  if (eventName !== "pull_request") return "dev"
+  return needsConvexPreview(changedFiles, { runtimeFiles }) ? "preview" : "shared"
+}
+
+function prChangedFiles() {
+  // GitHub's pull_request checkout is a synthetic merge commit (HEAD^1 = base,
+  // HEAD^2 = PR head). Refuse non-merge commits so a single-commit diff never
+  // misses earlier commits on a branch.
+  const isMerge = spawnSync("git", ["rev-parse", "--verify", "--quiet", "HEAD^2"], { cwd: root, encoding: "utf8" })
+  if (isMerge.status !== 0) return null
+  const diff = spawnSync("git", ["diff", "--name-only", "HEAD^1", "HEAD"], { cwd: root, encoding: "utf8" })
+  if (diff.status !== 0) return null
+  return (diff.stdout || "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+}
+
+function backendMode() {
+  const eventName = process.env.GITHUB_EVENT_NAME || ""
+  const changedFiles = eventName === "pull_request" ? prChangedFiles() : []
+  const mode = selectBackendMode({ eventName, changedFiles })
+  console.log(`backend mode: ${mode} (event=${eventName || "local"})`)
+  if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `mode=${mode}\n`)
+}
+
 function seedTemplates(env, previewName) {
   for (const categoryId of TEMPLATE_CATEGORIES) {
     const seeded = convexCli(templateSeedArgs(categoryId, previewName), env)
@@ -1050,9 +1195,35 @@ function seedTemplates(env, previewName) {
   }
 }
 
-// Pull request runs: push this checkout's convex/ functions to the PR's
-// own preview deployment in wander-fit-e2e and seed it. The preview key can
-// reach only that project's previews, never the app deployments.
+function ensureSeeded({ env, host, previewName = "" }) {
+  const target = previewName ? ["--preview-name", previewName] : []
+  const hash = seedInputsHash()
+  const markerResult = convexOutput(["env", "get", ...target, SEED_MARKER], env)
+  const marker = markerResult.status === 0 ? markerResult.stdout : ""
+  const statusResult = convexOutput(["run", ...target, "programTemplates:seedStatus", "{}"], env)
+  let hasTemplates = false
+  if (statusResult.status === 0) {
+    try {
+      hasTemplates = parseRunResult(statusResult.stdout)?.hasTemplates === true
+    } catch {
+      hasTemplates = false
+    }
+  }
+  if (!shouldSeed({ marker, hash, hasTemplates })) {
+    console.log(`seed inputs unchanged (${hash}); ${host} keeps its seed`)
+    return
+  }
+  console.log(`seeding ${host} (inputs ${hash}, last seeded from ${marker || "nothing recorded"})`)
+  const seeded = convexCli(["run", ...target, "seed:seedAll", "{}"], env)
+  if (seeded.status !== 0) fail(`seed:seedAll exited ${seeded.status ?? 1}`)
+  seedTemplates(env, previewName)
+  const marked = convexCli(["env", "set", ...target, SEED_MARKER, hash], env)
+  if (marked.status !== 0) fail(`convex env set ${SEED_MARKER} exited ${marked.status ?? 1}`)
+}
+
+// Pull request runs that touch Convex: push this checkout's convex/ functions
+// to the PR's own preview deployment in wander-fit-e2e and seed it if needed.
+// The preview key can reach only that project's previews, never app deployments.
 function deployPreview(key) {
   if (process.env.CONVEX_DEPLOY_KEY_E2E) {
     fail("Set CONVEX_DEPLOY_KEY_E2E or CONVEX_PREVIEW_DEPLOY_KEY_E2E, not both.")
@@ -1077,26 +1248,40 @@ function deployPreview(key) {
     delete env[variable]
   }
   fs.rmSync(previewUrlFile, { force: true })
-  console.log(`deploying convex functions to preview "${name}" of wander-fit-e2e, then seeding it`)
+  console.log(`deploying convex functions to preview "${name}" of wander-fit-e2e`)
   const pushed = convexCli(previewDeployArgs(name), env)
   if (pushed.status !== 0) fail(`convex deploy exited ${pushed.status ?? 1}`)
   const url = fs.existsSync(previewUrlFile) ? fs.readFileSync(previewUrlFile, "utf8").trim() : ""
   if (!url) fail("convex deploy did not report the preview deployment URL.")
-  seedTemplates(env, name)
   let host = ""
   try {
     host = assertConvexUrlAllowed(url)
   } catch (error) {
     fail(error.message)
   }
-  console.log(`deployed and seeded ${host}`)
+  ensureSeeded({ env, host, previewName: name })
+  console.log(`deployed ${host}`)
   publishConvexUrl(url)
 }
 
-// Main and local runs: push this checkout's convex/ functions to the
-// wander-fit-e2e dev deployment, then seed it. convexInvocation refuses the
-// app deployments and a mismatched deploy key.
+// Main, local, and PR runs:
+// - shared mode (PR with no Convex runtime changes): reuse wander-fit-e2e dev
+//   deployment directly without deploying or seeding.
+// - preview mode (PR touching Convex): deploy to pr-<N> preview & ensureSeeded.
+// - dev mode (main/local): push to wander-fit-e2e dev & ensureSeeded.
 function deployBackend() {
+  if (process.env.VERIFY_BACKEND_MODE === "shared") {
+    const url = e2eUrl()
+    let host = ""
+    try {
+      host = assertConvexUrlAllowed(url)
+    } catch (error) {
+      fail(error.message)
+    }
+    console.log(`no convex/ runtime changes; reusing shared wander-fit-e2e (${host})`)
+    publishConvexUrl(url)
+    return
+  }
   const previewKey = process.env.CONVEX_PREVIEW_DEPLOY_KEY_E2E || ""
   if (previewKey) {
     deployPreview(previewKey)
@@ -1106,10 +1291,7 @@ function deployBackend() {
   console.log(`deploying convex functions to ${host}`)
   const pushed = convexCli(["dev", "--once", "--codegen", "disable", "--typecheck", "disable"], env)
   if (pushed.status !== 0) fail(`convex dev --once exited ${pushed.status ?? 1}`)
-  console.log(`seeding ${host}`)
-  const seeded = convexCli(["run", "seed:seedAll", "{}"], env)
-  if (seeded.status !== 0) fail(`seed:seedAll exited ${seeded.status ?? 1}`)
-  seedTemplates(env)
+  ensureSeeded({ env, host })
   publishConvexUrl(e2eUrl())
 }
 
@@ -1253,6 +1435,8 @@ async function main() {
     exportWeb()
     runDrive(launch(), false)
     console.log(`left evidence in ${screenEvidenceDir}`)
+  } else if (command === "backend-mode") {
+    backendMode()
   } else if (command === "deploy") {
     deployBackend()
   } else if (command === "record-url") {

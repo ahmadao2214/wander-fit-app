@@ -238,7 +238,8 @@ export default defineSchema({
     })),
   })
     .index("by_assignment", ["gppCategoryId", "phase", "skillLevel", "week", "day"])
-    .index("by_category_phase", ["gppCategoryId", "phase"]),
+    .index("by_category_phase", ["gppCategoryId", "phase"])
+    .index("by_category_skill", ["gppCategoryId", "skillLevel"]),
 
   // ─────────────────────────────────────────────────────────────────────────────
   // USER DATA

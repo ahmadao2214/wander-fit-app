@@ -358,10 +358,11 @@ export const getCalendarView = query({
     // Get all templates for user's category and skill level
     const templates = await ctx.db
       .query("program_templates")
-      .withIndex("by_category_phase", (q) =>
-        q.eq("gppCategoryId", program.gppCategoryId)
+      .withIndex("by_category_skill", (q) =>
+        q
+          .eq("gppCategoryId", program.gppCategoryId)
+          .eq("skillLevel", program.skillLevel)
       )
-      .filter((q) => q.eq(q.field("skillLevel"), program.skillLevel))
       .collect();
 
     // Build template lookup by (phase, week, day)
@@ -641,10 +642,11 @@ export const cascadeWorkoutsToToday = mutation({
     // Get all templates for user's category and skill level
     const allTemplates = await ctx.db
       .query("program_templates")
-      .withIndex("by_category_phase", (q) =>
-        q.eq("gppCategoryId", program.gppCategoryId)
+      .withIndex("by_category_skill", (q) =>
+        q
+          .eq("gppCategoryId", program.gppCategoryId)
+          .eq("skillLevel", program.skillLevel)
       )
-      .filter((q) => q.eq(q.field("skillLevel"), program.skillLevel))
       .collect();
 
     // Build template lookup
@@ -924,10 +926,11 @@ export const swapWorkouts = mutation({
     // Get all templates for user's category and skill level
     const templates = await ctx.db
       .query("program_templates")
-      .withIndex("by_category_phase", (q) =>
-        q.eq("gppCategoryId", program.gppCategoryId)
+      .withIndex("by_category_skill", (q) =>
+        q
+          .eq("gppCategoryId", program.gppCategoryId)
+          .eq("skillLevel", program.skillLevel)
       )
-      .filter((q) => q.eq(q.field("skillLevel"), program.skillLevel))
       .collect();
 
     // Build template lookup
@@ -1216,10 +1219,11 @@ export const moveWorkoutToDate = mutation({
     // Get templates to check completion
     const templates = await ctx.db
       .query("program_templates")
-      .withIndex("by_category_phase", (q) =>
-        q.eq("gppCategoryId", program.gppCategoryId)
+      .withIndex("by_category_skill", (q) =>
+        q
+          .eq("gppCategoryId", program.gppCategoryId)
+          .eq("skillLevel", program.skillLevel)
       )
-      .filter((q) => q.eq(q.field("skillLevel"), program.skillLevel))
       .collect();
 
     const completedTemplateIds = new Set(completedSessions.map((s) => s.templateId.toString()));
@@ -1507,10 +1511,11 @@ export const getFullProgramCalendar = query({
     // Get all templates for user's category and skill level
     const templates = await ctx.db
       .query("program_templates")
-      .withIndex("by_category_phase", (q) =>
-        q.eq("gppCategoryId", program.gppCategoryId)
+      .withIndex("by_category_skill", (q) =>
+        q
+          .eq("gppCategoryId", program.gppCategoryId)
+          .eq("skillLevel", program.skillLevel)
       )
-      .filter((q) => q.eq(q.field("skillLevel"), program.skillLevel))
       .collect();
 
     // Build template lookup

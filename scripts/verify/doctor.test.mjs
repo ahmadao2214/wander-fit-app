@@ -1,4 +1,17 @@
-import { clerkFrontendApi, evaluateDoctor, exportIsStale, exportStamp, sourceStamp, stampDiffArgs } from "./run.mjs"
+import {
+  clerkFrontendApi,
+  convexRuntimeFiles,
+  evaluateDoctor,
+  exportIsStale,
+  exportStamp,
+  needsConvexPreview,
+  seedInputFiles,
+  seedInputsHash,
+  selectBackendMode,
+  shouldSeed,
+  sourceStamp,
+  stampDiffArgs,
+} from "./run.mjs"
 
 const encode = (text) => Buffer.from(text, "utf8").toString("base64")
 
@@ -13,7 +26,7 @@ function healthy(overrides = {}) {
     convexError: "",
     screenOnly: false,
     backendStatus: 200,
-    templates: 1008,
+    templates: true,
     sports: 27,
     seedError: "",
     expectedCommit: "a".repeat(40),
@@ -54,7 +67,7 @@ describe("evaluateDoctor", () => {
   it("passes a healthy pre-launch run and says the server is not running", () => {
     const { lines, problems } = evaluateDoctor(healthy())
     expect(problems).toEqual([])
-    expect(lines).toContain("seed: 1008 program templates, 27 sports")
+    expect(lines).toContain("seed: program templates present, 27 sports")
     expect(lines).toContain("server: not running (launch starts it)")
   })
 
@@ -65,7 +78,7 @@ describe("evaluateDoctor", () => {
   })
 
   it("fails a key Clerk rejects, an unreachable backend and an unseeded deployment", () => {
-    const { problems } = evaluateDoctor(healthy({ clerkStatus: 400, backendStatus: 0, templates: 0 }))
+    const { problems } = evaluateDoctor(healthy({ clerkStatus: 400, backendStatus: 0, templates: false }))
     expect(problems).toHaveLength(3)
     expect(problems.join("\n")).toMatch(/Clerk rejected/)
     expect(problems.join("\n")).toMatch(/did not answer \/version/)
@@ -154,5 +167,75 @@ describe("stampDiffArgs", () => {
   it("leaves the stylesheet the export rewrites out of the source stamp", () => {
     expect(stampDiffArgs()).toContain(":(exclude)tamagui-web.css")
     expect(stampDiffArgs().slice(0, 3)).toEqual(["diff", "HEAD", "--binary"])
+  })
+})
+
+describe("seed inputs and backend mode", () => {
+  const files = {
+    "convex/seed.ts": 'import { data } from "./seedData"\nimport { api } from "./_generated/api"',
+    "convex/seedData.ts": 'import type { Phase } from "../types"\nexport const data = 1',
+    "types.ts": "export type Phase = string",
+    "convex/generateTemplates.ts": 'import { warm } from "./warmupSequences"',
+    "convex/warmupSequences.ts": "export const warm = 1",
+  }
+  const read = (file) => files[file]
+  const exists = (file) => Object.hasOwn(files, file)
+
+  it("follows relative imports from the seed and the generator, skipping generated code", () => {
+    expect(seedInputFiles({ read, exists })).toEqual([
+      "convex/generateTemplates.ts",
+      "convex/seed.ts",
+      "convex/seedData.ts",
+      "convex/warmupSequences.ts",
+      "types.ts",
+    ])
+  })
+
+  it("changes the hash when any input file changes", () => {
+    const list = seedInputFiles({ read, exists })
+    const before = seedInputsHash({ files: list, read })
+    const after = seedInputsHash({ files: list, read: (file) => (file === "types.ts" ? "changed" : files[file]) })
+    expect(after).not.toBe(before)
+    expect(seedInputsHash({ files: list, read })).toBe(before)
+  })
+
+  it("covers the real generator's warm-up sequences and the seed's data", () => {
+    const real = seedInputFiles()
+    expect(real).toContain("convex/generateTemplates.ts")
+    expect(real).toContain("convex/warmupSequences.ts")
+    expect(real).toContain("convex/seed.ts")
+    expect(real).toContain("convex/seedData.ts")
+  })
+
+  it("skips seeding only when templates exist and the marker matches", () => {
+    expect(shouldSeed({ marker: "h1", hash: "h1", hasTemplates: true })).toBe(false)
+    expect(shouldSeed({ marker: "h0", hash: "h1", hasTemplates: true })).toBe(true)
+    expect(shouldSeed({ marker: "", hash: "h1", hasTemplates: true })).toBe(true)
+    expect(shouldSeed({ marker: "h1", hash: "h1", hasTemplates: false })).toBe(true)
+  })
+
+  it("collects real convex runtime files plus shared lib/ files imported by convex/", () => {
+    const real = convexRuntimeFiles()
+    expect(real).toContain("convex/schema.ts")
+    expect(real).toContain("convex/workoutCalendar.ts")
+    expect(real).toContain("lib/today.ts")
+    expect(real).toContain("lib/executionOrder.ts")
+    expect(real.some((file) => file.includes("__tests__"))).toBe(false)
+  })
+
+  it("selects preview only for PRs touching convex runtime or imported files, and fails safe", () => {
+    const runtime = ["convex/schema.ts", "lib/today.ts"]
+    expect(needsConvexPreview(["app/(athlete)/index.tsx", "components/Button.tsx"], { runtimeFiles: runtime })).toBe(false)
+    expect(needsConvexPreview(["convex/__tests__/e2e.test.ts", "convex/README.md"], { runtimeFiles: runtime })).toBe(false)
+    expect(needsConvexPreview(["convex/newModule.ts"], { runtimeFiles: runtime })).toBe(true)
+    expect(needsConvexPreview(["lib/today.ts"], { runtimeFiles: runtime })).toBe(true)
+    expect(needsConvexPreview(["package.json"], { runtimeFiles: runtime })).toBe(true)
+    expect(needsConvexPreview(null, { runtimeFiles: runtime })).toBe(true)
+
+    expect(selectBackendMode({ eventName: "push", changedFiles: ["README.md"], runtimeFiles: runtime })).toBe("dev")
+    expect(selectBackendMode({ eventName: "workflow_dispatch", changedFiles: [], runtimeFiles: runtime })).toBe("dev")
+    expect(selectBackendMode({ eventName: "pull_request", changedFiles: ["README.md"], runtimeFiles: runtime })).toBe("shared")
+    expect(selectBackendMode({ eventName: "pull_request", changedFiles: ["convex/schema.ts"], runtimeFiles: runtime })).toBe("preview")
+    expect(selectBackendMode({ eventName: "pull_request", changedFiles: null, runtimeFiles: runtime })).toBe("preview")
   })
 })

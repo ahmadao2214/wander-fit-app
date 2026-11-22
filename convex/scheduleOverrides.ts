@@ -378,23 +378,24 @@ export const getPhaseOverviewWithOverrides = query({
     // Get dynamic weeks per phase (fallback to 4 for existing users)
     const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
 
-    // Get all templates for this phase (these are template weeks 1-4)
+    // Get all templates for this phase and skill level (these are template weeks 1-4)
     const allTemplates = await ctx.db
       .query("program_templates")
-      .withIndex("by_category_phase", (q) =>
-        q.eq("gppCategoryId", program.gppCategoryId).eq("phase", args.phase)
+      .withIndex("by_assignment", (q) =>
+        q
+          .eq("gppCategoryId", program.gppCategoryId)
+          .eq("phase", args.phase)
+          .eq("skillLevel", program.skillLevel)
       )
       .collect();
 
-    // Filter by skill level and create a map by template week
+    // Create a map by template week
     const templatesByWeek = new Map<number, typeof allTemplates>();
-    allTemplates
-      .filter((t) => t.skillLevel === program.skillLevel)
-      .forEach((t) => {
-        const week = templatesByWeek.get(t.week) || [];
-        week.push(t);
-        templatesByWeek.set(t.week, week);
-      });
+    allTemplates.forEach((t) => {
+      const week = templatesByWeek.get(t.week) || [];
+      week.push(t);
+      templatesByWeek.set(t.week, week);
+    });
 
     // Get user's override record
     const overrideRecord = await ctx.db
@@ -860,25 +861,24 @@ export const setTodayFocusWithSwap = mutation({
       // Get dynamic weeks per phase
       const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
 
-      // Get ALL templates in the current phase (template weeks 1-4)
+      // Get ALL templates in the current phase and skill level (template weeks 1-4)
       const allPhaseWorkouts = await ctx.db
         .query("program_templates")
-        .withIndex("by_category_phase", (q) =>
+        .withIndex("by_assignment", (q) =>
           q
             .eq("gppCategoryId", program.gppCategoryId)
             .eq("phase", program.currentPhase)
+            .eq("skillLevel", program.skillLevel)
         )
         .collect();
 
-      // Filter by skill level and organize by template week
+      // Organize by template week
       const templatesByWeek = new Map<number, typeof allPhaseWorkouts>();
-      allPhaseWorkouts
-        .filter((t) => t.skillLevel === program.skillLevel)
-        .forEach((t) => {
-          const week = templatesByWeek.get(t.week) || [];
-          week.push(t);
-          templatesByWeek.set(t.week, week);
-        });
+      allPhaseWorkouts.forEach((t) => {
+        const week = templatesByWeek.get(t.week) || [];
+        week.push(t);
+        templatesByWeek.set(t.week, week);
+      });
 
       // Generate user weeks (1 to weeksPerPhase)
       const userWeeks = Array.from({ length: weeksPerPhase }, (_, i) => i + 1);

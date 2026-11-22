@@ -867,10 +867,11 @@ export const startSession = mutation({
           // Get all templates for user's category and skill level
           const allTemplates = await ctx.db
             .query("program_templates")
-            .withIndex("by_category_phase", (q) =>
-              q.eq("gppCategoryId", userProgram.gppCategoryId)
+            .withIndex("by_category_skill", (q) =>
+              q
+                .eq("gppCategoryId", userProgram.gppCategoryId)
+                .eq("skillLevel", userProgram.skillLevel)
             )
-            .filter((q) => q.eq(q.field("skillLevel"), userProgram.skillLevel))
             .collect();
 
           // Build template lookup
