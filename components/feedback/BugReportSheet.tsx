@@ -124,6 +124,7 @@ export function BugReportSheet({
 
   return (
     <FeedbackSheetFrame
+      dismissDisabled={isSubmitting}
       open={open}
       onOpenChange={onOpenChange}
       title="Report a bug"

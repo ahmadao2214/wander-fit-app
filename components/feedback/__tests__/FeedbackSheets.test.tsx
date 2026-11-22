@@ -120,6 +120,32 @@ describe('Feedback sheets', () => {
   })
 
   describe('BugReportSheet', () => {
+    it('ignores Close while a report is still sending', async () => {
+      let resolveSubmit: (value: unknown) => void = () => {}
+      mockSubmitBugReport.mockImplementationOnce(
+        () => new Promise((resolve) => (resolveSubmit = resolve))
+      )
+      const onOpenChange = jest.fn()
+      const { getByTestId, getByLabelText } = render(
+        <BugReportSheet open onOpenChange={onOpenChange} source="profile" screenRoute="/(athlete)/profile" />,
+        { wrapper: AllTheProviders }
+      )
+      await act(async () => {})
+      fireEvent.changeText(getByTestId('bug-title-input'), 'Timer froze')
+      fireEvent.changeText(getByTestId('bug-details-input'), 'Rest timer stopped at 0:42')
+
+      await act(async () => {
+        fireEvent.press(getByTestId('bug-submit-button'))
+      })
+      fireEvent.press(getByLabelText('Close'))
+      expect(onOpenChange).not.toHaveBeenCalled()
+
+      await act(async () => {
+        resolveSubmit({ bugReportId: 'bug_2' })
+      })
+      expect(onOpenChange).toHaveBeenCalledWith(false)
+    })
+
     it('attaches workout context, severity, and PostHog session ID on submit', async () => {
       const onOpenChange = jest.fn()
       const { getByTestId, getByText } = render(

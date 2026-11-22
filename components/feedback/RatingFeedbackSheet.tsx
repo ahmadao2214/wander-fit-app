@@ -115,6 +115,7 @@ export function RatingFeedbackSheet({
 
   return (
     <FeedbackSheetFrame
+      dismissDisabled={isSubmitting}
       open={open}
       onOpenChange={handleOpenChange}
       title={trigger === 'post_workout_prompt' ? "How's WanderFit feeling?" : 'Rate WanderFit'}

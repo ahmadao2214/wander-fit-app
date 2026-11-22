@@ -102,6 +102,7 @@ export function FeatureRequestSheet({
 
   return (
     <FeedbackSheetFrame
+      dismissDisabled={isSubmitting}
       open={open}
       onOpenChange={onOpenChange}
       title="Request a feature"

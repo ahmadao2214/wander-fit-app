@@ -13,6 +13,8 @@ export interface FeedbackSheetFrameProps {
   defaultSnapPoint?: number
   keyboardSnapPoint?: number
   testID?: string
+  /** Ignore user dismissal (close button, drag, overlay) while a submit is in flight. */
+  dismissDisabled?: boolean
   children: ReactNode
 }
 
@@ -30,6 +32,7 @@ export function FeedbackSheetFrame({
   defaultSnapPoint = 72,
   keyboardSnapPoint = 92,
   testID,
+  dismissDisabled = false,
   children,
 }: FeedbackSheetFrameProps) {
   const insets = useSafeAreaInsets()
@@ -45,13 +48,20 @@ export function FeedbackSheetFrame({
     }
   }, [])
 
+  // A pending submit closes the sheet itself when it lands. Letting the athlete
+  // close and reopen meanwhile would let that late close discard the new draft.
+  const handleOpenChange = (next: boolean) => {
+    if (!next && dismissDisabled) return
+    onOpenChange(next)
+  }
+
   const snapPoints = isKeyboardVisible ? [keyboardSnapPoint] : [defaultSnapPoint]
 
   return (
     <Sheet
       modal
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={handleOpenChange}
       snapPoints={snapPoints}
       dismissOnSnapToBottom
     >
@@ -89,7 +99,8 @@ export function FeedbackSheetFrame({
                 bg="$color3"
                 icon={X}
                 accessibilityLabel="Close"
-                onPress={() => onOpenChange(false)}
+                onPress={() => handleOpenChange(false)}
+                disabled={dismissDisabled}
                 minW={44}
                 minH={44}
               />
