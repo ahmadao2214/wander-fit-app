@@ -3,6 +3,7 @@ appId: com.offseason.asrafit
 # A signed-out launch opens the First Run, and a relaunch comes back to it.
 - launchApp:
     clearState: true
+- runFlow: subflows/_dismiss-anr.yaml
 - extendedWaitUntil:
     visible: "Let's build your plan for this season."
     timeout: 90000
@@ -25,7 +26,12 @@ appId: com.offseason.asrafit
 - takeScreenshot: native-launch-sign-in
 - stopApp
 - launchApp
+# A cold start on an Android emulator takes ~36 s, same budget as the first launch.
 - extendedWaitUntil:
     visible: "Let's build your plan for this season."
-    timeout: 30000
+    timeout: 90000
+# The text reaches the view tree before the first frame paints; on a slow
+# Android emulator the screenshot otherwise caught a blank window.
+- waitForAnimationToEnd:
+    timeout: 10000
 - takeScreenshot: native-relaunch-first-run

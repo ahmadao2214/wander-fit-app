@@ -54,6 +54,7 @@ jest.mock('../../components/first-run/SavePlanSheet', () => ({
   },
 }))
 jest.mock('expo-router', () => ({
+  useLocalSearchParams: () => ({}),
   useFocusEffect: (cb: () => void) => jest.requireActual('react').useEffect(cb, [cb]),
   useRouter: () => ({ push: jest.fn(), back: mockBack, replace: jest.fn(), canGoBack: () => true }),
   Redirect: ({ href }: { href: string }) => {

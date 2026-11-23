@@ -1,4 +1,5 @@
 import React from 'react'
+import { Platform } from 'react-native'
 import { act, fireEvent, render, screen } from '@testing-library/react-native'
 import { testDraft, Wrapper as wrapper } from '../../jest/firstRunTestUtils'
 import { seasonStartForWeeks } from '../../lib/firstRun'
@@ -38,13 +39,19 @@ const mockSetActive = jest.fn(async () => {
     firstName: 'Sam',
   }
 })
+const mockStartSSOFlow = jest.fn(async (_args: unknown) => ({}))
+const mockRedirect = jest.fn()
 jest.mock('@clerk/clerk-expo', () => ({
   useSignUp: () => ({ isLoaded: true, signUp: mockSignUp, setActive: mockSetActive }),
-  useSSO: () => ({ startSSOFlow: jest.fn() }),
+  useSignIn: () => ({ signIn: { authenticateWithRedirect: mockRedirect } }),
+  useSSO: () => ({ startSSOFlow: mockStartSSOFlow }),
   useUser: () => ({ user: mockSignedIn }),
   useClerk: () => mockClerk,
 }))
-jest.mock('expo-auth-session', () => ({ makeRedirectUri: () => 'myapp://oauth' }))
+jest.mock('expo-auth-session', () => ({
+  makeRedirectUri: (options?: { scheme?: string; path?: string }) =>
+    options?.scheme ? `${options.scheme}://${options.path}` : 'http://localhost:8081/',
+}))
 
 const mockCreateUser = jest.fn(async (_args: unknown) => 'u1')
 const mockCompleteIntake = jest.fn(async (_args: unknown) => ({ keptExistingProgram: false }))
@@ -104,14 +111,126 @@ beforeEach(async () => {
 })
 
 describe('Save your plan', () => {
-  it('offers email, with no skip and no role question', async () => {
+  it('offers Apple, Google and email, with no skip and no role question', async () => {
     await show()
-    expect(screen.getByTestId('save-plan-email')).toBeTruthy()
+    expect(screen.getByText('Continue with Apple')).toBeTruthy()
+    expect(screen.getByText('Continue with Google')).toBeTruthy()
+    expect(screen.getByText('Continue with email')).toBeTruthy()
     expect(screen.queryByText(/skip/i)).toBeNull()
     expect(screen.queryByText(/not now/i)).toBeNull()
     expect(screen.queryByText(/coach|trainer|role/i)).toBeNull()
-    // Apple appears only once it's enabled in Clerk.
-    expect(screen.queryByTestId('save-plan-apple')).toBeNull()
+  })
+
+  it.each([
+    ['save-plan-apple', 'oauth_apple'],
+    ['save-plan-google', 'oauth_google'],
+  ])('%s starts %s and returns to wanderfit://oauth', async (testID, strategy) => {
+    await show()
+    await press(testID)
+    expect(mockStartSSOFlow).toHaveBeenCalledWith({ strategy, redirectUrl: 'wanderfit://oauth' })
+    // No session came back, so nothing is saved and the draft stays.
+    expect(mockCompleteIntake).not.toHaveBeenCalled()
+  })
+
+  it('saves the plan after a new Google account signs up', async () => {
+    mockStartSSOFlow.mockResolvedValueOnce({
+      createdSessionId: 'sess_g',
+      setActive: mockSetActive,
+      signUp: { emailAddress: 'g@b.co', firstName: 'Gia', lastName: '' },
+    } as never)
+    await show()
+    await press('save-plan-google')
+    expect(mockSetActive).toHaveBeenCalledWith({ session: 'sess_g' })
+    expect(mockCreateUser).toHaveBeenCalledWith(expect.objectContaining({ name: 'Gia' }))
+    expect(mockCompleteIntake).toHaveBeenCalled()
+    expect(mockReplace).toHaveBeenCalledWith(
+      expect.objectContaining({ pathname: '/(athlete)/program' })
+    )
+  })
+
+  it('says so when Apple sign-in does not finish', async () => {
+    mockStartSSOFlow.mockRejectedValueOnce(new Error('cancelled'))
+    jest.spyOn(console, 'error').mockImplementation(() => {})
+    await show()
+    await press('save-plan-apple')
+    expect(screen.getByTestId('save-plan-error').props.children).toMatch(
+      /Apple sign-in didn't finish/
+    )
+  })
+
+  it('activates a native Google session before saving the draft', async () => {
+    mockStartSSOFlow.mockResolvedValueOnce({
+      createdSessionId: 'sess_google',
+      setActive: mockSetActive,
+    })
+    await show()
+    await press('save-plan-google')
+    expect(mockStartSSOFlow).toHaveBeenCalledWith({
+      strategy: 'oauth_google',
+      redirectUrl: 'wanderfit://oauth',
+    })
+    expect(mockSetActive).toHaveBeenCalledWith({ session: 'sess_google' })
+    expect(mockCompleteIntake).toHaveBeenCalledTimes(1)
+    expect(mockReplace).toHaveBeenCalledWith({
+      pathname: '/(athlete)/program',
+      params: { welcome: '1', next: 'Tomorrow' },
+    })
+  })
+
+  it('preserves the draft when Google is dismissed', async () => {
+    mockStartSSOFlow.mockResolvedValueOnce({
+      createdSessionId: null,
+      authSessionResult: { type: 'cancel' },
+    })
+    await show()
+    await press('save-plan-google')
+    expect(mockCompleteIntake).not.toHaveBeenCalled()
+    expect(testDraft.current.current()?.answers).toEqual(answers)
+  })
+
+  it('resumes the web draft after Google redirects and saves it once', async () => {
+    const os = Platform.OS
+    const storage = globalThis.sessionStorage
+    const entries = new Map<string, string>()
+    Object.defineProperty(globalThis, 'sessionStorage', {
+      configurable: true,
+      value: {
+        setItem: (key: string, v: string) => entries.set(key, v),
+        getItem: (key: string) => entries.get(key),
+        removeItem: (key: string) => entries.delete(key),
+      },
+    })
+    try {
+      Platform.OS = 'web'
+      await show()
+      await press('save-plan-google')
+      expect(JSON.parse(sessionStorage.getItem('wanderfit.firstRunDraft.v1')!)).toEqual(
+        testDraft.current.current()
+      )
+      expect(mockRedirect).toHaveBeenCalledWith({
+        strategy: 'oauth_google',
+        redirectUrl: '/google-save-callback',
+        redirectUrlComplete: '/reveal?saveWith=google',
+      })
+      expect(mockCompleteIntake).not.toHaveBeenCalled()
+      screen.unmount()
+      await mockSetActive()
+      mockSignedIn = mockClerk.user
+      render(
+        <SavePlanSheet open onOpenChange={jest.fn()} returningFromGoogle nextLabel="Tomorrow" />,
+        { wrapper }
+      )
+      await act(async () => {})
+      expect(mockCompleteIntake).toHaveBeenCalledTimes(1)
+      expect(mockReplace).toHaveBeenCalledWith({
+        pathname: '/(athlete)/program',
+        params: { welcome: '1', next: 'Tomorrow' },
+      })
+      expect(testDraft.current.current()).toBeNull()
+    } finally {
+      Platform.OS = os
+      Object.defineProperty(globalThis, 'sessionStorage', { configurable: true, value: storage })
+    }
   })
 
   it('email sign-up creates the athlete, saves the program with firstLaunchAt, then clears the draft', async () => {
