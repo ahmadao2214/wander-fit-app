@@ -1,10 +1,15 @@
 #!/usr/bin/env node
 // Files one GitHub issue per failed Android E2E flow (#83), or comments on the
-// open one with the same title. It only files on schedule, workflow_dispatch
-// and push runs; anything else (a PR, a local run) is a dry run that prints
-// what it would do. It never fixes, closes or edits anything.
+// open one with the same title. It never fixes, closes or edits anything.
 //
-//   node scripts/verify/report-failures.mjs [--dry-run] [--results <file>]
+// Two steps, so the job that runs PR code never holds issues: write:
+//   --summarize   in the Android job (read-only token): reads results.json,
+//                 prints what would be filed, and writes the failures to the
+//                 step output `failures`. It never calls GitHub.
+//   (default)     in the report job (issues: write, never on a PR): reads the
+//                 failures from FAILURES_JSON and files them. On any event
+//                 other than schedule, workflow_dispatch and push, or with
+//                 --dry-run, it prints what it would do instead.
 import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -16,6 +21,10 @@ export const FILING_EVENTS = ['schedule', 'workflow_dispatch', 'push']
 // Reported when the job died before results.json existed (build, emulator).
 export const RUN_FAILURE_FLOW = 'android-run'
 const MAX_ERROR_CHARS = 500
+// Published instead of the error when the password scrub didn't finish: the
+// repo is public, and unscrubbed error text is not safe to post.
+export const WITHHELD_ERROR =
+  'Error text withheld: the password scrub did not finish. See the run log.'
 
 export function issueTitle(flow, platform = 'android') {
   return `E2E failure: ${flow} (${platform})`
@@ -26,8 +35,9 @@ export function shouldFile(eventName) {
 }
 
 // results: the parsed results.json, or null when it is missing or unreadable.
-// Returns one { flow, error } per failed flow.
-export function failuresFrom(results) {
+// Returns one { flow, error } per failed flow. Error text is passed on only
+// when `scrubbed` says the runner's password scrub finished.
+export function failuresFrom(results, { scrubbed = false } = {}) {
   if (!Array.isArray(results)) {
     return [
       {
@@ -41,7 +51,7 @@ export function failuresFrom(results) {
   for (const result of results) {
     if (!result || result.status === 'passed' || seen.has(result.flow)) continue
     seen.add(result.flow)
-    failures.push({ flow: String(result.flow), error: result.error })
+    failures.push({ flow: String(result.flow), error: scrubbed ? result.error : WITHHELD_ERROR })
   }
   return failures
 }
@@ -53,9 +63,11 @@ export function errorBlock(error) {
   return ['```', text.replace(/`/g, "'"), '```'].join('\n')
 }
 
-export function reportBody({ failure, runUrl, artifact, evidenceUploaded }) {
-  const evidence = evidenceUploaded
-    ? `Evidence: artifact \`${artifact}\` on the run (${runUrl}#artifacts).`
+// artifactUrl is the upload step's own output, so the link exists only when
+// the evidence really was uploaded.
+export function reportBody({ failure, runUrl, artifact, artifactUrl = '' }) {
+  const evidence = artifactUrl
+    ? `Evidence: artifact \`${artifact}\` (${artifactUrl}).`
     : `Evidence: artifact \`${artifact}\` was not uploaded (no flow ran, or the password scrub did not finish).`
   return [
     `The \`${failure.flow}\` Android E2E flow failed.`,
@@ -67,20 +79,20 @@ export function reportBody({ failure, runUrl, artifact, evidenceUploaded }) {
   ].join('\n')
 }
 
-// Pure: what to do for each failure, given the open e2e-failure issues
-// ([{ number, title }]). Matches by exact title.
+// Pure: what to do for each failure, given the open issues found for their
+// titles ([{ number, title }]). Matches by exact title.
 export function planReports({
   failures,
   openIssues,
   runUrl,
   artifact = 'e2e-android',
   platform = 'android',
-  evidenceUploaded = false,
+  artifactUrl = '',
 }) {
   const byTitle = new Map(openIssues.map((issue) => [issue.title, issue.number]))
   return failures.map((failure) => {
     const title = issueTitle(failure.flow, platform)
-    const body = reportBody({ failure, runUrl, artifact, evidenceUploaded })
+    const body = reportBody({ failure, runUrl, artifact, artifactUrl })
     const number = byTitle.get(title)
     return number === undefined
       ? { action: 'create', title, body }
@@ -94,39 +106,52 @@ export function ghArgs(report) {
     : ['issue', 'comment', String(report.number), '--body', report.body]
 }
 
-export function listOpenIssues(gh) {
-  const out = gh([
-    'issue',
-    'list',
-    '--label',
-    LABEL,
-    '--state',
-    'open',
-    '--limit',
-    '200',
-    '--json',
-    'number,title',
-  ])
-  return JSON.parse(out)
+// Open issues whose title matches, whatever their labels: a search per title,
+// so a removed label or a long backlog can't hide the issue and cause a
+// duplicate. The search is fuzzy; planReports keeps the exact comparison.
+export function findOpenIssues(gh, titles) {
+  const found = []
+  for (const title of titles) {
+    const out = gh([
+      'issue',
+      'list',
+      '--state',
+      'open',
+      '--search',
+      `"${title}" in:title`,
+      '--limit',
+      '100',
+      '--json',
+      'number,title',
+    ])
+    found.push(...JSON.parse(out))
+  }
+  return found
 }
 
 // gh(args) returns stdout and throws on failure. Tests inject a fake.
-export function report({ failures, gh, dryRun, runUrl, evidenceUploaded, log = console.log }) {
+export function report({ failures, gh, dryRun, runUrl, artifactUrl = '', log = console.log }) {
   if (failures.length === 0) {
     log('[report] No failed flows; nothing to report.')
     return []
   }
   let openIssues = []
-  try {
-    openIssues = listOpenIssues(gh)
-  } catch (error) {
-    if (!dryRun) throw error
-    log(`[report] Could not list open ${LABEL} issues (${error.message}); assuming none.`)
+  // gh is absent in --summarize: that step holds no token and calls nothing.
+  if (gh) {
+    try {
+      openIssues = findOpenIssues(
+        gh,
+        failures.map((failure) => issueTitle(failure.flow))
+      )
+    } catch (error) {
+      if (!dryRun) throw error
+      log(`[report] Could not look up open issues (${error.message}); assuming none.`)
+    }
   }
-  const plan = planReports({ failures, openIssues, runUrl, evidenceUploaded })
+  const plan = planReports({ failures, openIssues, runUrl, artifactUrl })
   for (const item of plan) {
     const target = item.action === 'create' ? `"${item.title}"` : `#${item.number}`
-    if (dryRun) {
+    if (dryRun || !gh) {
       log(`[report] dry run: would ${item.action} ${target}\n${item.body}\n`)
     } else {
       gh(ghArgs(item))
@@ -134,6 +159,32 @@ export function report({ failures, gh, dryRun, runUrl, evidenceUploaded, log = c
     }
   }
   return plan
+}
+
+// The report job gets the failures as JSON from the Android job's output.
+// Empty or unreadable means that job died before it could summarize.
+export function failuresFromJson(json) {
+  let parsed = null
+  try {
+    parsed = JSON.parse(json)
+  } catch {
+    parsed = null
+  }
+  if (!Array.isArray(parsed)) return failuresFrom(null)
+  const failures = parsed
+    .filter((failure) => failure && typeof failure.flow === 'string')
+    .map((failure) => ({ flow: failure.flow, error: String(failure.error ?? '') }))
+  // The report job runs only when the Android job failed. No failed flow then
+  // means it failed somewhere else, which still deserves an issue.
+  if (failures.length === 0) {
+    return [
+      {
+        flow: RUN_FAILURE_FLOW,
+        error: 'The job failed, but no flow did (setup, teardown or upload). See the run log.',
+      },
+    ]
+  }
+  return failures
 }
 
 function runGh(args) {
@@ -154,24 +205,40 @@ function readResults(file) {
 
 function main() {
   const args = process.argv.slice(2)
-  const resultsIndex = args.indexOf('--results')
-  const file =
-    resultsIndex === -1
-      ? path.join(root, 'e2e-artifacts/android/results.json')
-      : path.resolve(args[resultsIndex + 1])
   const event = process.env.GITHUB_EVENT_NAME || ''
-  const dryRun = args.includes('--dry-run') || !shouldFile(event)
-  if (dryRun) console.log(`[report] Dry run (event: ${event || 'none'}); filing nothing.`)
   const server = process.env.GITHUB_SERVER_URL || 'https://github.com'
   const repo = process.env.GITHUB_REPOSITORY || 'ahmadao2214/wander-fit-app'
   const runUrl = `${server}/${repo}/actions/runs/${process.env.GITHUB_RUN_ID || 'local'}`
+  const artifactUrl = process.env.ARTIFACT_URL || ''
+
+  if (args.includes('--summarize')) {
+    const resultsIndex = args.indexOf('--results')
+    const file =
+      resultsIndex === -1
+        ? path.join(root, 'e2e-artifacts/android/results.json')
+        : path.resolve(args[resultsIndex + 1])
+    const scrubbed = fs.existsSync(path.join(path.dirname(file), '.scrubbed'))
+    const results = readResults(file)
+    // A passing run with no results file can't happen; a missing file on a
+    // green job would still be reported, so the report job also checks the
+    // job result before it runs.
+    const failures = failuresFrom(results, { scrubbed })
+    report({ failures, gh: null, dryRun: true, runUrl, artifactUrl })
+    if (process.env.GITHUB_OUTPUT) {
+      fs.appendFileSync(process.env.GITHUB_OUTPUT, `failures=${JSON.stringify(failures)}\n`)
+    }
+    return
+  }
+
+  const dryRun = args.includes('--dry-run') || !shouldFile(event)
+  if (dryRun) console.log(`[report] Dry run (event: ${event || 'none'}); filing nothing.`)
   try {
     report({
-      failures: failuresFrom(readResults(file)),
+      failures: failuresFromJson(process.env.FAILURES_JSON || ''),
       gh: runGh,
       dryRun,
       runUrl,
-      evidenceUploaded: fs.existsSync(path.join(path.dirname(file), '.scrubbed')),
+      artifactUrl,
     })
   } catch (error) {
     console.error(`[report] ${error.message}`)

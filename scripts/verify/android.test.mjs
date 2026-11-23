@@ -177,16 +177,42 @@ describe('android-e2e workflow', () => {
     expect(upload.with.path).toBe('e2e-artifacts/android/')
   })
 
-  it('reports failures last, with the job token and issues: write on this job only', () => {
-    const reportStep = job.steps.at(-1)
-    expect(reportStep).toEqual({
-      name: 'Report failures',
+  it('summarizes failures in the Android job with no token and a read-only job', () => {
+    const summary = job.steps.at(-1)
+    expect(summary).toEqual({
+      name: 'Summarize failures',
+      id: 'summary',
       if: '${{ !cancelled() }}',
-      env: { GH_TOKEN: '${{ github.token }}', GH_REPO: '${{ github.repository }}' },
-      run: 'node scripts/verify/report-failures.mjs',
+      env: { ARTIFACT_URL: '${{ steps.evidence.outputs.artifact-url }}' },
+      run: 'node scripts/verify/report-failures.mjs --summarize',
     })
-    expect(job.permissions).toEqual({ contents: 'read', issues: 'write' })
+    expect(job.permissions).toEqual({ contents: 'read' })
     expect(workflow.permissions).toEqual({ contents: 'read' })
+    expect(JSON.stringify(job)).not.toMatch(/github\.token|GH_TOKEN/)
+    expect(job.outputs).toEqual({
+      failures: '${{ steps.summary.outputs.failures }}',
+      artifact_url: '${{ steps.evidence.outputs.artifact-url }}',
+    })
+  })
+
+  it('files issues in a separate job that never runs on a PR', () => {
+    const report = workflow.jobs['report-failures']
+    expect(report.needs).toBe('android-e2e')
+    expect(report.if).toBe(
+      "${{ !cancelled() && github.event_name != 'pull_request' && needs.android-e2e.result == 'failure' }}"
+    )
+    expect(report.permissions).toEqual({ contents: 'read', issues: 'write' })
+    const step = report.steps.at(-1)
+    expect(step.run).toBe('node scripts/verify/report-failures.mjs')
+    expect(step.env).toEqual({
+      GH_TOKEN: '${{ github.token }}',
+      GH_REPO: '${{ github.repository }}',
+      FAILURES_JSON: '${{ needs.android-e2e.outputs.failures }}',
+      ARTIFACT_URL: '${{ needs.android-e2e.outputs.artifact_url }}',
+    })
+    // Only node built-ins: no install step, so no dependency code holds the token.
+    expect(report.steps.some((item) => /bun install/.test(item.run || ''))).toBe(false)
+    expect(Object.keys(workflow.jobs)).toEqual(['android-e2e', 'report-failures'])
   })
 })
 

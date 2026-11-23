@@ -32,10 +32,12 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository) }}
     runs-on: ubuntu-latest
     timeout-minutes: 75
-    # issues: write is only for the failure report at the end.
+    # Read-only: this job runs PR code. The report job below holds issues: write.
     permissions:
       contents: read
-      issues: write
+    outputs:
+      failures: ${{ steps.summary.outputs.failures }}
+      artifact_url: ${{ steps.evidence.outputs.artifact-url }}
     env:
       EXPO_PUBLIC_CONVEX_URL_E2E: ${{ vars.EXPO_PUBLIC_CONVEX_URL_E2E }}
       EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY }}
@@ -113,6 +115,7 @@ jobs:
       # The marker is written only after every password scrub succeeds, so
       # unscrubbed evidence is never uploaded.
       - name: Upload Android evidence
+        id: evidence
         if: always() && hashFiles('e2e-artifacts/android/.scrubbed') != ''
         uses: actions/upload-artifact@v4
         with:
@@ -120,12 +123,37 @@ jobs:
           path: e2e-artifacts/android/
           if-no-files-found: warn
           retention-days: 14
-      # One e2e-failure issue per failed flow, or a comment on the open one.
-      # The script files only on schedule, dispatch and push; on a PR it is a
-      # dry run. Skipped on cancel, so a superseded run files nothing.
-      - name: Report failures
+      # Prints what the report job would file and hands it the failed flows.
+      # It calls nothing and gets no token. Error text is passed on only when
+      # the password scrub finished.
+      - name: Summarize failures
+        id: summary
         if: ${{ !cancelled() }}
+        env:
+          ARTIFACT_URL: ${{ steps.evidence.outputs.artifact-url }}
+        run: node scripts/verify/report-failures.mjs --summarize
+
+  # One e2e-failure issue per failed flow, or a comment on the open one (#83).
+  # Never on a PR, so PR code never runs with issues: write. Skipped on cancel,
+  # so a superseded run files nothing.
+  report-failures:
+    name: Report Android failures
+    needs: android-e2e
+    if: ${{ !cancelled() && github.event_name != 'pull_request' && needs.android-e2e.result == 'failure' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Report failures
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          FAILURES_JSON: ${{ needs.android-e2e.outputs.failures }}
+          ARTIFACT_URL: ${{ needs.android-e2e.outputs.artifact_url }}
         run: node scripts/verify/report-failures.mjs
