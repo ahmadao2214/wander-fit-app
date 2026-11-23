@@ -41,7 +41,10 @@ export const interpolateColor = (_v: number, _i: number[], out: string[]) => out
 
 // Animated props land on the component as plain props.
 function createAnimatedComponent<P extends object>(C: ComponentType<P>) {
-  return function AnimatedComponent({ animatedProps, ...rest }: P & { animatedProps?: Partial<P> }) {
+  return function AnimatedComponent({
+    animatedProps,
+    ...rest
+  }: P & { animatedProps?: Partial<P> }) {
     return createElement(C, { ...(rest as P), ...animatedProps })
   }
 }

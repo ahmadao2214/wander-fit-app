@@ -32,7 +32,10 @@ export default function TrainingScienceLayout() {
         options={{
           title: 'Training science',
           headerLeft: () => (
-            <Pressable onPress={() => router.canDismiss() ? router.dismiss() : router.back()} hitSlop={8}>
+            <Pressable
+              onPress={() => (router.canDismiss() ? router.dismiss() : router.back())}
+              hitSlop={8}
+            >
               <ChevronLeft size={28} color={isDark ? '#F8FAFC' : '#0F172A'} />
             </Pressable>
           ),

@@ -58,7 +58,7 @@ describe('normalizeExerciseOrder', () => {
 })
 
 describe('main <-> template order', () => {
-  it('converts the detail screen\'s main-relative order to template indices', () => {
+  it("converts the detail screen's main-relative order to template indices", () => {
     expect(mainOrderToTemplateOrder([1, 3, 0, 2, 4, 5], template)).toEqual([2, 4, 1, 3, 5, 6])
   })
 
@@ -68,7 +68,9 @@ describe('main <-> template order', () => {
 
   it('round-trips', () => {
     const main = [5, 4, 3, 2, 1, 0]
-    expect(templateOrderToMainOrder(mainOrderToTemplateOrder(main, template), template)).toEqual(main)
+    expect(templateOrderToMainOrder(mainOrderToTemplateOrder(main, template), template)).toEqual(
+      main
+    )
   })
 })
 
@@ -93,7 +95,7 @@ describe('alignCompletionsToTemplate', () => {
     expect(aligned[1]?.sets).toHaveLength(2)
   })
 
-  it('puts each exercise\'s sets back under that exercise when a save was scrambled by reordering', () => {
+  it("puts each exercise's sets back under that exercise when a save was scrambled by reordering", () => {
     // Saved positionally after a reorder: Romanian Deadlift's slot holds
     // Goblet Squat's six sets, which is what the athlete saw
     const saved = [
@@ -116,7 +118,9 @@ describe('alignCompletionsToTemplate', () => {
     const saved = template.slice(1).map((ex) => completion(ex.exerciseId, 2))
     const aligned = alignCompletionsToTemplate(template, saved)
     expect(aligned[0]).toBeUndefined()
-    expect(aligned.slice(1).map((c) => c?.exerciseId)).toEqual(template.slice(1).map((ex) => ex.exerciseId))
+    expect(aligned.slice(1).map((c) => c?.exerciseId)).toEqual(
+      template.slice(1).map((ex) => ex.exerciseId)
+    )
   })
 
   it('handles an exercise that appears in both warmup and main', () => {

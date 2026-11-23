@@ -35,9 +35,7 @@ function sanitizeSegment(raw: string): string {
  * e.g. `['(athlete)', 'workout', 'execute', '[id]']` -> `'/(athlete)/workout/execute/[id]'`.
  */
 export function normalizeRouteSegments(segments: readonly string[]): string {
-  const cleaned = segments
-    .map(sanitizeSegment)
-    .filter((segment) => segment.length > 0)
+  const cleaned = segments.map(sanitizeSegment).filter((segment) => segment.length > 0)
 
   if (cleaned.length === 0) return '/'
   return `/${cleaned.join('/')}`
@@ -122,11 +120,7 @@ export function normalizeWebPathSegments(segments: readonly string[]): string {
   return UNMATCHED_WEB_ROUTE
 }
 
-const EXCLUDED_REPLAY_PREFIXES = [
-  '/(auth)',
-  '/(first-run)',
-  '/(reassessment)',
-] as const
+const EXCLUDED_REPLAY_PREFIXES = ['/(auth)', '/(first-run)', '/(reassessment)'] as const
 
 const EXCLUDED_REPLAY_EXACT = new Set<string>([
   '/',

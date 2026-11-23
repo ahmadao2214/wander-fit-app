@@ -11,34 +11,39 @@
 //
 // Collected layout: <evidence>/<platform>/<flow>/<runId>/{meta.json, result.json, ...}
 // and <evidence>/run.json for the run that is building the gallery.
-import { execFileSync } from "node:child_process"
-import fs from "node:fs"
-import path from "node:path"
-import { fileURLToPath } from "node:url"
-import { artifactName, listWebFlows, root } from "./flows.mjs"
+import { execFileSync } from 'node:child_process'
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { artifactName, listWebFlows, root } from './flows.mjs'
 
 export const platforms = [
-  { id: "web", label: "Web" },
-  { id: "android", label: "Android", notRun: "Not run yet (#83)" },
-  { id: "ios", label: "iOS", notRun: "Not run yet (#84)" },
+  { id: 'web', label: 'Web' },
+  { id: 'android', label: 'Android', notRun: 'Not run yet (#83)' },
+  { id: 'ios', label: 'iOS', notRun: 'Not run yet (#84)' },
 ]
 
-const featuresDir = path.join(root, ".cursor/skills/verify-wander-fit/features")
-const repoUrl = "https://github.com/ahmadao2214/wander-fit-app"
+const featuresDir = path.join(root, '.cursor/skills/verify-wander-fit/features')
+const repoUrl = 'https://github.com/ahmadao2214/wander-fit-app'
 
 export function escapeHtml(value) {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;")
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 }
 
 // A relative URL for a site path, every segment percent-encoded, then made
 // safe for an attribute.
 export function mediaUrl(...segments) {
-  return escapeHtml(segments.flatMap((s) => String(s).split("/")).map(encodeURIComponent).join("/"))
+  return escapeHtml(
+    segments
+      .flatMap((s) => String(s).split('/'))
+      .map(encodeURIComponent)
+      .join('/')
+  )
 }
 
 // e2e-web-sign-in -> { platform: "web", flow: "sign-in" }
@@ -57,8 +62,9 @@ export function parseArtifactName(name) {
 export function newestMainArtifact(artifacts) {
   const usable = (artifacts || []).filter((artifact) => {
     const run = artifact.workflow_run || {}
-    const sameRepo = run.head_repository_id === undefined || run.head_repository_id === run.repository_id
-    return !artifact.expired && run.head_branch === "main" && sameRepo
+    const sameRepo =
+      run.head_repository_id === undefined || run.head_repository_id === run.repository_id
+    return !artifact.expired && run.head_branch === 'main' && sameRepo
   })
   usable.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
   return usable[0] || null
@@ -80,15 +86,15 @@ function walkFiles(dir) {
 export function readEvidence(dir) {
   const readJson = (file) => {
     try {
-      return JSON.parse(fs.readFileSync(path.join(dir, file), "utf8"))
+      return JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8'))
     } catch {
       return null
     }
   }
-  const meta = readJson("meta.json") || {}
-  const result = readJson("result.json") || {}
+  const meta = readJson('meta.json') || {}
+  const result = readJson('result.json') || {}
   const files = walkFiles(dir)
-    .map((full) => path.relative(dir, full).split(path.sep).join("/"))
+    .map((full) => path.relative(dir, full).split(path.sep).join('/'))
     // Ignore archived cold-start retry folders (`attempt-1/...`) when picking
     // gallery media so only the final attempt's video and screenshots appear.
     .filter((file) => !/^attempt-\d+\//.test(file))
@@ -97,19 +103,19 @@ export function readEvidence(dir) {
     .filter((file) => /(^|\/)takeScreenshot\/[^/]+\.png$/i.test(file))
     .sort((a, b) => path.posix.basename(a).localeCompare(path.posix.basename(b)))
   const flow = meta.flow || result.flow
-  const platform = meta.platform || "web"
+  const platform = meta.platform || 'web'
   // No result.json means the runner never recorded an outcome: not a pass.
-  const status = result.status === "passed" ? "passed" : "failed"
+  const status = result.status === 'passed' ? 'passed' : 'failed'
   return {
     flow,
     platform,
     status,
-    error: result.error || (result.status ? "" : "No result.json in the evidence."),
+    error: result.error || (result.status ? '' : 'No result.json in the evidence.'),
     seconds: result.seconds,
-    createdAt: meta.createdAt || "",
-    sha: meta.sha || "",
-    runId: meta.runId || "",
-    runUrl: meta.runUrl || "",
+    createdAt: meta.createdAt || '',
+    sha: meta.sha || '',
+    runId: meta.runId || '',
+    runUrl: meta.runUrl || '',
     dir,
     video,
     screenshots,
@@ -134,14 +140,14 @@ export function readCollected(evidenceDir) {
   }
   let run = null
   try {
-    run = JSON.parse(fs.readFileSync(path.join(evidenceDir, "run.json"), "utf8"))
+    run = JSON.parse(fs.readFileSync(path.join(evidenceDir, 'run.json'), 'utf8'))
   } catch {}
   return { entries, run }
 }
 
 export function featureTitle(flow, dir = featuresDir) {
   try {
-    const text = fs.readFileSync(path.join(dir, `${flow}.md`), "utf8")
+    const text = fs.readFileSync(path.join(dir, `${flow}.md`), 'utf8')
     const heading = text.match(/^# (.+)$/m)
     if (heading) return heading[1].trim()
   } catch {}
@@ -173,20 +179,28 @@ export function buildGallery({ flows, entries, run = null, titles = {} }) {
       const entry = newest.get(`${platform.id}\u0000${flow}`) || null
       const stale = Boolean(
         entry &&
-          Array.isArray(run?.uploaded) &&
-          ranPlatforms.includes(platform.id) &&
-          !run.uploaded.includes(artifactName(flow, platform.id))
+        Array.isArray(run?.uploaded) &&
+        ranPlatforms.includes(platform.id) &&
+        !run.uploaded.includes(artifactName(flow, platform.id))
       )
-      return { platform: platform.id, label: platform.label, notRun: platform.notRun || "No evidence yet", entry, stale }
+      return {
+        platform: platform.id,
+        label: platform.label,
+        notRun: platform.notRun || 'No evidence yet',
+        entry,
+        stale,
+      }
     }),
   }))
-  const cells = features.flatMap((feature) => feature.cells.map((cell) => cell.entry).filter(Boolean))
+  const cells = features.flatMap((feature) =>
+    feature.cells.map((cell) => cell.entry).filter(Boolean)
+  )
   return {
     features,
     run,
     counts: {
-      passed: cells.filter((entry) => entry.status === "passed").length,
-      failed: cells.filter((entry) => entry.status === "failed").length,
+      passed: cells.filter((entry) => entry.status === 'passed').length,
+      failed: cells.filter((entry) => entry.status === 'failed').length,
     },
   }
 }
@@ -197,10 +211,10 @@ export function sitePath(entry, file) {
 }
 
 function formatDate(iso) {
-  if (!iso) return "date unknown"
+  if (!iso) return 'date unknown'
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return iso
-  return `${date.toISOString().slice(0, 16).replace("T", " ")} UTC`
+  return `${date.toISOString().slice(0, 16).replace('T', ' ')} UTC`
 }
 
 function renderCell(cell) {
@@ -211,33 +225,35 @@ function renderCell(cell) {
   <p class="none">${escapeHtml(cell.notRun)}</p>
 </article>`
   }
-  const failing = entry.status !== "passed"
+  const failing = entry.status !== 'passed'
   const sha = entry.sha
     ? `<a href="${escapeHtml(`${repoUrl}/commit/${entry.sha}`)}"><code>${escapeHtml(entry.sha.slice(0, 7))}</code></a>`
-    : "commit unknown"
-  const runLink = entry.runUrl ? ` · <a href="${escapeHtml(entry.runUrl)}">run</a>` : ""
-  const time = entry.seconds === undefined ? "" : ` · ${escapeHtml(entry.seconds)}s`
+    : 'commit unknown'
+  const runLink = entry.runUrl ? ` · <a href="${escapeHtml(entry.runUrl)}">run</a>` : ''
+  const time = entry.seconds === undefined ? '' : ` · ${escapeHtml(entry.seconds)}s`
   const badge = failing
     ? `<span class="badge fail">Failing</span>`
     : `<span class="badge pass">Passed</span>`
-  const error = failing && entry.error ? `<p class="error">${escapeHtml(entry.error)}</p>` : ""
+  const error = failing && entry.error ? `<p class="error">${escapeHtml(entry.error)}</p>` : ''
   const stale = cell.stale
     ? `<p class="stale">The latest nightly run uploaded no evidence for this flow. This evidence is from another run.</p>`
-    : ""
-  const poster = entry.screenshots[0] ? ` poster="${mediaUrl(sitePath(entry, entry.screenshots[0]))}"` : ""
+    : ''
+  const poster = entry.screenshots[0]
+    ? ` poster="${mediaUrl(sitePath(entry, entry.screenshots[0]))}"`
+    : ''
   const video = entry.video
     ? `<video controls muted playsinline preload="metadata"${poster} src="${mediaUrl(sitePath(entry, entry.video))}"></video>`
     : `<p class="none">No video recorded.</p>`
   const shots = entry.screenshots.length
     ? `<ol class="shots">${entry.screenshots
         .map((file) => {
-          const name = path.posix.basename(file).replace(/\.png$/i, "")
+          const name = path.posix.basename(file).replace(/\.png$/i, '')
           const url = mediaUrl(sitePath(entry, file))
           return `<li><a href="${url}"><img loading="lazy" src="${url}" alt="${escapeHtml(name)}"></a><span>${escapeHtml(name)}</span></li>`
         })
-        .join("")}</ol>`
+        .join('')}</ol>`
     : `<p class="none">No step screenshots.</p>`
-  return `<article class="cell${failing ? " failing" : ""}" aria-label="${escapeHtml(cell.label)}: ${failing ? "failing" : "passed"}">
+  return `<article class="cell${failing ? ' failing' : ''}" aria-label="${escapeHtml(cell.label)}: ${failing ? 'failing' : 'passed'}">
   <h3>${escapeHtml(cell.label)} ${badge}</h3>
   <p class="meta">${escapeHtml(formatDate(entry.createdAt))} · ${sha}${time}${runLink}</p>
   ${stale}${error}${video}
@@ -248,21 +264,21 @@ function renderCell(cell) {
 export function renderGallery(model, { generatedAt = new Date().toISOString() } = {}) {
   const sections = model.features
     .map((feature) => {
-      const failing = feature.cells.some((cell) => cell.entry && cell.entry.status !== "passed")
-      return `<section id="${escapeHtml(feature.flow)}"${failing ? ' class="has-failure"' : ""}>
+      const failing = feature.cells.some((cell) => cell.entry && cell.entry.status !== 'passed')
+      return `<section id="${escapeHtml(feature.flow)}"${failing ? ' class="has-failure"' : ''}>
   <header>
     <h2>${escapeHtml(feature.title)}</h2>
     <a class="doc" href="${escapeHtml(`${repoUrl}/blob/main/.cursor/skills/verify-wander-fit/features/${encodeURIComponent(feature.flow)}.md`)}"><code>${escapeHtml(feature.flow)}</code></a>
   </header>
   <div class="cells">
-${feature.cells.map(renderCell).join("\n")}
+${feature.cells.map(renderCell).join('\n')}
   </div>
 </section>`
     })
-    .join("\n")
+    .join('\n')
   const runLine = model.run?.runUrl
     ? ` · built by <a href="${escapeHtml(model.run.runUrl)}">this nightly run</a>`
-    : ""
+    : ''
   const { passed, failed } = model.counts
   return `<!doctype html>
 <html lang="en">
@@ -326,13 +342,13 @@ export function writeSite(model, siteDir, options) {
       const { entry } = cell
       if (!entry) continue
       for (const file of [entry.video, ...entry.screenshots].filter(Boolean)) {
-        const target = path.join(siteDir, ...sitePath(entry, file).split("/"))
+        const target = path.join(siteDir, ...sitePath(entry, file).split('/'))
         fs.mkdirSync(path.dirname(target), { recursive: true })
-        fs.copyFileSync(path.join(entry.dir, ...file.split("/")), target)
+        fs.copyFileSync(path.join(entry.dir, ...file.split('/')), target)
       }
     }
   }
-  fs.writeFileSync(path.join(siteDir, "index.html"), renderGallery(model, options))
+  fs.writeFileSync(path.join(siteDir, 'index.html'), renderGallery(model, options))
 }
 
 export function build(evidenceDir, siteDir, flows = listWebFlows()) {
@@ -345,33 +361,37 @@ export function build(evidenceDir, siteDir, flows = listWebFlows()) {
 }
 
 function gh(args) {
-  return execFileSync("gh", args, { encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] })
+  return execFileSync('gh', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] })
 }
 
 export function collect(evidenceDir, flows = listWebFlows()) {
-  const repo = process.env.GITHUB_REPOSITORY || gh(["repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"]).trim()
-  const server = process.env.GITHUB_SERVER_URL || "https://github.com"
+  const repo =
+    process.env.GITHUB_REPOSITORY ||
+    gh(['repo', 'view', '--json', 'nameWithOwner', '-q', '.nameWithOwner']).trim()
+  const server = process.env.GITHUB_SERVER_URL || 'https://github.com'
   fs.mkdirSync(evidenceDir, { recursive: true })
   const runId = process.env.GITHUB_RUN_ID
   if (runId) {
-    const run = JSON.parse(gh(["api", `repos/${repo}/actions/runs/${runId}`]))
+    const run = JSON.parse(gh(['api', `repos/${repo}/actions/runs/${runId}`]))
     const record = {
       runId: Number(runId),
       runUrl: `${server}/${repo}/actions/runs/${runId}`,
       startedAt: run.run_started_at || run.created_at,
-      platforms: (process.env.GALLERY_RAN_PLATFORMS || "web").split(",").filter(Boolean),
+      platforms: (process.env.GALLERY_RAN_PLATFORMS || 'web').split(',').filter(Boolean),
       // The evidence artifacts this run uploaded, so the page can tell a flow
       // the nightly skipped from one a newer run superseded.
       uploaded: JSON.parse(
-        gh(["api", `repos/${repo}/actions/runs/${runId}/artifacts?per_page=100`])
+        gh(['api', `repos/${repo}/actions/runs/${runId}/artifacts?per_page=100`])
       ).artifacts.map((artifact) => artifact.name),
     }
-    fs.writeFileSync(path.join(evidenceDir, "run.json"), JSON.stringify(record, null, 2))
+    fs.writeFileSync(path.join(evidenceDir, 'run.json'), JSON.stringify(record, null, 2))
   }
   for (const flow of flows) {
     for (const platform of platforms) {
       const name = artifactName(flow, platform.id)
-      const listing = JSON.parse(gh(["api", `repos/${repo}/actions/artifacts?name=${encodeURIComponent(name)}&per_page=100`]))
+      const listing = JSON.parse(
+        gh(['api', `repos/${repo}/actions/artifacts?name=${encodeURIComponent(name)}&per_page=100`])
+      )
       const artifact = newestMainArtifact(listing.artifacts)
       if (!artifact) {
         console.log(`${name}: none on main`)
@@ -379,7 +399,7 @@ export function collect(evidenceDir, flows = listWebFlows()) {
       }
       const run = artifact.workflow_run
       const dir = path.join(evidenceDir, platform.id, flow, String(run.id))
-      gh(["run", "download", String(run.id), "--repo", repo, "--name", name, "--dir", dir])
+      gh(['run', 'download', String(run.id), '--repo', repo, '--name', name, '--dir', dir])
       const meta = {
         flow,
         platform: platform.id,
@@ -389,7 +409,7 @@ export function collect(evidenceDir, flows = listWebFlows()) {
         sha: run.head_sha,
         createdAt: artifact.created_at,
       }
-      fs.writeFileSync(path.join(dir, "meta.json"), JSON.stringify(meta, null, 2))
+      fs.writeFileSync(path.join(dir, 'meta.json'), JSON.stringify(meta, null, 2))
       console.log(`${name}: run ${run.id} ${artifact.created_at}`)
     }
   }
@@ -397,13 +417,17 @@ export function collect(evidenceDir, flows = listWebFlows()) {
 
 function main() {
   const [command, evidenceDir, siteDir] = process.argv.slice(2)
-  if (command === "collect" && evidenceDir) {
+  if (command === 'collect' && evidenceDir) {
     collect(path.resolve(evidenceDir))
-  } else if (command === "build" && evidenceDir && siteDir) {
+  } else if (command === 'build' && evidenceDir && siteDir) {
     const model = build(path.resolve(evidenceDir), path.resolve(siteDir))
-    console.log(`gallery: ${model.features.length} features, ${model.counts.passed} passed, ${model.counts.failed} failing`)
+    console.log(
+      `gallery: ${model.features.length} features, ${model.counts.passed} passed, ${model.counts.failed} failing`
+    )
   } else {
-    console.error("Use: gallery.mjs collect <evidence-dir> | gallery.mjs build <evidence-dir> <site-dir>")
+    console.error(
+      'Use: gallery.mjs collect <evidence-dir> | gallery.mjs build <evidence-dir> <site-dir>'
+    )
     process.exit(1)
   }
 }

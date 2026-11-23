@@ -63,7 +63,9 @@ export function mainOrderToTemplateOrder(
   exercises: readonly SectionedExercise[]
 ): number[] {
   const main = mainTemplateIndices(exercises)
-  return mainOrder.map((position) => main[position]).filter((index): index is number => index !== undefined)
+  return mainOrder
+    .map((position) => main[position])
+    .filter((index): index is number => index !== undefined)
 }
 
 /** Template indices → positions among the main exercises. */
@@ -71,8 +73,12 @@ export function templateOrderToMainOrder(
   order: readonly number[],
   exercises: readonly SectionedExercise[]
 ): number[] {
-  const positionOf = new Map(mainTemplateIndices(exercises).map((index, position) => [index, position]))
-  return order.map((index) => positionOf.get(index)).filter((position): position is number => position !== undefined)
+  const positionOf = new Map(
+    mainTemplateIndices(exercises).map((index, position) => [index, position])
+  )
+  return order
+    .map((index) => positionOf.get(index))
+    .filter((position): position is number => position !== undefined)
 }
 
 /**
@@ -120,7 +126,8 @@ export function alignCompletionsToTemplate<C extends { exerciseId: string }>(
   exercises.forEach((ex, index) => {
     if (aligned[index]) return
     const match = saved.findIndex(
-      (completion, savedIndex) => !used.has(savedIndex) && String(completion.exerciseId) === String(ex.exerciseId)
+      (completion, savedIndex) =>
+        !used.has(savedIndex) && String(completion.exerciseId) === String(ex.exerciseId)
     )
     if (match !== -1) {
       used.add(match)

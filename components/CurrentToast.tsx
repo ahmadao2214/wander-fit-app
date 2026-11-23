@@ -20,9 +20,7 @@ export function CurrentToast() {
     >
       <YStack items="center" p="$2" gap="$2">
         <Toast.Title fontWeight="bold">{currentToast.title}</Toast.Title>
-        {!!currentToast.message && (
-          <Toast.Description>{currentToast.message}</Toast.Description>
-        )}
+        {!!currentToast.message && <Toast.Description>{currentToast.message}</Toast.Description>}
       </YStack>
     </Toast>
   )

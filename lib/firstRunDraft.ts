@@ -37,10 +37,16 @@ function parseAnswers(raw: unknown): FirstRunAnswers {
   const r = raw as Record<string, unknown>
   const answers: FirstRunAnswers = {}
   if (typeof r.sportId === 'string' && r.sportId) answers.sportId = r.sportId
-  if (r.seasonStart === null || (typeof r.seasonStart === 'string' && ISO_DATE.test(r.seasonStart))) {
+  if (
+    r.seasonStart === null ||
+    (typeof r.seasonStart === 'string' && ISO_DATE.test(r.seasonStart))
+  ) {
     answers.seasonStart = r.seasonStart
   }
-  if (Array.isArray(r.trainingDays) && r.trainingDays.every((d) => Number.isInteger(d) && d >= 0 && d <= 6)) {
+  if (
+    Array.isArray(r.trainingDays) &&
+    r.trainingDays.every((d) => Number.isInteger(d) && d >= 0 && d <= 6)
+  ) {
     answers.trainingDays = r.trainingDays as number[]
   }
   if (typeof r.ageGroup === 'string' && AGE_GROUPS.includes(r.ageGroup)) {
@@ -72,7 +78,10 @@ export interface DraftStore {
   /** Loads the draft, creating it (with `firstLaunchAt` = now) if there is none. */
   load(): Promise<FirstRunDraft>
   /** Merges answers and moves `lastStep`. `firstLaunchAt` can't be changed. */
-  save(patch: { answers?: Partial<FirstRunAnswers>; lastStep?: FirstRunStep }): Promise<FirstRunDraft>
+  save(patch: {
+    answers?: Partial<FirstRunAnswers>
+    lastStep?: FirstRunStep
+  }): Promise<FirstRunDraft>
   /** Removes the draft, after the program is saved. */
   clear(): Promise<void>
   /** The draft as last loaded or saved, or null before the first load. */
@@ -124,9 +133,7 @@ export function createDraftStore(storage: DraftStorage, now: () => number = Date
       // Storage is back: keep what it holds, plus anything answered meanwhile.
       unread = false
       const standIn = cached
-      cached = stored
-        ? { ...stored, answers: { ...stored.answers, ...standIn.answers } }
-        : standIn
+      cached = stored ? { ...stored, answers: { ...stored.answers, ...standIn.answers } } : standIn
       if (!stored) await write(cached)
       return cached
     }

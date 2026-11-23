@@ -31,7 +31,11 @@ export default function ProgramPage() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   // Set once, by the First Run's save: the first visit to the saved plan.
-  const { welcome, kept, next } = useLocalSearchParams<{ welcome?: string; kept?: string; next?: string }>()
+  const { welcome, kept, next } = useLocalSearchParams<{
+    welcome?: string
+    kept?: string
+    next?: string
+  }>()
   // One visit only: leaving the tab clears them, so a later "Up next" never
   // keeps the first day's label.
   useFocusEffect(
@@ -67,17 +71,9 @@ export default function ProgramPage() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <YStack
-        flex={1}
-        bg="$background"
-        pt={insets.top + 16}
-        pb={insets.bottom}
-      >
+      <YStack flex={1} bg="$background" pt={insets.top + 16} pb={insets.bottom}>
         <ProgramSeasonHeader welcome={welcome === '1'} kept={kept === '1'} next={next} />
-        <WorkoutCalendar
-          onWorkoutPress={handleWorkoutPress}
-          initialViewMode="week"
-        />
+        <WorkoutCalendar onWorkoutPress={handleWorkoutPress} initialViewMode="week" />
       </YStack>
     </GestureHandlerRootView>
   )

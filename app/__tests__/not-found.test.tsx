@@ -34,7 +34,9 @@ describe('Not found screen', () => {
 
   it('keeps its content below the status bar and Dynamic Island', () => {
     const { getByTestId } = render(<NotFoundScreen />, { wrapper: AllTheProviders })
-    const style = [getByTestId('not-found').props.style].flat(Infinity).reduce((all: any, s: any) => ({ ...all, ...s }), {})
+    const style = [getByTestId('not-found').props.style]
+      .flat(Infinity)
+      .reduce((all: any, s: any) => ({ ...all, ...s }), {})
     expect(style.paddingTop).toBeGreaterThanOrEqual(59)
   })
 

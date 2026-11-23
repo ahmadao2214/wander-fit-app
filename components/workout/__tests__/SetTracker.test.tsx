@@ -15,7 +15,12 @@ const sets = (states: ('done' | 'skipped' | 'todo')[]) =>
 describe('SetTracker', () => {
   it('marks the first set not yet logged as the next one', () => {
     const { getByText, getByLabelText, queryByText } = render(
-      <SetTracker sets={sets(['done', 'todo', 'todo'])} prescribedReps="10" prescribedSets={3} onSetUpdate={jest.fn()} />,
+      <SetTracker
+        sets={sets(['done', 'todo', 'todo'])}
+        prescribedReps="10"
+        prescribedSets={3}
+        onSetUpdate={jest.fn()}
+      />,
       { wrapper: AllTheProviders }
     )
     expect(getByText('Set 2 · Next')).toBeTruthy()
@@ -27,16 +32,30 @@ describe('SetTracker', () => {
   it('logs the next set with the prescribed reps when tapped', () => {
     const onSetUpdate = jest.fn()
     const { getByLabelText } = render(
-      <SetTracker sets={sets(['done', 'todo'])} prescribedReps="8" prescribedSets={2} onSetUpdate={onSetUpdate} />,
+      <SetTracker
+        sets={sets(['done', 'todo'])}
+        prescribedReps="8"
+        prescribedSets={2}
+        onSetUpdate={onSetUpdate}
+      />,
       { wrapper: AllTheProviders }
     )
     fireEvent.press(getByLabelText('Set 2, 8, next, tap when done'))
-    expect(onSetUpdate).toHaveBeenCalledWith(1, { completed: true, skipped: false, repsCompleted: 8 })
+    expect(onSetUpdate).toHaveBeenCalledWith(1, {
+      completed: true,
+      skipped: false,
+      repsCompleted: 8,
+    })
   })
 
   it('has no next set once every set is logged or skipped', () => {
     const { queryByText } = render(
-      <SetTracker sets={sets(['done', 'skipped'])} prescribedReps="8" prescribedSets={2} onSetUpdate={jest.fn()} />,
+      <SetTracker
+        sets={sets(['done', 'skipped'])}
+        prescribedReps="8"
+        prescribedSets={2}
+        onSetUpdate={jest.fn()}
+      />,
       { wrapper: AllTheProviders }
     )
     expect(queryByText(/· Next/)).toBeNull()
@@ -44,7 +63,12 @@ describe('SetTracker', () => {
 
   it('sizes each tile to a third of the measured row', () => {
     const { UNSAFE_getAllByProps, getByText } = render(
-      <SetTracker sets={sets(['todo', 'todo', 'todo'])} prescribedReps="30s each side" prescribedSets={3} onSetUpdate={jest.fn()} />,
+      <SetTracker
+        sets={sets(['todo', 'todo', 'todo'])}
+        prescribedReps="30s each side"
+        prescribedSets={3}
+        onSetUpdate={jest.fn()}
+      />,
       { wrapper: AllTheProviders }
     )
     const row = UNSAFE_getAllByProps({ flexWrap: 'wrap' })[0]
@@ -57,7 +81,12 @@ describe('SetTracker', () => {
 
   it('keeps a single set to a third of the row rather than full width', () => {
     const { UNSAFE_getAllByProps, getByText } = render(
-      <SetTracker sets={sets(['todo'])} prescribedReps="30s each side" prescribedSets={1} onSetUpdate={jest.fn()} />,
+      <SetTracker
+        sets={sets(['todo'])}
+        prescribedReps="30s each side"
+        prescribedSets={1}
+        onSetUpdate={jest.fn()}
+      />,
       { wrapper: AllTheProviders }
     )
     const row = UNSAFE_getAllByProps({ flexWrap: 'wrap' })[0]
@@ -109,7 +138,12 @@ describe('SetTracker', () => {
 
   it('never shrinks a long prescription below the 12pt floor', () => {
     const { getAllByText } = render(
-      <SetTracker sets={sets(['todo', 'todo'])} prescribedReps="10 each side" prescribedSets={2} onSetUpdate={jest.fn()} />,
+      <SetTracker
+        sets={sets(['todo', 'todo'])}
+        prescribedReps="10 each side"
+        prescribedSets={2}
+        onSetUpdate={jest.fn()}
+      />,
       { wrapper: AllTheProviders }
     )
     const tiles = getAllByText('10 each side')
@@ -119,5 +153,4 @@ describe('SetTracker', () => {
       expect(fontSize * node.props.minimumFontScale).toBeGreaterThanOrEqual(12)
     }
   })
-
 })

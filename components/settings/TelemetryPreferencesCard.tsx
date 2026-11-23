@@ -5,10 +5,7 @@ import { useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { Body, Supporting, SectionTitle } from '../Typography'
 import { analytics, type TelemetryPlatform } from '../../lib/analytics'
-import {
-  canShowSessionReplayOptIn,
-  type AthleteAgeGroup,
-} from '../../lib/sessionReplayGate'
+import { canShowSessionReplayOptIn, type AthleteAgeGroup } from '../../lib/sessionReplayGate'
 
 function currentPlatform(): TelemetryPlatform {
   if (Platform.OS === 'ios' || Platform.OS === 'android') return Platform.OS
@@ -46,8 +43,7 @@ export function TelemetryPreferencesCard({
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const platform = platformOverride ?? currentPlatform()
-  const envEnabled =
-    replayEnvEnabled ?? process.env.EXPO_PUBLIC_POSTHOG_REPLAY_ENABLED === '1'
+  const envEnabled = replayEnvEnabled ?? process.env.EXPO_PUBLIC_POSTHOG_REPLAY_ENABLED === '1'
 
   const showReplayToggle = canShowSessionReplayOptIn({
     platform,
@@ -93,23 +89,10 @@ export function TelemetryPreferencesCard({
     <YStack gap="$3">
       <SectionTitle>Privacy</SectionTitle>
 
-      <Card
-        bg="$surface"
-        rounded="$4"
-        borderWidth={1}
-        borderColor="$borderColor"
-        overflow="hidden"
-      >
+      <Card bg="$surface" rounded="$4" borderWidth={1} borderColor="$borderColor" overflow="hidden">
         <YStack>
           {/* Product analytics opt-out toggle */}
-          <XStack
-            px="$4"
-            py="$3.5"
-            items="center"
-            justify="space-between"
-            gap="$3"
-            minH={60}
-          >
+          <XStack px="$4" py="$3.5" items="center" justify="space-between" gap="$3" minH={60}>
             <YStack flex={1} gap="$1">
               <Body fontWeight="600">Share anonymous usage analytics</Body>
               <Supporting color="$color10" testID="analytics-opt-in-status">
@@ -147,7 +130,8 @@ export function TelemetryPreferencesCard({
               <YStack flex={1} gap="$1">
                 <Body fontWeight="600">Help test with masked screen replays</Body>
                 <Supporting color="$color10">
-                  Records masked layout interactions on web to spot UI bugs. All text and inputs are masked, and Profile, Settings, and Intake are never recorded.
+                  Records masked layout interactions on web to spot UI bugs. All text and inputs are
+                  masked, and Profile, Settings, and Intake are never recorded.
                 </Supporting>
               </YStack>
               <Switch

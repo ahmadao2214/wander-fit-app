@@ -10,7 +10,9 @@ jest.mock('../../lib/firstRunStorage', () => ({
 jest.mock('convex/react', () => ({
   useQuery: (fn: unknown) => {
     const name = jest.requireActual('convex/server').getFunctionName(fn)
-    return name === 'sports:list' ? jest.requireActual('../../jest/firstRunTestUtils').SPORTS : undefined
+    return name === 'sports:list'
+      ? jest.requireActual('../../jest/firstRunTestUtils').SPORTS
+      : undefined
   },
 }))
 const mockPush = jest.fn()
@@ -47,7 +49,9 @@ beforeEach(async () => {
   mockReduced = true
   testDraft.reset()
   mockPush.mockClear()
-  await testDraft.seed({ answers: { sportId: 'basketball', seasonStart: null, trainingDays: [1, 3, 5] } })
+  await testDraft.seed({
+    answers: { sportId: 'basketball', seasonStart: null, trainingDays: [1, 3, 5] },
+  })
 })
 
 describe('First Run about you (player card)', () => {
@@ -65,7 +69,9 @@ describe('First Run about you (player card)', () => {
       fireEvent.press(screen.getByTestId('age-18-35'))
     })
     expect(screen.getByTestId('card-age').props.children).toBe('18–35')
-    expect(screen.getByTestId('about-question').props.children).toBe('YEARS TRAINING FOR YOUR SPORT')
+    expect(screen.getByTestId('about-question').props.children).toBe(
+      'YEARS TRAINING FOR YOUR SPORT'
+    )
     expect(screen.queryByTestId('age-18-35')).toBeNull()
     expect((await testDraft.reopen()).answers.ageGroup).toBe('18-35')
   })
@@ -86,7 +92,9 @@ describe('First Run about you (player card)', () => {
   it('resumes on the years question when only the age is answered', async () => {
     await testDraft.seed({ answers: { ageGroup: '36+' } })
     await showAbout()
-    expect(screen.getByTestId('about-question').props.children).toBe('YEARS TRAINING FOR YOUR SPORT')
+    expect(screen.getByTestId('about-question').props.children).toBe(
+      'YEARS TRAINING FOR YOUR SPORT'
+    )
     expect(screen.getByTestId('card-age').props.children).toBe('36+')
   })
 })
@@ -101,7 +109,9 @@ describe('First Run about you, back from the reveal', () => {
       fireEvent.press(screen.getByTestId('years-new'))
     })
     expect(mockPush).toHaveBeenCalledWith('/(first-run)/reveal')
-    expect(screen.getByTestId('about-question').props.children).toBe('YEARS TRAINING FOR YOUR SPORT')
+    expect(screen.getByTestId('about-question').props.children).toBe(
+      'YEARS TRAINING FOR YOUR SPORT'
+    )
     // Leave for the reveal, then come back ("Change my answers").
     await act(async () => {
       const blur = mockFocus?.()
@@ -129,7 +139,9 @@ describe('First Run about you, with motion', () => {
     await act(async () => {
       fireEvent.press(screen.getByTestId('years-new'))
     })
-    expect(screen.getByTestId('about-question').props.children).toBe('YEARS TRAINING FOR YOUR SPORT')
+    expect(screen.getByTestId('about-question').props.children).toBe(
+      'YEARS TRAINING FOR YOUR SPORT'
+    )
     expect(mockPush).not.toHaveBeenCalled()
     await act(async () => {
       jest.advanceTimersByTime(700)
@@ -146,7 +158,9 @@ describe('First Run about you, with motion', () => {
     await act(async () => {
       jest.advanceTimersByTime(400)
     })
-    expect(screen.getByTestId('about-question').props.children).toBe('YEARS TRAINING FOR YOUR SPORT')
+    expect(screen.getByTestId('about-question').props.children).toBe(
+      'YEARS TRAINING FOR YOUR SPORT'
+    )
   })
 })
 

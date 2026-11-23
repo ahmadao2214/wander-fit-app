@@ -18,7 +18,7 @@ interface ScreenWrapperProps {
 
 /**
  * ScreenWrapper - Base container for all screens
- * 
+ *
  * Provides consistent:
  * - Background color from theme
  * - Safe area padding

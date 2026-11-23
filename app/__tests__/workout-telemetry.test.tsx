@@ -106,7 +106,12 @@ function buildSession() {
       ],
     },
     exercises: [
-      { exerciseId: 'warm_1', completed: false, skipped: false, sets: [{ completed: false, skipped: false }] },
+      {
+        exerciseId: 'warm_1',
+        completed: false,
+        skipped: false,
+        sets: [{ completed: false, skipped: false }],
+      },
       {
         exerciseId: 'squat_1',
         completed: false,
@@ -261,7 +266,12 @@ describe('Workout execution telemetry', () => {
       ...buildSession(),
       workoutStartedAt: Date.now() - 60_000,
       exercises: [
-        { exerciseId: 'warm_1', completed: true, skipped: true, sets: [{ completed: true, skipped: true }] },
+        {
+          exerciseId: 'warm_1',
+          completed: true,
+          skipped: true,
+          sets: [{ completed: true, skipped: true }],
+        },
         {
           exerciseId: 'squat_1',
           completed: false,

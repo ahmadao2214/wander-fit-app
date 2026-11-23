@@ -9,7 +9,12 @@ const DASH: Partial<Record<FieldStroke, string>> = { dash: '10 8', dot: '0.1 9' 
 export function SportField({ name, size, color }: { name: string; size: number; color: string }) {
   const marks = useMemo(() => sportField(name), [name])
   return (
-    <Svg width={size} height={size} viewBox={`0 0 ${FIELD_BOX} ${FIELD_BOX}`} testID={`sport-field-${name}`}>
+    <Svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${FIELD_BOX} ${FIELD_BOX}`}
+      testID={`sport-field-${name}`}
+    >
       {marks.map((mark, i) => (
         <Path
           key={i}

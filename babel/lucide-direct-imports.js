@@ -40,7 +40,9 @@ module.exports = function lucideDirectImports({ types: t }) {
         const remaining = []
         for (const specifier of node.specifiers) {
           if (t.isImportSpecifier(specifier) && specifier.importKind !== 'type') {
-            const name = t.isIdentifier(specifier.imported) ? specifier.imported.name : specifier.imported.value
+            const name = t.isIdentifier(specifier.imported)
+              ? specifier.imported.name
+              : specifier.imported.value
             if (hasOwnFile(name)) {
               direct.push(
                 t.importDeclaration(

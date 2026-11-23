@@ -1,7 +1,21 @@
 import { useEffect, useMemo } from 'react'
 import Svg, { Line } from 'react-native-svg'
-import Animated, { Easing, useAnimatedProps, useDerivedValue, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated'
-import { ATHLETES, ATHLETE_VIEWBOX, athleteColors, athleteStrokes, poseFrom, type Stroke } from '../../lib/athletePose'
+import Animated, {
+  Easing,
+  useAnimatedProps,
+  useDerivedValue,
+  useSharedValue,
+  withTiming,
+  type SharedValue,
+} from 'react-native-reanimated'
+import {
+  ATHLETES,
+  ATHLETE_VIEWBOX,
+  athleteColors,
+  athleteStrokes,
+  poseFrom,
+  type Stroke,
+} from '../../lib/athletePose'
 import type { CategoryId } from '../../lib/firstRunStory'
 
 const AnimatedLine = Animated.createAnimatedComponent(Line)
@@ -45,12 +59,23 @@ export function Athlete({
 
   const colors = useMemo(() => athleteColors(lit, tile), [lit, tile])
   const { frames, female, tool } = def
-  const strokes = useDerivedValue(() => athleteStrokes(poseFrom(frames, k.value), !!female, tool, colors))
+  const strokes = useDerivedValue(() =>
+    athleteStrokes(poseFrom(frames, k.value), !!female, tool, colors)
+  )
   // The stroke count is fixed per category, so each stroke keeps its line.
-  const count = useMemo(() => athleteStrokes(poseFrom(frames, 0), !!female, tool, colors).length, [frames, female, tool, colors])
+  const count = useMemo(
+    () => athleteStrokes(poseFrom(frames, 0), !!female, tool, colors).length,
+    [frames, female, tool, colors]
+  )
 
   return (
-    <Svg width="100%" height="100%" viewBox={ATHLETE_VIEWBOX} preserveAspectRatio="xMidYMax meet" accessible={false}>
+    <Svg
+      width="100%"
+      height="100%"
+      viewBox={ATHLETE_VIEWBOX}
+      preserveAspectRatio="xMidYMax meet"
+      accessible={false}
+    >
       {Array.from({ length: count }, (_, i) => (
         <StrokeLine key={i} strokes={strokes} i={i} />
       ))}

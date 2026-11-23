@@ -43,7 +43,9 @@ export default function FirstRunPromise() {
           testID="first-run-sign-in"
           style={{ alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 12 }}
         >
-          <RNText style={{ fontFamily: BODY_SEMI, fontSize: 15, color: NIGHT.link }}>I have an account</RNText>
+          <RNText style={{ fontFamily: BODY_SEMI, fontSize: 15, color: NIGHT.link }}>
+            I have an account
+          </RNText>
         </Pressable>
       }
     >

@@ -24,10 +24,7 @@ export default function CelebrationScreen() {
   const { user } = useAuth()
   const reduceMotion = useReducedMotion()
 
-  const reassessmentStatus = useQuery(
-    api.userPrograms.getReassessmentStatus,
-    user ? {} : 'skip'
-  )
+  const reassessmentStatus = useQuery(api.userPrograms.getReassessmentStatus, user ? {} : 'skip')
 
   // Redirect if no pending reassessment
   useEffect(() => {
@@ -74,7 +71,9 @@ export default function CelebrationScreen() {
           {stats && (
             <Supporting color="$color10" style={numeric}>
               {stats.weeksPerPhase} {stats.weeksPerPhase === 1 ? 'week' : 'weeks'}
-              {stats.blockStartedAt ? ` · ${blockDates(stats.blockStartedAt, blockEnd(stats.blockStartedAt, stats.weeksPerPhase))}` : ''}
+              {stats.blockStartedAt
+                ? ` · ${blockDates(stats.blockStartedAt, blockEnd(stats.blockStartedAt, stats.weeksPerPhase))}`
+                : ''}
             </Supporting>
           )}
         </YStack>
@@ -88,7 +87,8 @@ export default function CelebrationScreen() {
 
         <YStack gap="$3">
           <Supporting color="$color11">
-            A short check-in, then you choose: move on to {reassessmentStatus.nextPhase} or repeat {phase}.
+            A short check-in, then you choose: move on to {reassessmentStatus.nextPhase} or repeat{' '}
+            {phase}.
           </Supporting>
           <Button
             width="100%"

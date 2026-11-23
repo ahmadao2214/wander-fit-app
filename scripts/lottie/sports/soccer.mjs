@@ -2,7 +2,22 @@
 // charcoal pentagon panels, spherical seam lines, soft shading crescent, and
 // dark outline), built on the shared bounce rig.
 
-import { ART_RADIUS as R, INK, OUTLINE, add, ballShade, bezier, buildSport, circle, edgeSegments, ellipse, line, paint, polar, poly } from '../art.mjs'
+import {
+  ART_RADIUS as R,
+  INK,
+  OUTLINE,
+  add,
+  ballShade,
+  bezier,
+  buildSport,
+  circle,
+  edgeSegments,
+  ellipse,
+  line,
+  paint,
+  polar,
+  poly,
+} from '../art.mjs'
 import { group, stroke } from '../lottie.mjs'
 
 export const COLORS = {
@@ -40,13 +55,17 @@ function outerPentagon(angle) {
   const rimL = polar(angle - 14, rim)
   const rimR = polar(angle + 14, rim)
   const shR = polar(angle + 19, 82)
-  return bezier(apex, [
-    { c1: polar(angle - 10, 72), c2: polar(angle - 17, 78), to: shL },
-    { c1: polar(angle - 18, 88), c2: polar(angle - 16, 95), to: rimL },
-    ...edgeSegments(rim, angle - 14, angle + 14),
-    { c1: polar(angle + 16, 95), c2: polar(angle + 18, 88), to: shR },
-    { c1: polar(angle + 17, 78), c2: polar(angle + 10, 72), to: apex },
-  ], true)
+  return bezier(
+    apex,
+    [
+      { c1: polar(angle - 10, 72), c2: polar(angle - 17, 78), to: shL },
+      { c1: polar(angle - 18, 88), c2: polar(angle - 16, 95), to: rimL },
+      ...edgeSegments(rim, angle - 14, angle + 14),
+      { c1: polar(angle + 16, 95), c2: polar(angle + 18, 88), to: shR },
+      { c1: polar(angle + 17, 78), c2: polar(angle + 10, 72), to: apex },
+    ],
+    true
+  )
 }
 
 // Curved hexagon outer seam connecting adjacent outer pentagon shoulders.
@@ -56,9 +75,7 @@ function hexOuterSeam(angle) {
   const mid = angle + 36
   const start = polar(a0, 82)
   const end = polar(a1, 82)
-  return bezier(start, [
-    { c1: polar(mid - 9, 89), c2: polar(mid + 9, 89), to: end },
-  ], false)
+  return bezier(start, [{ c1: polar(mid - 9, 89), c2: polar(mid + 9, 89), to: end }], false)
 }
 
 export default function soccer() {
@@ -71,7 +88,10 @@ export default function soccer() {
     nm: 'soccer',
     family: 'bounce',
     layers: [
-      { nm: 'outline', groups: [group('outline', [circle(0, 0, R), stroke(COLORS.outline, OUTLINE)])] },
+      {
+        nm: 'outline',
+        groups: [group('outline', [circle(0, 0, R), stroke(COLORS.outline, OUTLINE)])],
+      },
       {
         nm: 'shading',
         groups: [

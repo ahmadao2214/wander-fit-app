@@ -1,220 +1,220 @@
-import { getExperienceSliderColor, getSportInitials, getSportSlug } from "../intakeUI";
-import { SPORTS } from "../../convex/seedData";
+import { getExperienceSliderColor, getSportInitials, getSportSlug } from '../intakeUI'
+import { SPORTS } from '../../convex/seedData'
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // EXPERIENCE SLIDER COLOR TESTS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe("getExperienceSliderColor", () => {
-  describe("Low intensity (0-3 years) - Green", () => {
-    it("returns $intensityLow6 for 0 years of experience", () => {
-      expect(getExperienceSliderColor(0)).toBe("$intensityLow6");
-    });
+describe('getExperienceSliderColor', () => {
+  describe('Low intensity (0-3 years) - Green', () => {
+    it('returns $intensityLow6 for 0 years of experience', () => {
+      expect(getExperienceSliderColor(0)).toBe('$intensityLow6')
+    })
 
-    it("returns $intensityLow6 for 1 year of experience", () => {
-      expect(getExperienceSliderColor(1)).toBe("$intensityLow6");
-    });
+    it('returns $intensityLow6 for 1 year of experience', () => {
+      expect(getExperienceSliderColor(1)).toBe('$intensityLow6')
+    })
 
-    it("returns $intensityLow6 for 2 years of experience", () => {
-      expect(getExperienceSliderColor(2)).toBe("$intensityLow6");
-    });
+    it('returns $intensityLow6 for 2 years of experience', () => {
+      expect(getExperienceSliderColor(2)).toBe('$intensityLow6')
+    })
 
-    it("returns $intensityLow6 for exactly 3 years (boundary)", () => {
-      expect(getExperienceSliderColor(3)).toBe("$intensityLow6");
-    });
+    it('returns $intensityLow6 for exactly 3 years (boundary)', () => {
+      expect(getExperienceSliderColor(3)).toBe('$intensityLow6')
+    })
 
-    it("returns $intensityLow6 for negative years (edge case)", () => {
-      expect(getExperienceSliderColor(-1)).toBe("$intensityLow6");
-      expect(getExperienceSliderColor(-5)).toBe("$intensityLow6");
-    });
+    it('returns $intensityLow6 for negative years (edge case)', () => {
+      expect(getExperienceSliderColor(-1)).toBe('$intensityLow6')
+      expect(getExperienceSliderColor(-5)).toBe('$intensityLow6')
+    })
 
-    it("returns $intensityLow6 for decimal values below 3", () => {
-      expect(getExperienceSliderColor(0.5)).toBe("$intensityLow6");
-      expect(getExperienceSliderColor(2.9)).toBe("$intensityLow6");
-    });
-  });
+    it('returns $intensityLow6 for decimal values below 3', () => {
+      expect(getExperienceSliderColor(0.5)).toBe('$intensityLow6')
+      expect(getExperienceSliderColor(2.9)).toBe('$intensityLow6')
+    })
+  })
 
-  describe("Medium intensity (4-6 years) - Amber", () => {
-    it("returns $intensityMed6 for 4 years of experience (boundary)", () => {
-      expect(getExperienceSliderColor(4)).toBe("$intensityMed6");
-    });
+  describe('Medium intensity (4-6 years) - Amber', () => {
+    it('returns $intensityMed6 for 4 years of experience (boundary)', () => {
+      expect(getExperienceSliderColor(4)).toBe('$intensityMed6')
+    })
 
-    it("returns $intensityMed6 for 5 years of experience", () => {
-      expect(getExperienceSliderColor(5)).toBe("$intensityMed6");
-    });
+    it('returns $intensityMed6 for 5 years of experience', () => {
+      expect(getExperienceSliderColor(5)).toBe('$intensityMed6')
+    })
 
-    it("returns $intensityMed6 for exactly 6 years (boundary)", () => {
-      expect(getExperienceSliderColor(6)).toBe("$intensityMed6");
-    });
+    it('returns $intensityMed6 for exactly 6 years (boundary)', () => {
+      expect(getExperienceSliderColor(6)).toBe('$intensityMed6')
+    })
 
-    it("returns $intensityMed6 for decimal values in 4-6 range", () => {
-      expect(getExperienceSliderColor(3.1)).toBe("$intensityMed6");
-      expect(getExperienceSliderColor(4.5)).toBe("$intensityMed6");
-      expect(getExperienceSliderColor(5.9)).toBe("$intensityMed6");
-    });
-  });
+    it('returns $intensityMed6 for decimal values in 4-6 range', () => {
+      expect(getExperienceSliderColor(3.1)).toBe('$intensityMed6')
+      expect(getExperienceSliderColor(4.5)).toBe('$intensityMed6')
+      expect(getExperienceSliderColor(5.9)).toBe('$intensityMed6')
+    })
+  })
 
-  describe("High intensity (7+ years) - Red", () => {
-    it("returns $intensityHigh6 for 7 years of experience (boundary)", () => {
-      expect(getExperienceSliderColor(7)).toBe("$intensityHigh6");
-    });
+  describe('High intensity (7+ years) - Red', () => {
+    it('returns $intensityHigh6 for 7 years of experience (boundary)', () => {
+      expect(getExperienceSliderColor(7)).toBe('$intensityHigh6')
+    })
 
-    it("returns $intensityHigh6 for 8 years of experience", () => {
-      expect(getExperienceSliderColor(8)).toBe("$intensityHigh6");
-    });
+    it('returns $intensityHigh6 for 8 years of experience', () => {
+      expect(getExperienceSliderColor(8)).toBe('$intensityHigh6')
+    })
 
-    it("returns $intensityHigh6 for 10 years of experience (max slider)", () => {
-      expect(getExperienceSliderColor(10)).toBe("$intensityHigh6");
-    });
+    it('returns $intensityHigh6 for 10 years of experience (max slider)', () => {
+      expect(getExperienceSliderColor(10)).toBe('$intensityHigh6')
+    })
 
-    it("returns $intensityHigh6 for values above 10", () => {
-      expect(getExperienceSliderColor(15)).toBe("$intensityHigh6");
-      expect(getExperienceSliderColor(20)).toBe("$intensityHigh6");
-    });
+    it('returns $intensityHigh6 for values above 10', () => {
+      expect(getExperienceSliderColor(15)).toBe('$intensityHigh6')
+      expect(getExperienceSliderColor(20)).toBe('$intensityHigh6')
+    })
 
-    it("returns $intensityHigh6 for decimal values in 7+ range", () => {
-      expect(getExperienceSliderColor(6.1)).toBe("$intensityHigh6");
-      expect(getExperienceSliderColor(7.5)).toBe("$intensityHigh6");
-      expect(getExperienceSliderColor(9.9)).toBe("$intensityHigh6");
-    });
-  });
-});
+    it('returns $intensityHigh6 for decimal values in 7+ range', () => {
+      expect(getExperienceSliderColor(6.1)).toBe('$intensityHigh6')
+      expect(getExperienceSliderColor(7.5)).toBe('$intensityHigh6')
+      expect(getExperienceSliderColor(9.9)).toBe('$intensityHigh6')
+    })
+  })
+})
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SPORT INITIALS TESTS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe("getSportInitials", () => {
-  describe("Single word sport names", () => {
+describe('getSportInitials', () => {
+  describe('Single word sport names', () => {
     // For single words, the algorithm takes first letter of each word,
     // so single word sports get only 1 initial
     it("returns single initial for 'Soccer'", () => {
-      expect(getSportInitials("Soccer")).toBe("S");
-    });
+      expect(getSportInitials('Soccer')).toBe('S')
+    })
 
     it("returns single initial for 'Basketball'", () => {
-      expect(getSportInitials("Basketball")).toBe("B");
-    });
+      expect(getSportInitials('Basketball')).toBe('B')
+    })
 
     it("returns single initial for 'Tennis'", () => {
-      expect(getSportInitials("Tennis")).toBe("T");
-    });
+      expect(getSportInitials('Tennis')).toBe('T')
+    })
 
-    it("returns single letter for single letter name", () => {
-      expect(getSportInitials("A")).toBe("A");
-    });
+    it('returns single letter for single letter name', () => {
+      expect(getSportInitials('A')).toBe('A')
+    })
 
-    it("returns single letter for two letter name (only first letter)", () => {
-      expect(getSportInitials("Go")).toBe("G");
-    });
-  });
+    it('returns single letter for two letter name (only first letter)', () => {
+      expect(getSportInitials('Go')).toBe('G')
+    })
+  })
 
-  describe("Multi-word sport names", () => {
+  describe('Multi-word sport names', () => {
     it("returns first letters of each word for 'Ice Hockey'", () => {
-      expect(getSportInitials("Ice Hockey")).toBe("IH");
-    });
+      expect(getSportInitials('Ice Hockey')).toBe('IH')
+    })
 
     it("returns first two word initials for 'American Football'", () => {
-      expect(getSportInitials("American Football")).toBe("AF");
-    });
+      expect(getSportInitials('American Football')).toBe('AF')
+    })
 
-    it("limits to 2 characters for names with 3+ words", () => {
-      expect(getSportInitials("Track and Field")).toBe("TA");
-    });
+    it('limits to 2 characters for names with 3+ words', () => {
+      expect(getSportInitials('Track and Field')).toBe('TA')
+    })
 
     it("handles 'Cross Country Running'", () => {
-      expect(getSportInitials("Cross Country Running")).toBe("CC");
-    });
-  });
+      expect(getSportInitials('Cross Country Running')).toBe('CC')
+    })
+  })
 
-  describe("Names with parentheses", () => {
+  describe('Names with parentheses', () => {
     it("handles 'Basketball (Women)'", () => {
-      expect(getSportInitials("Basketball (Women)")).toBe("BW");
-    });
+      expect(getSportInitials('Basketball (Women)')).toBe('BW')
+    })
 
     it("handles 'Soccer (Men)'", () => {
-      expect(getSportInitials("Soccer (Men)")).toBe("SM");
-    });
+      expect(getSportInitials('Soccer (Men)')).toBe('SM')
+    })
 
     it("handles 'Track (Indoor)'", () => {
-      expect(getSportInitials("Track (Indoor)")).toBe("TI");
-    });
-  });
+      expect(getSportInitials('Track (Indoor)')).toBe('TI')
+    })
+  })
 
-  describe("Names with forward slashes", () => {
+  describe('Names with forward slashes', () => {
     it("handles 'Track/Field'", () => {
-      expect(getSportInitials("Track/Field")).toBe("TF");
-    });
+      expect(getSportInitials('Track/Field')).toBe('TF')
+    })
 
     it("handles 'Swimming/Diving'", () => {
-      expect(getSportInitials("Swimming/Diving")).toBe("SD");
-    });
-  });
+      expect(getSportInitials('Swimming/Diving')).toBe('SD')
+    })
+  })
 
-  describe("Edge cases", () => {
-    it("returns empty string for empty input", () => {
-      expect(getSportInitials("")).toBe("");
-    });
+  describe('Edge cases', () => {
+    it('returns empty string for empty input', () => {
+      expect(getSportInitials('')).toBe('')
+    })
 
-    it("returns empty string for whitespace only", () => {
-      expect(getSportInitials("   ")).toBe("");
-    });
+    it('returns empty string for whitespace only', () => {
+      expect(getSportInitials('   ')).toBe('')
+    })
 
-    it("handles multiple consecutive spaces", () => {
-      expect(getSportInitials("Ice   Hockey")).toBe("IH");
-    });
+    it('handles multiple consecutive spaces', () => {
+      expect(getSportInitials('Ice   Hockey')).toBe('IH')
+    })
 
-    it("handles leading/trailing spaces (single word)", () => {
-      expect(getSportInitials("  Soccer  ")).toBe("S");
-    });
+    it('handles leading/trailing spaces (single word)', () => {
+      expect(getSportInitials('  Soccer  ')).toBe('S')
+    })
 
-    it("handles numbers at start of words (filters them out)", () => {
-      expect(getSportInitials("100 Meter Dash")).toBe("MD");
-    });
+    it('handles numbers at start of words (filters them out)', () => {
+      expect(getSportInitials('100 Meter Dash')).toBe('MD')
+    })
 
     it("handles mixed alphanumeric where number forms first 'word'", () => {
       // "5K" splits to "5K" as one word, first char is "5" which is filtered
       // "Running" gives "R"
-      expect(getSportInitials("5K Running")).toBe("R");
-    });
+      expect(getSportInitials('5K Running')).toBe('R')
+    })
 
-    it("uppercases lowercase input (single word)", () => {
-      expect(getSportInitials("soccer")).toBe("S");
-    });
+    it('uppercases lowercase input (single word)', () => {
+      expect(getSportInitials('soccer')).toBe('S')
+    })
 
-    it("handles mixed case input", () => {
-      expect(getSportInitials("iCe hOcKeY")).toBe("IH");
-    });
-  });
+    it('handles mixed case input', () => {
+      expect(getSportInitials('iCe hOcKeY')).toBe('IH')
+    })
+  })
 
-  describe("Complex separator combinations", () => {
+  describe('Complex separator combinations', () => {
     it("handles 'Track (Outdoor)/Field'", () => {
-      expect(getSportInitials("Track (Outdoor)/Field")).toBe("TO");
-    });
+      expect(getSportInitials('Track (Outdoor)/Field')).toBe('TO')
+    })
 
     it("handles 'Swimming (Men/Women)'", () => {
-      expect(getSportInitials("Swimming (Men/Women)")).toBe("SM");
-    });
-  });
-});
+      expect(getSportInitials('Swimming (Men/Women)')).toBe('SM')
+    })
+  })
+})
 
-describe("getSportSlug", () => {
-  it("lowercases a single word", () => {
-    expect(getSportSlug("Basketball")).toBe("basketball");
-  });
+describe('getSportSlug', () => {
+  it('lowercases a single word', () => {
+    expect(getSportSlug('Basketball')).toBe('basketball')
+  })
 
-  it("joins words with one hyphen", () => {
-    expect(getSportSlug("Ultimate Frisbee")).toBe("ultimate-frisbee");
-  });
+  it('joins words with one hyphen', () => {
+    expect(getSportSlug('Ultimate Frisbee')).toBe('ultimate-frisbee')
+  })
 
-  it("collapses punctuation and trims the ends", () => {
-    expect(getSportSlug("Track (Sprints/Jumps)")).toBe("track-sprints-jumps");
-    expect(getSportSlug("  Track (Distance) ")).toBe("track-distance");
-  });
+  it('collapses punctuation and trims the ends', () => {
+    expect(getSportSlug('Track (Sprints/Jumps)')).toBe('track-sprints-jumps')
+    expect(getSportSlug('  Track (Distance) ')).toBe('track-distance')
+  })
 
-  it("gives every seeded sport a distinct slug", () => {
-    const slugs = SPORTS.map((sport) => getSportSlug(sport.name));
-    expect(new Set(slugs).size).toBe(slugs.length);
-    for (const slug of slugs) expect(slug).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
-  });
-});
+  it('gives every seeded sport a distinct slug', () => {
+    const slugs = SPORTS.map((sport) => getSportSlug(sport.name))
+    expect(new Set(slugs).size).toBe(slugs.length)
+    for (const slug of slugs) expect(slug).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/)
+  })
+})

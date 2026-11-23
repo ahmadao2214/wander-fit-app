@@ -48,18 +48,44 @@ describe('categories', () => {
 
 describe('splitSports', () => {
   it('puts the six Popular sports first in their order and the rest alphabetically', () => {
-    const names = ['Wrestling', 'Volleyball', 'Badminton', 'Soccer', 'Basketball', 'Track (Sprints/Jumps)', 'Football', 'Baseball', 'Golf']
+    const names = [
+      'Wrestling',
+      'Volleyball',
+      'Badminton',
+      'Soccer',
+      'Basketball',
+      'Track (Sprints/Jumps)',
+      'Football',
+      'Baseball',
+      'Golf',
+    ]
     const { popular, rest } = splitSports(names.map((name) => ({ name })))
-    expect(popular.map((s) => s.name)).toEqual(['Basketball', 'Soccer', 'Football', 'Baseball', 'Volleyball', 'Track (Sprints/Jumps)'])
+    expect(popular.map((s) => s.name)).toEqual([
+      'Basketball',
+      'Soccer',
+      'Football',
+      'Baseball',
+      'Volleyball',
+      'Track (Sprints/Jumps)',
+    ])
     expect(rest.map((s) => s.name)).toEqual(['Badminton', 'Golf', 'Wrestling'])
   })
 })
 
 describe('movementFamily', () => {
   it('maps roll, bounce and water sports, and leaves the rest plain', () => {
-    const got = ['Soccer', 'Field Hockey', 'Lacrosse', 'Rugby', 'Basketball', 'Volleyball', 'Swimming', 'Diving', 'Football', 'Golf'].map(
-      (s) => [s, movementFamily(s)]
-    )
+    const got = [
+      'Soccer',
+      'Field Hockey',
+      'Lacrosse',
+      'Rugby',
+      'Basketball',
+      'Volleyball',
+      'Swimming',
+      'Diving',
+      'Football',
+      'Golf',
+    ].map((s) => [s, movementFamily(s)])
     expect(got).toEqual([
       ['Soccer', 'roll'],
       ['Field Hockey', null],
@@ -92,15 +118,23 @@ describe('monthGrid', () => {
     expect(cells[14]).toEqual({ day: 15, iso: '2026-11-15', disabled: true })
     expect(cells[15]).toEqual({ day: 16, iso: '2026-11-16', disabled: false })
     // December 2026 starts on a Tuesday.
-    expect(monthGrid(2026, 11, new Date(2026, 10, 15)).slice(0, 3).map((c) => c?.day ?? null)).toEqual([null, null, 1])
+    expect(
+      monthGrid(2026, 11, new Date(2026, 10, 15))
+        .slice(0, 3)
+        .map((c) => c?.day ?? null)
+    ).toEqual([null, null, 1])
   })
 })
 
 describe('phaseCaption', () => {
   const power = STORY_CATEGORIES[2]
   it('explains each phase in plain English, with the category focus for SPP', () => {
-    expect(phaseCaption('GPP', 'Basketball', power, false)).toMatch(/^General fitness and how you move/)
-    expect(phaseCaption('SPP', 'Basketball', power, false)).toBe('Training shifts to jumping, landing and stopping fast for basketball.')
+    expect(phaseCaption('GPP', 'Basketball', power, false)).toMatch(
+      /^General fitness and how you move/
+    )
+    expect(phaseCaption('SPP', 'Basketball', power, false)).toBe(
+      'Training shifts to jumping, landing and stopping fast for basketball.'
+    )
     expect(phaseCaption('SSP', 'Basketball', power, false)).toMatch(/fresh for your first game\.$/)
     expect(phaseCaption('SSP', 'Basketball', power, true)).toMatch(/fresh for the season\.$/)
   })
@@ -117,13 +151,15 @@ describe('countdownLine', () => {
 describe('workout names', () => {
   it('drops the block suffix and picks a one-word tag', () => {
     expect(workoutShortName('Lower Body A - Foundation')).toBe('Lower Body A')
-    expect(['Lower Body A - Foundation', 'Upper Body B', 'Power & Conditioning', 'Full Body Athletic', 'Active Recovery'].map(workoutTag)).toEqual([
-      'LOWER',
-      'UPPER',
-      'POWER',
-      'FULL',
-      'RECOVER',
-    ])
+    expect(
+      [
+        'Lower Body A - Foundation',
+        'Upper Body B',
+        'Power & Conditioning',
+        'Full Body Athletic',
+        'Active Recovery',
+      ].map(workoutTag)
+    ).toEqual(['LOWER', 'UPPER', 'POWER', 'FULL', 'RECOVER'])
   })
 })
 
@@ -149,7 +185,11 @@ describe('weekStrip', () => {
     ])
     // On a Thursday, Friday is next, so it's Day 1 and Monday wraps to Day 2.
     const thursday = new Date(2026, 10, 19, 9)
-    expect(weekStrip([1, 3, 5], T, thursday).filter((d) => d.programDay).map((d) => [d.short, d.programDay])).toEqual([
+    expect(
+      weekStrip([1, 3, 5], T, thursday)
+        .filter((d) => d.programDay)
+        .map((d) => [d.short, d.programDay])
+    ).toEqual([
       ['Mon', 2],
       ['Wed', 3],
       ['Fri', 1],
@@ -159,8 +199,12 @@ describe('weekStrip', () => {
   it('writes the line under the strip for a training day, Day 1 and a rest day', () => {
     const sunday = new Date(2026, 10, 15, 9)
     const week = weekStrip([1, 3, 5], T, sunday)
-    expect(weekDayLine(week[0], [1, 3, 5], sunday)).toBe('Day 1 · Tomorrow · Lower Body A · About 28 min')
-    expect(weekDayLine(week[2], [1, 3, 5], sunday)).toBe('Day 2 · Wed · Upper Body A · About 29 min')
+    expect(weekDayLine(week[0], [1, 3, 5], sunday)).toBe(
+      'Day 1 · Tomorrow · Lower Body A · About 28 min'
+    )
+    expect(weekDayLine(week[2], [1, 3, 5], sunday)).toBe(
+      'Day 2 · Wed · Upper Body A · About 29 min'
+    )
     expect(weekDayLine(week[1], [1, 3, 5], sunday)).toBe('Tue · Rest day')
   })
 

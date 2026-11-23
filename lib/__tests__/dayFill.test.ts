@@ -16,10 +16,14 @@ describe('dayChoreography', () => {
     expect(c.duration).toBe(BOUNCE_MS)
     // A contact is a key where the ball reaches its lowest point between rises.
     const ys = c.ballY.map((k) => k.v)
-    const lows = c.ballY.filter((k, i) => i > 0 && i < ys.length - 1 && k.v > ys[i - 1] && k.v > ys[i + 1]).map((k) => k.at)
+    const lows = c.ballY
+      .filter((k, i) => i > 0 && i < ys.length - 1 && k.v > ys[i - 1] && k.v > ys[i + 1])
+      .map((k) => k.at)
     expect(lows).toEqual(BOUNCE_CONTACTS)
     // At each contact, the ball's bottom sits exactly on the fill's surface.
-    const gaps = BOUNCE_CONTACTS.map((at) => Math.abs(valueAt(c.ballY, at) + BALL - surfaceY(H, valueAt(c.fill, at))))
+    const gaps = BOUNCE_CONTACTS.map((at) =>
+      Math.abs(valueAt(c.ballY, at) + BALL - surfaceY(H, valueAt(c.fill, at)))
+    )
     expect(gaps.every((g) => g < 0.001)).toBe(true)
     // Each contact raises the fill by a third, ending full.
     const after = BOUNCE_CONTACTS.map((at) => Math.round(valueAt(c.fill, at + 80) * 3))
@@ -30,7 +34,9 @@ describe('dayChoreography', () => {
 
   it('the roll keeps the ball riding the surface the whole way up, then rolls it out', () => {
     const c = dayChoreography('roll', true, H)
-    const off = [0, 200, 475, 700, 950].map((at) => valueAt(c.ballY, at) + BALL * 0.6 - surfaceY(H, valueAt(c.fill, at)))
+    const off = [0, 200, 475, 700, 950].map(
+      (at) => valueAt(c.ballY, at) + BALL * 0.6 - surfaceY(H, valueAt(c.fill, at))
+    )
     expect(off.every((d) => Math.abs(d) < 0.001)).toBe(true)
     expect(valueAt(c.fill, 950)).toBe(1)
     expect(valueAt(c.ballOpacity, c.duration)).toBe(0)

@@ -2,7 +2,8 @@ import config from '../../tamagui.config'
 import { RADIUS, RADIUS_ROLES, SPACE, SPACE_GRID } from '../spaceScale'
 
 // Spacing and radius from the design audit's system contract
-const tokens = (config as unknown as { tokens: Record<string, Record<string, { val: number }>> }).tokens
+const tokens = (config as unknown as { tokens: Record<string, Record<string, { val: number }>> })
+  .tokens
 
 describe('spacing scale', () => {
   it('puts every whole step from $1 to $11 on the 4pt grid', () => {

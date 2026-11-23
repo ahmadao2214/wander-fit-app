@@ -1,6 +1,18 @@
 // Spiral-pass oval balls (football, rugby) and darting shuttlecock (badminton).
 
-import { INK, OUTLINE, bezier, buildSport, lemon, lemonY, line, paint, poly, rect, solid } from '../art.mjs'
+import {
+  INK,
+  OUTLINE,
+  bezier,
+  buildSport,
+  lemon,
+  lemonY,
+  line,
+  paint,
+  poly,
+  rect,
+  solid,
+} from '../art.mjs'
 import { EASE, transform } from '../lottie.mjs'
 import { posTrack, scaleTrack, track } from '../motion.mjs'
 
@@ -15,12 +27,15 @@ function lemonBand(x0, x1, halfLength, halfWidth) {
   const y1 = lemonY(x1, halfLength, halfWidth)
   const cy0 = y0 * 0.55
   const cy1 = y1 * 0.55
-  return bezier([x0, -y0], [
-    { c1: [x0, -y0], c2: [x1, -y1], to: [x1, -y1] },
-    { c1: [x1 + bow, -cy1], c2: [x1 + bow, cy1], to: [x1, y1] },
-    { c1: [x1, y1], c2: [x0, y0], to: [x0, y0] },
-    { c1: [x0 + bow, cy0], c2: [x0 + bow, -cy0], to: [x0, -y0] },
-  ])
+  return bezier(
+    [x0, -y0],
+    [
+      { c1: [x0, -y0], c2: [x1, -y1], to: [x1, -y1] },
+      { c1: [x1 + bow, -cy1], c2: [x1 + bow, cy1], to: [x1, y1] },
+      { c1: [x1, y1], c2: [x0, y0], to: [x0, y0] },
+      { c1: [x0 + bow, cy0], c2: [x0 + bow, -cy0], to: [x0, -y0] },
+    ]
+  )
 }
 
 // Lower-edge shading crescent inside a lemon, matching the round balls' shade.
@@ -30,11 +45,18 @@ function lemonShade(halfLength, halfWidth) {
   const k = (4 / 3) * Math.tan(theta / 4) * rc
   const tx = k * Math.cos(theta)
   const ty = k * Math.sin(theta)
-  return bezier([halfLength, 0], [
-    { c1: [halfLength - tx, ty], c2: [k, halfWidth], to: [0, halfWidth] },
-    { c1: [-k, halfWidth], c2: [-halfLength + tx, ty], to: [-halfLength, 0] },
-    { c1: [-halfLength * 0.45, halfWidth * 0.62], c2: [halfLength * 0.45, halfWidth * 0.62], to: [halfLength, 0] },
-  ])
+  return bezier(
+    [halfLength, 0],
+    [
+      { c1: [halfLength - tx, ty], c2: [k, halfWidth], to: [0, halfWidth] },
+      { c1: [-k, halfWidth], c2: [-halfLength + tx, ty], to: [-halfLength, 0] },
+      {
+        c1: [-halfLength * 0.45, halfWidth * 0.62],
+        c2: [halfLength * 0.45, halfWidth * 0.62],
+        to: [halfLength, 0],
+      },
+    ]
+  )
 }
 
 // Spiral flight path: brief cock-back, crisp nose-led arc, smooth settle.
@@ -55,13 +77,16 @@ function spiralFlight(pitch = 6) {
         { t: 64, v: 0 },
       ],
     }),
-    r: track([
-      { t: 8, v: TIP, ease: EASE.inOut },
-      { t: 15, v: TIP - pitch, ease: EASE.inOut },
-      { t: 34, v: TIP + pitch * 0.9, ease: EASE.inOut },
-      { t: 52, v: TIP + pitch * 1.4, ease: EASE.inOut },
-      { t: 64, v: TIP },
-    ], { rest: TIP }),
+    r: track(
+      [
+        { t: 8, v: TIP, ease: EASE.inOut },
+        { t: 15, v: TIP - pitch, ease: EASE.inOut },
+        { t: 34, v: TIP + pitch * 0.9, ease: EASE.inOut },
+        { t: 52, v: TIP + pitch * 1.4, ease: EASE.inOut },
+        { t: 64, v: TIP },
+      ],
+      { rest: TIP }
+    ),
   })
 }
 
@@ -89,18 +114,21 @@ function spiralSurfaceRoll(span = 26) {
       { t: 40, v: [94, 24], ease: EASE.inOut },
       { t: 54, v: [100, 100] },
     ]),
-    o: track([
-      { t: 14, v: 100, ease: EASE.linear },
-      { t: 20, v: 100, ease: EASE.linear },
-      { t: 22, v: 0, ease: EASE.linear },
-      { t: 24, v: 0, ease: EASE.linear },
-      { t: 26, v: 100, ease: EASE.linear },
-      { t: 36, v: 100, ease: EASE.linear },
-      { t: 38, v: 0, ease: EASE.linear },
-      { t: 40, v: 0, ease: EASE.linear },
-      { t: 42, v: 100, ease: EASE.linear },
-      { t: 62, v: 100 },
-    ], { rest: 100 }),
+    o: track(
+      [
+        { t: 14, v: 100, ease: EASE.linear },
+        { t: 20, v: 100, ease: EASE.linear },
+        { t: 22, v: 0, ease: EASE.linear },
+        { t: 24, v: 0, ease: EASE.linear },
+        { t: 26, v: 100, ease: EASE.linear },
+        { t: 36, v: 100, ease: EASE.linear },
+        { t: 38, v: 0, ease: EASE.linear },
+        { t: 40, v: 0, ease: EASE.linear },
+        { t: 42, v: 100, ease: EASE.linear },
+        { t: 62, v: 100 },
+      ],
+      { rest: 100 }
+    ),
   })
 }
 
@@ -125,8 +153,34 @@ export const football = () => {
         parent: 'flight',
         ks: spiralSurfaceRoll(25),
         groups: [
-          line('laces', [-21, -7, 7, 21].map((x) => poly([[x, -12], [x, 12]], false)), '#FAFAF2', { width: 5.5 }),
-          line('lace seam', [poly([[-32, 0], [32, 0]], false)], '#FAFAF2', { width: 4.5 }),
+          line(
+            'laces',
+            [-21, -7, 7, 21].map((x) =>
+              poly(
+                [
+                  [x, -12],
+                  [x, 12],
+                ],
+                false
+              )
+            ),
+            '#FAFAF2',
+            { width: 5.5 }
+          ),
+          line(
+            'lace seam',
+            [
+              poly(
+                [
+                  [-32, 0],
+                  [32, 0],
+                ],
+                false
+              ),
+            ],
+            '#FAFAF2',
+            { width: 4.5 }
+          ),
         ],
       },
       {
@@ -162,7 +216,22 @@ export const rugby = () => {
         nm: 'seam',
         parent: 'flight',
         ks: spiralSurfaceRoll(28),
-        groups: [line('seam', [poly([[-76, 0], [76, 0]], false)], INK, { width: 2.5 })],
+        groups: [
+          line(
+            'seam',
+            [
+              poly(
+                [
+                  [-76, 0],
+                  [76, 0],
+                ],
+                false
+              ),
+            ],
+            INK,
+            { width: 2.5 }
+          ),
+        ],
       },
       {
         nm: 'body',
@@ -181,7 +250,12 @@ export const rugby = () => {
 // Shuttlecock: pops up sharply, flips cork-first at the apex, floats down on
 // feather drag, and rocks gently upright on its cork.
 export const badminton = () => {
-  const skirt = poly([[-17, 34], [-60, -76], [60, -76], [17, 34]])
+  const skirt = poly([
+    [-17, 34],
+    [-60, -76],
+    [60, -76],
+    [17, 34],
+  ])
   return buildSport({
     nm: 'badminton',
     family: 'still',
@@ -230,15 +304,57 @@ export const badminton = () => {
           ]),
         }),
         groups: [
-          line('band', [poly([[-27, 8], [27, 8]], false), poly([[-38, -22], [38, -22]], false)], INK, { width: 3 }),
-          line('quills', [-60, -30, 0, 30, 60].map((x) => poly([[x * 0.28, 34], [x, -76]], false)), '#B8BCC2', { width: 2.5 }),
+          line(
+            'band',
+            [
+              poly(
+                [
+                  [-27, 8],
+                  [27, 8],
+                ],
+                false
+              ),
+              poly(
+                [
+                  [-38, -22],
+                  [38, -22],
+                ],
+                false
+              ),
+            ],
+            INK,
+            { width: 3 }
+          ),
+          line(
+            'quills',
+            [-60, -30, 0, 30, 60].map((x) =>
+              poly(
+                [
+                  [x * 0.28, 34],
+                  [x, -76],
+                ],
+                false
+              )
+            ),
+            '#B8BCC2',
+            { width: 2.5 }
+          ),
           solid('skirt', [skirt], '#FBFBF7'),
           paint('cork band', [rect(0, 41, 40, 7, 2)], '#D23A2E'),
-          solid('cork', [bezier([-21, 38], [
-            { c1: [-28, 70], c2: [-14, 86], to: [0, 86] },
-            { c1: [14, 86], c2: [28, 70], to: [21, 38] },
-            { c1: [21, 38], c2: [-21, 38], to: [-21, 38] },
-          ])], '#F2EBDD'),
+          solid(
+            'cork',
+            [
+              bezier(
+                [-21, 38],
+                [
+                  { c1: [-28, 70], c2: [-14, 86], to: [0, 86] },
+                  { c1: [14, 86], c2: [28, 70], to: [21, 38] },
+                  { c1: [21, 38], c2: [-21, 38], to: [-21, 38] },
+                ]
+              ),
+            ],
+            '#F2EBDD'
+          ),
         ],
       },
     ],

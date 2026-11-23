@@ -37,7 +37,8 @@ export function useSavePlan() {
   return useCallback(
     async (account: { email?: string; name?: string }): Promise<SavePlanResult> => {
       if (!draft || !isComplete(draft.answers)) throw new Error('Your answers are incomplete.')
-      if (!(await waitFor(() => authed.current))) throw new Error('Sign-in is taking too long. Try again.')
+      if (!(await waitFor(() => authed.current)))
+        throw new Error('Sign-in is taking too long. Try again.')
 
       const clerkUser = clerk.user
       if (!clerkUser) throw new Error('Not signed in.')

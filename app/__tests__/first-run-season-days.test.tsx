@@ -11,7 +11,9 @@ jest.mock('../../lib/firstRunStorage', () => ({
 jest.mock('convex/react', () => ({
   useQuery: (fn: unknown) => {
     const name = jest.requireActual('convex/server').getFunctionName(fn)
-    return name === 'sports:list' ? jest.requireActual('../../jest/firstRunTestUtils').SPORTS : undefined
+    return name === 'sports:list'
+      ? jest.requireActual('../../jest/firstRunTestUtils').SPORTS
+      : undefined
   },
 }))
 const mockPush = jest.fn()
@@ -69,7 +71,9 @@ describe('First Run season (calendar)', () => {
       fireEvent.press(screen.getByTestId(`season-day-${otherIso}`))
     })
     expect((await testDraft.reopen()).answers.seasonStart).toBe(otherIso)
-    expect(screen.getByTestId('season-weeks').props.children).toBe(weeksUntilSeason(otherIso, new Date()))
+    expect(screen.getByTestId('season-weeks').props.children).toBe(
+      weeksUntilSeason(otherIso, new Date())
+    )
   })
 
   it('past days and today are disabled', async () => {
@@ -83,7 +87,9 @@ describe('First Run season (calendar)', () => {
     const now = new Date()
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
     expect(screen.getByTestId(`season-day-${today}`).props.accessibilityState.disabled).toBe(true)
-    expect(screen.getByTestId('season-prev-month').props.accessibilityState?.disabled ?? true).toBe(true)
+    expect(screen.getByTestId('season-prev-month').props.accessibilityState?.disabled ?? true).toBe(
+      true
+    )
   })
 
   it('No set season stores null, and tapping it again brings the date back', async () => {

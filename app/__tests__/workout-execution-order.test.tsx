@@ -25,7 +25,8 @@ const template = {
   ],
 }
 
-const freshSets = (n: number) => Array.from({ length: n }, () => ({ completed: false, skipped: false }))
+const freshSets = (n: number) =>
+  Array.from({ length: n }, () => ({ completed: false, skipped: false }))
 
 let mockSession: any
 const mockUpdateProgress = jest.fn().mockResolvedValue(undefined)
@@ -106,28 +107,38 @@ describe('Workout execution after reordering', () => {
       template,
       // Warmup done, so the screen resumes on the main exercises
       exercises: [
-        { exerciseId: 'cat_cow', completed: true, skipped: true, sets: [{ completed: true, skipped: true }] },
+        {
+          exerciseId: 'cat_cow',
+          completed: true,
+          skipped: true,
+          sets: [{ completed: true, skipped: true }],
+        },
         { exerciseId: 'goblet_squat', completed: false, skipped: false, sets: freshSets(6) },
         { exerciseId: 'romanian_deadlift', completed: false, skipped: false, sets: freshSets(3) },
       ],
       exerciseOrder: [2, 1],
     })
 
-    expect(getByText("Romanian Deadlift")).toBeTruthy()
+    expect(getByText('Romanian Deadlift')).toBeTruthy()
     expect(getByText('3 sets')).toBeTruthy()
     expect(getByText('0/3')).toBeTruthy()
     expect(getAllByText(/^Set \d( · Next)?$/)).toHaveLength(3)
     expect(queryAllByText('Set 6')).toHaveLength(0)
   })
 
-  it('repairs a save that put Goblet Squat\'s sets in Romanian Deadlift\'s slot', () => {
+  it("repairs a save that put Goblet Squat's sets in Romanian Deadlift's slot", () => {
     const { getByText, getAllByText } = renderSession({
       _id: 'session_1',
       startedAt: Date.now(),
       status: 'in_progress',
       template,
       exercises: [
-        { exerciseId: 'cat_cow', completed: true, skipped: true, sets: [{ completed: true, skipped: true }] },
+        {
+          exerciseId: 'cat_cow',
+          completed: true,
+          skipped: true,
+          sets: [{ completed: true, skipped: true }],
+        },
         { exerciseId: 'romanian_deadlift', completed: false, skipped: false, sets: freshSets(3) },
         { exerciseId: 'goblet_squat', completed: false, skipped: false, sets: freshSets(6) },
       ],
@@ -145,7 +156,12 @@ describe('Workout execution after reordering', () => {
       status: 'in_progress',
       template,
       exercises: [
-        { exerciseId: 'cat_cow', completed: true, skipped: true, sets: [{ completed: true, skipped: true }] },
+        {
+          exerciseId: 'cat_cow',
+          completed: true,
+          skipped: true,
+          sets: [{ completed: true, skipped: true }],
+        },
         { exerciseId: 'goblet_squat', completed: false, skipped: false, sets: freshSets(6) },
         { exerciseId: 'romanian_deadlift', completed: false, skipped: false, sets: freshSets(3) },
       ],
@@ -160,7 +176,11 @@ describe('Workout execution after reordering', () => {
     const saved = mockUpdateProgress.mock.calls.at(-1)?.[0]
     // The order is already saved, so the set save leaves it alone.
     expect(saved.exerciseOrder).toBeUndefined()
-    expect(saved.exercises.map((e: any) => e.exerciseId)).toEqual(['cat_cow', 'goblet_squat', 'romanian_deadlift'])
+    expect(saved.exercises.map((e: any) => e.exerciseId)).toEqual([
+      'cat_cow',
+      'goblet_squat',
+      'romanian_deadlift',
+    ])
     expect(saved.exercises[2].sets[0].completed).toBe(true)
     expect(saved.exercises[1].sets.every((set: any) => !set.completed)).toBe(true)
   })
@@ -172,7 +192,12 @@ describe('Workout execution after reordering', () => {
       status: 'in_progress',
       template,
       exercises: [
-        { exerciseId: 'cat_cow', completed: true, skipped: true, sets: [{ completed: true, skipped: true }] },
+        {
+          exerciseId: 'cat_cow',
+          completed: true,
+          skipped: true,
+          sets: [{ completed: true, skipped: true }],
+        },
         { exerciseId: 'goblet_squat', completed: false, skipped: false, sets: freshSets(6) },
         { exerciseId: 'romanian_deadlift', completed: false, skipped: false, sets: freshSets(3) },
       ],
@@ -197,7 +222,12 @@ describe('Workout execution after reordering', () => {
       status: 'in_progress',
       template,
       exercises: [
-        { exerciseId: 'cat_cow', completed: true, skipped: true, sets: [{ completed: true, skipped: true }] },
+        {
+          exerciseId: 'cat_cow',
+          completed: true,
+          skipped: true,
+          sets: [{ completed: true, skipped: true }],
+        },
         { exerciseId: 'goblet_squat', completed: false, skipped: false, sets: freshSets(6) },
         { exerciseId: 'romanian_deadlift', completed: false, skipped: false, sets: freshSets(3) },
       ],
@@ -233,7 +263,12 @@ describe('Workout execution after reordering', () => {
         exercises: [...template.exercises, exercise('hip_thrust', 'Hip Thrust', 3, '10')],
       },
       exercises: [
-        { exerciseId: 'cat_cow', completed: true, skipped: true, sets: [{ completed: true, skipped: true }] },
+        {
+          exerciseId: 'cat_cow',
+          completed: true,
+          skipped: true,
+          sets: [{ completed: true, skipped: true }],
+        },
         { exerciseId: 'goblet_squat', completed: false, skipped: false, sets: freshSets(6) },
         { exerciseId: 'romanian_deadlift', completed: false, skipped: false, sets: freshSets(3) },
         { exerciseId: 'hip_thrust', completed: false, skipped: false, sets: freshSets(3) },
@@ -250,14 +285,19 @@ describe('Workout execution after reordering', () => {
     expect(mockUpdateProgress.mock.calls.at(-1)?.[0].exerciseOrder).toEqual([1, 3, 2])
   })
 
-  it("does not take its own save coming back as a new order", async () => {
+  it('does not take its own save coming back as a new order', async () => {
     const base = {
       _id: 'session_1',
       startedAt: Date.now(),
       status: 'in_progress',
       template,
       exercises: [
-        { exerciseId: 'cat_cow', completed: true, skipped: true, sets: [{ completed: true, skipped: true }] },
+        {
+          exerciseId: 'cat_cow',
+          completed: true,
+          skipped: true,
+          sets: [{ completed: true, skipped: true }],
+        },
         { exerciseId: 'goblet_squat', completed: false, skipped: false, sets: freshSets(6) },
         { exerciseId: 'romanian_deadlift', completed: false, skipped: false, sets: freshSets(3) },
       ],
@@ -282,7 +322,12 @@ describe('Workout execution after reordering', () => {
       status: 'in_progress',
       template,
       exercises: [
-        { exerciseId: 'cat_cow', completed: true, skipped: true, sets: [{ completed: true, skipped: true }] },
+        {
+          exerciseId: 'cat_cow',
+          completed: true,
+          skipped: true,
+          sets: [{ completed: true, skipped: true }],
+        },
         { exerciseId: 'goblet_squat', completed: false, skipped: false, sets: freshSets(6) },
         { exerciseId: 'romanian_deadlift', completed: false, skipped: false, sets: freshSets(3) },
       ],
@@ -294,5 +339,4 @@ describe('Workout execution after reordering', () => {
     fireEvent.press(dots)
     expect(mockQueueProps.open).toBe(true)
   })
-
 })

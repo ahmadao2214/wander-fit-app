@@ -1,15 +1,5 @@
 import { useState, useEffect } from 'react'
-import {
-  YStack,
-  XStack,
-  Text,
-  Button,
-  Input,
-  Sheet,
-  H3,
-  Separator,
-  Spinner,
-} from 'tamagui'
+import { YStack, XStack, Text, Button, Input, Sheet, H3, Separator, Spinner } from 'tamagui'
 import { Supporting } from './Typography'
 import { X, Check, Dumbbell } from '@tamagui/lucide-icons'
 import { useMutation } from 'convex/react'
@@ -97,9 +87,8 @@ export function OneRepMaxSheet({
   }
 
   // Check if form has any errors
-  const hasErrors = mode === 'single'
-    ? error !== null
-    : Object.values(bulkErrors).some((e) => e !== null)
+  const hasErrors =
+    mode === 'single' ? error !== null : Object.values(bulkErrors).some((e) => e !== null)
 
   const handleSaveSingle = async () => {
     if (!exercise) return
@@ -141,7 +130,9 @@ export function OneRepMaxSheet({
     try {
       const result = await setMultipleMaxes({ maxes })
       if (result.hasInvalidValues) {
-        alert(`Warning: ${result.summary.skippedInvalid} value(s) were skipped (must be 1-2000 lbs)`)
+        alert(
+          `Warning: ${result.summary.skippedInvalid} value(s) were skipped (must be 1-2000 lbs)`
+        )
       }
       onOpenChange(false)
       onComplete?.()
@@ -167,33 +158,21 @@ export function OneRepMaxSheet({
       dismissOnSnapToBottom
     >
       <Sheet.Overlay />
-      <Sheet.Frame
-        p="$4"
-        bg="$background"
-        width="100%"
-      >
+      <Sheet.Frame p="$4" bg="$background" width="100%">
         <Sheet.Handle />
 
         <YStack gap="$4" pt="$2">
           {/* Header */}
           <XStack items="center" justify="space-between">
             <YStack>
-              <H3 fontFamily="$body">
-                {mode === 'single' ? 'Set 1RM' : 'Set Your Maxes'}
-              </H3>
+              <H3 fontFamily="$body">{mode === 'single' ? 'Set 1RM' : 'Set Your Maxes'}</H3>
               {mode === 'single' && exercise && (
                 <Text fontSize={13} fontFamily="$body" color="$color9">
                   {exercise.name}
                 </Text>
               )}
             </YStack>
-            <Button
-              size="$3"
-              circular
-              bg="$color3"
-              icon={X}
-              onPress={() => onOpenChange(false)}
-            />
+            <Button size="$3" circular bg="$color3" icon={X} onPress={() => onOpenChange(false)} />
           </XStack>
 
           <Separator />
@@ -260,9 +239,7 @@ export function OneRepMaxSheet({
                         lbs
                       </Text>
                     </XStack>
-                    {fieldError && (
-                      <Supporting color="$red10">{fieldError}</Supporting>
-                    )}
+                    {fieldError && <Supporting color="$red10">{fieldError}</Supporting>}
                   </YStack>
                 )
               })}

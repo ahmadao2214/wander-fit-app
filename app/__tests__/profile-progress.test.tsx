@@ -10,7 +10,14 @@ jest.mock('convex/react', () => ({
   useQuery: (name: string) => {
     if (name === 'getProgressSummary') return mockProgress
     if (name === 'getCurrentProgramState') {
-      return { phase: 'GPP', week: 1, day: 1, skillLevel: 'Novice', gppCategoryId: 2, sportName: 'Basketball' }
+      return {
+        phase: 'GPP',
+        week: 1,
+        day: 1,
+        skillLevel: 'Novice',
+        gppCategoryId: 2,
+        sportName: 'Basketball',
+      }
     }
     if (name === 'getIntakeHistory') return mockIntakes
     if (name === 'getCoreLiftExercises') return []
@@ -39,7 +46,10 @@ jest.mock('react-native-safe-area-context', () => ({
 }))
 
 jest.mock('../../hooks/useAuth', () => ({
-  useAuth: () => ({ user: { _id: 'user_1', name: 'Test Athlete', email: 'athlete@example.com' }, isLoading: false }),
+  useAuth: () => ({
+    user: { _id: 'user_1', name: 'Test Athlete', email: 'athlete@example.com' },
+    isLoading: false,
+  }),
 }))
 
 jest.mock('../../components/SignOutButton', () => ({ SignOutButton: () => null }))
@@ -74,7 +84,13 @@ describe('Profile', () => {
 
   it('states the assessment baseline in words, not a 0 tile', () => {
     mockProgress = summary(0, 0)
-    mockIntakes = [{ preferredTrainingDaysPerWeek: 3, yearsOfExperience: 0, completedAt: new Date(2026, 10, 15).getTime() }]
+    mockIntakes = [
+      {
+        preferredTrainingDaysPerWeek: 3,
+        yearsOfExperience: 0,
+        completedAt: new Date(2026, 10, 15).getTime(),
+      },
+    ]
     const { getByText, queryByText } = render(<ProfilePage />, { wrapper: AllTheProviders })
     expect(getByText('3 a week')).toBeTruthy()
     expect(getByText('New to training')).toBeTruthy()

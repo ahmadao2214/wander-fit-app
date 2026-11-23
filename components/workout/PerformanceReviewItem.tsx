@@ -1,18 +1,7 @@
 import { TouchableOpacity, StyleSheet } from 'react-native'
-import {
-  YStack,
-  XStack,
-  Text,
-  Card,
-} from 'tamagui'
+import { YStack, XStack, Text, Card } from 'tamagui'
 import { Body, Supporting, Caption } from '../Typography'
-import {
-  ChevronDown,
-  ChevronUp,
-  Check,
-  X,
-  Activity,
-} from '@tamagui/lucide-icons'
+import { ChevronDown, ChevronUp, Check, X, Activity } from '@tamagui/lucide-icons'
 
 /**
  * Performance data for a single set
@@ -58,30 +47,28 @@ export function PerformanceReviewItem({
   isExpanded,
   onToggle,
 }: PerformanceReviewItemProps) {
-  const completedSets = exercise.sets?.filter(s => s.completed && !s.skipped) || []
-  const skippedSets = exercise.sets?.filter(s => s.skipped) || []
+  const completedSets = exercise.sets?.filter((s) => s.completed && !s.skipped) || []
+  const skippedSets = exercise.sets?.filter((s) => s.skipped) || []
   const totalSets = exercise.sets?.length || 0
 
   // Calculate summary stats
-  const maxWeight = completedSets.reduce((max, set) =>
-    Math.max(max, set.weight || 0), 0)
-  const avgRpe = completedSets.length > 0
-    ? Math.round(completedSets.reduce((sum, set) => sum + (set.rpe || 0), 0) / completedSets.length)
-    : null
+  const maxWeight = completedSets.reduce((max, set) => Math.max(max, set.weight || 0), 0)
+  const avgRpe =
+    completedSets.length > 0
+      ? Math.round(
+          completedSets.reduce((sum, set) => sum + (set.rpe || 0), 0) / completedSets.length
+        )
+      : null
   const totalReps = completedSets.reduce((sum, set) => sum + (set.repsCompleted || 0), 0)
 
   // Determine completion status
   const isFullyCompleted = completedSets.length === exercise.prescribedSets && !exercise.skipped
-  const isPartiallyCompleted = completedSets.length > 0 && completedSets.length < exercise.prescribedSets
+  const isPartiallyCompleted =
+    completedSets.length > 0 && completedSets.length < exercise.prescribedSets
   const isSkipped = exercise.skipped || completedSets.length === 0
 
   return (
-    <Card
-      borderColor="$borderColor"
-      borderWidth={1}
-      bg="$background"
-      mb="$2"
-    >
+    <Card borderColor="$borderColor" borderWidth={1} bg="$background" mb="$2">
       {/* Collapsed Header - Always Visible */}
       <TouchableOpacity onPress={onToggle} activeOpacity={0.7}>
         <XStack items="center" gap="$3" p="$3">
@@ -89,7 +76,7 @@ export function PerformanceReviewItem({
           <Card
             width={28}
             height={28}
-            bg={isSkipped ? "$red4" : isPartiallyCompleted ? "$yellow4" : "$green4"}
+            bg={isSkipped ? '$red4' : isPartiallyCompleted ? '$yellow4' : '$green4'}
             rounded="$10"
             items="center"
             justify="center"
@@ -98,7 +85,7 @@ export function PerformanceReviewItem({
             {isSkipped ? (
               <X size={16} color="$red10" />
             ) : (
-              <Check size={16} color={isPartiallyCompleted ? "$yellow10" : "$green10"} />
+              <Check size={16} color={isPartiallyCompleted ? '$yellow10' : '$green10'} />
             )}
           </Card>
 
@@ -115,16 +102,8 @@ export function PerformanceReviewItem({
                   <Caption color="$color10">
                     {completedSets.length}/{exercise.prescribedSets} sets
                   </Caption>
-                  {maxWeight > 0 && (
-                    <Caption color="$color10">
-                      @ {maxWeight} lbs
-                    </Caption>
-                  )}
-                  {totalReps > 0 && (
-                    <Caption color="$color9">
-                      ({totalReps} reps)
-                    </Caption>
-                  )}
+                  {maxWeight > 0 && <Caption color="$color10">@ {maxWeight} lbs</Caption>}
+                  {totalReps > 0 && <Caption color="$color9">({totalReps} reps)</Caption>}
                 </>
               )}
             </XStack>
@@ -152,7 +131,13 @@ export function PerformanceReviewItem({
       {isExpanded && (
         <YStack gap="$2" px="$4" pb="$4">
           {/* Prescribed info */}
-          <XStack items="center" gap="$2" pb="$2" borderBottomWidth={1} borderBottomColor="$borderColor">
+          <XStack
+            items="center"
+            gap="$2"
+            pb="$2"
+            borderBottomWidth={1}
+            borderBottomColor="$borderColor"
+          >
             <Caption color="$color9">
               Prescribed: {exercise.prescribedSets} x {exercise.prescribedReps}
             </Caption>
@@ -172,13 +157,13 @@ export function PerformanceReviewItem({
                 <Card
                   width={24}
                   height={24}
-                  bg={set.skipped ? "$gray4" : set.completed ? "$green3" : "$gray4"}
+                  bg={set.skipped ? '$gray4' : set.completed ? '$green3' : '$gray4'}
                   rounded="$10"
                   items="center"
                   justify="center"
                   p={0}
                 >
-                  <Caption fontWeight="600" color={set.skipped ? "$color10" : "$color11"}>
+                  <Caption fontWeight="600" color={set.skipped ? '$color10' : '$color11'}>
                     {set.setNumber}
                   </Caption>
                 </Card>
@@ -194,9 +179,7 @@ export function PerformanceReviewItem({
                       {set.repsCompleted ? `${set.repsCompleted} reps` : 'Completed'}
                     </Supporting>
                     {set.weight !== undefined && set.weight > 0 && (
-                      <Supporting color="$color10">
-                        @ {set.weight} lbs
-                      </Supporting>
+                      <Supporting color="$color10">@ {set.weight} lbs</Supporting>
                     )}
                     {set.rpe !== undefined && set.rpe > 0 && (
                       <XStack items="center" gap="$1">
@@ -208,9 +191,7 @@ export function PerformanceReviewItem({
                     )}
                   </XStack>
                 ) : (
-                  <Supporting color="$color9">
-                    Not completed
-                  </Supporting>
+                  <Supporting color="$color9">Not completed</Supporting>
                 )}
               </XStack>
             ))

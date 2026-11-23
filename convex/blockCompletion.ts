@@ -1,4 +1,4 @@
-import { mapUserWeekToTemplateWeek } from "./weekMapping";
+import { mapUserWeekToTemplateWeek } from './weekMapping'
 
 /**
  * Which completed sessions still mark a workout as done.
@@ -12,28 +12,28 @@ import { mapUserWeekToTemplateWeek } from "./weekMapping";
  * not affected.
  */
 export type BlockSession = {
-  status: string;
-  startedAt: number;
-  completedAt?: number;
-  templateSnapshot?: { phase?: string };
-  redo?: boolean;
-};
-
-export type BlockProgram = {
-  currentPhase: string;
-  phaseStartDate: number;
-};
-
-export function countsAsDone(session: BlockSession, program: BlockProgram): boolean {
-  if (session.status !== "completed") return false;
-  // Doing a finished workout again is extra work, not progress
-  if (session.redo) return false;
-  if (session.templateSnapshot?.phase !== program.currentPhase) return true;
-  return (session.completedAt ?? session.startedAt) >= program.phaseStartDate;
+  status: string
+  startedAt: number
+  completedAt?: number
+  templateSnapshot?: { phase?: string }
+  redo?: boolean
 }
 
-const PHASES = ["GPP", "SPP", "SSP"];
-const DAY_MS = 24 * 60 * 60 * 1000;
+export type BlockProgram = {
+  currentPhase: string
+  phaseStartDate: number
+}
+
+export function countsAsDone(session: BlockSession, program: BlockProgram): boolean {
+  if (session.status !== 'completed') return false
+  // Doing a finished workout again is extra work, not progress
+  if (session.redo) return false
+  if (session.templateSnapshot?.phase !== program.currentPhase) return true
+  return (session.completedAt ?? session.startedAt) >= program.phaseStartDate
+}
+
+const PHASES = ['GPP', 'SPP', 'SSP']
+const DAY_MS = 24 * 60 * 60 * 1000
 
 /**
  * Where the program calendar counts each phase's slots from.
@@ -47,22 +47,22 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * A phase's dates never move once it is past. Programs that have not had a
  * check-in since then count every phase from createdAt, as before.
  */
-export type CalendarAnchors = { GPP?: number; SPP?: number; SSP?: number };
+export type CalendarAnchors = { GPP?: number; SPP?: number; SSP?: number }
 
 export type ScheduleProgram = {
-  currentPhase: string;
-  createdAt: number;
-  calendarAnchors?: CalendarAnchors;
-};
+  currentPhase: string
+  createdAt: number
+  calendarAnchors?: CalendarAnchors
+}
 
 /** The anchor for one phase's slots. */
 export function phaseAnchor(program: ScheduleProgram, phase: string): Date {
-  return new Date(program.calendarAnchors?.[phase as keyof CalendarAnchors] ?? program.createdAt);
+  return new Date(program.calendarAnchors?.[phase as keyof CalendarAnchors] ?? program.createdAt)
 }
 
 /** The earliest anchor: where the calendar begins. */
 export function calendarStart(program: ScheduleProgram): Date {
-  return new Date(Math.min(...PHASES.map((phase) => phaseAnchor(program, phase).getTime())));
+  return new Date(Math.min(...PHASES.map((phase) => phaseAnchor(program, phase).getTime())))
 }
 
 /**
@@ -76,17 +76,17 @@ export function anchorsAfterCheckIn(
   program: ScheduleProgram,
   nextPhase: string,
   startedAt: number,
-  weeksPerPhase: number,
+  weeksPerPhase: number
 ): CalendarAnchors {
-  const from = PHASES.indexOf(nextPhase);
-  const previous = from > 0 ? phaseAnchor(program, PHASES[from - 1]).getTime() : -Infinity;
-  const anchor = Math.max(startedAt - from * weeksPerPhase * 7 * DAY_MS, previous);
-  const anchors: CalendarAnchors = {};
+  const from = PHASES.indexOf(nextPhase)
+  const previous = from > 0 ? phaseAnchor(program, PHASES[from - 1]).getTime() : -Infinity
+  const anchor = Math.max(startedAt - from * weeksPerPhase * 7 * DAY_MS, previous)
+  const anchors: CalendarAnchors = {}
   PHASES.forEach((phase, index) => {
     anchors[phase as keyof CalendarAnchors] =
-      index < from ? phaseAnchor(program, phase).getTime() : anchor;
-  });
-  return anchors;
+      index < from ? phaseAnchor(program, phase).getTime() : anchor
+  })
+  return anchors
 }
 
 /**
@@ -97,19 +97,19 @@ export function anchorsAfterCheckIn(
  */
 export function slotOnDate<S extends { phase: string }>(
   program: ScheduleProgram,
-  find: (anchor: Date) => S | null,
+  find: (anchor: Date) => S | null
 ): S | null {
-  const current = Math.max(0, PHASES.indexOf(program.currentPhase));
-  const order = [...PHASES.slice(current), ...PHASES.slice(0, current).reverse()];
-  const tried = new Set<number>();
+  const current = Math.max(0, PHASES.indexOf(program.currentPhase))
+  const order = [...PHASES.slice(current), ...PHASES.slice(0, current).reverse()]
+  const tried = new Set<number>()
   for (const phase of order) {
-    const anchor = phaseAnchor(program, phase);
-    if (tried.has(anchor.getTime())) continue;
-    tried.add(anchor.getTime());
-    const slot = find(anchor);
-    if (slot && phaseAnchor(program, slot.phase).getTime() === anchor.getTime()) return slot;
+    const anchor = phaseAnchor(program, phase)
+    if (tried.has(anchor.getTime())) continue
+    tried.add(anchor.getTime())
+    const slot = find(anchor)
+    if (slot && phaseAnchor(program, slot.phase).getTime() === anchor.getTime()) return slot
   }
-  return null;
+  return null
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -123,13 +123,13 @@ export function slotOnDate<S extends { phase: string }>(
  * every slot that repeats it. Each completed session fills the next slot that
  * holds its workout, in program order.
  */
-export type SlotRef = { phase: string; week: number; day: number };
-export type LayoutSlot = SlotRef & { templateId: string };
+export type SlotRef = { phase: string; week: number; day: number }
+export type LayoutSlot = SlotRef & { templateId: string }
 
-export const slotKey = (slot: SlotRef) => `${slot.phase}-${slot.week}-${slot.day}`;
+export const slotKey = (slot: SlotRef) => `${slot.phase}-${slot.week}-${slot.day}`
 
-export type LayoutTemplate = { _id: string; phase: string; week: number; day: number };
-export type LayoutOverride = { phase: string; week: number; day: number; templateId: string };
+export type LayoutTemplate = { _id: string; phase: string; week: number; day: number }
+export type LayoutOverride = { phase: string; week: number; day: number; templateId: string }
 
 /**
  * Every slot of the program in order (phase, user week, day), with the
@@ -139,49 +139,48 @@ export type LayoutOverride = { phase: string; week: number; day: number; templat
 export function programLayout(
   templates: readonly LayoutTemplate[],
   slotOverrides: readonly LayoutOverride[],
-  weeksPerPhase: number,
+  weeksPerPhase: number
 ): LayoutSlot[] {
-  const overrides = new Map(slotOverrides.map((o) => [slotKey(o), String(o.templateId)]));
-  const layout: LayoutSlot[] = [];
+  const overrides = new Map(slotOverrides.map((o) => [slotKey(o), String(o.templateId)]))
+  const layout: LayoutSlot[] = []
   for (const phase of PHASES) {
     for (let week = 1; week <= weeksPerPhase; week++) {
-      const templateWeek = mapUserWeekToTemplateWeek(week, weeksPerPhase);
+      const templateWeek = mapUserWeekToTemplateWeek(week, weeksPerPhase)
       const days = templates
         .filter((t) => t.phase === phase && t.week === templateWeek)
-        .sort((a, b) => a.day - b.day);
+        .sort((a, b) => a.day - b.day)
       for (const t of days) {
-        const slot = { phase, week, day: t.day };
-        layout.push({ ...slot, templateId: overrides.get(slotKey(slot)) ?? String(t._id) });
+        const slot = { phase, week, day: t.day }
+        layout.push({ ...slot, templateId: overrides.get(slotKey(slot)) ?? String(t._id) })
       }
     }
   }
-  return layout;
+  return layout
 }
 
 /**
  * The done slots, each with the session that did it. `sessions` are the ones
  * that count (see countsAsDone); the earliest fills the first slot.
  */
-export function doneSlots<S extends { templateId: string; completedAt?: number; startedAt: number }>(
-  layout: readonly LayoutSlot[],
-  sessions: readonly S[],
-): Map<string, S> {
-  const byTemplate = new Map<string, S[]>();
-  const when = (s: S) => s.completedAt ?? s.startedAt;
+export function doneSlots<
+  S extends { templateId: string; completedAt?: number; startedAt: number },
+>(layout: readonly LayoutSlot[], sessions: readonly S[]): Map<string, S> {
+  const byTemplate = new Map<string, S[]>()
+  const when = (s: S) => s.completedAt ?? s.startedAt
   for (const session of [...sessions].sort((a, b) => when(a) - when(b))) {
-    const id = String(session.templateId);
-    byTemplate.set(id, [...(byTemplate.get(id) ?? []), session]);
+    const id = String(session.templateId)
+    byTemplate.set(id, [...(byTemplate.get(id) ?? []), session])
   }
-  const done = new Map<string, S>();
-  const used = new Map<string, number>();
+  const done = new Map<string, S>()
+  const used = new Map<string, number>()
   for (const slot of layout) {
-    const n = used.get(slot.templateId) ?? 0;
-    const session = byTemplate.get(slot.templateId)?.[n];
-    if (!session) continue;
-    used.set(slot.templateId, n + 1);
-    done.set(slotKey(slot), session);
+    const n = used.get(slot.templateId) ?? 0
+    const session = byTemplate.get(slot.templateId)?.[n]
+    if (!session) continue
+    used.set(slot.templateId, n + 1)
+    done.set(slotKey(slot), session)
   }
-  return done;
+  return done
 }
 
 /**
@@ -193,12 +192,12 @@ export function isWorkoutDone(
   layout: readonly LayoutSlot[],
   done: ReadonlyMap<string, unknown>,
   templateId: string,
-  position: { currentPhase: string; currentWeek: number },
+  position: { currentPhase: string; currentWeek: number }
 ): boolean {
-  const slots = layout.filter((slot) => slot.templateId === String(templateId));
-  if (slots.length === 0) return false;
+  const slots = layout.filter((slot) => slot.templateId === String(templateId))
+  if (slots.length === 0) return false
   const due = slots.filter(
-    (slot) => slot.phase === position.currentPhase && slot.week <= position.currentWeek,
-  );
-  return (due.length > 0 ? due : [slots[0]]).every((slot) => done.has(slotKey(slot)));
+    (slot) => slot.phase === position.currentPhase && slot.week <= position.currentWeek
+  )
+  return (due.length > 0 ? due : [slots[0]]).every((slot) => done.has(slotKey(slot)))
 }

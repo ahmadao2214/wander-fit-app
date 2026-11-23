@@ -8,15 +8,15 @@
  * Tags that indicate cardio/movement exercises
  */
 export const CARDIO_TAGS = [
-  "cardio",
-  "run",
-  "walk",
-  "jump",
-  "plyometric",
-  "sprint",
-  "jog",
-  "conditioning",
-] as const;
+  'cardio',
+  'run',
+  'walk',
+  'jump',
+  'plyometric',
+  'sprint',
+  'jog',
+  'conditioning',
+] as const
 
 /**
  * Parse prescribed reps string to extract the numeric value
@@ -34,17 +34,17 @@ export const CARDIO_TAGS = [
  * - "5+" → 5
  */
 export function parseReps(repsStr: string): number {
-  const match = repsStr.match(/(\d+)/);
-  return match ? parseInt(match[1], 10) : 10;
+  const match = repsStr.match(/(\d+)/)
+  return match ? parseInt(match[1], 10) : 10
 }
 
 export interface TrackableSetData {
-  repsCompleted?: number;
-  durationSeconds?: number;
-  weight?: number;
-  rpe?: number;
-  completed: boolean;
-  skipped: boolean;
+  repsCompleted?: number
+  durationSeconds?: number
+  weight?: number
+  rpe?: number
+  completed: boolean
+  skipped: boolean
 }
 
 /**
@@ -59,23 +59,27 @@ export function normalizeTrackedSets<T extends TrackableSetData>(
   sets: T[],
   prescribedSets: number
 ): T[] {
-  const targetCount = Math.max(1, prescribedSets);
+  const targetCount = Math.max(1, prescribedSets)
 
   if (sets.length === targetCount) {
-    return sets;
+    return sets
   }
 
   if (sets.length > targetCount) {
-    return sets.slice(0, targetCount);
+    return sets.slice(0, targetCount)
   }
 
   return [
     ...sets,
-    ...Array.from({ length: targetCount - sets.length }, () => ({
-      completed: false,
-      skipped: false,
-    } as T)),
-  ];
+    ...Array.from(
+      { length: targetCount - sets.length },
+      () =>
+        ({
+          completed: false,
+          skipped: false,
+        }) as T
+    ),
+  ]
 }
 
 /**
@@ -88,29 +92,27 @@ export function normalizeTrackedSets<T extends TrackableSetData>(
  * Matching is case-insensitive.
  */
 export function isCardioExercise(tags: string[]): boolean {
-  return tags.some((tag) =>
-    CARDIO_TAGS.includes(tag.toLowerCase() as (typeof CARDIO_TAGS)[number])
-  );
+  return tags.some((tag) => CARDIO_TAGS.includes(tag.toLowerCase() as (typeof CARDIO_TAGS)[number]))
 }
 
 /**
  * Frontend intensity levels for UI theming
  */
-export type IntensityLevel = "low" | "medium" | "high";
+export type IntensityLevel = 'low' | 'medium' | 'high'
 
 /**
  * Backend intensity values from Convex schema
  */
-export type BackendIntensity = "Low" | "Moderate" | "High";
+export type BackendIntensity = 'Low' | 'Moderate' | 'High'
 
 /**
  * Mapping from backend intensity values to frontend IntensityLevel
  */
 const INTENSITY_MAPPING: Record<BackendIntensity, IntensityLevel> = {
-  Low: "low",
-  Moderate: "medium",
-  High: "high",
-};
+  Low: 'low',
+  Moderate: 'medium',
+  High: 'high',
+}
 
 /**
  * Convert backend intensity value to frontend IntensityLevel
@@ -126,26 +128,23 @@ const INTENSITY_MAPPING: Record<BackendIntensity, IntensityLevel> = {
  * - null → "medium" (default)
  * - "Invalid" → "medium" (fallback)
  */
-export function mapIntensityToLevel(
-  backendIntensity: string | undefined | null
-): IntensityLevel {
+export function mapIntensityToLevel(backendIntensity: string | undefined | null): IntensityLevel {
   if (!backendIntensity) {
-    return "medium";
+    return 'medium'
   }
-  return INTENSITY_MAPPING[backendIntensity as BackendIntensity] || "medium";
+  return INTENSITY_MAPPING[backendIntensity as BackendIntensity] || 'medium'
 }
 
-
 /** Equipment values that mean "nothing to bring". */
-const NO_EQUIPMENT = new Set(["bodyweight", "none"]);
+const NO_EQUIPMENT = new Set(['bodyweight', 'none'])
 
 /**
  * The equipment worth showing for an exercise: everything except
  * "bodyweight"/"none", which tell the athlete nothing they need to act on.
  */
 export function visibleEquipment(equipment: string[] | undefined): string[] {
-  if (!equipment) return [];
-  return equipment.filter((item) => !NO_EQUIPMENT.has(item.trim().toLowerCase()));
+  if (!equipment) return []
+  return equipment.filter((item) => !NO_EQUIPMENT.has(item.trim().toLowerCase()))
 }
 
 /** Index of the set to log next: the first neither completed nor skipped, or -1. */

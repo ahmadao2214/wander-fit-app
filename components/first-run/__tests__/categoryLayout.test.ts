@@ -1,7 +1,12 @@
 jest.mock('react-native-reanimated', () => jest.requireActual('../../../jest/reanimatedMock'))
 
 // eslint-disable-next-line import/first
-import { CATEGORY_TILE_HEIGHT, categoryLayout, displayWidthEm, leadFontSize } from '../CategoryStory'
+import {
+  CATEGORY_TILE_HEIGHT,
+  categoryLayout,
+  displayWidthEm,
+  leadFontSize,
+} from '../CategoryStory'
 
 describe('categoryLayout', () => {
   it('keeps full-size tiles on a tall phone and shrinks them on a short one', () => {
@@ -12,12 +17,14 @@ describe('categoryLayout', () => {
   it('sizes every category name to fit one line, down to a 320-wide phone', () => {
     const names = ['POWER', 'ROTATION', 'STRENGTH', 'ENDURANCE']
     const overflow = [272, 354, 512].flatMap((w) =>
-      names.filter((n) => categoryLayout(722, w, n).name * displayWidthEm(n) > w).map((n) => `${n}@${w}`)
+      names
+        .filter((n) => categoryLayout(722, w, n).name * displayWidthEm(n) > w)
+        .map((n) => `${n}@${w}`)
     )
     expect(overflow).toEqual([])
   })
 
-  it('measures with the font\'s own letter widths', () => {
+  it("measures with the font's own letter widths", () => {
     // The width cap is what keeps STRENGTH on one line (it used to set at
     // 128pt, about 397pt wide). Real widths size it a little larger than the
     // old 0.44 em average did (3.52 em guessed; the font sets 3.10 em).
@@ -33,16 +40,22 @@ describe('bandTitleSize', () => {
   const { displayWidthEm } = jest.requireActual('../CategoryStory')
 
   it('keeps 50pt for most sports', () => {
-    expect([bandTitleSize('Basketball', 230), bandTitleSize('Swimming', 230), bandTitleSize('Golf', 203)]).toEqual([50, 50, 50])
+    expect([
+      bandTitleSize('Basketball', 230),
+      bandTitleSize('Swimming', 230),
+      bandTitleSize('Golf', 203),
+    ]).toEqual([50, 50, 50])
   })
 
   it('steps a long name down until it wraps to two lines that each fit, on web too', () => {
     const bad = [230, 203].flatMap((w) =>
-      ['Track (Sprints/Jumps)', 'Cross Country', 'Ultimate Frisbee', 'Field Hockey'].filter((name) => {
-        const size = bandTitleSize(name, w)
-        const lines = wrapLines(`${name} PLAN`.toUpperCase(), size, w)
-        return lines.length > 2 || lines.some((l: string) => displayWidthEm(l) * size > w)
-      })
+      ['Track (Sprints/Jumps)', 'Cross Country', 'Ultimate Frisbee', 'Field Hockey'].filter(
+        (name) => {
+          const size = bandTitleSize(name, w)
+          const lines = wrapLines(`${name} PLAN`.toUpperCase(), size, w)
+          return lines.length > 2 || lines.some((l: string) => displayWidthEm(l) * size > w)
+        }
+      )
     )
     expect(bad).toEqual([])
     expect(bandTitleSize('Track (Sprints/Jumps)', 230)).toBeLessThan(50)
@@ -62,7 +75,11 @@ describe('bandIconFrame', () => {
     expect(bandIconFrame('Basketball', 62)).toEqual({ size: 190, right: -46, top: 62 })
     const swim = bandIconFrame('Swimming', 62)
     expect(swim.right).toBeGreaterThanOrEqual(0)
-    expect(['Weightlifting', 'Tennis', 'Track (Sprints/Jumps)'].every((s) => bandIconFrame(s, 0).right >= 0)).toBe(true)
+    expect(
+      ['Weightlifting', 'Tennis', 'Track (Sprints/Jumps)'].every(
+        (s) => bandIconFrame(s, 0).right >= 0
+      )
+    ).toBe(true)
   })
 })
 
@@ -88,7 +105,10 @@ describe('weekTagSize', () => {
 
   it('sets every label at one size, from the widest, so RECOVER matches LOWER', () => {
     const plain = weekTagSize(week(['LOWER', null, 'UPPER', null, 'POWER', null, null]), 402)
-    const withRecover = weekTagSize(week(['LOWER', null, 'RECOVER', null, 'POWER', null, null]), 402)
+    const withRecover = weekTagSize(
+      week(['LOWER', null, 'RECOVER', null, 'POWER', null, null]),
+      402
+    )
     expect(plain).toBe(18)
     expect(withRecover).toBeLessThan(plain)
   })
@@ -106,7 +126,9 @@ describe('weekTagSize', () => {
 describe('captionMinHeight', () => {
   it('reserves a fourth line on a phone narrower than 360pt', () => {
     const { captionMinHeight } = jest.requireActual('../PlanView')
-    expect([captionMinHeight(320), captionMinHeight(375), captionMinHeight(402)]).toEqual([80, 60, 60])
+    expect([captionMinHeight(320), captionMinHeight(375), captionMinHeight(402)]).toEqual([
+      80, 60, 60,
+    ])
   })
 })
 

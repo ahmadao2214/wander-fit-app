@@ -98,7 +98,12 @@ const basketball = (): FieldMark[] => {
     ...m('line', rect(244, 151, base - 244, 98), arc(244, 200, 36, 90, 270)),
     ...m('dash', arc(244, 200, 36, -90, 90)),
     // The three-point line: corner straights joined by the arc.
-    ...m('line', arc(hoop, 200, 145, 112.3, 247.7), line(273, 334, base, 334), line(273, 66, base, 66)),
+    ...m(
+      'line',
+      arc(hoop, 200, 145, 112.3, 247.7),
+      line(273, 334, base, 334),
+      line(273, 66, base, 66)
+    ),
     ...m('line', circle(hoop, 200, 9), arc(hoop, 200, 25, 90, 270)),
     ...m('heavy', line(344, 182, 344, 218)),
     // Half-court circle at the frame's edge.
@@ -110,7 +115,13 @@ const volleyball = (): FieldMark[] => [
   ...m('line', rect(20, 110, 360, 180)),
   ...m('heavy', line(200, 82, 200, 318)),
   ...m('line', line(140, 110, 140, 290), line(260, 110, 260, 290)),
-  ...m('dash', line(140, 70, 140, 110), line(140, 290, 140, 330), line(260, 70, 260, 110), line(260, 290, 260, 330)),
+  ...m(
+    'dash',
+    line(140, 70, 140, 110),
+    line(140, 290, 140, 330),
+    line(260, 70, 260, 110),
+    line(260, 290, 260, 330)
+  ),
   ...m('fill', circle(200, 82, 5), circle(200, 318, 5)),
 ]
 
@@ -124,7 +135,13 @@ const tennis = (): FieldMark[] => [
 
 const badminton = (): FieldMark[] => [
   ...m('line', rect(26, 120, 348, 160), line(26, 133, 374, 133), line(26, 267, 374, 267)),
-  ...m('line', line(148, 120, 148, 280), line(252, 120, 252, 280), line(46, 120, 46, 280), line(354, 120, 354, 280)),
+  ...m(
+    'line',
+    line(148, 120, 148, 280),
+    line(252, 120, 252, 280),
+    line(46, 120, 46, 280),
+    line(354, 120, 354, 280)
+  ),
   ...m('line', line(26, 200, 148, 200), line(252, 200, 374, 200)),
   ...m('heavy', line(200, 104, 200, 296)),
 ]
@@ -156,20 +173,32 @@ const football = (): FieldMark[] => [
   ...range(8).flatMap((i) => m('line', line(i * 50, -40, i * 50, 440))),
   ...m('heavy', line(360, -40, 360, 440)),
   ...range(36).flatMap((i) =>
-    i % 5 === 0 ? [] : m('line', line(i * 10, 136, i * 10, 146), line(i * 10, 254, i * 10, 264)),
+    i % 5 === 0 ? [] : m('line', line(i * 10, 136, i * 10, 146), line(i * 10, 254, i * 10, 264))
   ),
   ...m('line', line(-40, 20, 440, 20), line(-40, 380, 440, 380)),
   ...m('line', line(345, 200, 350, 200)),
   ...m('fill', rect(356, 16, 8, 8), rect(356, 376, 8, 8)),
   // Field numbers as chevrons pointing at the nearer goal.
-  ...m('line', 'M188 52L178 58L188 64', 'M288 52L278 58L288 64', 'M188 336L178 342L188 348', 'M288 336L278 342L288 348'),
+  ...m(
+    'line',
+    'M188 52L178 58L188 64',
+    'M288 52L278 58L288 64',
+    'M188 336L178 342L188 348',
+    'M288 336L278 342L288 348'
+  ),
 ]
 
 const rugby = (): FieldMark[] => [
   ...m('heavy', line(360, -40, 360, 440), line(110, -40, 110, 440)),
   ...m('line', line(250, -40, 250, 440), line(-40, 25, 440, 25), line(-40, 375, 440, 375)),
   ...m('dash', line(160, -40, 160, 440), line(60, -40, 60, 440)),
-  ...m('dash', line(-40, 50, 360, 50), line(-40, 350, 360, 350), line(-40, 100, 360, 100), line(-40, 300, 360, 300)),
+  ...m(
+    'dash',
+    line(-40, 50, 360, 50),
+    line(-40, 350, 360, 350),
+    line(-40, 100, 360, 100),
+    line(-40, 300, 360, 300)
+  ),
   // H-posts on the try line.
   ...m('heavy', line(360, 186, 360, 214)),
   ...m('fill', circle(360, 186, 5), circle(360, 214, 5)),
@@ -187,8 +216,18 @@ const lacrosse = (): FieldMark[] => [
 
 const fieldHockey = (): FieldMark[] => [
   ...m('heavy', line(370, -40, 370, 440)),
-  ...m('line', `${arc(370, 178, 176, 180, 270)}`, `${arc(370, 222, 176, 90, 180)}`, line(194, 178, 194, 222)),
-  ...m('dash', arc(370, 178, 236, 180, 245), arc(370, 222, 236, 115, 180), line(134, 178, 134, 222)),
+  ...m(
+    'line',
+    `${arc(370, 178, 176, 180, 270)}`,
+    `${arc(370, 222, 176, 90, 180)}`,
+    line(194, 178, 194, 222)
+  ),
+  ...m(
+    'dash',
+    arc(370, 178, 236, 180, 245),
+    arc(370, 222, 236, 115, 180),
+    line(134, 178, 134, 222)
+  ),
   ...m('line', line(94, -40, 94, 440), rect(370, 178, 12, 44)),
   ...m('fill', circle(292, 200, 4)),
 ]
@@ -196,14 +235,26 @@ const fieldHockey = (): FieldMark[] => [
 const ultimate = (): FieldMark[] => [
   ...m('line', line(-40, 80, 320, 80), line(-40, 320, 320, 320), line(320, 80, 320, 320)),
   ...m('heavy', line(200, 80, 200, 320)),
-  ...m('line', line(72, 192, 88, 208), line(88, 192, 72, 208), line(-48, 192, -32, 208), line(-32, 192, -48, 208)),
+  ...m(
+    'line',
+    line(72, 192, 88, 208),
+    line(88, 192, 72, 208),
+    line(-48, 192, -32, 208),
+    line(-32, 192, -48, 208)
+  ),
   ...m('fill', circle(200, 80, 6), circle(200, 320, 6), circle(320, 80, 6), circle(320, 320, 6)),
 ]
 
 const cricket = (): FieldMark[] => [
   ...m('line', rect(188, 128, 24, 144)),
   ...m('heavy', line(176, 146, 224, 146), line(176, 254, 224, 254)),
-  ...m('line', line(182, 134, 182, 160), line(218, 134, 218, 160), line(182, 240, 182, 266), line(218, 240, 218, 266)),
+  ...m(
+    'line',
+    line(182, 134, 182, 160),
+    line(218, 134, 218, 160),
+    line(182, 240, 182, 266),
+    line(218, 240, 218, 266)
+  ),
   ...m('fill', circle(194, 134, 2.5), circle(200, 134, 2.5), circle(206, 134, 2.5)),
   ...m('fill', circle(194, 266, 2.5), circle(200, 266, 2.5), circle(206, 266, 2.5)),
   ...m('dash', circle(200, 200, 165)),
@@ -217,21 +268,43 @@ const iceHockey = (): FieldMark[] => [
   ...m('line', circle(280, 112, 60), circle(280, 288, 60)),
   ...m('fill', circle(280, 112, 5), circle(280, 288, 5), circle(84, 112, 5), circle(84, 288, 5)),
   // Hash marks off the faceoff circles.
-  ...m('line', line(272, 52, 272, 44), line(288, 52, 288, 44), line(272, 172, 272, 180), line(288, 172, 288, 180)),
-  ...m('line', line(272, 228, 272, 220), line(288, 228, 288, 220), line(272, 348, 272, 356), line(288, 348, 288, 356)),
+  ...m(
+    'line',
+    line(272, 52, 272, 44),
+    line(288, 52, 288, 44),
+    line(272, 172, 272, 180),
+    line(288, 172, 288, 180)
+  ),
+  ...m(
+    'line',
+    line(272, 228, 272, 220),
+    line(288, 228, 288, 220),
+    line(272, 348, 272, 356),
+    line(288, 348, 288, 356)
+  ),
   // The blue line, painted wide.
   ...m('heavy', line(100, 30, 100, 370), line(108, 30, 108, 370)),
   ...m('line', `M360 188L372 188L372 212L360 212`),
 ]
 
 const trackSprints = (): FieldMark[] => [
-  ...range(9).flatMap((i) => m(i === 0 || i === 8 ? 'heavy' : 'line', line(-40, 102 + i * 24.5, 440, 102 + i * 24.5))),
+  ...range(9).flatMap((i) =>
+    m(i === 0 || i === 8 ? 'heavy' : 'line', line(-40, 102 + i * 24.5, 440, 102 + i * 24.5))
+  ),
   ...m('heavy', line(60, 102, 60, 298)),
-  ...range(8).flatMap((i) => m('dash', line(170, 106 + i * 24.5, 170, 122 + i * 24.5), line(290, 106 + i * 24.5, 290, 122 + i * 24.5))),
+  ...range(8).flatMap((i) =>
+    m(
+      'dash',
+      line(170, 106 + i * 24.5, 170, 122 + i * 24.5),
+      line(290, 106 + i * 24.5, 290, 122 + i * 24.5)
+    )
+  ),
 ]
 
 const trackDistance = (): FieldMark[] => [
-  ...range(5).flatMap((i) => m(i === 0 || i === 4 ? 'heavy' : 'line', stadium(200, 200, 296, 128 + i * 9))),
+  ...range(5).flatMap((i) =>
+    m(i === 0 || i === 4 ? 'heavy' : 'line', stadium(200, 200, 296, 128 + i * 9))
+  ),
   ...m('heavy', line(348, 328, 348, 372)),
   ...m('dash', line(52, 80, 348, 80), line(52, 320, 348, 320)),
 ]
@@ -270,7 +343,9 @@ const wrestling = (): FieldMark[] => [
 const martialArts = (): FieldMark[] => [
   ...m('heavy', rect(80, 80, 240, 240)),
   ...m('line', rect(-10, -10, 420, 420)),
-  ...range(13).flatMap((i) => (i === 0 || i === 12 ? [] : m('dash', line(-10 + i * 35, -10, -10 + i * 35, 410)))),
+  ...range(13).flatMap((i) =>
+    i === 0 || i === 12 ? [] : m('dash', line(-10 + i * 35, -10, -10 + i * 35, 410))
+  ),
   ...m('heavy', line(140, 192, 140, 208), line(260, 192, 260, 208)),
 ]
 
@@ -290,7 +365,9 @@ const cheerleading = (): FieldMark[] => [
 ]
 
 const golf = (): FieldMark[] => [
-  ...range(5).flatMap((i) => m(i === 4 ? 'heavy' : 'line', contour(210, 200, 30 + i * 36, 4 + i * 4, 0.6))),
+  ...range(5).flatMap((i) =>
+    m(i === 4 ? 'heavy' : 'line', contour(210, 200, 30 + i * 36, 4 + i * 4, 0.6))
+  ),
   ...m('dash', contour(210, 200, 220, 26, 0.6)),
   ...m('line', circle(232, 186, 8)),
   ...m('heavy', line(232, 186, 232, 120)),
@@ -303,7 +380,13 @@ const weightlifting = (): FieldMark[] => [
   ...m('line', line(115, 30, 115, 370), line(285, 30, 285, 370)),
   ...range(9).flatMap((i) => m('dash', line(132 + i * 17, 30, 132 + i * 17, 370))),
   ...m('heavy', line(56, 200, 344, 200)),
-  ...m('line', rect(76, 178, 14, 44), rect(310, 178, 14, 44), rect(92, 184, 8, 32), rect(300, 184, 8, 32)),
+  ...m(
+    'line',
+    rect(76, 178, 14, 44),
+    rect(310, 178, 14, 44),
+    rect(92, 184, 8, 32),
+    rect(300, 184, 8, 32)
+  ),
 ]
 
 const generalFitness = (): FieldMark[] => [
@@ -311,7 +394,9 @@ const generalFitness = (): FieldMark[] => [
   ...m('line', line(-40, 200, 440, 200)),
   ...range(11).flatMap((i) => {
     const x = i * 40
-    return i % 5 === 0 ? m('line', line(x, 120, x, 280)) : m('line', line(x, 120, x, 132), line(x, 268, x, 280))
+    return i % 5 === 0
+      ? m('line', line(x, 120, x, 280))
+      : m('line', line(x, 120, x, 132), line(x, 268, x, 280))
   }),
   ...m('line', rect(286, 144, 44, 36), line(280, 144, 280, 180)),
 ]

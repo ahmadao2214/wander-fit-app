@@ -35,4 +35,3 @@ describe('workoutMetaLine', () => {
     expect(workoutMetaLine({ minutes: 35 })).toBe('~35 min')
   })
 })
-

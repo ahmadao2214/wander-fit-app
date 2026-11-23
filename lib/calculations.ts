@@ -1,4 +1,4 @@
-import type { SkillLevel } from "../types";
+import type { SkillLevel } from '../types'
 
 /**
  * Intake Calculation Utilities
@@ -20,16 +20,16 @@ import type { SkillLevel } from "../types";
  * - 3+ years: Advanced
  */
 export function getSkillLevel(yearsOfExperience: number): SkillLevel {
-  const normalizedYears = Math.max(0, yearsOfExperience);
-  if (normalizedYears < 1) return "Novice";
-  if (normalizedYears < 3) return "Moderate";
-  return "Advanced";
+  const normalizedYears = Math.max(0, yearsOfExperience)
+  if (normalizedYears < 1) return 'Novice'
+  if (normalizedYears < 3) return 'Moderate'
+  return 'Advanced'
 }
 
 /**
  * Training phase based on weeks until season
  */
-export type TrainingPhase = "In-Season Prep" | "Pre-Season" | "Off-Season";
+export type TrainingPhase = 'In-Season Prep' | 'Pre-Season' | 'Off-Season'
 
 /**
  * Calculate training phase based on weeks until season
@@ -44,9 +44,8 @@ export type TrainingPhase = "In-Season Prep" | "Pre-Season" | "Off-Season";
  * - > 8 weeks: Off-Season
  */
 export function getTrainingPhase(weeksUntilSeason: number): TrainingPhase {
-  const normalizedWeeks = Math.max(0, weeksUntilSeason);
-  if (normalizedWeeks <= 4) return "In-Season Prep";
-  if (normalizedWeeks <= 8) return "Pre-Season";
-  return "Off-Season";
+  const normalizedWeeks = Math.max(0, weeksUntilSeason)
+  if (normalizedWeeks <= 4) return 'In-Season Prep'
+  if (normalizedWeeks <= 8) return 'Pre-Season'
+  return 'Off-Season'
 }
-

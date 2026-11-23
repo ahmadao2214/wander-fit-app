@@ -133,7 +133,9 @@ describe('CelebrationScreen (block recap)', () => {
 
   it('zero sessions: no congratulations and no confetti (regression)', () => {
     mockUseQuery.mockReturnValue(withSessions(0))
-    const { getByText, queryByText, getByTestId } = render(<CelebrationScreen />, { wrapper: AllTheProviders })
+    const { getByText, queryByText, getByTestId } = render(<CelebrationScreen />, {
+      wrapper: AllTheProviders,
+    })
     expect(getByTestId('block-recap-none')).toBeTruthy()
     expect(getByText('Your GPP block is over')).toBeTruthy()
     expect(getByText('0 of 16 sessions')).toBeTruthy()
@@ -199,7 +201,9 @@ describe('SelfAssessmentScreen', () => {
 
   it('renders 4 difficulty options as radio buttons', () => {
     mockUseQuery.mockReturnValue(MOCK_REASSESSMENT_STATUS)
-    const { getByText, getAllByRole } = render(<SelfAssessmentScreen />, { wrapper: AllTheProviders })
+    const { getByText, getAllByRole } = render(<SelfAssessmentScreen />, {
+      wrapper: AllTheProviders,
+    })
     expect(getByText('Too easy')).toBeTruthy()
     expect(getByText('Just right')).toBeTruthy()
     expect(getByText('Challenging')).toBeTruthy()
@@ -254,8 +258,13 @@ describe('ResultsScreen (decision)', () => {
 
   it('offers Move on and Repeat, with nothing chosen yet', () => {
     mockUseQuery.mockReturnValue(MOCK_REASSESSMENT_STATUS)
-    const { getByText, getByTestId, getAllByRole } = render(<ResultsScreen />, { wrapper: AllTheProviders })
-    expect(getAllByRole('radio').map((r) => r.props.accessibilityState?.checked)).toEqual([false, false])
+    const { getByText, getByTestId, getAllByRole } = render(<ResultsScreen />, {
+      wrapper: AllTheProviders,
+    })
+    expect(getAllByRole('radio').map((r) => r.props.accessibilityState?.checked)).toEqual([
+      false,
+      false,
+    ])
     expect(getByText('Move on to SPP')).toBeTruthy()
     expect(getByText('Repeat GPP')).toBeTruthy()
     expect(getByText('Choose an option')).toBeTruthy()
@@ -270,7 +279,11 @@ describe('ResultsScreen (decision)', () => {
   })
 
   it('does NOT show a skill-level raise when not eligible', () => {
-    mockUseQuery.mockReturnValue({ ...MOCK_REASSESSMENT_STATUS, canUpgradeSkillLevel: false, nextSkillLevel: null })
+    mockUseQuery.mockReturnValue({
+      ...MOCK_REASSESSMENT_STATUS,
+      canUpgradeSkillLevel: false,
+      nextSkillLevel: null,
+    })
     const { queryByText } = render(<ResultsScreen />, { wrapper: AllTheProviders })
     expect(queryByText(/skill level goes up/)).toBeNull()
   })
@@ -282,7 +295,9 @@ describe('ResultsScreen (decision)', () => {
     expect(getByText('Start GPP again')).toBeTruthy()
     fireEvent.press(getByTestId('decision-confirm'))
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/(athlete)'))
-    expect(mockUseMutation).toHaveBeenCalledWith(expect.objectContaining({ decision: 'repeat', phaseDifficulty: 'just_right' }))
+    expect(mockUseMutation).toHaveBeenCalledWith(
+      expect.objectContaining({ decision: 'repeat', phaseDifficulty: 'just_right' })
+    )
   })
 
   it('Move on saves the choice and goes straight to Today', async () => {

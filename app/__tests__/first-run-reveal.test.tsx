@@ -1,7 +1,12 @@
 import React from 'react'
 import { act, fireEvent, render, screen } from '@testing-library/react-native'
 import { testDraft, Wrapper as wrapper } from '../../jest/firstRunTestUtils'
-import { formatSeasonDate, revealProgram, seasonStartForWeeks, type CompleteFirstRunAnswers } from '../../lib/firstRun'
+import {
+  formatSeasonDate,
+  revealProgram,
+  seasonStartForWeeks,
+  type CompleteFirstRunAnswers,
+} from '../../lib/firstRun'
 import { CATEGORY_HOLD_MS } from '../../lib/firstRunStory'
 
 jest.mock('../../lib/firstRunStorage', () => ({
@@ -92,7 +97,9 @@ describe('First Run reveal: category, then plan', () => {
     expect(screen.getByText('BASKETBALL TRAINS FOR')).toBeTruthy()
     expect(screen.getByTestId('reveal-category-name').props.children).toBe('POWER')
     for (const id of [1, 2, 3, 4]) expect(screen.getByTestId(`category-tile-${id}`)).toBeTruthy()
-    expect(screen.getByTestId('category-tile-2').props.accessibilityLabel).toBe('Power, your category')
+    expect(screen.getByTestId('category-tile-2').props.accessibilityLabel).toBe(
+      'Power, your category'
+    )
     expect(screen.getByText('Tap to see your plan')).toBeTruthy()
   })
 
@@ -135,8 +142,15 @@ describe('First Run reveal: category, then plan', () => {
       `${program.sessionCount} sessions over ${program.programWeeks} weeks`
     )
     // The real week 1 templates for the athlete's category and level.
-    expect(mockWeekArgs[mockWeekArgs.length - 1]).toEqual({ gppCategoryId: 2, phase: 'GPP', skillLevel: 'Novice', week: 1 })
-    expect(screen.getByTestId('week-day-line').props.children).toMatch(/^Day 1 · .+ · Lower Body A · About 28 min$/)
+    expect(mockWeekArgs[mockWeekArgs.length - 1]).toEqual({
+      gppCategoryId: 2,
+      phase: 'GPP',
+      skillLevel: 'Novice',
+      week: 1,
+    })
+    expect(screen.getByTestId('week-day-line').props.children).toMatch(
+      /^Day 1 · .+ · Lower Body A · About 28 min$/
+    )
   })
 
   it('tapping a phase changes the caption; tapping a day changes the line', async () => {
@@ -144,13 +158,17 @@ describe('First Run reveal: category, then plan', () => {
     await act(async () => {
       fireEvent.press(screen.getByTestId('reveal-category-page'))
     })
-    expect(screen.getByTestId('phase-caption')).toHaveTextContent(/General fitness and how you move/)
+    expect(screen.getByTestId('phase-caption')).toHaveTextContent(
+      /General fitness and how you move/
+    )
     // The bar shows just the acronym; the caption says how long the phase runs.
     expect(screen.getByTestId('phase-caption')).toHaveTextContent(/^Build the base · \d+ weeks\./)
     await act(async () => {
       fireEvent.press(screen.getByTestId('phase-SPP'))
     })
-    expect(screen.getByTestId('phase-caption')).toHaveTextContent(/jumping, landing and stopping fast for basketball/)
+    expect(screen.getByTestId('phase-caption')).toHaveTextContent(
+      /jumping, landing and stopping fast for basketball/
+    )
     await act(async () => {
       fireEvent.press(screen.getByTestId('week-Tue'))
     })
@@ -191,7 +209,9 @@ describe('First Run reveal: category, then plan', () => {
     await act(async () => {
       fireEvent.press(screen.getByTestId('first-run-save'))
     })
-    expect(screen.getByTestId('sheet-open').props.children).toMatch(/^(Today|Tomorrow|\w{3}, \w{3} \d+)$/)
+    expect(screen.getByTestId('sheet-open').props.children).toMatch(
+      /^(Today|Tomorrow|\w{3}, \w{3} \d+)$/
+    )
   })
 
   it('keeps Save off and says why when the week has no workouts on the server', async () => {
@@ -241,6 +261,8 @@ describe('firstUnanswered', () => {
     expect(firstUnanswered({})).toBe('/(first-run)/sport')
     expect(firstUnanswered({ sportId: 's' })).toBe('/(first-run)/season')
     expect(firstUnanswered({ sportId: 's', seasonStart: null })).toBe('/(first-run)/days')
-    expect(firstUnanswered({ sportId: 's', seasonStart: null, trainingDays: [1] })).toBe('/(first-run)/about')
+    expect(firstUnanswered({ sportId: 's', seasonStart: null, trainingDays: [1] })).toBe(
+      '/(first-run)/about'
+    )
   })
 })

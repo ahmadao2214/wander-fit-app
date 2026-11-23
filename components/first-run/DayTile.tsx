@@ -39,7 +39,10 @@ function run(value: SharedValue<number>, keys: readonly Key[], delay: number) {
   value.value = keys[0].v
   if (keys.length < 2) return
   const steps = keys.slice(1).map((k, i) =>
-    withTiming(k.v, { duration: Math.max(0, k.at - keys[i].at), easing: EASINGS[k.easing ?? 'linear'] })
+    withTiming(k.v, {
+      duration: Math.max(0, k.at - keys[i].at),
+      easing: EASINGS[k.easing ?? 'linear'],
+    })
   )
   const [first, ...more] = steps
   const seq = more.length ? withSequence(first, ...more) : first
@@ -142,12 +145,30 @@ export function DayTile({
         }}
       >
         <Animated.View
-          style={[{ position: 'absolute', left: 0, right: 0, top: 0, height: H, backgroundColor: FILL[family ?? 'plain'] }, fillStyle]}
+          style={[
+            {
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              top: 0,
+              height: H,
+              backgroundColor: FILL[family ?? 'plain'],
+            },
+            fillStyle,
+          ]}
         >
           {family === 'water' ? (
-            <Animated.View style={[{ position: 'absolute', top: -6, left: 0, width: width * 2, height: 8 }, waveStyle]}>
+            <Animated.View
+              style={[
+                { position: 'absolute', top: -6, left: 0, width: width * 2, height: 8 },
+                waveStyle,
+              ]}
+            >
               <Svg width="100%" height="100%" viewBox="0 0 80 8" preserveAspectRatio="none">
-                <Path d="M0 4 Q5 0 10 4 T20 4 T30 4 T40 4 T50 4 T60 4 T70 4 T80 4 V8 H0 Z" fill={FILL.water} />
+                <Path
+                  d="M0 4 Q5 0 10 4 T20 4 T30 4 T40 4 T50 4 T60 4 T70 4 T80 4 V8 H0 Z"
+                  fill={FILL.water}
+                />
               </Svg>
             </Animated.View>
           ) : null}
@@ -155,12 +176,31 @@ export function DayTile({
         {themed && family !== 'water' && sportName ? (
           <Animated.View
             pointerEvents="none"
-            style={[{ position: 'absolute', top: 0, left: '50%', marginLeft: -BALL / 2, width: BALL, height: BALL }, ballStyle]}
+            style={[
+              {
+                position: 'absolute',
+                top: 0,
+                left: '50%',
+                marginLeft: -BALL / 2,
+                width: BALL,
+                height: BALL,
+              },
+              ballStyle,
+            ]}
           >
             <SportShape name={sportName} size={BALL} />
           </Animated.View>
         ) : null}
-        <RNText style={{ fontFamily: DISPLAY, fontSize: 26, lineHeight: 28, color: on ? textOn : NIGHT.fg }}>{label}</RNText>
+        <RNText
+          style={{
+            fontFamily: DISPLAY,
+            fontSize: 26,
+            lineHeight: 28,
+            color: on ? textOn : NIGHT.fg,
+          }}
+        >
+          {label}
+        </RNText>
       </View>
     </Pressable>
   )

@@ -271,9 +271,9 @@ describe('calendarUtils', () => {
     })
 
     it('should throw error for empty training days', () => {
-      expect(() =>
-        getDateForWorkout(programStart, [], { phase: 'GPP', week: 1, day: 1 })
-      ).toThrow('trainingDays must not be empty')
+      expect(() => getDateForWorkout(programStart, [], { phase: 'GPP', week: 1, day: 1 })).toThrow(
+        'trainingDays must not be empty'
+      )
     })
   })
 

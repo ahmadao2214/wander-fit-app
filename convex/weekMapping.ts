@@ -12,16 +12,16 @@
  */
 
 /** Default weeks per phase if not specified */
-export const DEFAULT_WEEKS_PER_PHASE = 4;
+export const DEFAULT_WEEKS_PER_PHASE = 4
 
 /** Minimum weeks per phase to maintain periodization */
-export const MIN_WEEKS_PER_PHASE = 2;
+export const MIN_WEEKS_PER_PHASE = 2
 
 /** Maximum weeks per phase */
-export const MAX_WEEKS_PER_PHASE = 8;
+export const MAX_WEEKS_PER_PHASE = 8
 
 /** Number of phases in a program */
-export const NUMBER_OF_PHASES = 3;
+export const NUMBER_OF_PHASES = 3
 
 /**
  * Calculate weeks per phase from total program weeks
@@ -40,8 +40,8 @@ export function calculateWeeksPerPhase(
   totalWeeks: number,
   numberOfPhases: number = NUMBER_OF_PHASES
 ): number {
-  const calculated = Math.floor(totalWeeks / numberOfPhases);
-  return Math.max(MIN_WEEKS_PER_PHASE, Math.min(MAX_WEEKS_PER_PHASE, calculated));
+  const calculated = Math.floor(totalWeeks / numberOfPhases)
+  return Math.max(MIN_WEEKS_PER_PHASE, Math.min(MAX_WEEKS_PER_PHASE, calculated))
 }
 
 /**
@@ -58,24 +58,24 @@ export function calculateWeeksPerPhase(
  * calculateWeeksPerPhaseArray(15) // [5, 5, 5] - divides evenly
  */
 export function calculateWeeksPerPhaseArray(totalWeeks: number): [number, number, number] {
-  const baseWeeks = Math.floor(totalWeeks / NUMBER_OF_PHASES);
-  const remainder = totalWeeks % NUMBER_OF_PHASES;
+  const baseWeeks = Math.floor(totalWeeks / NUMBER_OF_PHASES)
+  const remainder = totalWeeks % NUMBER_OF_PHASES
 
   // Clamp base weeks to valid range
-  const clampedBase = Math.max(MIN_WEEKS_PER_PHASE, Math.min(MAX_WEEKS_PER_PHASE, baseWeeks));
+  const clampedBase = Math.max(MIN_WEEKS_PER_PHASE, Math.min(MAX_WEEKS_PER_PHASE, baseWeeks))
 
   // Distribute remainder to later phases first (SSP, then SPP)
   // This gives athletes more time to peak before their season
-  const sspWeeks = clampedBase + (remainder >= 1 ? 1 : 0);
-  const sppWeeks = clampedBase + (remainder >= 2 ? 1 : 0);
-  const gppWeeks = clampedBase;
+  const sspWeeks = clampedBase + (remainder >= 1 ? 1 : 0)
+  const sppWeeks = clampedBase + (remainder >= 2 ? 1 : 0)
+  const gppWeeks = clampedBase
 
   // Ensure all phases are within valid range
   return [
     Math.min(MAX_WEEKS_PER_PHASE, gppWeeks),
     Math.min(MAX_WEEKS_PER_PHASE, sppWeeks),
     Math.min(MAX_WEEKS_PER_PHASE, sspWeeks),
-  ];
+  ]
 }
 
 /**
@@ -84,7 +84,7 @@ export function calculateWeeksPerPhaseArray(totalWeeks: number): [number, number
  * @returns Total weeks in the program
  */
 export function getTotalProgramWeeks(weeksPerPhaseArray: [number, number, number]): number {
-  return weeksPerPhaseArray[0] + weeksPerPhaseArray[1] + weeksPerPhaseArray[2];
+  return weeksPerPhaseArray[0] + weeksPerPhaseArray[1] + weeksPerPhaseArray[2]
 }
 
 /**
@@ -95,15 +95,15 @@ export function getTotalProgramWeeks(weeksPerPhaseArray: [number, number, number
  */
 export function getWeeksForPhase(
   weeksPerPhaseArray: [number, number, number],
-  phase: "GPP" | "SPP" | "SSP"
+  phase: 'GPP' | 'SPP' | 'SSP'
 ): number {
   switch (phase) {
-    case "GPP":
-      return weeksPerPhaseArray[0];
-    case "SPP":
-      return weeksPerPhaseArray[1];
-    case "SSP":
-      return weeksPerPhaseArray[2];
+    case 'GPP':
+      return weeksPerPhaseArray[0]
+    case 'SPP':
+      return weeksPerPhaseArray[1]
+    case 'SSP':
+      return weeksPerPhaseArray[2]
   }
 }
 
@@ -158,26 +158,26 @@ export function mapUserWeekToTemplateWeek(
   const clampedWeeksPerPhase = Math.max(
     MIN_WEEKS_PER_PHASE,
     Math.min(MAX_WEEKS_PER_PHASE, weeksPerPhase)
-  );
+  )
 
   // Clamp userWeek to valid range
-  const clampedUserWeek = Math.max(1, Math.min(clampedWeeksPerPhase, userWeek));
+  const clampedUserWeek = Math.max(1, Math.min(clampedWeeksPerPhase, userWeek))
 
   // Special case: exactly 4 weeks (standard) - direct mapping
   if (clampedWeeksPerPhase === 4) {
-    return clampedUserWeek;
+    return clampedUserWeek
   }
 
   // Special case: 2 weeks - intro and deload only
   if (clampedWeeksPerPhase === 2) {
-    return clampedUserWeek === 1 ? 1 : 4;
+    return clampedUserWeek === 1 ? 1 : 4
   }
 
   // Special case: 3 weeks - intro, build, deload
   if (clampedWeeksPerPhase === 3) {
-    if (clampedUserWeek === 1) return 1;
-    if (clampedUserWeek === 2) return 2;
-    return 4;
+    if (clampedUserWeek === 1) return 1
+    if (clampedUserWeek === 2) return 2
+    return 4
   }
 
   // For phases longer than 4 weeks, distribute middle weeks
@@ -185,25 +185,25 @@ export function mapUserWeekToTemplateWeek(
   // Middle weeks distribute across build (2) and peak (3)
 
   if (clampedUserWeek === 1) {
-    return 1; // Always intro
+    return 1 // Always intro
   }
 
   if (clampedUserWeek === clampedWeeksPerPhase) {
-    return 4; // Always deload
+    return 4 // Always deload
   }
 
   // Middle weeks (2 to weeksPerPhase-1) map to template weeks 2-3
-  const middleWeeks = clampedWeeksPerPhase - 2; // Number of middle weeks
-  const middlePosition = clampedUserWeek - 1; // Position within middle weeks (1-indexed)
+  const middleWeeks = clampedWeeksPerPhase - 2 // Number of middle weeks
+  const middlePosition = clampedUserWeek - 1 // Position within middle weeks (1-indexed)
 
   // Split middle weeks between build (2) and peak (3)
   // First half goes to build, second half to peak
-  const halfPoint = Math.ceil(middleWeeks / 2);
+  const halfPoint = Math.ceil(middleWeeks / 2)
 
   if (middlePosition <= halfPoint) {
-    return 2; // Build phase
+    return 2 // Build phase
   } else {
-    return 3; // Peak phase
+    return 3 // Peak phase
   }
 }
 
@@ -216,15 +216,15 @@ export function mapUserWeekToTemplateWeek(
 export function getWeekFocusLabel(templateWeek: number): string {
   switch (templateWeek) {
     case 1:
-      return "Introduction";
+      return 'Introduction'
     case 2:
-      return "Build";
+      return 'Build'
     case 3:
-      return "Peak";
+      return 'Peak'
     case 4:
-      return "Deload";
+      return 'Deload'
     default:
-      return "Training";
+      return 'Training'
   }
 }
 
@@ -238,15 +238,15 @@ export function getWeekFocusLabel(templateWeek: number): string {
 export function getWeekVolumeMultiplier(templateWeek: number): number {
   switch (templateWeek) {
     case 1:
-      return 0.7; // Introduction
+      return 0.7 // Introduction
     case 2:
-      return 0.85; // Build
+      return 0.85 // Build
     case 3:
-      return 1.0; // Peak
+      return 1.0 // Peak
     case 4:
-      return 0.6; // Deload
+      return 0.6 // Deload
     default:
-      return 1.0;
+      return 1.0
   }
 }
 
@@ -262,9 +262,9 @@ export function getWeekVolumeMultiplier(templateWeek: number): number {
  * generateWeekMapping(6) // [1, 2, 2, 3, 3, 4]
  */
 export function generateWeekMapping(weeksPerPhase: number): number[] {
-  const mapping: number[] = [];
+  const mapping: number[] = []
   for (let week = 1; week <= weeksPerPhase; week++) {
-    mapping.push(mapUserWeekToTemplateWeek(week, weeksPerPhase));
+    mapping.push(mapUserWeekToTemplateWeek(week, weeksPerPhase))
   }
-  return mapping;
+  return mapping
 }

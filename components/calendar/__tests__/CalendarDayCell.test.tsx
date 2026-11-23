@@ -2,7 +2,12 @@ import React from 'react'
 import { render } from '@testing-library/react-native'
 import { TamaguiProvider } from 'tamagui'
 import config from '../../../tamagui.config'
-import { CalendarDayCell, CalendarDayCellProps, WorkoutWithSlot, STACK_FONT_SCALE } from '../CalendarDayCell'
+import {
+  CalendarDayCell,
+  CalendarDayCellProps,
+  WorkoutWithSlot,
+  STACK_FONT_SCALE,
+} from '../CalendarDayCell'
 
 // Mock DraggableWorkoutCard to avoid gesture handler complexities
 jest.mock('../DraggableWorkoutCard', () => ({
@@ -85,10 +90,9 @@ describe('CalendarDayCell', () => {
     })
 
     it('says Rest on a day with no workout, and names it for screen readers', () => {
-      const { getByText, getByLabelText } = render(
-        <CalendarDayCell {...defaultProps} />,
-        { wrapper: AllTheProviders }
-      )
+      const { getByText, getByLabelText } = render(<CalendarDayCell {...defaultProps} />, {
+        wrapper: AllTheProviders,
+      })
       // The row's label already says "rest day", so the word itself is hidden
       expect(getByText('Rest', { includeHiddenElements: true })).toBeTruthy()
       expect(getByLabelText('Monday, February 2, rest day')).toBeTruthy()
@@ -127,10 +131,9 @@ describe('CalendarDayCell', () => {
         sampleWorkout,
         { ...sampleWorkout, templateId: 'template-2', name: 'Upper Push' },
       ]
-      const { getByText } = render(
-        <CalendarDayCell {...defaultProps} workouts={workouts} />,
-        { wrapper: AllTheProviders }
-      )
+      const { getByText } = render(<CalendarDayCell {...defaultProps} workouts={workouts} />, {
+        wrapper: AllTheProviders,
+      })
       expect(getByText('Lower Body Foundation')).toBeTruthy()
       expect(getByText('Upper Push')).toBeTruthy()
     })
@@ -138,10 +141,9 @@ describe('CalendarDayCell', () => {
 
   describe('compact mode (month view)', () => {
     it('renders day number in compact mode', () => {
-      const { getByText } = render(
-        <CalendarDayCell {...defaultProps} compact />,
-        { wrapper: AllTheProviders }
-      )
+      const { getByText } = render(<CalendarDayCell {...defaultProps} compact />, {
+        wrapper: AllTheProviders,
+      })
       expect(getByText('2')).toBeTruthy() // Day number
     })
 
@@ -176,18 +178,16 @@ describe('CalendarDayCell', () => {
 
   describe('states', () => {
     it('renders isToday state correctly', () => {
-      const { getByText } = render(
-        <CalendarDayCell {...defaultProps} isToday compact />,
-        { wrapper: AllTheProviders }
-      )
+      const { getByText } = render(<CalendarDayCell {...defaultProps} isToday compact />, {
+        wrapper: AllTheProviders,
+      })
       expect(getByText('2')).toBeTruthy()
     })
 
     it('renders drop target state correctly', () => {
-      const { root } = render(
-        <CalendarDayCell {...defaultProps} isDropTarget />,
-        { wrapper: AllTheProviders }
-      )
+      const { root } = render(<CalendarDayCell {...defaultProps} isDropTarget />, {
+        wrapper: AllTheProviders,
+      })
       expect(root).toBeTruthy()
     })
 

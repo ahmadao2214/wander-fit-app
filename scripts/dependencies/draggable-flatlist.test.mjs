@@ -4,7 +4,9 @@ import { dirname, join } from 'node:path'
 import { runInNewContext } from 'node:vm'
 
 const requireDependency = createRequire(import.meta.url)
-const packageRoot = dirname(requireDependency.resolve('react-native-draggable-flatlist/package.json'))
+const packageRoot = dirname(
+  requireDependency.resolve('react-native-draggable-flatlist/package.json')
+)
 const source = readFileSync(join(packageRoot, 'src/components/DraggableFlatList.tsx'), 'utf8')
 const start = source.indexOf('  const dataHasChanged =')
 const end = source.indexOf('\n  useEffect(', start)
@@ -19,7 +21,7 @@ describe('draggable-flatlist RN 0.88 compatibility patch', () => {
     const context = {
       dataRef: { current: [{ id: 'squat' }, { id: 'press' }] },
       props: { data: [{ id: 'press' }, { id: 'squat' }] },
-      keyExtractor: item => item.id,
+      keyExtractor: (item) => item.id,
       activeKey: 'squat',
       reset,
       setTimeout: schedule,
@@ -40,7 +42,7 @@ describe('draggable-flatlist RN 0.88 compatibility patch', () => {
     const context = {
       dataRef: { current: [{ id: 'squat' }, { id: 'press' }] },
       props: { data: [{ id: 'squat' }, { id: 'press' }] },
-      keyExtractor: item => item.id,
+      keyExtractor: (item) => item.id,
       activeKey: 'squat',
       reset: jest.fn(),
       setTimeout: schedule,

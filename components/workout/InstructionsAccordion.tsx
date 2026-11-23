@@ -20,15 +20,18 @@ interface InstructionsAccordionProps {
 export function InstructionsAccordion({
   instructions,
   equipment,
-  notes
+  notes,
 }: InstructionsAccordionProps) {
   const [isExpanded, setIsExpanded] = useState(false)
 
   // Filter out notes that are just warmup/cooldown indicators
-  const filteredNotes = notes &&
-    !['warm_up', 'cool_down', 'warm up', 'cool down', 'warmup', 'cooldown'].includes(notes.toLowerCase().trim())
-    ? notes
-    : undefined
+  const filteredNotes =
+    notes &&
+    !['warm_up', 'cool_down', 'warm up', 'cool down', 'warmup', 'cooldown'].includes(
+      notes.toLowerCase().trim()
+    )
+      ? notes
+      : undefined
 
   // Bodyweight-only exercises show no equipment row
   const shownEquipment = visibleEquipment(equipment)
@@ -84,11 +87,7 @@ export function InstructionsAccordion({
           </Pressable>
 
           {isExpanded && (
-            <Supporting
-              color="$color11"
-              lineHeight={22}
-              self="flex-start"
-            >
+            <Supporting color="$color11" lineHeight={22} self="flex-start">
               {instructions}
             </Supporting>
           )}

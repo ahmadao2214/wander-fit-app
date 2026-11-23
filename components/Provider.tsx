@@ -4,7 +4,7 @@ import { ToastProvider, ToastViewport } from '@tamagui/toast'
 import { ClerkProvider, useAuth } from '@clerk/clerk-expo'
 import { tokenCache } from '@clerk/clerk-expo/token-cache'
 import { ConvexReactClient } from 'convex/react'
-import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { ConvexProviderWithClerk } from 'convex/react-clerk'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { CurrentToast } from './CurrentToast'
@@ -22,7 +22,7 @@ const convexClient = new ConvexReactClient(convexUrl!, {
 
 export function Provider({ children, ...rest }: Omit<TamaguiProviderProps, 'config'>) {
   const colorScheme = useColorScheme()
-  
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
@@ -34,14 +34,12 @@ export function Provider({ children, ...rest }: Omit<TamaguiProviderProps, 'conf
           <ToastProvider
             swipeDirection="horizontal"
             duration={6000}
-            native={
-              [
-                // uncomment the next line to do native toasts on mobile. NOTE: it'll require you making a dev build and won't work with Expo Go
-                // 'mobile'
-              ]
-            }
+            native={[
+              // uncomment the next line to do native toasts on mobile. NOTE: it'll require you making a dev build and won't work with Expo Go
+              // 'mobile'
+            ]}
           >
-            <ClerkProvider 
+            <ClerkProvider
               publishableKey={process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!}
               tokenCache={tokenCache}
             >

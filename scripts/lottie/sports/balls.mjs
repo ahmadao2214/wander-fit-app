@@ -1,7 +1,23 @@
 // Bounce family: round balls in their real colours. Same hops and squash as
 // soccer; the markings spin, the shading stays put like a light source.
 
-import { ART_RADIUS as R, INK, OUTLINE, add, arc, ballShade, bezier, buildSport, circle, edgeSegments, ellipse, line, paint, polar, poly } from '../art.mjs'
+import {
+  ART_RADIUS as R,
+  INK,
+  OUTLINE,
+  add,
+  arc,
+  ballShade,
+  bezier,
+  buildSport,
+  circle,
+  edgeSegments,
+  ellipse,
+  line,
+  paint,
+  polar,
+  poly,
+} from '../art.mjs'
 import { group, stroke } from '../lottie.mjs'
 
 function ball(nm, body, markings = [], { gloss = false, glossOpacity = 45 } = {}) {
@@ -10,7 +26,20 @@ function ball(nm, body, markings = [], { gloss = false, glossOpacity = 45 } = {}
     family: 'bounce',
     layers: [
       { nm: 'outline', groups: [group('outline', [circle(0, 0, R), stroke(INK, OUTLINE)])] },
-      { nm: 'shading', groups: [ballShade(R), ...(gloss ? [paint('gloss', [ellipse(-38, -46, 38, 22)], '#FFFFFF', { opacity: glossOpacity, rotation: -35 })] : [])] },
+      {
+        nm: 'shading',
+        groups: [
+          ballShade(R),
+          ...(gloss
+            ? [
+                paint('gloss', [ellipse(-38, -46, 38, 22)], '#FFFFFF', {
+                  opacity: glossOpacity,
+                  rotation: -35,
+                }),
+              ]
+            : []),
+        ],
+      },
       ...(markings.length ? [{ nm: 'markings', role: 'markings', groups: markings }] : []),
       { nm: 'body', groups: [paint('body', [circle(0, 0, R)], body)] },
     ],
@@ -19,7 +48,10 @@ function ball(nm, body, markings = [], { gloss = false, glossOpacity = 45 } = {}
 
 // Two opposed curves, as on tennis balls and baseballs. Pulled slightly inside
 // the rim (±44.5°) so thick seams stay framed cleanly under the dark outline.
-const seamCurves = (span = 45) => [arc(-140, 0, 100, -span, span), arc(140, 0, 100, 180 - span, 180 + span)]
+const seamCurves = (span = 45) => [
+  arc(-140, 0, 100, -span, span),
+  arc(140, 0, 100, 180 - span, 180 + span),
+]
 
 // Individual angled stitch ticks placed analytically along both seam arcs.
 function baseballStitches() {
@@ -43,8 +75,8 @@ function baseballStitches() {
             [px - nx * halfN - tx * slantT, py - ny * halfN - ty * slantT],
             [px + nx * halfN + tx * slantT, py + ny * halfN + ty * slantT],
           ],
-          false,
-        ),
+          false
+        )
       )
     }
   }
@@ -59,7 +91,7 @@ function evalCubic(p0, seg, t) {
       u * u * u * p0[k] +
       3 * u * u * t * seg.c1[k] +
       3 * u * t * t * seg.c2[k] +
-      t * t * t * seg.to[k],
+      t * t * t * seg.to[k]
   )
 }
 
@@ -76,7 +108,10 @@ const volleySection = (k) => {
   const a = VOLLEY_ANGLES[k]
   const out = volleySeam(a)
   const back = volleySeam(a + 120)
-  return bezier([0, 0], [out, ...edgeSegments(R, a, a + 120), { c1: back.c2, c2: back.c1, to: [0, 0] }])
+  return bezier(
+    [0, 0],
+    [out, ...edgeSegments(R, a, a + 120), { c1: back.c2, c2: back.c1, to: [0, 0] }]
+  )
 }
 function volleyRibs(a) {
   const base = volleySeam(a)
@@ -93,32 +128,70 @@ function volleyRibs(a) {
 }
 
 export const basketball = () =>
-  ball('basketball', '#E8762D', [
-    line('seams', [
-      poly([[0, -R], [0, R]], false),
-      poly([[-R, 0], [R, 0]], false),
-      arc(-150, 0, 110, -41.5, 41.5),
-      arc(150, 0, 110, 138.5, 221.5),
-    ], INK, { width: 5 }),
-  ], { gloss: true, glossOpacity: 24 })
+  ball(
+    'basketball',
+    '#E8762D',
+    [
+      line(
+        'seams',
+        [
+          poly(
+            [
+              [0, -R],
+              [0, R],
+            ],
+            false
+          ),
+          poly(
+            [
+              [-R, 0],
+              [R, 0],
+            ],
+            false
+          ),
+          arc(-150, 0, 110, -41.5, 41.5),
+          arc(150, 0, 110, 138.5, 221.5),
+        ],
+        INK,
+        { width: 5 }
+      ),
+    ],
+    { gloss: true, glossOpacity: 24 }
+  )
 
 export const volleyball = () =>
-  ball('volleyball', '#F7F5EE', [
-    line('seams', [
-      ...VOLLEY_ANGLES.map((a) => bezier([0, 0], [volleySeam(a)], false)),
-      ...VOLLEY_ANGLES.flatMap((a) => volleyRibs(a)),
-    ], INK, { width: 3.4 }),
-    paint('yellow', [volleySection(0)], '#F5C518'),
-    paint('blue', [volleySection(1)], '#2459B8'),
-  ], { gloss: true, glossOpacity: 20 })
+  ball(
+    'volleyball',
+    '#F7F5EE',
+    [
+      line(
+        'seams',
+        [
+          ...VOLLEY_ANGLES.map((a) => bezier([0, 0], [volleySeam(a)], false)),
+          ...VOLLEY_ANGLES.flatMap((a) => volleyRibs(a)),
+        ],
+        INK,
+        { width: 3.4 }
+      ),
+      paint('yellow', [volleySection(0)], '#F5C518'),
+      paint('blue', [volleySection(1)], '#2459B8'),
+    ],
+    { gloss: true, glossOpacity: 20 }
+  )
 
-export const tennis = () => ball('tennis', '#D4E83A', [line('seams', seamCurves(45.2), '#FAFAF2', { width: 7 })])
+export const tennis = () =>
+  ball('tennis', '#D4E83A', [line('seams', seamCurves(45.2), '#FAFAF2', { width: 7 })])
 
 const stitched = (nm, body) =>
-  ball(nm, body, [
-    line('stitches', baseballStitches(), '#D2332B', { width: 3.2 }),
-    line('seams', seamCurves(44.2), '#D2332B', { width: 2.6 }),
-  ], { gloss: true, glossOpacity: 28 })
+  ball(
+    nm,
+    body,
+    [
+      line('stitches', baseballStitches(), '#D2332B', { width: 3.2 }),
+      line('seams', seamCurves(44.2), '#D2332B', { width: 2.6 }),
+    ],
+    { gloss: true, glossOpacity: 28 }
+  )
 
 export const baseball = () => stitched('baseball', '#F6F3EA')
 

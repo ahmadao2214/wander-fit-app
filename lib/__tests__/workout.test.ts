@@ -1,339 +1,347 @@
-import { parseReps, normalizeTrackedSets, isCardioExercise, CARDIO_TAGS, mapIntensityToLevel, visibleEquipment, nextSetIndex, setTileLayout } from "../workout";
+import {
+  parseReps,
+  normalizeTrackedSets,
+  isCardioExercise,
+  CARDIO_TAGS,
+  mapIntensityToLevel,
+  visibleEquipment,
+  nextSetIndex,
+  setTileLayout,
+} from '../workout'
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PARSE REPS TESTS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe("parseReps", () => {
-  describe("simple number formats", () => {
+describe('parseReps', () => {
+  describe('simple number formats', () => {
     it("parses '10' to 10", () => {
-      expect(parseReps("10")).toBe(10);
-    });
+      expect(parseReps('10')).toBe(10)
+    })
 
     it("parses '5' to 5", () => {
-      expect(parseReps("5")).toBe(5);
-    });
+      expect(parseReps('5')).toBe(5)
+    })
 
     it("parses '15' to 15", () => {
-      expect(parseReps("15")).toBe(15);
-    });
-  });
+      expect(parseReps('15')).toBe(15)
+    })
+  })
 
-  describe("range formats (takes first number)", () => {
+  describe('range formats (takes first number)', () => {
     it("parses '10-12' to 10", () => {
-      expect(parseReps("10-12")).toBe(10);
-    });
+      expect(parseReps('10-12')).toBe(10)
+    })
 
     it("parses '8-10' to 8", () => {
-      expect(parseReps("8-10")).toBe(8);
-    });
+      expect(parseReps('8-10')).toBe(8)
+    })
 
     it("parses '6-8' to 6", () => {
-      expect(parseReps("6-8")).toBe(6);
-    });
+      expect(parseReps('6-8')).toBe(6)
+    })
 
     it("parses '12-15' to 12", () => {
-      expect(parseReps("12-15")).toBe(12);
-    });
-  });
+      expect(parseReps('12-15')).toBe(12)
+    })
+  })
 
-  describe("timed formats", () => {
+  describe('timed formats', () => {
     it("parses '30s' to 30", () => {
-      expect(parseReps("30s")).toBe(30);
-    });
+      expect(parseReps('30s')).toBe(30)
+    })
 
     it("parses '45s' to 45", () => {
-      expect(parseReps("45s")).toBe(45);
-    });
+      expect(parseReps('45s')).toBe(45)
+    })
 
     it("parses '60sec' to 60", () => {
-      expect(parseReps("60sec")).toBe(60);
-    });
-  });
+      expect(parseReps('60sec')).toBe(60)
+    })
+  })
 
-  describe("plus notation", () => {
+  describe('plus notation', () => {
     it("parses '5+' to 5", () => {
-      expect(parseReps("5+")).toBe(5);
-    });
+      expect(parseReps('5+')).toBe(5)
+    })
 
     it("parses '10+' to 10", () => {
-      expect(parseReps("10+")).toBe(10);
-    });
-  });
+      expect(parseReps('10+')).toBe(10)
+    })
+  })
 
-  describe("defaults to 10 when no number found", () => {
+  describe('defaults to 10 when no number found', () => {
     it("returns 10 for 'AMRAP'", () => {
-      expect(parseReps("AMRAP")).toBe(10);
-    });
+      expect(parseReps('AMRAP')).toBe(10)
+    })
 
-    it("returns 10 for empty string", () => {
-      expect(parseReps("")).toBe(10);
-    });
+    it('returns 10 for empty string', () => {
+      expect(parseReps('')).toBe(10)
+    })
 
     it("returns 10 for 'max'", () => {
-      expect(parseReps("max")).toBe(10);
-    });
+      expect(parseReps('max')).toBe(10)
+    })
 
-    it("returns 10 for text-only input", () => {
-      expect(parseReps("as many as possible")).toBe(10);
-    });
-  });
+    it('returns 10 for text-only input', () => {
+      expect(parseReps('as many as possible')).toBe(10)
+    })
+  })
 
-  describe("edge cases", () => {
-    it("handles leading zeros correctly", () => {
-      expect(parseReps("08-10")).toBe(8);
-    });
+  describe('edge cases', () => {
+    it('handles leading zeros correctly', () => {
+      expect(parseReps('08-10')).toBe(8)
+    })
 
-    it("handles whitespace", () => {
-      expect(parseReps(" 10 ")).toBe(10);
-    });
+    it('handles whitespace', () => {
+      expect(parseReps(' 10 ')).toBe(10)
+    })
 
     it("handles 'x' notation", () => {
-      expect(parseReps("3x10")).toBe(3);
-    });
-  });
-});
+      expect(parseReps('3x10')).toBe(3)
+    })
+  })
+})
 
-describe("normalizeTrackedSets", () => {
-  it("pads tracked sets when prescription increases", () => {
+describe('normalizeTrackedSets', () => {
+  it('pads tracked sets when prescription increases', () => {
     const sets = [
       { completed: false, skipped: false },
       { completed: true, skipped: false, repsCompleted: 8 },
       { completed: false, skipped: true },
-    ];
+    ]
 
-    const normalized = normalizeTrackedSets(sets, 4);
+    const normalized = normalizeTrackedSets(sets, 4)
 
-    expect(normalized).toHaveLength(4);
-    expect(normalized[1].repsCompleted).toBe(8);
-    expect(normalized[3]).toEqual({ completed: false, skipped: false });
-  });
+    expect(normalized).toHaveLength(4)
+    expect(normalized[1].repsCompleted).toBe(8)
+    expect(normalized[3]).toEqual({ completed: false, skipped: false })
+  })
 
-  it("trims tracked sets when prescription decreases", () => {
+  it('trims tracked sets when prescription decreases', () => {
     const sets = [
       { completed: true, skipped: false, repsCompleted: 8 },
       { completed: true, skipped: false, repsCompleted: 8 },
       { completed: false, skipped: false },
       { completed: false, skipped: false },
-    ];
+    ]
 
-    const normalized = normalizeTrackedSets(sets, 3);
+    const normalized = normalizeTrackedSets(sets, 3)
 
-    expect(normalized).toHaveLength(3);
-    expect(normalized[2]).toEqual({ completed: false, skipped: false });
-  });
-});
+    expect(normalized).toHaveLength(3)
+    expect(normalized[2]).toEqual({ completed: false, skipped: false })
+  })
+})
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // IS CARDIO EXERCISE TESTS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe("isCardioExercise", () => {
-  describe("returns false for strength exercises", () => {
+describe('isCardioExercise', () => {
+  describe('returns false for strength exercises', () => {
     it("returns false for ['strength', 'upper_body']", () => {
-      expect(isCardioExercise(["strength", "upper_body"])).toBe(false);
-    });
+      expect(isCardioExercise(['strength', 'upper_body'])).toBe(false)
+    })
 
     it("returns false for ['squat', 'hinge', 'bilateral']", () => {
-      expect(isCardioExercise(["squat", "hinge", "bilateral"])).toBe(false);
-    });
+      expect(isCardioExercise(['squat', 'hinge', 'bilateral'])).toBe(false)
+    })
 
     it("returns false for ['push', 'chest', 'horizontal']", () => {
-      expect(isCardioExercise(["push", "chest", "horizontal"])).toBe(false);
-    });
+      expect(isCardioExercise(['push', 'chest', 'horizontal'])).toBe(false)
+    })
 
     it("returns false for ['pull', 'back', 'vertical']", () => {
-      expect(isCardioExercise(["pull", "back", "vertical"])).toBe(false);
-    });
-  });
+      expect(isCardioExercise(['pull', 'back', 'vertical'])).toBe(false)
+    })
+  })
 
-  describe("returns true for cardio exercises", () => {
+  describe('returns true for cardio exercises', () => {
     it("returns true for ['cardio']", () => {
-      expect(isCardioExercise(["cardio"])).toBe(true);
-    });
+      expect(isCardioExercise(['cardio'])).toBe(true)
+    })
 
     it("returns true for ['conditioning']", () => {
-      expect(isCardioExercise(["conditioning"])).toBe(true);
-    });
+      expect(isCardioExercise(['conditioning'])).toBe(true)
+    })
 
     it("returns true for ['run']", () => {
-      expect(isCardioExercise(["run"])).toBe(true);
-    });
+      expect(isCardioExercise(['run'])).toBe(true)
+    })
 
     it("returns true for ['sprint']", () => {
-      expect(isCardioExercise(["sprint"])).toBe(true);
-    });
+      expect(isCardioExercise(['sprint'])).toBe(true)
+    })
 
     it("returns true for ['plyometric']", () => {
-      expect(isCardioExercise(["plyometric"])).toBe(true);
-    });
+      expect(isCardioExercise(['plyometric'])).toBe(true)
+    })
 
     it("returns true for ['jump']", () => {
-      expect(isCardioExercise(["jump"])).toBe(true);
-    });
-  });
+      expect(isCardioExercise(['jump'])).toBe(true)
+    })
+  })
 
-  describe("case insensitivity", () => {
+  describe('case insensitivity', () => {
     it("returns true for ['CARDIO'] (uppercase)", () => {
-      expect(isCardioExercise(["CARDIO"])).toBe(true);
-    });
+      expect(isCardioExercise(['CARDIO'])).toBe(true)
+    })
 
     it("returns true for ['Plyometric'] (mixed case)", () => {
-      expect(isCardioExercise(["Plyometric"])).toBe(true);
-    });
+      expect(isCardioExercise(['Plyometric'])).toBe(true)
+    })
 
     it("returns true for ['SPRINT'] (uppercase)", () => {
-      expect(isCardioExercise(["SPRINT"])).toBe(true);
-    });
-  });
+      expect(isCardioExercise(['SPRINT'])).toBe(true)
+    })
+  })
 
-  describe("mixed tags (has cardio tag among others)", () => {
+  describe('mixed tags (has cardio tag among others)', () => {
     it("returns true for ['cardio', 'conditioning']", () => {
-      expect(isCardioExercise(["cardio", "conditioning"])).toBe(true);
-    });
+      expect(isCardioExercise(['cardio', 'conditioning'])).toBe(true)
+    })
 
     it("returns true for ['plyometric', 'lower_body']", () => {
-      expect(isCardioExercise(["plyometric", "lower_body"])).toBe(true);
-    });
+      expect(isCardioExercise(['plyometric', 'lower_body'])).toBe(true)
+    })
 
     it("returns true for ['strength', 'conditioning', 'core']", () => {
-      expect(isCardioExercise(["strength", "conditioning", "core"])).toBe(true);
-    });
-  });
+      expect(isCardioExercise(['strength', 'conditioning', 'core'])).toBe(true)
+    })
+  })
 
-  describe("edge cases", () => {
-    it("returns false for empty array", () => {
-      expect(isCardioExercise([])).toBe(false);
-    });
+  describe('edge cases', () => {
+    it('returns false for empty array', () => {
+      expect(isCardioExercise([])).toBe(false)
+    })
 
-    it("handles single non-cardio tag", () => {
-      expect(isCardioExercise(["core"])).toBe(false);
-    });
-  });
-});
+    it('handles single non-cardio tag', () => {
+      expect(isCardioExercise(['core'])).toBe(false)
+    })
+  })
+})
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CARDIO TAGS CONSTANT TESTS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe("CARDIO_TAGS", () => {
-  it("contains expected cardio tags", () => {
-    expect(CARDIO_TAGS).toContain("cardio");
-    expect(CARDIO_TAGS).toContain("run");
-    expect(CARDIO_TAGS).toContain("walk");
-    expect(CARDIO_TAGS).toContain("jump");
-    expect(CARDIO_TAGS).toContain("plyometric");
-    expect(CARDIO_TAGS).toContain("sprint");
-    expect(CARDIO_TAGS).toContain("jog");
-    expect(CARDIO_TAGS).toContain("conditioning");
-  });
+describe('CARDIO_TAGS', () => {
+  it('contains expected cardio tags', () => {
+    expect(CARDIO_TAGS).toContain('cardio')
+    expect(CARDIO_TAGS).toContain('run')
+    expect(CARDIO_TAGS).toContain('walk')
+    expect(CARDIO_TAGS).toContain('jump')
+    expect(CARDIO_TAGS).toContain('plyometric')
+    expect(CARDIO_TAGS).toContain('sprint')
+    expect(CARDIO_TAGS).toContain('jog')
+    expect(CARDIO_TAGS).toContain('conditioning')
+  })
 
-  it("has 8 tags total", () => {
-    expect(CARDIO_TAGS).toHaveLength(8);
-  });
-});
+  it('has 8 tags total', () => {
+    expect(CARDIO_TAGS).toHaveLength(8)
+  })
+})
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // MAP INTENSITY TO LEVEL TESTS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe("mapIntensityToLevel", () => {
-  describe("valid backend intensity values", () => {
+describe('mapIntensityToLevel', () => {
+  describe('valid backend intensity values', () => {
     it("maps 'Low' to 'low'", () => {
-      expect(mapIntensityToLevel("Low")).toBe("low");
-    });
+      expect(mapIntensityToLevel('Low')).toBe('low')
+    })
 
     it("maps 'Moderate' to 'medium'", () => {
-      expect(mapIntensityToLevel("Moderate")).toBe("medium");
-    });
+      expect(mapIntensityToLevel('Moderate')).toBe('medium')
+    })
 
     it("maps 'High' to 'high'", () => {
-      expect(mapIntensityToLevel("High")).toBe("high");
-    });
-  });
+      expect(mapIntensityToLevel('High')).toBe('high')
+    })
+  })
 
-  describe("default behavior for missing/invalid values", () => {
+  describe('default behavior for missing/invalid values', () => {
     it("returns 'medium' for undefined", () => {
-      expect(mapIntensityToLevel(undefined)).toBe("medium");
-    });
+      expect(mapIntensityToLevel(undefined)).toBe('medium')
+    })
 
     it("returns 'medium' for null", () => {
-      expect(mapIntensityToLevel(null)).toBe("medium");
-    });
+      expect(mapIntensityToLevel(null)).toBe('medium')
+    })
 
     it("returns 'medium' for empty string", () => {
-      expect(mapIntensityToLevel("")).toBe("medium");
-    });
+      expect(mapIntensityToLevel('')).toBe('medium')
+    })
 
     it("returns 'medium' for invalid value", () => {
-      expect(mapIntensityToLevel("Invalid")).toBe("medium");
-    });
+      expect(mapIntensityToLevel('Invalid')).toBe('medium')
+    })
 
     it("returns 'medium' for lowercase 'low'", () => {
       // Backend uses exact casing, lowercase should fallback
-      expect(mapIntensityToLevel("low")).toBe("medium");
-    });
+      expect(mapIntensityToLevel('low')).toBe('medium')
+    })
 
     it("returns 'medium' for lowercase 'moderate'", () => {
-      expect(mapIntensityToLevel("moderate")).toBe("medium");
-    });
+      expect(mapIntensityToLevel('moderate')).toBe('medium')
+    })
 
     it("returns 'medium' for lowercase 'high'", () => {
-      expect(mapIntensityToLevel("high")).toBe("medium");
-    });
-  });
+      expect(mapIntensityToLevel('high')).toBe('medium')
+    })
+  })
 
-  describe("type safety", () => {
-    it("returns correct type for all valid inputs", () => {
-      const low = mapIntensityToLevel("Low");
-      const medium = mapIntensityToLevel("Moderate");
-      const high = mapIntensityToLevel("High");
+  describe('type safety', () => {
+    it('returns correct type for all valid inputs', () => {
+      const low = mapIntensityToLevel('Low')
+      const medium = mapIntensityToLevel('Moderate')
+      const high = mapIntensityToLevel('High')
 
       // Type narrowing - should be one of the three valid values
-      expect(["low", "medium", "high"]).toContain(low);
-      expect(["low", "medium", "high"]).toContain(medium);
-      expect(["low", "medium", "high"]).toContain(high);
-    });
-  });
-});
+      expect(['low', 'medium', 'high']).toContain(low)
+      expect(['low', 'medium', 'high']).toContain(medium)
+      expect(['low', 'medium', 'high']).toContain(high)
+    })
+  })
+})
 
+describe('visibleEquipment', () => {
+  it('hides bodyweight, which needs nothing from the athlete', () => {
+    expect(visibleEquipment(['bodyweight'])).toEqual([])
+  })
 
-describe("visibleEquipment", () => {
-  it("hides bodyweight, which needs nothing from the athlete", () => {
-    expect(visibleEquipment(["bodyweight"])).toEqual([]);
-  });
-
-  it("keeps real equipment and drops bodyweight beside it", () => {
-    expect(visibleEquipment(["bodyweight", "pull_up_bar"])).toEqual(["pull_up_bar"]);
-  });
+  it('keeps real equipment and drops bodyweight beside it', () => {
+    expect(visibleEquipment(['bodyweight', 'pull_up_bar'])).toEqual(['pull_up_bar'])
+  })
 
   it("ignores case, spacing and 'none'", () => {
-    expect(visibleEquipment([" Bodyweight ", "None", "dumbbell"])).toEqual(["dumbbell"]);
-  });
+    expect(visibleEquipment([' Bodyweight ', 'None', 'dumbbell'])).toEqual(['dumbbell'])
+  })
 
-  it("handles missing equipment", () => {
-    expect(visibleEquipment(undefined)).toEqual([]);
-  });
-});
+  it('handles missing equipment', () => {
+    expect(visibleEquipment(undefined)).toEqual([])
+  })
+})
 
-describe("nextSetIndex", () => {
-  const set = (completed: boolean, skipped = false) => ({ completed, skipped });
+describe('nextSetIndex', () => {
+  const set = (completed: boolean, skipped = false) => ({ completed, skipped })
 
-  it("is the first set neither completed nor skipped", () => {
-    expect(nextSetIndex([set(true), set(false, true), set(false), set(false)])).toBe(2);
-  });
+  it('is the first set neither completed nor skipped', () => {
+    expect(nextSetIndex([set(true), set(false, true), set(false), set(false)])).toBe(2)
+  })
 
-  it("is -1 when every set is done", () => {
-    expect(nextSetIndex([set(true), set(false, true)])).toBe(-1);
-  });
-});
+  it('is -1 when every set is done', () => {
+    expect(nextSetIndex([set(true), set(false, true)])).toBe(-1)
+  })
+})
 
-describe("setTileLayout", () => {
+describe('setTileLayout', () => {
   it("makes every tile a third of the row, so a single set isn't full width", () => {
-    expect(setTileLayout(340, 8)).toEqual({ tileWidth: 108 });
-  });
+    expect(setTileLayout(340, 8)).toEqual({ tileWidth: 108 })
+  })
 
-  it("waits for the row to be measured", () => {
-    expect(setTileLayout(0, 8)).toEqual({ tileWidth: undefined });
-  });
-});
+  it('waits for the row to be measured', () => {
+    expect(setTileLayout(0, 8)).toEqual({ tileWidth: undefined })
+  })
+})

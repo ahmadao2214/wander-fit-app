@@ -5,7 +5,12 @@
  * `lib/firstRunDraft.ts`.
  */
 import type { AgeGroup } from '../types'
-import { programShape, skillLevelFromYears, type ProgramShape, type SkillLevel } from '../convex/programShape'
+import {
+  programShape,
+  skillLevelFromYears,
+  type ProgramShape,
+  type SkillLevel,
+} from '../convex/programShape'
 
 // ─── Choices ────────────────────────────────────────────────────────────────
 
@@ -136,7 +141,9 @@ export function firstTrainingDate(trainingDays: readonly number[] | undefined, n
 
 /** "Today", "Tomorrow" or "Wed, Nov 18". */
 export function dayLabel(date: Date, now: Date): string {
-  const diff = Math.round((startOfLocalDay(date).getTime() - startOfLocalDay(now).getTime()) / MS_PER_DAY)
+  const diff = Math.round(
+    (startOfLocalDay(date).getTime() - startOfLocalDay(now).getTime()) / MS_PER_DAY
+  )
   if (diff === 0) return 'Today'
   if (diff === 1) return 'Tomorrow'
   return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })

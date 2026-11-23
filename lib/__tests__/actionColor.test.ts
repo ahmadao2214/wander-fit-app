@@ -5,7 +5,8 @@ import { contrastRatio } from '../contrast'
 
 // The action color has two jobs: $primary fills buttons under white labels,
 // and $primaryText colors blue text and icons on the screen and on cards.
-const themes = (config as unknown as { themes: Record<string, Record<string, { val: string }>> }).themes
+const themes = (config as unknown as { themes: Record<string, Record<string, { val: string }>> })
+  .themes
 
 describe('action color', () => {
   for (const mode of ['light', 'dark'] as const) {

@@ -31,7 +31,11 @@ export function measure(frame) {
 export function differingShare(a, b) {
   let differ = 0
   for (let i = 0; i < a.data.length; i += 4) {
-    const d = Math.abs(a.data[i] - b.data[i]) + Math.abs(a.data[i + 1] - b.data[i + 1]) + Math.abs(a.data[i + 2] - b.data[i + 2]) + Math.abs(a.data[i + 3] - b.data[i + 3])
+    const d =
+      Math.abs(a.data[i] - b.data[i]) +
+      Math.abs(a.data[i + 1] - b.data[i + 1]) +
+      Math.abs(a.data[i + 2] - b.data[i + 2]) +
+      Math.abs(a.data[i + 3] - b.data[i + 3])
     if (d > 24) differ++
   }
   return differ / (a.data.length / 4)
@@ -40,7 +44,8 @@ export function differingShare(a, b) {
 // Returns { problems, worst, loopDiff }. An empty problems list is a pass.
 export function checkFrames(frames) {
   const problems = []
-  if (!frames.length) return { problems: ['no frames rendered'], worst: { maxRadius: 0, frame: 0 }, loopDiff: 0 }
+  if (!frames.length)
+    return { problems: ['no frames rendered'], worst: { maxRadius: 0, frame: 0 }, loopDiff: 0 }
   const blank = []
   let worst = { maxRadius: 0, frame: 0 }
   frames.forEach((frame, index) => {
@@ -49,14 +54,20 @@ export function checkFrames(frames) {
     if (maxRadius > worst.maxRadius) worst = { maxRadius, frame: index }
   })
   if (blank.length) {
-    problems.push(`${blank.length} of ${frames.length} frames draw nothing (first: frame ${blank[0]})`)
+    problems.push(
+      `${blank.length} of ${frames.length} frames draw nothing (first: frame ${blank[0]})`
+    )
   }
   if (worst.maxRadius > SAFE_RADIUS) {
-    problems.push(`frame ${worst.frame} draws ${worst.maxRadius.toFixed(0)} units from centre, past the ${SAFE_RADIUS} safe circle`)
+    problems.push(
+      `frame ${worst.frame} draws ${worst.maxRadius.toFixed(0)} units from centre, past the ${SAFE_RADIUS} safe circle`
+    )
   }
   const loopDiff = differingShare(frames[0], frames[frames.length - 1])
   if (loopDiff > LOOP_TOLERANCE) {
-    problems.push(`last frame differs from frame 0 on ${(loopDiff * 100).toFixed(2)}% of pixels (loop jumps)`)
+    problems.push(
+      `last frame differs from frame 0 on ${(loopDiff * 100).toFixed(2)}% of pixels (loop jumps)`
+    )
   }
   const rest = measure(frames[0])
   if (rest.visible && Math.abs(rest.centreX - CANVAS / 2) > CANVAS * CENTRE_TOLERANCE) {

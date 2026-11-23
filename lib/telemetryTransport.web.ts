@@ -130,11 +130,7 @@ export function createWebPostHogTransport(
  *   blocked at the DOM boundary (`[data-ph-no-capture]`).
  */
 export function createTelemetryTransport(config: TelemetryTransportConfig): TelemetryTransport {
-  if (
-    !config.apiKey ||
-    typeof window === 'undefined' ||
-    process.env.JEST_WORKER_ID !== undefined
-  ) {
+  if (!config.apiKey || typeof window === 'undefined' || process.env.JEST_WORKER_ID !== undefined) {
     return NOOP_TELEMETRY_TRANSPORT
   }
 

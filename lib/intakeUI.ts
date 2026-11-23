@@ -8,10 +8,7 @@
 /**
  * Intensity color token type
  */
-export type IntensityColorToken =
-  | "$intensityLow6"
-  | "$intensityMed6"
-  | "$intensityHigh6";
+export type IntensityColorToken = '$intensityLow6' | '$intensityMed6' | '$intensityHigh6'
 
 /**
  * Get slider color based on years of experience (intensity gradient)
@@ -25,9 +22,9 @@ export type IntensityColorToken =
  * @returns Tamagui color token string for the intensity level
  */
 export function getExperienceSliderColor(years: number): IntensityColorToken {
-  if (years <= 3) return "$intensityLow6";
-  if (years <= 6) return "$intensityMed6";
-  return "$intensityHigh6";
+  if (years <= 3) return '$intensityLow6'
+  if (years <= 6) return '$intensityMed6'
+  return '$intensityHigh6'
 }
 
 /**
@@ -55,9 +52,9 @@ export function getSportInitials(name: string): string {
     .filter((word) => word.length > 0)
     .map((word) => word[0])
     .filter((char) => /[A-Za-z]/.test(char))
-    .join("")
+    .join('')
     .slice(0, 2)
-    .toUpperCase();
+    .toUpperCase()
 }
 
 /**
@@ -72,6 +69,6 @@ export function getSportInitials(name: string): string {
 export function getSportSlug(name: string): string {
   return name
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
 }

@@ -16,12 +16,17 @@ const template = {
   _id: 'template_1',
   name: 'Lower Body Foundation',
   phase: 'GPP',
-  exercises: [exercise('goblet_squat', 'Goblet Squat', 3), exercise('romanian_deadlift', 'Romanian Deadlift', 2)],
+  exercises: [
+    exercise('goblet_squat', 'Goblet Squat', 3),
+    exercise('romanian_deadlift', 'Romanian Deadlift', 2),
+  ],
 }
 
 const sets = (logged: number, total: number) =>
   Array.from({ length: total }, (_, i) =>
-    i < logged ? { completed: true, skipped: false, repsCompleted: 10 } : { completed: false, skipped: false }
+    i < logged
+      ? { completed: true, skipped: false, repsCompleted: 10 }
+      : { completed: false, skipped: false }
   )
 
 let mockSession: any
