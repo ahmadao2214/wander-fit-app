@@ -24,6 +24,8 @@ Notes:
 Known gaps (follow-ups):
 
 - `flowMs` includes Maestro's start-up and isn't a launch time. A user-ready window (first action to a stable endpoint) and launch time from the App Launch template on a device are still to do.
+- `run` finds the app's pid with `xcrun simctl spawn … launchctl list`, which only works on a simulator. On a physical iPhone every run would fail with "not running after the journey". Before the device run, read the pid from `xcrun devicectl device info processes` instead.
+- The current baseline (`perf/results/2026-11-22-sim-release-*.json`) is provisional: another simulator's app was using CPU while it was recorded. Re-record it on a quiet machine, alongside the iPhone run.
 - The tabs and workout journeys run on a freshly created account, so History is short and the workout list depends on the plan's first day. A dedicated persona with fixed history would make runs across days comparable.
 
 ## Run it

@@ -30,6 +30,13 @@ function fail(message) {
   process.exit(1)
 }
 
+function pidList(flag, value) {
+  const pids = (value ?? '').split(',').map((p) => Number.parseInt(p, 10))
+  if (!value || pids.some((p) => !Number.isInteger(p) || p <= 0))
+    throw new Error(`${flag} needs a comma-separated list of pids`)
+  return pids
+}
+
 export function parseArgs(argv) {
   const [command, ...rest] = argv
   const options = {
@@ -47,10 +54,8 @@ export function parseArgs(argv) {
     else if (arg === '--device') options.device = rest[++i]
     else if (arg === '--label') options.label = rest[++i]
     else if (arg === '--template') options.template = rest[++i]
-    else if (arg === '--exclude-pids')
-      options.excludePids = rest[++i].split(',').map((p) => Number.parseInt(p, 10))
-    else if (arg === '--pids')
-      options.pids = rest[++i].split(',').map((p) => Number.parseInt(p, 10))
+    else if (arg === '--exclude-pids') options.excludePids = pidList(arg, rest[++i])
+    else if (arg === '--pids') options.pids = pidList(arg, rest[++i])
     else options.positional.push(arg)
   }
   if (!Number.isInteger(options.runs) || options.runs < 1)
@@ -254,6 +259,19 @@ export function median(values) {
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
 }
 
+// The app pid to measure in a trace with none recorded: what's left after
+// excludePids must be a single pid, unless pickLast takes the last-running one.
+// Returns an Error rather than guessing.
+export function choosePids(profileXml, { excludePids = [], pickLast = false } = {}) {
+  const candidates = new Set([...appPidsIn(profileXml)].filter((p) => !excludePids.includes(p)))
+  if (candidates.size > 1 && !pickLast)
+    return new Error(
+      `several app processes (${[...candidates].join(', ')}); pass --pids or --exclude-pids`
+    )
+  const last = lastAppPid(profileXml, candidates)
+  return new Set(last === null ? [] : [last])
+}
+
 async function table(tracePath, schema) {
   return xml([
     '--input',
@@ -277,14 +295,8 @@ async function summarize(
   const profile = schemas.includes('time-profile') ? await table(tracePath, 'time-profile') : null
   if (requireProfile && !profile) throw new Error(`${tracePath} has no time-profile table`)
   if (!pids) {
-    const found = profile ? appPidsIn(profile) : new Set()
-    const candidates = new Set([...found].filter((p) => !excludePids.includes(p)))
-    if (candidates.size > 1 && !pickLast)
-      throw new Error(
-        `${tracePath} has several app processes (${[...candidates].join(', ')}); pass --pids or --exclude-pids`
-      )
-    const last = profile ? lastAppPid(profile, candidates) : null
-    pids = new Set(last === null ? [] : [last])
+    pids = choosePids(profile ?? '', { excludePids, pickLast })
+    if (pids instanceof Error) throw new Error(`${tracePath}: ${pids.message}`)
   }
   summary.pids = [...pids]
   if (schemas.includes('potential-hangs')) {
@@ -601,7 +613,12 @@ async function resummarize({ positional, excludePids }) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const args = parseArgs(process.argv.slice(2))
+  let args
+  try {
+    args = parseArgs(process.argv.slice(2))
+  } catch (error) {
+    fail(error.message)
+  }
   if (args.command === 'run') run(args).catch((error) => fail(error.message))
   else if (args.command === 'summarize')
     summarize(args.positional[0], {

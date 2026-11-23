@@ -7,6 +7,7 @@ import {
   buildReport,
   captureCovers,
   captureInfo,
+  choosePids,
   classifyRun,
   mainFlushMs,
   median,
@@ -31,6 +32,10 @@ describe('parseArgs', () => {
       pids: null,
       positional: ['tabs'],
     })
+  })
+
+  it('rejects a pid flag with no value', () => {
+    expect(() => parseArgs(['summarize', 'x.trace', '--pids'])).toThrow('--pids')
   })
 
   it('defaults to five runs', () => {
@@ -226,6 +231,10 @@ describe('classifyRun', () => {
     })
   })
 
+  it('rejects a run whose recorder failed without leaving a trace', () => {
+    expect(classifyRun({ ...good, code: 1, traceExists: false }).ok).toBe(false)
+  })
+
   it('rejects a run with no app process afterwards or a failed journey', () => {
     expect(classifyRun({ ...good, pidAfter: null }).ok).toBe(false)
     expect(classifyRun({ ...good, maestroStatus: 1 }).ok).toBe(false)
@@ -249,6 +258,29 @@ describe('captureCovers', () => {
       captureCovers(captureInfo(toc.replace('User pressed Stop', 'Time limit reached')), 47751)
     ).toBe(false)
     expect(captureCovers(captureInfo('<summary/>'), 1000)).toBe(false)
+  })
+})
+
+describe('choosePids', () => {
+  const OLD = 'Main Thread (0x31) (asrafit, pid: 100)'
+  const NEW = 'Main Thread (0x32) (asrafit, pid: 200)'
+  const xml = [
+    `<row><sample-time id="1">5</sample-time><thread id="2" fmt="${OLD}">t</thread></row>`,
+    `<row><sample-time id="3">9</sample-time><thread id="4" fmt="${NEW}">t</thread></row>`,
+    `<row><sample-time id="5">12</sample-time><thread id="6" fmt="${OTHER_SIM}">t</thread></row>`,
+  ].join('')
+
+  it('refuses to guess when several app pids remain, even when the wrong one ran last', () => {
+    expect(choosePids(xml)).toBeInstanceOf(Error)
+    expect(choosePids(xml, { excludePids: [5693] })).toBeInstanceOf(Error)
+  })
+
+  it('takes the single pid left after exclusions', () => {
+    expect([...choosePids(xml, { excludePids: [5693, 100] })]).toEqual([200])
+  })
+
+  it('takes the last-running pid only when asked to', () => {
+    expect([...choosePids(xml, { excludePids: [5693], pickLast: true })]).toEqual([200])
   })
 })
 
