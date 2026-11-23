@@ -1,4 +1,5 @@
 import React from 'react'
+import { Platform } from 'react-native'
 import { act, fireEvent, render, screen } from '@testing-library/react-native'
 import { testDraft, Wrapper as wrapper } from '../../jest/firstRunTestUtils'
 import { seasonStartForWeeks } from '../../lib/firstRun'
@@ -38,9 +39,12 @@ const mockSetActive = jest.fn(async () => {
     firstName: 'Sam',
   }
 })
+const mockSSO = jest.fn()
+const mockRedirect = jest.fn()
 jest.mock('@clerk/clerk-expo', () => ({
   useSignUp: () => ({ isLoaded: true, signUp: mockSignUp, setActive: mockSetActive }),
-  useSSO: () => ({ startSSOFlow: jest.fn() }),
+  useSignIn: () => ({ signIn: { authenticateWithRedirect: mockRedirect } }),
+  useSSO: () => ({ startSSOFlow: mockSSO }),
   useUser: () => ({ user: mockSignedIn }),
   useClerk: () => mockClerk,
 }))
@@ -112,6 +116,72 @@ describe('Save your plan', () => {
     expect(screen.queryByText(/coach|trainer|role/i)).toBeNull()
     // Apple appears only once it's enabled in Clerk.
     expect(screen.queryByTestId('save-plan-apple')).toBeNull()
+  })
+
+  it('activates a native Google session before saving the draft', async () => {
+    mockSSO.mockResolvedValueOnce({ createdSessionId: 'sess_google', setActive: mockSetActive })
+    await show()
+    await press('save-plan-google')
+    expect(mockSSO).toHaveBeenCalledWith({ strategy: 'oauth_google', redirectUrl: 'myapp://oauth' })
+    expect(mockSetActive).toHaveBeenCalledWith({ session: 'sess_google' })
+    expect(mockCompleteIntake).toHaveBeenCalledTimes(1)
+    expect(mockReplace).toHaveBeenCalledWith({
+      pathname: '/(athlete)/program',
+      params: { welcome: '1', next: 'Tomorrow' },
+    })
+  })
+
+  it('preserves the draft when Google is dismissed', async () => {
+    mockSSO.mockResolvedValueOnce({ createdSessionId: null, authSessionResult: { type: 'cancel' } })
+    await show()
+    await press('save-plan-google')
+    expect(mockCompleteIntake).not.toHaveBeenCalled()
+    expect(testDraft.current.current()?.answers).toEqual(answers)
+  })
+
+  it('resumes the web draft after Google redirects and saves it once', async () => {
+    const os = Platform.OS
+    const storage = globalThis.sessionStorage
+    const entries = new Map<string, string>()
+    Object.defineProperty(globalThis, 'sessionStorage', {
+      configurable: true,
+      value: {
+        setItem: (key: string, v: string) => entries.set(key, v),
+        getItem: (key: string) => entries.get(key),
+        removeItem: (key: string) => entries.delete(key),
+      },
+    })
+    try {
+      Platform.OS = 'web'
+      await show()
+      await press('save-plan-google')
+      expect(JSON.parse(sessionStorage.getItem('wanderfit.firstRunDraft.v1')!)).toEqual(
+        testDraft.current.current()
+      )
+      expect(mockRedirect).toHaveBeenCalledWith({
+        strategy: 'oauth_google',
+        redirectUrl: '/google-save-callback',
+        redirectUrlComplete: '/reveal?saveWith=google',
+      })
+      expect(mockCompleteIntake).not.toHaveBeenCalled()
+      screen.unmount()
+      await mockSetActive()
+      mockSignedIn = mockClerk.user
+      render(
+        <SavePlanSheet open onOpenChange={jest.fn()} returningFromGoogle nextLabel="Tomorrow" />,
+        { wrapper }
+      )
+      await act(async () => {})
+      expect(mockCompleteIntake).toHaveBeenCalledTimes(1)
+      expect(mockReplace).toHaveBeenCalledWith({
+        pathname: '/(athlete)/program',
+        params: { welcome: '1', next: 'Tomorrow' },
+      })
+      expect(testDraft.current.current()).toBeNull()
+    } finally {
+      Platform.OS = os
+      Object.defineProperty(globalThis, 'sessionStorage', { configurable: true, value: storage })
+    }
   })
 
   it('email sign-up creates the athlete, saves the program with firstLaunchAt, then clears the draft', async () => {
