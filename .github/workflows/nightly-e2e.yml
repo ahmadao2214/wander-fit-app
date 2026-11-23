@@ -1,6 +1,7 @@
-# Nightly E2E: every web flow against the wander-fit-e2e dev deployment, then
-# the evidence gallery on GitHub Pages (#85). The repo's Pages source must be
-# set to "GitHub Actions" once, or the deploy job fails.
+# Nightly E2E: every web flow against the wander-fit-e2e dev deployment, a
+# sweep of leaked test athletes, then the evidence gallery on GitHub Pages
+# (#85). The repo's Pages source must be set to "GitHub Actions" once, or the
+# deploy job fails.
 # Android (#83) and iOS (#84) runs will add jobs here; the gallery already
 # has their columns.
 name: Nightly E2E
@@ -175,6 +176,43 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/verify/summary.mjs
+
+  # Deletes test athletes a crashed or cancelled run left behind (#83): every
+  # generated e2e address in Clerk older than 2h, and its wander-fit-e2e dev
+  # data. No CI job lives that long (the longest, Android, times out at 75
+  # min), so it never touches a live CI persona. A generated persona kept for
+  # a local session expires the same way after 2h. Runs after the flows whether
+  # they passed or failed; skipped only when the run was cancelled.
+  # No e2e-backend group: it neither deploys nor seeds, only calls the
+  # deployed e2e:remove for accounts no live run owns, so main's E2E needn't
+  # wait on it. Nothing needs this job, so a failed sweep never stops the
+  # gallery deploy.
+  persona-sweep:
+    name: Sweep leaked test athletes
+    needs: web-e2e
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      CONVEX_PREVIEW_NAME_E2E: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.5
+      # persona.mjs runs the pinned Convex CLI from node_modules.
+      - run: bun install --frozen-lockfile
+      - name: Delete test athletes older than 2 hours
+        env:
+          EXPO_PUBLIC_CONVEX_URL_E2E: ${{ vars.EXPO_PUBLIC_CONVEX_URL_E2E }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          CONVEX_DEPLOY_KEY_E2E: ${{ secrets.CONVEX_DEPLOY_KEY_E2E }}
+        run: node scripts/verify/persona.mjs sweep --older-than 2h
 
   # Builds even when flows failed: a failing flow shows its last evidence,
   # marked failing. Skipped only when the run was cancelled.
