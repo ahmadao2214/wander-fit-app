@@ -80,12 +80,13 @@ jobs:
       - name: Run Android flows
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          # ATD (Automated Test Device) images are trimmed for CI: no launcher
-          # or background apps that can ANR on a slow runner. The full
-          # google_apis image showed "Pixel Launcher isn't responding" over
-          # the app on the first CI run.
+          # Full google_apis image, not ATD: ATD turns off the rendering that
+          # screen captures use, so every evidence screenshot came out black.
+          # The first google_apis run hit "Pixel Launcher isn't responding" on
+          # the default 2-core emulator; 4 cores and 4 GB, plus the runner
+          # hiding system error dialogs in CI, are the fix for that.
           api-level: 34
-          target: google_atd
+          target: google_apis
           arch: x86_64
           profile: pixel_6
           cores: 4

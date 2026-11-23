@@ -111,7 +111,12 @@ describe('android-e2e workflow', () => {
     const emulator = job.steps.find((step) => step.name === 'Run Android flows')
     expect(emulator.uses).toMatch(/^reactivecircus\/android-emulator-runner@/)
     expect(emulator.with.script).toBe('node scripts/verify/android.mjs run')
-    expect(emulator.with.target).toMatch(/_atd$/)
+    // ATD images capture black screenshots, so evidence needs google_apis.
+    expect(emulator.with.target).toBe('google_apis')
+    expect({ cores: emulator.with.cores, ram: emulator.with['ram-size'] }).toEqual({
+      cores: 4,
+      ram: '4096M',
+    })
     expect(job.steps.find((step) => step.name === 'Upload Android evidence').if).toBe(
       '${{ !cancelled() }}'
     )
