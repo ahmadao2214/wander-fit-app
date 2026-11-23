@@ -11,6 +11,7 @@ import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { assertConvexUrlAllowed } from './targets.mjs'
 
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 export const appId = 'com.offseason.asrafit'
@@ -37,6 +38,8 @@ export function buildEnv(source = process.env) {
   if (!/^https:\/\/[a-z0-9-]+\.convex\.cloud$/.test(convexUrl)) {
     throw new Error('EXPO_PUBLIC_CONVEX_URL_E2E must be the https://<name>.convex.cloud E2E URL.')
   }
+  // Same guard as the web runner: never build against an app deployment.
+  assertConvexUrlAllowed(convexUrl)
   if (!/^pk_(test|live)_/.test(clerkKey)) {
     throw new Error('EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY must be a Clerk publishable key.')
   }

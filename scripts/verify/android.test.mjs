@@ -9,6 +9,7 @@ import {
   root,
   selectAndroidFlows,
 } from './android.mjs'
+import { BLOCKED_CONVEX_HOSTS } from './targets.mjs'
 
 const goodEnv = {
   EXPO_PUBLIC_CONVEX_URL_E2E: 'https://modest-kudu-493.convex.cloud',
@@ -36,6 +37,15 @@ describe('buildEnv', () => {
       'TEST_USER_PASSWORD',
     ].filter((name) => name in env)
     expect(leaked).toEqual([])
+  })
+
+  it('refuses the app backends, like the web runner', () => {
+    for (const host of BLOCKED_CONVEX_HOSTS) {
+      expect(() => buildEnv({ ...goodEnv, EXPO_PUBLIC_CONVEX_URL_E2E: `https://${host}` })).toThrow(
+        /Refusing Convex host/
+      )
+    }
+    expect(BLOCKED_CONVEX_HOSTS).toContain('fleet-mallard-22.convex.cloud')
   })
 
   it('refuses a missing or non-Convex backend URL and a missing Clerk key', () => {
