@@ -212,17 +212,26 @@ describe('persona review account', () => {
 })
 
 describe('assertSweepTarget', () => {
-  it('allows the dev deployment with a Clerk test key', () => {
-    expect(() => assertSweepTarget({ mode: 'dev', clerkSecret: 'sk_test_x' })).not.toThrow()
-    expect(() => assertSweepTarget({ mode: 'local', clerkSecret: 'sk_test_x' })).not.toThrow()
+  const good = { mode: 'dev', host: 'modest-kudu-493.convex.cloud', clerkSecret: 'sk_test_x' }
+
+  it('allows the wander-fit-e2e dev deployment with a dev key and a Clerk test key', () => {
+    expect(() => assertSweepTarget(good)).not.toThrow()
   })
 
-  it('refuses a preview target, a live Clerk key and a missing key', () => {
-    expect(() => assertSweepTarget({ mode: 'preview', clerkSecret: 'sk_test_x' })).toThrow(
-      /dev deployment/
+  it('refuses .env.e2e and preview modes', () => {
+    expect(() => assertSweepTarget({ ...good, mode: 'local' })).toThrow(/dev key/)
+    expect(() => assertSweepTarget({ ...good, mode: 'preview' })).toThrow(/dev key/)
+  })
+
+  it("refuses another project's matching dev key and URL", () => {
+    expect(() => assertSweepTarget({ ...good, host: 'happy-otter-1.convex.cloud' })).toThrow(
+      /runs only against modest-kudu-493\.convex\.cloud/
     )
-    expect(() => assertSweepTarget({ mode: 'dev', clerkSecret: 'sk_live_x' })).toThrow(/test key/)
-    expect(() => assertSweepTarget({ mode: 'dev', clerkSecret: '' })).toThrow(/test key/)
+  })
+
+  it('refuses a live Clerk key and a missing key', () => {
+    expect(() => assertSweepTarget({ ...good, clerkSecret: 'sk_live_x' })).toThrow(/test key/)
+    expect(() => assertSweepTarget({ ...good, clerkSecret: '' })).toThrow(/test key/)
   })
 
   it('runs before the first Clerk call in sweep', () => {
