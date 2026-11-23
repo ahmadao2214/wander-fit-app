@@ -1638,19 +1638,25 @@ function backendFilesDirty(paths) {
   return status.status !== 0 || (status.stdout || '').trim() !== ''
 }
 
+function setDeployedTree(env, tree) {
+  const marked = convexCli(['env', 'set', DEPLOYED_TREE_VAR, tree], env)
+  if (marked.status !== 0) fail(`convex env set ${DEPLOYED_TREE_VAR} exited ${marked.status ?? 1}`)
+}
+
 // deployDev uploads the working checkout, so a deploy with uncommitted backend
 // edits records DIRTY_TREE rather than HEAD's fingerprint.
 function recordDeployedTree(env) {
   const paths = backendFingerprintPaths(convexRuntimeFiles())
   const tree = backendFilesDirty(paths) ? DIRTY_TREE : backendFingerprint('HEAD', paths)
-  if (!tree) return
-  const marked = convexCli(['env', 'set', DEPLOYED_TREE_VAR, tree], env)
-  if (marked.status !== 0) fail(`convex env set ${DEPLOYED_TREE_VAR} exited ${marked.status ?? 1}`)
+  setDeployedTree(env, tree || DIRTY_TREE)
 }
 
 function deployDev() {
   const { env, host } = convexInvocation()
   console.log(`deploying convex functions to ${host}`)
+  // Until the upload and seeding both finish, no commit matches the backend,
+  // so a deploy that dies halfway never leaves the old fingerprint behind.
+  setDeployedTree(env, DIRTY_TREE)
   const pushed = convexCli(['dev', '--once', '--codegen', 'disable', '--typecheck', 'disable'], env)
   if (pushed.status !== 0) fail(`convex dev --once exited ${pushed.status ?? 1}`)
   ensureSeeded({ env, host })
