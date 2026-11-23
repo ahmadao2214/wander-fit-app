@@ -43,6 +43,7 @@ import type * as telemetry from "../telemetry.js";
 import type * as userMaxes from "../userMaxes.js";
 import type * as userPrograms from "../userPrograms.js";
 import type * as users from "../users.js";
+import type * as waitlist from "../waitlist.js";
 import type * as warmupSequences from "../warmupSequences.js";
 import type * as weekMapping from "../weekMapping.js";
 import type * as workoutCalendar from "../workoutCalendar.js";
@@ -87,6 +88,7 @@ declare const fullApi: ApiFromModules<{
   userMaxes: typeof userMaxes;
   userPrograms: typeof userPrograms;
   users: typeof users;
+  waitlist: typeof waitlist;
   warmupSequences: typeof warmupSequences;
   weekMapping: typeof weekMapping;
   workoutCalendar: typeof workoutCalendar;

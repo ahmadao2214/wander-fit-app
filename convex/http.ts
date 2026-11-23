@@ -1,3 +1,4 @@
+import { cleanSignup } from './waitlist'
 import { httpRouter } from 'convex/server'
 import { httpAction } from './_generated/server'
 import type { ActionCtx } from './_generated/server'
@@ -190,6 +191,145 @@ http.route({
   path: '/.well-known/oauth-authorization-server',
   method: 'GET',
   handler: authServerMetadata,
+})
+
+const MAX_BODY_BYTES = 4096
+
+/**
+ * Resolve CORS headers for the static landing page.
+ * Defaults to `*` for preview deploys; set `LANDING_ORIGIN` (comma-separated
+ * allowed origins) in production Convex env vars to restrict cross-origin POSTs.
+ */
+function corsHeaders(request: Request): Record<string, string> {
+  const configured = (process.env.LANDING_ORIGIN ?? '')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean)
+
+  let allowOrigin = '*'
+  const vary: Record<string, string> = {}
+  if (configured.length > 0) {
+    const reqOrigin = request.headers.get('Origin') ?? ''
+    allowOrigin = configured.includes(reqOrigin) ? reqOrigin : configured[0]
+    vary['Vary'] = 'Origin'
+  }
+
+  return {
+    'Access-Control-Allow-Origin': allowOrigin,
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Max-Age': '86400',
+    ...vary,
+  }
+}
+
+function waitlistJson(
+  request: Request,
+  status: number,
+  body: unknown,
+  extraHeaders: Record<string, string> = {}
+) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      ...corsHeaders(request),
+      'Content-Type': 'application/json',
+      ...extraHeaders,
+    },
+  })
+}
+
+function extractClientIp(request: Request): string | null {
+  const cfIp = request.headers.get('cf-connecting-ip')?.trim()
+  if (cfIp) return cfIp.slice(0, 64)
+  const forwarded = request.headers.get('x-forwarded-for')
+  if (forwarded) {
+    const first = forwarded.split(',')[0]?.trim()
+    if (first) return first.slice(0, 64)
+  }
+  const realIp = request.headers.get('x-real-ip')?.trim()
+  if (realIp) return realIp.slice(0, 64)
+  return null
+}
+
+http.route({
+  path: '/waitlist',
+  method: 'OPTIONS',
+  handler: httpAction(async (_ctx, request) => {
+    return new Response(null, { status: 204, headers: corsHeaders(request) })
+  }),
+})
+
+http.route({
+  path: '/waitlist',
+  method: 'POST',
+  handler: httpAction(async (ctx, request) => {
+    const reader = request.body?.getReader()
+    const bytes = new Uint8Array(MAX_BODY_BYTES)
+    let length = 0
+    if (reader) {
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+        if (length + value.byteLength > MAX_BODY_BYTES) {
+          await reader.cancel()
+          return waitlistJson(request, 413, { error: 'That sign-up is too large.' })
+        }
+        bytes.set(value, length)
+        length += value.byteLength
+      }
+    }
+
+    let body: unknown
+    try {
+      body = JSON.parse(new TextDecoder().decode(bytes.subarray(0, length)))
+    } catch {
+      return waitlistJson(request, 400, { error: 'Send the sign-up as JSON.' })
+    }
+
+    const clientIp = extractClientIp(request)
+    if (clientIp) {
+      const ipLimit = await ctx.runMutation(internal.waitlist.checkRateLimit, {
+        key: `ip:${clientIp}`,
+      })
+      if (!ipLimit.allowed) {
+        return waitlistJson(
+          request,
+          429,
+          { error: 'Too many sign-up attempts. Try again in a few minutes.' },
+          { 'Retry-After': String(ipLimit.retryAfterSeconds) }
+        )
+      }
+    }
+
+    const result = cleanSignup(body, new Date().toISOString())
+    // Spam gets the same answer as a real sign-up so bots learn nothing.
+    if (!result.ok && 'spam' in result) return waitlistJson(request, 200, { ok: true })
+    if (!result.ok) return waitlistJson(request, 400, { error: result.error })
+
+    const emailLimit = await ctx.runMutation(internal.waitlist.checkRateLimit, {
+      key: `email:${result.value.email}`,
+    })
+    if (!emailLimit.allowed) {
+      return waitlistJson(
+        request,
+        429,
+        { error: 'Too many sign-up attempts. Try again in a few minutes.' },
+        { 'Retry-After': String(emailLimit.retryAfterSeconds) }
+      )
+    }
+
+    const token = (body as Record<string, unknown>).updateToken
+    let updateTokenHash: string | undefined
+    if (typeof token === 'string' && /^[0-9a-f]{64}$/.test(token)) {
+      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token))
+      updateTokenHash = Array.from(new Uint8Array(digest), (b) =>
+        b.toString(16).padStart(2, '0')
+      ).join('')
+    }
+    await ctx.runMutation(internal.waitlist.record, { ...result.value, updateTokenHash })
+    return waitlistJson(request, 200, { ok: true })
+  }),
 })
 
 export default http

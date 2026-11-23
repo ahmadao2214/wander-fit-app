@@ -827,4 +827,35 @@ export default defineSchema({
     .index('by_trainer', ['trainerId'])
     .index('by_status', ['status'])
     .index('by_email_status', ['email', 'status']),
+
+  /**
+   * Landing-page Beta On-Ramp sign-ups (landing/). Written only by the public
+   * POST /waitlist HTTP route through internal.waitlist.record.
+   * One row per normalized email. Updates require the original signup’s private token.
+   */
+  waitlist_signups: defineTable({
+    role: v.union(v.literal('athlete_14_17'), v.literal('athlete_18_plus'), v.literal('parent')),
+    email: v.string(),
+    parentEmail: v.optional(v.string()), // optional, accepted only for athlete_14_17
+    // Willingness-to-pay anchor: $35 Season Pass, $15/mo, or just trying the free beta
+    intent: v.union(v.literal('season_pass'), v.literal('monthly'), v.literal('free_beta_only')),
+    seasonDate: v.optional(v.string()), // YYYY-MM-DD from hero calendar, optional
+    updateTokenHash: v.optional(v.string()),
+    source: v.optional(v.string()), // ?ref= or utm_source on the landing URL (e.g. gym-flyer)
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_email', ['email'])
+    .index('by_created', ['createdAt']),
+
+  /**
+   * Fixed-window rate limiting buckets for public HTTP routes (POST /waitlist).
+   */
+  waitlist_rate_limits: defineTable({
+    key: v.string(),
+    windowStart: v.number(),
+    count: v.number(),
+  })
+    .index('by_key', ['key'])
+    .index('by_window_start', ['windowStart']),
 })

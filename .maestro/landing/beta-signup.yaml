@@ -1,0 +1,17 @@
+url: ${LANDING_URL}/?preview=1
+---
+- launchApp
+- scrollUntilVisible:
+    element: "Start 2-week free beta"
+- tapOn: "Start 2-week free beta"
+- scrollUntilVisible:
+    element: "Your email"
+- tapOn: "Your email"
+- inputText: "pilot@example.test"
+- scrollUntilVisible:
+    element: "Just trying the free beta first"
+- tapOn: "Just trying the free beta first"
+- scrollUntilVisible:
+    element: "Start 2-week free beta"
+- tapOn: "Start 2-week free beta"
+- assertVisible: "You’re in. Pick how you’ll train."
