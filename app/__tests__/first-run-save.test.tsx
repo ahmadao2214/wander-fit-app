@@ -159,7 +159,10 @@ describe('Save your plan', () => {
   })
 
   it('activates a native Google session before saving the draft', async () => {
-    mockStartSSOFlow.mockResolvedValueOnce({ createdSessionId: 'sess_google', setActive: mockSetActive })
+    mockStartSSOFlow.mockResolvedValueOnce({
+      createdSessionId: 'sess_google',
+      setActive: mockSetActive,
+    })
     await show()
     await press('save-plan-google')
     expect(mockStartSSOFlow).toHaveBeenCalledWith({
@@ -175,7 +178,10 @@ describe('Save your plan', () => {
   })
 
   it('preserves the draft when Google is dismissed', async () => {
-    mockStartSSOFlow.mockResolvedValueOnce({ createdSessionId: null, authSessionResult: { type: 'cancel' } })
+    mockStartSSOFlow.mockResolvedValueOnce({
+      createdSessionId: null,
+      authSessionResult: { type: 'cancel' },
+    })
     await show()
     await press('save-plan-google')
     expect(mockCompleteIntake).not.toHaveBeenCalled()
