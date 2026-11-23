@@ -19,6 +19,20 @@ const youthAthlete = {
 }
 
 describe('cleanSignup', () => {
+  it.each([
+    ['2026-11-22T02:00:00Z', 480, '2026-11-22', true],
+    ['2026-11-22T02:00:00Z', 480, '2026-11-21', false],
+    ['2026-11-21T22:00:00Z', -600, '2027-11-21', true],
+    ['2026-11-21T22:00:00Z', -600, '2027-11-22', false],
+  ] as const)(
+    'validates %s at offset %i with season date %s',
+    (clock, offset, seasonDate, valid) => {
+      expect(
+        cleanSignup({ ...youthAthlete, timezoneOffsetMinutes: offset, seasonDate }, clock).ok
+      ).toBe(valid)
+    }
+  )
+
   it('accepts a youth athlete (14-17) with optional parent email and normalizes emails', () => {
     expect(cleanSignup(youthAthlete, TODAY)).toEqual({
       ok: true,
@@ -231,7 +245,7 @@ describe('POST /waitlist', () => {
     const t = newTest()
     expect((await post(t, 'not json')).status).toBe(400)
     expect(
-      (await post(t, JSON.stringify({ ...youthAthlete, source: 'x'.repeat(5000) }))).status
+      (await post(t, JSON.stringify({ ...youthAthlete, source: '界'.repeat(1500) }))).status
     ).toBe(413)
   })
 

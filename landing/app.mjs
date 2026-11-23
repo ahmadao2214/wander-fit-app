@@ -39,6 +39,8 @@ const previewFlag = params.get('preview') === '1' || params.get('motion-lab') ==
 const rawEndpoint = document.querySelector('meta[name="waitlist-endpoint"]')?.content.trim() ?? ''
 const endpoint = previewFlag ? '' : rawEndpoint
 
+const unlockKey = endpoint ? 'betaUnlockedLive' : 'betaUnlockedPreview'
+
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches
 const longDate = (d) =>
   d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
@@ -60,7 +62,7 @@ const offsetOf = (d) =>
 
 function readUnlocked() {
   try {
-    return localStorage.getItem('betaUnlocked') === 'true'
+    return localStorage.getItem(unlockKey) === 'true'
   } catch {
     return false
   }
@@ -68,7 +70,7 @@ function readUnlocked() {
 
 function writeUnlocked() {
   try {
-    localStorage.setItem('betaUnlocked', 'true')
+    localStorage.setItem(unlockKey, 'true')
   } catch {
     // Private browsing or blocked storage
   }
@@ -319,11 +321,19 @@ function renderChannels() {
     .map((c) => {
       const live = isChannelLive(c)
       const qrId = `qr-${c.id}`
-      const qrBlock = live
+      let qrSvg = ''
+      if (live) {
+        try {
+          qrSvg = renderQrSvg(c.url, { size: 120, margin: 2, label: `QR code for ${c.label}` })
+        } catch (error) {
+          if (!(error instanceof RangeError)) throw error
+        }
+      }
+      const qrBlock = qrSvg
         ? `
           <div class="qr-wrap">
             <button class="quiet qr-toggle" type="button" aria-expanded="false" aria-controls="${qrId}" data-qr-toggle="${qrId}">Show QR for another device</button>
-            <div class="qr" id="${qrId}" data-mobile-hidden="true">${renderQrSvg(c.url, { size: 120, margin: 2, label: `QR code for ${c.label}` })}</div>
+            <div class="qr" id="${qrId}" data-mobile-hidden="true">${qrSvg}</div>
           </div>`
         : ''
       return `
@@ -533,7 +543,12 @@ form.addEventListener('submit', async (e) => {
     email,
     ...(parentEmail ? { parentEmail } : {}),
     intent,
-    ...(noDate ? {} : { seasonDate: dateKey(selected.date) }),
+    ...(noDate
+      ? {}
+      : {
+          seasonDate: dateKey(selected.date),
+          timezoneOffsetMinutes: new Date().getTimezoneOffset(),
+        }),
     ...(source ? { source } : {}),
     website: $('website').value,
   }

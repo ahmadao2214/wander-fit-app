@@ -264,14 +264,25 @@ http.route({
   path: '/waitlist',
   method: 'POST',
   handler: httpAction(async (ctx, request) => {
-    const raw = await request.text()
-    if (raw.length > MAX_BODY_BYTES) {
-      return waitlistJson(request, 413, { error: 'That sign-up is too large.' })
+    const reader = request.body?.getReader()
+    const bytes = new Uint8Array(MAX_BODY_BYTES)
+    let length = 0
+    if (reader) {
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+        if (length + value.byteLength > MAX_BODY_BYTES) {
+          await reader.cancel()
+          return waitlistJson(request, 413, { error: 'That sign-up is too large.' })
+        }
+        bytes.set(value, length)
+        length += value.byteLength
+      }
     }
 
     let body: unknown
     try {
-      body = JSON.parse(raw)
+      body = JSON.parse(new TextDecoder().decode(bytes.subarray(0, length)))
     } catch {
       return waitlistJson(request, 400, { error: 'Send the sign-up as JSON.' })
     }
@@ -291,8 +302,7 @@ http.route({
       }
     }
 
-    const today = new Date().toISOString().slice(0, 10)
-    const result = cleanSignup(body, today)
+    const result = cleanSignup(body, new Date().toISOString())
     // Spam gets the same answer as a real sign-up so bots learn nothing.
     if (!result.ok && 'spam' in result) return waitlistJson(request, 200, { ok: true })
     if (!result.ok) return waitlistJson(request, 400, { error: result.error })

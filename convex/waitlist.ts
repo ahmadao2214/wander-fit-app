@@ -58,8 +58,8 @@ function parseUtcDate(value: string): number | null {
   return utc
 }
 
-/** Validate and normalize a raw Beta On-Ramp sign-up body. `today` is YYYY-MM-DD (UTC). */
-export function cleanSignup(raw: unknown, today: string): CleanResult {
+/** Validate and normalize a raw Beta On-Ramp sign-up body. The server clock anchors the visitor’s local calendar day. */
+export function cleanSignup(raw: unknown, serverTime: string): CleanResult {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
     return { ok: false, error: 'Send the sign-up as JSON.' }
   }
@@ -107,9 +107,13 @@ export function cleanSignup(raw: unknown, today: string): CleanResult {
   let seasonDate: string | undefined
   const rawDate = text(body.seasonDate, 10)
   if (rawDate) {
-    const todayMs = parseUtcDate(today)
+    const offset = body.timezoneOffsetMinutes ?? 0
+    if (typeof offset !== 'number' || !Number.isInteger(offset) || Math.abs(offset) > 14 * 60) {
+      return { ok: false, error: 'Pick a valid season date.' }
+    }
+    const todayMs = Math.floor((Date.parse(serverTime) - offset * 60_000) / MS_PER_DAY) * MS_PER_DAY
     const dateMs = parseUtcDate(rawDate)
-    if (dateMs === null || todayMs === null) {
+    if (dateMs === null || !Number.isFinite(todayMs)) {
       return { ok: false, error: 'Pick a valid season date.' }
     }
     const diffDays = Math.round((dateMs - todayMs) / MS_PER_DAY)
