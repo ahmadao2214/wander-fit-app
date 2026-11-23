@@ -57,9 +57,7 @@ describe('PhaseTrack', () => {
       { wrapper: AllTheProviders }
     )
     const bar = getByRole('progressbar')
-    expect(bar.props.accessibilityLabel).toBe(
-      'Week 3 of 12. GPP, week 3 of 4. SPP, 4 weeks. SSP, 4 weeks.'
-    )
+    expect(bar.props.accessibilityLabel).toBe('GPP, week 3 of 4. SPP, 4 weeks. SSP, 4 weeks.')
     // The texts inside don't reach VoiceOver on their own
     expect(queryByText('Week 3 of 4')).toBeNull()
   })

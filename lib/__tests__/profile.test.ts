@@ -146,6 +146,6 @@ describe('phaseTrack', () => {
 
   it('builds one spoken label for the whole track', () => {
     const t = phaseTrack({ phase: 'GPP', week: 3, weeksPerPhase: 4, totalProgramWeeks: 12 })
-    expect(t.accessibilityLabel).toBe('Week 3 of 12. GPP, week 3 of 4. SPP, 4 weeks. SSP, 4 weeks.')
+    expect(t.accessibilityLabel).toBe('GPP, week 3 of 4. SPP, 4 weeks. SSP, 4 weeks.')
   })
 })

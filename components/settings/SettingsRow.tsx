@@ -76,7 +76,7 @@ export function SettingsRow({
       py="$3"
       gap="$3"
       items="center"
-      pressStyle={pressable ? { bg: '$surfaceHover' } : undefined}
+      pressStyle={pressable ? { bg: '$surfaceActive' } : undefined}
       onPress={onPress}
       role={pressable ? 'button' : undefined}
       accessible={factRow ? true : undefined}

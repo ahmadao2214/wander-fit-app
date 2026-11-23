@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Keyboard, Platform } from 'react-native'
 import { YStack, XStack, Text, Button, Input, Sheet, H3, Separator, Spinner } from 'tamagui'
 import { Supporting } from './Typography'
 import { X, Check, Dumbbell } from '@tamagui/lucide-icons'
@@ -146,8 +147,24 @@ export function OneRepMaxSheet({
 
   const handleSave = mode === 'single' ? handleSaveSingle : handleSaveBulk
 
-  // Snap points: taller for bulk mode
-  const snapPoints = mode === 'bulk' ? [70] : [45]
+  // The number pad has no Done key and covers the lower half of the screen, so
+  // the sheet rises while it is up and Save stays above it (AGENTS.md, "Sheet
+  // Components with Inputs").
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
+  useEffect(() => {
+    if (Platform.OS === 'web') return
+    const showSub = Keyboard.addListener('keyboardDidShow', () => setIsKeyboardVisible(true))
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => setIsKeyboardVisible(false))
+    return () => {
+      showSub.remove()
+      hideSub.remove()
+    }
+  }, [])
+
+  // Snap points: taller for bulk mode, and taller again over the keyboard
+  const restingSnap = mode === 'bulk' ? 70 : 45
+  const keyboardSnap = mode === 'bulk' ? 92 : 80
+  const snapPoints = [isKeyboardVisible ? keyboardSnap : restingSnap]
 
   return (
     <Sheet

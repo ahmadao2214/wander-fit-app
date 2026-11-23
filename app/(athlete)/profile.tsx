@@ -11,7 +11,7 @@ import { SentryDiagnosticsCard } from '../../components/SentryDiagnosticsCard'
 import { ReplayExcludedSurface } from '../../components/ReplayExcludedSurface'
 import { RatingFeedbackSheet, BugReportSheet, FeatureRequestSheet } from '../../components/feedback'
 import { ProfileHeader } from '../../components/profile/ProfileHeader'
-import { MaxTiles, MAX_TILES_OVERLAP } from '../../components/profile/MaxTiles'
+import { MaxTiles, MaxTilesPlaceholder, MAX_TILES_OVERLAP } from '../../components/profile/MaxTiles'
 import { SettingsGroup } from '../../components/settings/SettingsGroup'
 import { SettingsRow } from '../../components/settings/SettingsRow'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -34,6 +34,8 @@ export default function ProfilePage() {
 
   // Sheet state for editing 1RM
   const [maxSheetOpen, setMaxSheetOpen] = useState(false)
+  // All three lifts at once, for an athlete who has entered none
+  const [bulkMaxOpen, setBulkMaxOpen] = useState(false)
   const [selectedExercise, setSelectedExercise] = useState<{
     _id: string
     name: string
@@ -75,6 +77,9 @@ export default function ProfilePage() {
 
   const latestIntake = intakeHistory?.[0]
 
+  // Undefined is still loading; null is no program. While loading, the phase
+  // block and the maxes card keep their places so the page doesn't jump.
+  const loadingProgram = programState === undefined || coreLiftExercises === undefined
   // No program, no maxes card: the header has no phase track to sit under
   const hasMaxes =
     Boolean(programState) && coreLiftExercises !== undefined && coreLiftExercises.length > 0
@@ -102,22 +107,26 @@ export default function ProfilePage() {
             }}
             name={user.name}
             topInset={insets.top}
-            overlap={hasMaxes ? MAX_TILES_OVERLAP : 0}
+            overlap={hasMaxes || loadingProgram ? MAX_TILES_OVERLAP : 0}
+            loading={programState === undefined}
             program={programState}
           />
 
           <YStack
             gap="$5"
             px="$4"
-            pt={hasMaxes ? 0 : '$5'}
+            pt={hasMaxes || loadingProgram ? 0 : '$5'}
             pb={insets.bottom + 100}
             maxW={800}
             width="100%"
             self="center"
           >
-            {hasMaxes ? (
+            {loadingProgram ? (
+              <MaxTilesPlaceholder />
+            ) : hasMaxes ? (
               <MaxTiles
                 lifts={coreLiftExercises}
+                onAddAll={() => setBulkMaxOpen(true)}
                 onPress={(slug) => {
                   const exercise = coreLiftExercises.find((lift) => lift.slug === slug)
                   if (!exercise) return
@@ -235,6 +244,21 @@ export default function ProfilePage() {
             onComplete={() => setSelectedExercise(null)}
           />
         )}
+
+        {bulkMaxOpen && coreLiftExercises ? (
+          <OneRepMaxSheet
+            open={bulkMaxOpen}
+            onOpenChange={setBulkMaxOpen}
+            mode="bulk"
+            exercises={coreLiftExercises.map((lift) => ({
+              _id: lift._id,
+              name: lift.name,
+              slug: lift.slug,
+              currentMax: lift.currentMax,
+            }))}
+            onComplete={() => setBulkMaxOpen(false)}
+          />
+        ) : null}
 
         {/* Feedback Sheets (submit + confirmation toast only) */}
         {ratingSheetOpen ? (

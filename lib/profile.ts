@@ -47,7 +47,7 @@ export interface PhaseTrack {
   totalWeeks: number
   /** "Week 3 of 12" */
   summary: string
-  /** "Week 3 of 12. GPP, week 3 of 4. SPP, 4 weeks. SSP, 4 weeks." */
+  /** "GPP, week 3 of 4. SPP, 4 weeks. SSP, 4 weeks." */
   accessibilityLabel: string
 }
 
@@ -108,10 +108,11 @@ export function phaseTrack({
 
   const overallWeek = Math.min(currentIndex * perPhase + clampedWeek, totalWeeks)
   const summary = `Week ${overallWeek} of ${totalWeeks}`
-  const accessibilityLabel = [
-    summary,
-    ...segments.map((s) => `${s.phase}, ${s.current ? s.label.replace(/^Week/, 'week') : s.label}`),
-  ].join('. ')
+  // The header shows the overall week as text right above the track, so the
+  // spoken label is the three phases only and VoiceOver doesn't say it twice.
+  const accessibilityLabel = segments
+    .map((s) => `${s.phase}, ${s.current ? s.label.replace(/^Week/, 'week') : s.label}`)
+    .join('. ')
 
   return {
     segments,

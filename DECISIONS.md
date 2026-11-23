@@ -4,6 +4,10 @@ Routine calls the team made without asking, one line each, newest first. Anythin
 
 Format: `YYYY-MM-DD · who · decision · why`.
 
+- 2026-11-23 · Lead · With no max set, the maxes card is one "Add your maxes" row that opens all three lifts at once (Profile refresh) · three bold "Add"s were the loudest thing on a new athlete's Profile; the sheet's bulk mode existed and had no caller.
+- 2026-11-23 · Lead · The 1RM sheet rises to 80% (one lift) or 92% (all three) while the keyboard is up (Profile refresh) · the number pad has no Done key and covered Save; this follows AGENTS.md's sheet-with-inputs pattern.
+- 2026-11-23 · Lead · Pressed rows and tiles use `$surfaceActive`, on App settings too (Profile refresh) · `$surfaceHover` is #F8FAFC on white, which nobody can see under a thumb.
+- 2026-11-23 · Lead · Profile holds the phase block's and the maxes card's places while the program loads (Profile refresh) · they used to arrive late and push the page down about 150pt.
 - 2026-11-23 · Lead · The header counts weeks to the end of the three phases (weeksPerPhase × 3), not to totalProgramWeeks (Profile refresh) · the season countdown can be longer or shorter than the scheduled program; Astra showed "Week 12 of 14" with every bar full.
 - 2026-11-23 · Lead · Profile's four tappable rows set no aria-label (`nameFromContent`) (Profile refresh) · Maestro web reports a labelled element by its label, and four flows find these rows by testID.
 - 2026-11-23 · Lead · Email is a row with the address on its own line, and the header says the day ("Week 6 of 12 · Day 3") (Profile refresh) · Astra: a long address was cut off beside its label, and the old screen showed the day.

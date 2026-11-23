@@ -34,7 +34,7 @@ export function PhaseTrack({
   week,
   weeksPerPhase,
   totalProgramWeeks,
-  trackColor = 'rgba(255,255,255,0.14)',
+  trackColor = 'rgba(255,255,255,0.24)',
   fillColor = '$brand5',
   currentTextColor = '#F8FAFC',
   textColor = '#94A3B8',

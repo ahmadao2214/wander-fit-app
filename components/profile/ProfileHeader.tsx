@@ -16,6 +16,9 @@ const TRACK_FILL = '#60A5FA'
  */
 const OVERSCROLL = 400
 
+/** The phase line (20), its gap (10) and the track (6 + 8 + 20 + 16), at default text size. */
+const PHASE_BLOCK_HEIGHT = 80
+
 export interface ProfileHeaderProps {
   name: string
   /** Space for the status bar and notch. */
@@ -24,6 +27,8 @@ export interface ProfileHeaderProps {
   overlap?: number
   /** Reports the header's visible height (without the hidden overscroll band). */
   onHeight?: (height: number) => void
+  /** The program hasn't answered yet: hold the phase block's place so nothing jumps. */
+  loading?: boolean
   program?: {
     phase: string
     week: number
@@ -44,6 +49,7 @@ export function ProfileHeader({
   topInset,
   overlap = 0,
   onHeight,
+  loading = false,
   program,
 }: ProfileHeaderProps) {
   // Navy on the dark theme's navy page has no edge, so dark goes one step deeper
@@ -70,7 +76,13 @@ export function ProfileHeader({
             accessibilityRole="header"
             fontFamily="$heading"
             fontSize={48}
-            lineHeight={44}
+            // The line is as tall as the type, so accented capitals aren't clipped;
+            // the margin takes back the space Bebas leaves under its caps.
+            lineHeight={48}
+            mb={-4}
+            numberOfLines={2}
+            adjustsFontSizeToFit
+            minimumFontScale={0.7}
             letterSpacing={0.5}
             color={ON_NAVY}
             testID="profile-name"
@@ -82,8 +94,9 @@ export function ProfileHeader({
 
         {program ? (
           <YStack gap="$2.5">
-            <XStack items="flex-start" justify="space-between" gap="$3">
-              <Supporting flex={1} numberOfLines={2} color={ON_NAVY_MUTED}>
+            {/* Side by side when both fit; at larger text sizes the week drops to its own line */}
+            <XStack flexWrap="wrap" justify="space-between" columnGap="$3" rowGap="$1">
+              <Supporting shrink={1} color={ON_NAVY_MUTED}>
                 {phaseName ?? program.phase}
               </Supporting>
               <Supporting color={ON_NAVY} fontWeight="600" style={numeric} testID="profile-week">
@@ -98,6 +111,8 @@ export function ProfileHeader({
               fillColor={TRACK_FILL}
             />
           </YStack>
+        ) : loading ? (
+          <YStack height={PHASE_BLOCK_HEIGHT} testID="profile-phase-loading" />
         ) : null}
       </YStack>
     </YStack>
