@@ -257,6 +257,45 @@ describe('e2e repeated-week persona', () => {
   })
 })
 
+describe('e2e phase-end persona', () => {
+  it('inspect shows the pending check-in, then the repeat the reassessment flow chooses', async () => {
+    const t = newTest()
+    await seedBasketball(t)
+    await t.mutation(internal.e2e.provision, { ...persona, state: 'phase-end' })
+
+    expect(await t.query(internal.e2e.inspect, { email })).toMatchObject({
+      phase: 'GPP',
+      reassessmentPendingForPhase: 'GPP',
+      sppUnlocked: false,
+      reassessments: [],
+    })
+
+    // What the reassessment flow submits: Just right, maxes skipped, Repeat GPP
+    const asPersona = t.withIdentity({ subject: persona.clerkId, email })
+    await asPersona.mutation(api.userPrograms.completeReassessment, {
+      phaseDifficulty: 'just_right',
+      maxesUpdated: false,
+      decision: 'repeat',
+    })
+
+    expect(await t.query(internal.e2e.inspect, { email })).toMatchObject({
+      phase: 'GPP',
+      week: 1,
+      day: 1,
+      reassessmentPendingForPhase: null,
+      sppUnlocked: false,
+      reassessments: [
+        {
+          completedPhase: 'GPP',
+          decision: 'repeat',
+          phaseDifficulty: 'just_right',
+          maxesUpdated: false,
+        },
+      ],
+    })
+  })
+})
+
 describe('e2e template seed', () => {
   // Mirrors scripts/verify/run.mjs: seed:seedAll, then the generator per category.
   it('gives the e2e database the generated Day 1 that production serves', async () => {
