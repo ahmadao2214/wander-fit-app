@@ -269,7 +269,7 @@ bun run test                 # every test once (both projects)
 bun run test -- <pattern>    # specific files
 bun run test:watch           # watch mode
 bun run test:ci              # CI mode (jest --ci); the blocking CI job
-bun run typecheck            # tsc --noEmit over the whole project, tests included
+bun run typecheck            # tsgo --noEmit over the whole project, tests included (typecheck:tsc for tsc fallback)
 ```
 
 Before opening a PR, `bun run test:ci` and `bun run typecheck` should both pass; CI blocks on both. Bun is the only package manager (`bun install`; the lockfile is `bun.lock`).
