@@ -39,16 +39,19 @@ const mockSetActive = jest.fn(async () => {
     firstName: 'Sam',
   }
 })
-const mockSSO = jest.fn()
+const mockStartSSOFlow = jest.fn(async (_args: unknown) => ({}))
 const mockRedirect = jest.fn()
 jest.mock('@clerk/clerk-expo', () => ({
   useSignUp: () => ({ isLoaded: true, signUp: mockSignUp, setActive: mockSetActive }),
   useSignIn: () => ({ signIn: { authenticateWithRedirect: mockRedirect } }),
-  useSSO: () => ({ startSSOFlow: mockSSO }),
+  useSSO: () => ({ startSSOFlow: mockStartSSOFlow }),
   useUser: () => ({ user: mockSignedIn }),
   useClerk: () => mockClerk,
 }))
-jest.mock('expo-auth-session', () => ({ makeRedirectUri: () => 'myapp://oauth' }))
+jest.mock('expo-auth-session', () => ({
+  makeRedirectUri: (options?: { scheme?: string; path?: string }) =>
+    options?.scheme ? `${options.scheme}://${options.path}` : 'http://localhost:8081/',
+}))
 
 const mockCreateUser = jest.fn(async (_args: unknown) => 'u1')
 const mockCompleteIntake = jest.fn(async (_args: unknown) => ({ keptExistingProgram: false }))
@@ -108,21 +111,64 @@ beforeEach(async () => {
 })
 
 describe('Save your plan', () => {
-  it('offers email, with no skip and no role question', async () => {
+  it('offers Apple, Google and email, with no skip and no role question', async () => {
     await show()
-    expect(screen.getByTestId('save-plan-email')).toBeTruthy()
+    expect(screen.getByText('Continue with Apple')).toBeTruthy()
+    expect(screen.getByText('Continue with Google')).toBeTruthy()
+    expect(screen.getByText('Continue with email')).toBeTruthy()
     expect(screen.queryByText(/skip/i)).toBeNull()
     expect(screen.queryByText(/not now/i)).toBeNull()
     expect(screen.queryByText(/coach|trainer|role/i)).toBeNull()
-    // Apple appears only once it's enabled in Clerk.
-    expect(screen.queryByTestId('save-plan-apple')).toBeNull()
+  })
+
+  it.each([
+    ['save-plan-apple', 'oauth_apple'],
+    ['save-plan-google', 'oauth_google'],
+  ])('%s starts %s and returns to wanderfit://oauth', async (testID, strategy) => {
+    await show()
+    await press(testID)
+    expect(mockStartSSOFlow).toHaveBeenCalledWith({ strategy, redirectUrl: 'wanderfit://oauth' })
+    // No session came back, so nothing is saved and the draft stays.
+    expect(mockCompleteIntake).not.toHaveBeenCalled()
+  })
+
+  it('saves the plan after a new Google account signs up', async () => {
+    mockStartSSOFlow.mockResolvedValueOnce({
+      createdSessionId: 'sess_g',
+      setActive: mockSetActive,
+      signUp: { emailAddress: 'g@b.co', firstName: 'Gia', lastName: '' },
+    } as never)
+    await show()
+    await press('save-plan-google')
+    expect(mockSetActive).toHaveBeenCalledWith({ session: 'sess_g' })
+    expect(mockCreateUser).toHaveBeenCalledWith(expect.objectContaining({ name: 'Gia' }))
+    expect(mockCompleteIntake).toHaveBeenCalled()
+    expect(mockReplace).toHaveBeenCalledWith(
+      expect.objectContaining({ pathname: '/(athlete)/program' })
+    )
+  })
+
+  it('says so when Apple sign-in does not finish', async () => {
+    mockStartSSOFlow.mockRejectedValueOnce(new Error('cancelled'))
+    jest.spyOn(console, 'error').mockImplementation(() => {})
+    await show()
+    await press('save-plan-apple')
+    expect(screen.getByTestId('save-plan-error').props.children).toMatch(
+      /Apple sign-in didn't finish/
+    )
   })
 
   it('activates a native Google session before saving the draft', async () => {
-    mockSSO.mockResolvedValueOnce({ createdSessionId: 'sess_google', setActive: mockSetActive })
+    mockStartSSOFlow.mockResolvedValueOnce({
+      createdSessionId: 'sess_google',
+      setActive: mockSetActive,
+    })
     await show()
     await press('save-plan-google')
-    expect(mockSSO).toHaveBeenCalledWith({ strategy: 'oauth_google', redirectUrl: 'myapp://oauth' })
+    expect(mockStartSSOFlow).toHaveBeenCalledWith({
+      strategy: 'oauth_google',
+      redirectUrl: 'wanderfit://oauth',
+    })
     expect(mockSetActive).toHaveBeenCalledWith({ session: 'sess_google' })
     expect(mockCompleteIntake).toHaveBeenCalledTimes(1)
     expect(mockReplace).toHaveBeenCalledWith({
@@ -132,7 +178,10 @@ describe('Save your plan', () => {
   })
 
   it('preserves the draft when Google is dismissed', async () => {
-    mockSSO.mockResolvedValueOnce({ createdSessionId: null, authSessionResult: { type: 'cancel' } })
+    mockStartSSOFlow.mockResolvedValueOnce({
+      createdSessionId: null,
+      authSessionResult: { type: 'cancel' },
+    })
     await show()
     await press('save-plan-google')
     expect(mockCompleteIntake).not.toHaveBeenCalled()
