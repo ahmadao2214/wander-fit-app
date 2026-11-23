@@ -7,8 +7,18 @@ backend=${CONVEX_LOCAL_BACKEND:-$HOME/.cache/convex/binaries/precompiled-2026-10
 umask 077
 scratch=$(mktemp -d)
 cleanup() {
+  local status=$?
   if [[ -n ${backend_pid:-} ]]; then kill "$backend_pid" 2>/dev/null || :; wait "$backend_pid" 2>/dev/null || :; fi
+  if ((status != 0)) && [[ -s "$scratch/backend.log" ]]; then
+    tail -n 40 "$scratch/backend.log" | INSTANCE_SECRET="$secret" ADMIN_KEY="$key" node -e '
+      let log = require("node:fs").readFileSync(0, "utf8");
+      for (const credential of [process.env.ADMIN_KEY, process.env.INSTANCE_SECRET]) {
+        if (credential) log = log.replaceAll(credential, "[redacted]");
+      }
+      process.stderr.write(log.slice(-8192));' || :
+  fi
   rm -rf "$scratch"
+  return "$status"
 }
 trap cleanup EXIT
 trap 'exit 1' INT TERM
