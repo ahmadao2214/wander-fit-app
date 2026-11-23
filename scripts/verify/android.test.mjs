@@ -3,7 +3,10 @@ import path from 'node:path'
 import { parse } from 'yaml'
 import {
   ANDROID_FLOWS,
+  androidSuiteSteps,
   appId,
+  evidenceScrubbed,
+  passwordEchoOff,
   buildEnv,
   maestroArgs,
   root,
@@ -61,13 +64,13 @@ describe('buildEnv', () => {
 
 describe('selectAndroidFlows', () => {
   it('runs every Android flow by default and rejects unknown names', () => {
-    expect(selectAndroidFlows()).toEqual(ANDROID_FLOWS)
+    expect(selectAndroidFlows()).toEqual(Object.keys(ANDROID_FLOWS))
     expect(selectAndroidFlows(['native-launch', 'native-launch'])).toEqual(['native-launch'])
     expect(() => selectAndroidFlows(['nope'])).toThrow(/Not an Android flow: nope/)
   })
 
   it('only lists flows that exist and target the app', () => {
-    for (const flow of ANDROID_FLOWS) {
+    for (const flow of Object.keys(ANDROID_FLOWS)) {
       const file = path.join(root, '.maestro/native', `${flow}.yaml`)
       const header = fs.readFileSync(file, 'utf8').split('\n---')[0]
       expect({ flow, appId: parse(header).appId }).toEqual({ flow, appId })
@@ -81,6 +84,45 @@ describe('maestroArgs', () => {
     expect(args.slice(0, 3)).toEqual(['test', '--platform', 'android'])
     expect(args).toContain('/out/native-launch/junit.xml')
     expect(args.at(-1)).toBe(path.join(root, '.maestro/native/native-launch.yaml'))
+    expect(args.join(' ')).toContain('-e VERIFY_URL=native')
+    expect(args.join(' ')).not.toContain('PERSONA_')
+  })
+
+  it("passes a persona's credentials as Maestro env", () => {
+    const args = maestroArgs('sign-in', '/out/sign-in', { email: 'a@b.c', password: 'pw' })
+    expect(args.join(' ')).toContain('-e PERSONA_EMAIL=a@b.c -e PERSONA_PASSWORD=pw')
+    expect(args.at(-1)).toBe(path.join(root, '.maestro/native/sign-in.yaml'))
+  })
+})
+
+describe('androidSuiteSteps', () => {
+  const calls = []
+  const io = {
+    createPersona: (mode) => {
+      calls.push(['create', mode])
+      return { email: 'p@x', password: 'pw' }
+    },
+    runMaestro: (flow, persona) => calls.push(['maestro', flow, persona?.email ?? null]),
+    redact: () => {},
+    deletePersona: () => {},
+  }
+
+  it('signs a seeded persona in for sign-in and none for the signed-out launch', () => {
+    const steps = androidSuiteSteps(io)
+    expect(steps.createPersona('native-launch')).toBe(null)
+    const persona = steps.createPersona('sign-in')
+    steps.drive('sign-in', persona)
+    expect(calls).toEqual([
+      ['create', 'onboarded'],
+      ['maestro', 'sign-in', 'p@x'],
+    ])
+  })
+
+  it('withholds the evidence upload when any password scrub failed', () => {
+    expect(
+      evidenceScrubbed([{ status: 'passed' }, { status: 'failed', error: 'Maestro exited 1' }])
+    ).toBe(true)
+    expect(evidenceScrubbed([{ status: 'failed', error: 'redact failed: boom' }])).toBe(false)
   })
 })
 
@@ -100,9 +142,22 @@ describe('android-e2e workflow', () => {
     expect(job.if).toContain('github.event.pull_request.head.repo.full_name == github.repository')
   })
 
-  it('never deploys or takes the e2e-backend lock, and gets no secrets', () => {
-    expect(JSON.stringify(workflow)).not.toMatch(/e2e-backend|secrets\./)
+  it('never deploys or takes the e2e-backend lock', () => {
+    expect(JSON.stringify(workflow)).not.toMatch(/e2e-backend/)
     expect(job.steps.some((step) => /run\.mjs deploy/.test(step.run || ''))).toBe(false)
+  })
+
+  it('gives secrets only to the persona steps, never to the APK build', () => {
+    const withSecrets = job.steps
+      .filter((step) => /secrets\./.test(JSON.stringify(step)))
+      .map((step) => step.name)
+    expect(withSecrets).toEqual(['Run Android flows', 'Tear down personas'])
+    expect(JSON.stringify(job.env)).not.toMatch(/secrets\./)
+    const teardown = job.steps.find((step) => step.name === 'Tear down personas')
+    expect({ if: teardown.if, run: teardown.run }).toEqual({
+      if: 'always()',
+      run: 'node scripts/verify/run.mjs teardown',
+    })
   })
 
   it('builds the APK, runs the flows on an emulator, and uploads evidence', () => {
@@ -117,8 +172,20 @@ describe('android-e2e workflow', () => {
       cores: 4,
       ram: '4096M',
     })
-    expect(job.steps.find((step) => step.name === 'Upload Android evidence').if).toBe(
-      '${{ !cancelled() }}'
-    )
+    const upload = job.steps.find((step) => step.name === 'Upload Android evidence')
+    expect(upload.if).toBe("always() && hashFiles('e2e-artifacts/android/.scrubbed') != ''")
+    expect(upload.with.path).toBe('e2e-artifacts/android/')
+  })
+})
+
+describe('passwordEchoOff', () => {
+  it('only treats an explicit 0 as off; unset or 1 echoes', () => {
+    expect(passwordEchoOff('0')).toBe(true)
+    expect(passwordEchoOff('0\n')).toBe(true)
+    expect([passwordEchoOff('1'), passwordEchoOff('null'), passwordEchoOff('')]).toEqual([
+      false,
+      false,
+      false,
+    ])
   })
 })

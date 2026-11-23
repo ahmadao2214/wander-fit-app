@@ -11,6 +11,15 @@ import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import {
+  createPersona,
+  deletePersona,
+  readPending,
+  redactEvidence,
+  releasePersonaFile,
+  runSuite,
+  writePending,
+} from './run.mjs'
 import { assertConvexUrlAllowed } from './targets.mjs'
 
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
@@ -19,10 +28,13 @@ export const apkPath = path.join(root, 'dist-android/app-release.apk')
 export const evidenceDir = path.join(root, 'e2e-artifacts/android')
 const nativeFlowDir = path.join(root, '.maestro/native')
 
-// Flows that start from a clean, signed-out launch and need no setup. The
-// other native flows assume a signed-in athlete on Today; they join this list
-// once the runner signs a persona in.
-export const ANDROID_FLOWS = ['native-launch']
+// Each Android flow and the persona it needs. null means no account: the flow
+// starts signed out. Seeded modes go through persona create, like the web
+// runner. The other native flows join once their setup is automated.
+export const ANDROID_FLOWS = {
+  'native-launch': null,
+  'sign-in': 'onboarded',
+}
 
 function fail(message) {
   console.error(`[android] ${message}`)
@@ -60,17 +72,20 @@ export function buildEnv(source = process.env) {
 
 // Pure: flows to run. Unknown names fail loudly instead of silently passing.
 export function selectAndroidFlows(requested = []) {
-  if (requested.length === 0) return [...ANDROID_FLOWS]
-  const unknown = requested.filter((flow) => !ANDROID_FLOWS.includes(flow))
+  const known = Object.keys(ANDROID_FLOWS)
+  if (requested.length === 0) return known
+  const unknown = requested.filter((flow) => !known.includes(flow))
   if (unknown.length > 0) {
-    throw new Error(`Not an Android flow: ${unknown.join(', ')}. Use ${ANDROID_FLOWS.join(', ')}.`)
+    throw new Error(`Not an Android flow: ${unknown.join(', ')}. Use ${known.join(', ')}.`)
   }
   return [...new Set(requested)]
 }
 
 // Pure: the maestro test command for one flow, with its own evidence folder.
-export function maestroArgs(flow, outDir) {
-  return [
+// VERIFY_URL=native resolves the `url:` header the shared subflows carry; the
+// entry's appId still picks the device driver.
+export function maestroArgs(flow, outDir, persona = null) {
+  const args = [
     'test',
     '--platform',
     'android',
@@ -83,8 +98,54 @@ export function maestroArgs(flow, outDir) {
     '--debug-output',
     path.join(outDir, 'debug'),
     '--flatten-debug-output',
-    path.join(nativeFlowDir, `${flow}.yaml`),
+    '-e',
+    'VERIFY_URL=native',
   ]
+  if (persona) {
+    args.push('-e', `PERSONA_EMAIL=${persona.email}`, '-e', `PERSONA_PASSWORD=${persona.password}`)
+  }
+  args.push(path.join(nativeFlowDir, `${flow}.yaml`))
+  return args
+}
+
+// Pure: Android reports the setting as "0" when password echo is off. An unset
+// setting ("null") means the device default, which echoes.
+export function passwordEchoOff(value) {
+  return String(value ?? '').trim() === '0'
+}
+
+function readShowPassword() {
+  const result = spawnSync('adb', ['shell', 'settings', 'get', 'system', 'show_password'], {
+    cwd: root,
+    encoding: 'utf8',
+  })
+  // null on failure, so a failed read is never mistaken for Android's "null"
+  // (unset) answer.
+  return result.status === 0 ? (result.stdout || '').trim() : null
+}
+
+// Pure: true unless some flow's password scrub failed.
+export function evidenceScrubbed(results) {
+  return !results.some((result) => /redact failed/.test(result.error || ''))
+}
+
+// Same lifecycle as the web runner (runSuite): create the flow's persona,
+// drive it, scrub its password from the evidence, delete the account, and
+// keep a pending record if any cleanup step fails.
+export function androidSuiteSteps(io) {
+  return {
+    createPersona: (flow) => {
+      console.log(`\n== ${flow} (android) ==`)
+      const mode = ANDROID_FLOWS[flow]
+      return mode ? io.createPersona(mode) : null
+    },
+    drive: (flow, persona) => io.runMaestro(flow, persona),
+    redact: (flow, persona) => io.redact(flow, persona),
+    deletePersona: io.deletePersona,
+    readPending: io.readPending,
+    writePending: io.writePending,
+    releasePersona: io.releasePersona,
+  }
 }
 
 function run(cmd, args, options = {}) {
@@ -141,21 +202,81 @@ function runFlows(requested) {
   if (process.env.CI) {
     run('adb', ['shell', 'settings', 'put', 'global', 'hide_error_dialogs', '1'])
   }
+  // Start clean, so a stale scrub marker never vouches for this run.
+  fs.rmSync(evidenceDir, { recursive: true, force: true })
   const installed = run('adb', ['install', '-r', apkPath])
   if (installed.status !== 0) fail(`adb install exited ${installed.status ?? 1}`)
   const maestro = maestroBin()
-  const results = []
-  for (const flow of flows) {
-    const outDir = path.join(evidenceDir, flow)
-    fs.rmSync(outDir, { recursive: true, force: true })
-    fs.mkdirSync(outDir, { recursive: true })
-    console.log(`\n== ${flow} (android) ==`)
-    const started = Date.now()
-    const result = run(maestro, maestroArgs(flow, outDir))
-    const status = result.status === 0 ? 'passed' : 'failed'
-    results.push({ flow, platform: 'android', status, seconds: (Date.now() - started) / 1000 })
+  const env = { ...process.env, MAESTRO_CLI_NO_ANALYTICS: '1' }
+  delete env.PERSONA_PASSWORD
+  const io = {
+    createPersona,
+    runMaestro: (flow, persona) => {
+      const outDir = path.join(evidenceDir, flow)
+      fs.rmSync(outDir, { recursive: true, force: true })
+      fs.mkdirSync(outDir, { recursive: true })
+      if (persona) console.log(`driving ${flow} for ${persona.email}`)
+      const result = spawnSync(maestro, maestroArgs(flow, outDir, persona), {
+        cwd: root,
+        stdio: 'inherit',
+        env,
+      })
+      if (result.status !== 0) throw new Error(`Maestro exited ${result.status ?? 1}`)
+    },
+    redact: (flow, persona) => redactEvidence(path.join(evidenceDir, flow), persona.password),
+    deletePersona,
+    readPending,
+    writePending,
+    releasePersona: (persona) => releasePersonaFile(persona.email),
   }
+  // Android flashes each typed password character, which a recording or
+  // screenshot would capture, and redactEvidence can't scrub images or video.
+  // Turn the echo off and prove it before any flow types a password. All
+  // fallible setup (the install) is done by now, and the finally restores the
+  // device's own value whatever happens.
+  const needsPassword = flows.some((flow) => ANDROID_FLOWS[flow])
+  const previousEcho = needsPassword ? readShowPassword() : null
+  if (needsPassword && previousEcho === null) {
+    fail('Could not read Android password echo (show_password); refusing to type a password.')
+  }
+  let results
+  try {
+    if (needsPassword) {
+      run('adb', ['shell', 'settings', 'put', 'system', 'show_password', '0'])
+      if (!passwordEchoOff(readShowPassword())) {
+        throw new Error(
+          'Could not turn off Android password echo (show_password); refusing to type a password.'
+        )
+      }
+    }
+    results = runSuite(flows, androidSuiteSteps(io)).map((result) => ({
+      ...result,
+      platform: 'android',
+      artifact: 'e2e-android',
+    }))
+  } finally {
+    if (needsPassword && !passwordEchoOff(previousEcho)) {
+      // Android answers "null" when the setting is unset (device default).
+      const restored = run(
+        'adb',
+        previousEcho === 'null'
+          ? ['shell', 'settings', 'delete', 'system', 'show_password']
+          : ['shell', 'settings', 'put', 'system', 'show_password', previousEcho]
+      )
+      // `settings` can report a provider failure with exit 0, so read it back.
+      if (restored.status !== 0 || readShowPassword() !== previousEcho) {
+        console.error(
+          `[android] Could not restore show_password to ${previousEcho}; set it back on the device.`
+        )
+        process.exitCode = 1
+      }
+    }
+  }
+  fs.mkdirSync(evidenceDir, { recursive: true })
   fs.writeFileSync(path.join(evidenceDir, 'results.json'), `${JSON.stringify(results, null, 2)}\n`)
+  // CI uploads the evidence only when this marker exists, like the web runner:
+  // a failed password scrub must never be uploaded.
+  if (evidenceScrubbed(results)) fs.writeFileSync(path.join(evidenceDir, '.scrubbed'), '')
   for (const result of results) {
     console.log(
       `${result.status === 'passed' ? 'PASS' : 'FAIL'} ${result.flow} (${result.seconds}s)`

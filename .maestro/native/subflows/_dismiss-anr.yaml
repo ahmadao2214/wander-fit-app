@@ -1,0 +1,10 @@
+# A slow emulator can show a system "<app> isn't responding" dialog over the
+# app (seen with Pixel Launcher and Digital Wellbeing). Tap Wait when one is up,
+# so the journey tests the app, not the emulator. No dialog, no-op.
+appId: com.offseason.asrafit
+---
+- runFlow:
+    when:
+      visible: ".*isn't responding"
+    commands:
+      - tapOn: "Wait"

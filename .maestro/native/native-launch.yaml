@@ -3,6 +3,7 @@ appId: com.offseason.asrafit
 # A signed-out launch opens the First Run, and a relaunch comes back to it.
 - launchApp:
     clearState: true
+- runFlow: subflows/_dismiss-anr.yaml
 - extendedWaitUntil:
     visible: "Let's build your plan for this season."
     timeout: 90000

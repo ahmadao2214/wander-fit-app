@@ -94,8 +94,22 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: node scripts/verify/android.mjs run
+        # Secrets only reach this step: persona create and delete need them.
+        # The APK build above never sees them.
+        env:
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          CONVEX_DEPLOY_KEY_E2E: ${{ secrets.CONVEX_DEPLOY_KEY_E2E }}
+      # Deletes any persona a failed run left behind (persona-pending.json).
+      - name: Tear down personas
+        if: always()
+        env:
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          CONVEX_DEPLOY_KEY_E2E: ${{ secrets.CONVEX_DEPLOY_KEY_E2E }}
+        run: node scripts/verify/run.mjs teardown
+      # The marker is written only after every password scrub succeeds, so
+      # unscrubbed evidence is never uploaded.
       - name: Upload Android evidence
-        if: ${{ !cancelled() }}
+        if: always() && hashFiles('e2e-artifacts/android/.scrubbed') != ''
         uses: actions/upload-artifact@v4
         with:
           name: e2e-android

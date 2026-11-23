@@ -639,7 +639,7 @@ function maskPassword(password) {
   if (process.env.GITHUB_ACTIONS === 'true') console.log(`::add-mask::${password}`)
 }
 
-function createPersona(state) {
+export function createPersona(state) {
   const result = spawnSync(
     process.execPath,
     ['scripts/verify/persona.mjs', 'create', '--state', state, '--json'],
@@ -839,7 +839,7 @@ function inspectPersona(persona, flow) {
   return inspected
 }
 
-function deletePersona(persona) {
+export function deletePersona(persona) {
   const result = spawnSync(
     process.execPath,
     ['scripts/verify/persona.mjs', 'delete', persona.email],
@@ -855,7 +855,7 @@ function deletePersona(persona) {
 // Drop persona-latest.json only after both the scrub and the account delete
 // have succeeded. The next create overwrites that file, so a half-finished
 // persona has to live in persona-pending.json instead.
-function releasePersonaFile(email) {
+export function releasePersonaFile(email) {
   if (!email || !fs.existsSync(personaFile)) return
   const current = JSON.parse(fs.readFileSync(personaFile, 'utf8'))
   if (current.email === email) fs.rmSync(personaFile, { force: true })
@@ -904,12 +904,14 @@ function scrubMarker(dir) {
   return path.join(dir, '.scrubbed')
 }
 
+// Folders whose upload is gated on a .scrubbed marker: each web flow's folder,
+// and the Android run's one folder (scripts/verify/android.mjs).
 function evidenceDirs() {
   if (!fs.existsSync(artifactsDir)) return []
-  return fs
-    .readdirSync(artifactsDir)
-    .map((name) => path.join(artifactsDir, name, 'web'))
-    .filter((dir) => fs.existsSync(dir))
+  return [
+    ...fs.readdirSync(artifactsDir).map((name) => path.join(artifactsDir, name, 'web')),
+    path.join(artifactsDir, 'android'),
+  ].filter((dir) => fs.existsSync(dir))
 }
 
 const binaryEvidence = /\.(png|jpe?g|gif|webp|mp4|webm|mov|zip)$/i
