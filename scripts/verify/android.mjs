@@ -135,6 +135,9 @@ function runFlows(requested) {
     fail(error.message)
   }
   if (!fs.existsSync(apkPath)) fail(`no APK at ${path.relative(root, apkPath)}; run build first`)
+  // A system "isn't responding" dialog would cover the app and fail the flow
+  // for a reason that has nothing to do with it.
+  run('adb', ['shell', 'settings', 'put', 'global', 'hide_error_dialogs', '1'])
   const installed = run('adb', ['install', '-r', apkPath])
   if (installed.status !== 0) fail(`adb install exited ${installed.status ?? 1}`)
   const maestro = maestroBin()

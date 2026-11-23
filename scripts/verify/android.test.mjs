@@ -111,6 +111,7 @@ describe('android-e2e workflow', () => {
     const emulator = job.steps.find((step) => step.name === 'Run Android flows')
     expect(emulator.uses).toMatch(/^reactivecircus\/android-emulator-runner@/)
     expect(emulator.with.script).toBe('node scripts/verify/android.mjs run')
+    expect(emulator.with.target).toMatch(/_atd$/)
     expect(job.steps.find((step) => step.name === 'Upload Android evidence').if).toBe(
       '${{ !cancelled() }}'
     )
