@@ -176,6 +176,18 @@ describe('android-e2e workflow', () => {
     expect(upload.if).toBe("always() && hashFiles('e2e-artifacts/android/.scrubbed') != ''")
     expect(upload.with.path).toBe('e2e-artifacts/android/')
   })
+
+  it('reports failures last, with the job token and issues: write on this job only', () => {
+    const reportStep = job.steps.at(-1)
+    expect(reportStep).toEqual({
+      name: 'Report failures',
+      if: '${{ !cancelled() }}',
+      env: { GH_TOKEN: '${{ github.token }}', GH_REPO: '${{ github.repository }}' },
+      run: 'node scripts/verify/report-failures.mjs',
+    })
+    expect(job.permissions).toEqual({ contents: 'read', issues: 'write' })
+    expect(workflow.permissions).toEqual({ contents: 'read' })
+  })
 })
 
 describe('passwordEchoOff', () => {

@@ -32,6 +32,10 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository) }}
     runs-on: ubuntu-latest
     timeout-minutes: 75
+    # issues: write is only for the failure report at the end.
+    permissions:
+      contents: read
+      issues: write
     env:
       EXPO_PUBLIC_CONVEX_URL_E2E: ${{ vars.EXPO_PUBLIC_CONVEX_URL_E2E }}
       EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY }}
@@ -116,3 +120,12 @@ jobs:
           path: e2e-artifacts/android/
           if-no-files-found: warn
           retention-days: 14
+      # One e2e-failure issue per failed flow, or a comment on the open one.
+      # The script files only on schedule, dispatch and push; on a PR it is a
+      # dry run. Skipped on cancel, so a superseded run files nothing.
+      - name: Report failures
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: node scripts/verify/report-failures.mjs
