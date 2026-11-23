@@ -10,6 +10,10 @@ export const PLACEHOLDER_CONVEX_URL = 'https://wander-fit-e2e.invalid'
 // get a preview deployment in it; main and local runs use its dev deployment.
 export const E2E_PROJECT = 'wander-fit-e2e'
 
+// That project's dev deployment. Bulk deletes (persona sweep) run only here:
+// the blocklist above stops known app hosts, this stops every other host.
+export const E2E_DEV_HOST = 'modest-kudu-493.convex.cloud'
+
 export function convexHost(url) {
   try {
     return new URL(url).host
