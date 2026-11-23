@@ -18,7 +18,12 @@ curl --fail --location --silent --show-error \
   --retry 5 --retry-delay 3 --retry-all-errors \
   "https://github.com/mobile-dev-inc/maestro/releases/download/cli-${MAESTRO_VERSION}/maestro.zip" \
   -o "$tmp/maestro.zip"
-actual="$(sha256sum "$tmp/maestro.zip" | cut -d' ' -f1)"
+# sha256sum on Linux and recent macOS; shasum on older macOS.
+if command -v sha256sum >/dev/null 2>&1; then
+  actual="$(sha256sum "$tmp/maestro.zip" | cut -d' ' -f1)"
+else
+  actual="$(shasum -a 256 "$tmp/maestro.zip" | cut -d' ' -f1)"
+fi
 if [ "$actual" != "$MAESTRO_SHA256" ]; then
   echo "maestro.zip checksum mismatch: got $actual, want $MAESTRO_SHA256" >&2
   exit 1
