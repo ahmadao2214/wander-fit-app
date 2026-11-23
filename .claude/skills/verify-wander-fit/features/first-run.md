@@ -7,7 +7,7 @@ A signed-out athlete opens the app on the First Run (v2, "game night"; brief in 
 - `first-run-promise`: a cleared browser opens on `LET'S BUILD YOUR PLAN FOR THIS SEASON.`, not `WELCOME BACK`.
 - `first-run-intake`: `PICK YOUR SPORT` with a `POPULAR` row; searching "hockey" shows Ice Hockey and Field Hockey and folds `POPULAR` away (regression); Basketball found by search; No set season; Mon/Wed/Fri preselected (`3 SESSIONS A WEEK`, `Mon / Wed / Fri`); `AGE GROUP` Performance, then `YEARS TRAINING FOR YOUR SPORT` New to training, which starts the reveal with no Continue.
 - `first-run-reveal`: `BASKETBALL PLAN` (the category holds 3 s first; the journey reaches it again through the POWER chip: `BASKETBALL TRAINS FOR`, `Tap to go back to your plan`), `NO SET SEASON · 12-WEEK PLAN`, the phases in plain English (`Build the base`), the week line from the real GPP week 1 templates (`Day 1 · … · Lower Body A · About 28 min`) and the total `36`.
-- `first-run-save`: the sheet has no skip; email, password and Clerk's code `424242` create the account and save the program.
+- `first-run-save`: the sheet offers Google and email. The automated journey uses email, password and Clerk's code `424242` create the account and save the program.
 - `first-run-program`: the save lands on the Program tab: `Up next · <day>` for Day 1 under the same phase bar, and no warm-up.
 - `first-run-inspect`: after Maestro passes, `persona inspect` shows `intakeCompleted`, `hasProgram`, GPP week 1 day 1 and `firstLaunchRecorded: true`.
 

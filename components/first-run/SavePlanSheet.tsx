@@ -1,13 +1,15 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Keyboard, Platform, ScrollView } from 'react-native'
 import { useRouter } from 'expo-router'
-import { useClerk, useSignUp, useSSO, useUser } from '@clerk/clerk-expo'
+import { useClerk, useSignIn, useSignUp, useSSO, useUser } from '@clerk/clerk-expo'
 import * as AuthSession from 'expo-auth-session'
 import { Button, Input, Sheet, Spinner, Text, XStack, YStack } from 'tamagui'
 import { Eye, EyeOff } from '@tamagui/lucide-icons'
+import { GoogleIcon } from '../GoogleIcon'
 import { FieldLabel } from '../FieldLabel'
 import { VerificationCodeInput } from '../VerificationCodeInput'
 import { useFirstRunDraft } from '../../hooks/useFirstRunDraft'
+import { DRAFT_KEY, parseDraft } from '../../lib/firstRunDraft'
 import { analytics, type AuthMethod } from '../../lib/analytics'
 import { getSignUpFormErrors, getVerificationErrorMessage } from '../../lib/signUpErrors'
 import { useSavePlan } from './useSavePlan'
@@ -85,14 +87,17 @@ export function SavePlanSheet({
   open,
   onOpenChange,
   nextLabel,
+  returningFromGoogle = false,
 }: {
   open: boolean
+  returningFromGoogle?: boolean
   onOpenChange: (open: boolean) => void
   /** When Day 1 is ("Tomorrow"), for the Program tab's Up next card. */
   nextLabel?: string
 }) {
   const router = useRouter()
   const { isLoaded, signUp, setActive } = useSignUp()
+  const { signIn } = useSignIn()
   const { startSSOFlow } = useSSO()
   const { user: clerkUser } = useUser()
   const { signOut } = useClerk()
@@ -141,6 +146,15 @@ export function SavePlanSheet({
     }
   }
 
+  useEffect(() => {
+    if (!returningFromGoogle || !clerkUser || !draft || !open) return
+    const approved = parseDraft(sessionStorage.getItem('wf-google-save'))
+    if (!approved || JSON.stringify(approved) !== JSON.stringify(parseDraft(JSON.stringify(draft))))
+      return
+    sessionStorage.removeItem('wf-google-save')
+    void finish({}, 'google')
+  })
+
   const onSaveSignedIn = () =>
     void finish(
       {
@@ -150,15 +164,35 @@ export function SavePlanSheet({
       'existing_session'
     )
 
-  const onApple = async () => {
+  const onSocial = async (provider: 'apple' | 'google') => {
+    if (busy || !isLoaded) return
+    setBusy(true)
     setErrors({})
     try {
-      const result = await startSSOFlow({ strategy: 'oauth_apple', redirectUrl: ssoRedirect() })
+      if (provider === 'google' && Platform.OS === 'web') {
+        if (!signIn || !draft) throw new Error('Sign-in is not ready')
+        const snapshot = JSON.stringify(draft)
+        sessionStorage.setItem(DRAFT_KEY, snapshot)
+        sessionStorage.setItem('wf-google-save', snapshot)
+        await signIn.authenticateWithRedirect({
+          strategy: 'oauth_google',
+          redirectUrl: '/google-save-callback',
+          redirectUrlComplete: '/reveal?saveWith=google',
+        })
+        return
+      }
+      const result = await startSSOFlow({
+        strategy: provider === 'google' ? 'oauth_google' : 'oauth_apple',
+        redirectUrl: ssoRedirect(),
+      })
       let sessionId = result.createdSessionId
-      if (!sessionId && result.signUp) {
+      if (!sessionId && provider === 'apple' && result.signUp) {
         sessionId = (await result.signUp.create({})).createdSessionId
       }
-      if (!sessionId) return
+      if (!sessionId) {
+        if (result.authSessionResult?.type === 'success') throw new Error('Incomplete sign-in')
+        return
+      }
       await result.setActive!({ session: sessionId })
       const su = result.signUp
       await finish(
@@ -166,11 +200,13 @@ export function SavePlanSheet({
           email: su?.emailAddress ?? undefined,
           name: `${su?.firstName ?? ''} ${su?.lastName ?? ''}`.trim() || undefined,
         },
-        'apple'
+        provider
       )
-    } catch (error) {
-      console.error('Apple sign-in failed:', error)
-      setErrors({ general: "Apple sign-in didn't finish. Try again, or continue with email." })
+    } catch {
+      const name = provider === 'google' ? 'Google' : 'Apple'
+      setErrors({ general: `${name} sign-in didn't finish. Try again, or continue with email.` })
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -244,11 +280,11 @@ export function SavePlanSheet({
     }
   }
 
-  const chooseSnap = APPLE_SIGN_IN_ENABLED || clerkUser ? 42 : 34
+  const chooseSnap = APPLE_SIGN_IN_ENABLED && !clerkUser ? 54 : 44
   const snapPoints = useMemo(() => [step === 'choose' ? chooseSnap : 90], [step, chooseSnap])
 
   const close = (next: boolean) => {
-    if (step === 'saving') return
+    if (step === 'saving' || busy) return
     onOpenChange(next)
   }
 
@@ -350,13 +386,32 @@ export function SavePlanSheet({
                     fontWeight="700"
                     rounded="$4"
                     pressStyle={{ scale: 0.98 }}
-                    onPress={onApple}
+                    disabled={busy}
+                    onPress={() => onSocial('apple')}
                     testID="save-plan-apple"
                   >
                     Continue with Apple
                   </Button>
                 ) : null}
-                <PrimaryButton onPress={() => setStep('email')} testID="save-plan-email">
+                <Button
+                  size="$5"
+                  bg="white"
+                  color="#3c4043"
+                  fontFamily="$body"
+                  fontWeight="700"
+                  rounded="$4"
+                  icon={<GoogleIcon size={20} />}
+                  disabled={busy || !isLoaded}
+                  onPress={() => onSocial('google')}
+                  testID="save-plan-google"
+                >
+                  Continue with Google
+                </Button>
+                <PrimaryButton
+                  disabled={busy}
+                  onPress={() => setStep('email')}
+                  testID="save-plan-email"
+                >
                   Continue with email
                 </PrimaryButton>
               </YStack>

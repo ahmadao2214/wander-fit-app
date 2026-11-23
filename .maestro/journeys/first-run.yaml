@@ -121,6 +121,8 @@ url: ${VERIFY_URL}
     visible:
       id: save-plan-email
     timeout: 30000
+- assertVisible:
+    id: save-plan-google
 - assertNotVisible: "Skip"
 - takeScreenshot: 08-save-plan
 - tapOn:
