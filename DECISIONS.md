@@ -4,6 +4,7 @@ Routine calls the team made without asking, one line each, newest first. Anythin
 
 Format: `YYYY-MM-DD · who · decision · why`.
 
+- 2026-11-23 · Lead · Wrote the #170 and #171 PR descriptions myself · Neon's Antigravity quota was used up (resets in about 5 days), and the charter doesn't allow switching providers unasked.
 - 2026-11-23 · Lead · Left Astra's last finding on #170 open (a duplicate issue if 1,000 open issues fuzzy-match one flow's title) · the repo has about ten open issues; paging the whole tracker on every failure isn't worth it. Azhar's call after 3 rounds.
 - 2026-11-23 · Lead · Fixed Astra's findings on #170 and #171 in the Builders' worktrees instead of re-briefing them · each fix was small and the Builders had finished.
 - 2026-11-23 · Lead · `persona sweep` needs the dev deploy key, the one E2E dev host (`E2E_DEV_HOST`) and an `sk_test_` Clerk key; `.env.e2e` mode is refused (#171) · a bulk delete gets an allowlist, and the Convex CLI can load another key from `.env.local` in local mode.
