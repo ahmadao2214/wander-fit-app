@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Keyboard, Platform, Pressable, ScrollView, type GestureResponderEvent } from 'react-native'
+import {
+  Keyboard,
+  Platform,
+  Pressable,
+  ScrollView,
+  useWindowDimensions,
+  type GestureResponderEvent,
+} from 'react-native'
 import { useRouter } from 'expo-router'
 import { useClerk, useSignIn, useSignUp, useSSO, useUser } from '@clerk/clerk-expo'
 import * as WebBrowser from 'expo-web-browser'
@@ -197,6 +204,7 @@ export function SavePlanSheet({
   nextLabel?: string
 }) {
   const router = useRouter()
+  const { height: windowHeight } = useWindowDimensions()
   const { isLoaded, signUp, setActive } = useSignUp()
   const { signIn } = useSignIn()
   const { startSSOFlow } = useSSO()
@@ -420,7 +428,14 @@ export function SavePlanSheet({
   }
 
   // Room for the checkbox above the buttons; the 14–17 sentence runs longer.
-  const chooseSnap = clerkUser ? 52 : 58
+  // The content has a fixed height, so a short window (a browser at 625px)
+  // needs a larger share of it, or Continue with email sits below the fold.
+  const chooseSnap = Math.min(
+    90,
+    clerkUser
+      ? Math.max(52, Math.ceil((400 / windowHeight) * 100))
+      : Math.max(58, Math.ceil((480 / windowHeight) * 100))
+  )
   const snapPoints = useMemo(
     () => [step === 'choose' && !disclaimerOpen ? chooseSnap : 90],
     [step, chooseSnap, disclaimerOpen]
