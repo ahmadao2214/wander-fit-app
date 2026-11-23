@@ -6,6 +6,7 @@
   "build": "Release simulator (scripts/verify/explore.mjs build)",
   "commit": "77fe00a",
   "recordedAt": "2026-11-23T01:23:40.903723Z",
+  "notes": "Provisional: recorded while another simulator ran a dev build of the app (pid 5693, about 9-13 s of CPU per trace). Its samples are excluded, but its CPU contention isn't, so hangs and flowMs may read worse than on a quiet machine. Re-record before the first before/after comparison.",
   "runs": 5,
   "failedRuns": 0,
   "flowMs": {

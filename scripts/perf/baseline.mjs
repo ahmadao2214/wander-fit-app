@@ -474,7 +474,16 @@ export function aggregate(values) {
     : null
 }
 
-export function buildReport({ journey, label, template, device, commit, recordedAt, results }) {
+export function buildReport({
+  journey,
+  label,
+  template,
+  device,
+  commit,
+  recordedAt,
+  notes,
+  results,
+}) {
   const good = results.filter((r) => r.ok)
   const pick = (f) => good.map(f).filter((v) => typeof v === 'number')
   return {
@@ -485,6 +494,7 @@ export function buildReport({ journey, label, template, device, commit, recorded
     build: 'Release simulator (scripts/verify/explore.mjs build)',
     commit,
     recordedAt,
+    ...(notes ? { notes } : {}),
     runs: results.length,
     failedRuns: results.length - good.length,
     flowMs: aggregate(pick((r) => r.flowMs)),
@@ -505,7 +515,7 @@ export function buildReport({ journey, label, template, device, commit, recorded
   }
 }
 
-function writeReport({ journey, label, template, device, results, commit, recordedAt }) {
+function writeReport({ journey, label, template, device, results, commit, recordedAt, notes }) {
   commit ??= spawnSync('git', ['rev-parse', '--short', 'HEAD'], {
     cwd: root,
     encoding: 'utf8',
@@ -514,7 +524,7 @@ function writeReport({ journey, label, template, device, results, commit, record
   const out = path.join(root, 'perf/results', `${label}-${journey}.json`)
   fs.writeFileSync(
     out,
-    `${JSON.stringify(buildReport({ journey, label, template, device, commit, recordedAt, results }), null, 2)}\n`
+    `${JSON.stringify(buildReport({ journey, label, template, device, commit, recordedAt, notes, results }), null, 2)}\n`
   )
   // Match the repo's formatter so a committed report passes the format check.
   spawnSync('bunx', ['--no-install', 'oxfmt', '--write', out], { cwd: root })
@@ -554,6 +564,7 @@ async function resummarize({ positional, excludePids }) {
     results,
     commit: old.commit,
     recordedAt: old.recordedAt,
+    notes: old.notes,
   })
 }
 
