@@ -19,6 +19,7 @@ import {
   restoreFiles,
   runSuite,
   settlePersona,
+  sharedBackendAction,
   snapshotFiles,
   needsInspect,
   webSuiteSteps,
@@ -791,3 +792,37 @@ function listenPort() {
     })
   })
 }
+
+describe('sharedBackendAction', () => {
+  it('reuses the backend when it already runs this convex/ tree', () => {
+    expect(sharedBackendAction({ deployedTree: 'a', headTree: 'a', mainTree: 'b' })).toBe('reuse')
+  })
+
+  it("catches up when main's deploy is still queued behind this run", () => {
+    expect(sharedBackendAction({ deployedTree: 'old', headTree: 'new', mainTree: 'new' })).toBe(
+      'catch-up'
+    )
+  })
+
+  it('catches up on the first run, before any tree was recorded', () => {
+    expect(sharedBackendAction({ deployedTree: '', headTree: 'a', mainTree: 'a' })).toBe('catch-up')
+  })
+
+  it("never pushes a PR's convex/ that is behind main's tip", () => {
+    expect(sharedBackendAction({ deployedTree: 'new', headTree: 'old', mainTree: 'new' })).toBe(
+      'reuse-stale'
+    )
+    expect(sharedBackendAction({ deployedTree: 'newer', headTree: 'old', mainTree: 'new' })).toBe(
+      'reuse-stale'
+    )
+  })
+
+  it("reuses when main's tree can't be read", () => {
+    expect(sharedBackendAction({ deployedTree: 'old', headTree: 'new', mainTree: '' })).toBe(
+      'reuse-stale'
+    )
+    expect(sharedBackendAction({ deployedTree: 'old', headTree: '', mainTree: 'old' })).toBe(
+      'reuse'
+    )
+  })
+})

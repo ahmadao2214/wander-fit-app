@@ -1567,6 +1567,56 @@ function deployPreview(key) {
   publishConvexUrl(url)
 }
 
+// The dev deploy records the git tree hash of the convex/ it pushed, so a
+// shared-mode run can tell whether wander-fit-e2e is running its code (#137).
+export const DEPLOYED_TREE_VAR = 'E2E_CONVEX_TREE'
+
+// Pure: what a shared-mode run does with wander-fit-e2e.
+// - reuse: the backend already runs this checkout's convex/.
+// - catch-up: it doesn't, but this checkout's convex/ is exactly main's
+//   current one, i.e. main's own deploy is still queued. Deploying it now is
+//   what main is about to do anyway, so the run doesn't fail falsely.
+// - reuse-stale: the PR's convex/ differs from main's tip too (the PR is
+//   behind main). Never push that, or the shared backend would go backwards.
+export function sharedBackendAction({ deployedTree = '', headTree = '', mainTree = '' } = {}) {
+  if (!headTree || deployedTree === headTree) return 'reuse'
+  if (mainTree && mainTree === headTree) return 'catch-up'
+  return 'reuse-stale'
+}
+
+function gitConvexTree(ref) {
+  const result = spawnSync('git', ['rev-parse', '--verify', '--quiet', `${ref}:convex`], {
+    cwd: root,
+    encoding: 'utf8',
+  })
+  return result.status === 0 ? (result.stdout || '').trim() : ''
+}
+
+function mainConvexTree() {
+  const fetched = spawnSync('git', ['fetch', '--quiet', '--depth=1', 'origin', 'main'], {
+    cwd: root,
+    encoding: 'utf8',
+  })
+  return fetched.status === 0 ? gitConvexTree('FETCH_HEAD') : ''
+}
+
+function recordDeployedTree(env) {
+  const tree = gitConvexTree('HEAD')
+  if (!tree) return
+  const marked = convexCli(['env', 'set', DEPLOYED_TREE_VAR, tree], env)
+  if (marked.status !== 0) fail(`convex env set ${DEPLOYED_TREE_VAR} exited ${marked.status ?? 1}`)
+}
+
+function deployDev() {
+  const { env, host } = convexInvocation()
+  console.log(`deploying convex functions to ${host}`)
+  const pushed = convexCli(['dev', '--once', '--codegen', 'disable', '--typecheck', 'disable'], env)
+  if (pushed.status !== 0) fail(`convex dev --once exited ${pushed.status ?? 1}`)
+  ensureSeeded({ env, host })
+  recordDeployedTree(env)
+  publishConvexUrl(e2eUrl())
+}
+
 // Main, local, and PR runs:
 // - shared mode (PR with no Convex runtime changes): reuse wander-fit-e2e dev
 //   deployment directly without deploying or seeding.
@@ -1581,6 +1631,23 @@ function deployBackend() {
     } catch (error) {
       fail(error.message)
     }
+    if (process.env.CONVEX_DEPLOY_KEY_E2E) {
+      const { env } = convexInvocation()
+      const deployed = convexOutput(['env', 'get', DEPLOYED_TREE_VAR], env)
+      const action = sharedBackendAction({
+        deployedTree: deployed.status === 0 ? deployed.stdout : '',
+        headTree: gitConvexTree('HEAD'),
+        mainTree: mainConvexTree(),
+      })
+      if (action === 'catch-up') {
+        console.log("wander-fit-e2e is behind main's convex/; deploying main's code before the run")
+        deployDev()
+        return
+      }
+      if (action === 'reuse-stale') {
+        console.log("note: this PR's convex/ is behind main's; the shared backend runs newer code")
+      }
+    }
     console.log(`no convex/ runtime changes; reusing shared wander-fit-e2e (${host})`)
     publishConvexUrl(url)
     return
@@ -1590,12 +1657,7 @@ function deployBackend() {
     deployPreview(previewKey)
     return
   }
-  const { env, host } = convexInvocation()
-  console.log(`deploying convex functions to ${host}`)
-  const pushed = convexCli(['dev', '--once', '--codegen', 'disable', '--typecheck', 'disable'], env)
-  if (pushed.status !== 0) fail(`convex dev --once exited ${pushed.status ?? 1}`)
-  ensureSeeded({ env, host })
-  publishConvexUrl(e2eUrl())
+  deployDev()
 }
 
 function loosePersona() {
