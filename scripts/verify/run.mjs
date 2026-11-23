@@ -990,50 +990,70 @@ function elapsed(from, to) {
   return to >= from ? to - from : to + 86_400_000 - from
 }
 
+const commandStart = /runCommands\S*: .* RUNNING\s*$/
+const jsError = /\[ERROR\].*Failed to execute JS/
+
+// Pure: the text of the last CommandFailed in a maestro.log, or '' if none.
+export function terminalCommandFailure(log) {
+  const lines = String(log || '').split('\n')
+  const failed = lines.findLastIndex((line) => /CommandFailed: /.test(line))
+  return failed === -1 ? '' : lines[failed].replace(/^.*CommandFailed: /, '').trim()
+}
+
 // Pure: is this maestro.log a DevTools transport crash, and only that?
-// - The LAST CommandFailed in the log must be the null cast. A crash line
-//   followed by a real assertion failure is an assertion failure.
-// - The "No message" exception must belong to that command: its error line is
-//   logged at most 10 s before the CommandFailed.
-// - It must have come back early. Maestro's real timeout takes the full time in
-//   the message, so the error line must follow the line before it by less than
-//   half that. A page that truly hangs for 30 s is not a transport crash.
+// Everything is read inside the command that failed, which runs from the last
+// "<command> RUNNING" line to the last CommandFailed:
+// - That CommandFailed must be the null cast. A crash followed by a real
+//   assertion failure is an assertion failure.
+// - The last "Failed to execute JS" error in that command must be the "No
+//   message" exception. One from an earlier command, or a different JS error
+//   in this one, doesn't count.
+// - It must have come back early: within half the timeout it names, measured
+//   from the command's start. A page that truly hangs for Maestro's full
+//   timeout is not a transport crash. No start line means no retry.
+// - The null cast must follow it within 10 s.
 export function isCdpTransportCrash(log) {
   const lines = String(log || '').split('\n')
   const failed = lines.findLastIndex((line) => /CommandFailed: /.test(line))
   if (failed === -1 || !nullCast.test(lines[failed])) return false
-  const failedAt = logMs(lines[failed])
-  const exception = lines.findLastIndex((line, index) => index < failed && noMessage.test(line))
-  if (exception === -1 || failedAt === null) return false
-  const timeoutMs = Number(noMessage.exec(lines[exception])[1])
-  // The exception line carries no timestamp; its error line is the timestamped
-  // line just above it.
-  const error = lines.findLastIndex((line, index) => index <= exception && logMs(line) !== null)
-  const before = lines.findLastIndex((line, index) => index < error && logMs(line) !== null)
-  if (error === -1 || before === -1) return false
-  const errorAt = logMs(lines[error])
+  const started = lines.findLastIndex((line, index) => index < failed && commandStart.test(line))
+  const error = lines.findLastIndex((line, index) => index < failed && jsError.test(line))
+  if (started === -1 || error <= started) return false
+  const timeout = noMessage.exec(lines[error + 1] || '')
+  if (!timeout) return false
+  const [startedAt, errorAt, failedAt] = [started, error, failed].map((i) => logMs(lines[i]))
+  if (startedAt === null || errorAt === null || failedAt === null) return false
   if (elapsed(errorAt, failedAt) > 10_000) return false
-  return elapsed(logMs(lines[before]), errorAt) < timeoutMs / 2
+  return elapsed(startedAt, errorAt) < Number(timeout[1]) / 2
+}
+
+function maestroLogs(dir) {
+  if (!fs.existsSync(dir)) return []
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = path.join(dir, entry.name)
+    if (entry.isDirectory()) return /^attempt-\d+$/.test(entry.name) ? [] : maestroLogs(full)
+    return entry.name === 'maestro.log' ? [fs.readFileSync(full, 'utf8')] : []
+  })
 }
 
 export function hasCdpTransportCrash(dir) {
-  if (!fs.existsSync(dir)) return false
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const full = path.join(dir, entry.name)
-    if (entry.isDirectory()) {
-      if (/^attempt-\d+$/.test(entry.name)) continue
-      if (hasCdpTransportCrash(full)) return true
-    } else if (entry.name === 'maestro.log') {
-      if (isCdpTransportCrash(fs.readFileSync(full, 'utf8'))) return true
-    }
-  }
-  return false
+  return maestroLogs(dir).some(isCdpTransportCrash)
+}
+
+// True when this attempt's log ends in a command failure that is not the
+// transport crash: a false assertion, a missing element. Never retried.
+export function hasRealCommandFailure(dir) {
+  return maestroLogs(dir).some((log) => {
+    const failure = terminalCommandFailure(log)
+    return failure !== '' && !nullCast.test(`CommandFailed: ${failure}`)
+  })
 }
 
 // Why a failed launch earns its one retry, or null. Never once the flow has
 // taken its own screenshots, and never for an assertion that came back false.
 export function retryReason(outDir, { status, elapsedMs }) {
   if (status === 0 || hasFlowEvidence(outDir)) return null
+  if (hasRealCommandFailure(outDir)) return null
   if (elapsedMs < 20_000) return 'cold-start'
   if (hasCdpTransportCrash(outDir)) return 'cdp-transport'
   return null
