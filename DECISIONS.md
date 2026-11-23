@@ -4,6 +4,12 @@ Routine calls the team made without asking, one line each, newest first. Anythin
 
 Format: `YYYY-MM-DD · who · decision · why`.
 
+- 2026-11-23 · Lead · Fixed Astra's round-3 finding on #179 after the third round, without a fourth review · the fix is the one-line guard Astra asked for; Azhar decides whether it needs another round.
+- 2026-11-23 · Lead · A transport crash more than 15 s into one long-running command is not retried (#179) · the rule can't tell it from a true 30 s hang, and declining keeps real failures from passing.
+- 2026-11-23 · Lead · A run whose log ends in any command failure that isn't a proven transport crash gets no retry, including under the older cold-start rule (#179) · a real failure must never be retried into a pass.
+- 2026-11-23 · Builder · Fixed the web flake with a retry keyed to Maestro's crash signature, not a wait in the flow (#179) · the wait reads the page through the same call that crashes.
+- 2026-11-23 · Builder · Kept one retry, though one run crashed twice in a row (#179) · a rare double crash failing the shard is better than a looser rule.
+- 2026-11-23 · Lead · Cancelled the first #174 Builder after it hit the usage limit, then relaunched · a limit-stalled agent resumes by itself, and two would have worked the same task.
 - 2026-11-23 · Lead · Wrote the #170 and #171 PR descriptions myself · Neon's Antigravity quota was used up (resets in about 5 days), and the charter doesn't allow switching providers unasked.
 - 2026-11-23 · Lead · Left Astra's last finding on #170 open (a duplicate issue if 1,000 open issues fuzzy-match one flow's title) · the repo has about ten open issues; paging the whole tracker on every failure isn't worth it. Azhar's call after 3 rounds.
 - 2026-11-23 · Lead · Fixed Astra's findings on #170 and #171 in the Builders' worktrees instead of re-briefing them · each fix was small and the Builders had finished.
