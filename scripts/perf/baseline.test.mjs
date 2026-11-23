@@ -5,6 +5,8 @@ import {
   appPidsIn,
   lastAppPid,
   buildReport,
+  captureCovers,
+  captureInfo,
   classifyRun,
   mainFlushMs,
   median,
@@ -227,6 +229,26 @@ describe('classifyRun', () => {
   it('rejects a run with no app process afterwards or a failed journey', () => {
     expect(classifyRun({ ...good, pidAfter: null }).ok).toBe(false)
     expect(classifyRun({ ...good, maestroStatus: 1 }).ok).toBe(false)
+  })
+})
+
+describe('captureCovers', () => {
+  const toc =
+    '<summary><duration>47.6</duration><end-reason>User pressed Stop</end-reason></summary>'
+
+  it('accepts a capture the harness stopped after the whole journey', () => {
+    expect(captureCovers(captureInfo(toc), 47751)).toBe(true)
+  })
+
+  it('rejects a capture that stopped collecting early, even if xctrace exited later', () => {
+    expect(captureCovers(captureInfo(toc.replace('47.6', '20.1')), 47751)).toBe(false)
+  })
+
+  it('rejects a capture that ended for any other reason', () => {
+    expect(
+      captureCovers(captureInfo(toc.replace('User pressed Stop', 'Time limit reached')), 47751)
+    ).toBe(false)
+    expect(captureCovers(captureInfo('<summary/>'), 1000)).toBe(false)
   })
 })
 

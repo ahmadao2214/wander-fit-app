@@ -86,6 +86,22 @@ function xml(args) {
   })
 }
 
+// How long the capture ran and why it ended, from a trace's table of contents.
+export function captureInfo(toc) {
+  const duration = Number(toc.match(/<duration>([\d.]+)</)?.[1] ?? NaN)
+  const endReason = toc.match(/<end-reason>([^<]*)</)?.[1] ?? null
+  return { durationS: Number.isFinite(duration) ? duration : null, endReason }
+}
+
+// A capture is whole when the harness stopped it (not a time limit or an
+// instrument failure) and it lasted about as long as the journey. Maestro's
+// own start-up overlaps the capture, so allow a small shortfall.
+export function captureCovers({ durationS, endReason }, flowMs, slackMs = 3000) {
+  return (
+    endReason === 'User pressed Stop' && durationS !== null && durationS * 1000 >= flowMs - slackMs
+  )
+}
+
 // The table schemas in a trace's table of contents, e.g. "hitches", "potential-hangs".
 export function tableSchemas(toc) {
   return [...new Set([...toc.matchAll(/<table [^>]*schema="([^"]+)"/g)].map((m) => m[1]))]
@@ -251,10 +267,15 @@ async function table(tracePath, schema) {
 // pids, the app pids in the trace minus excludePids must leave exactly one,
 // unless pickLast (resummarize of older traces that predate saved pids, where
 // the caller has excluded other simulators' builds) picks the last-running one.
-async function summarize(tracePath, { pids, excludePids = [], pickLast = false } = {}) {
-  const schemas = tableSchemas(await xml(['--input', tracePath, '--toc']))
-  const summary = {}
+async function summarize(
+  tracePath,
+  { pids, excludePids = [], pickLast = false, requireProfile = false } = {}
+) {
+  const toc = await xml(['--input', tracePath, '--toc'])
+  const schemas = tableSchemas(toc)
+  const summary = { capture: captureInfo(toc) }
   const profile = schemas.includes('time-profile') ? await table(tracePath, 'time-profile') : null
+  if (requireProfile && !profile) throw new Error(`${tracePath} has no time-profile table`)
   if (!pids) {
     const found = profile ? appPidsIn(profile) : new Set()
     const candidates = new Set([...found].filter((p) => !excludePids.includes(p)))
@@ -314,11 +335,14 @@ function otherDevicesRunningApp(device) {
     .map((d) => `${d.name} (${d.udid})`)
 }
 
+// The app's pid on a simulator, null when it isn't running there. Throws when
+// the simulator can't be asked, so a failed lookup never passes as "not running".
 function devicePid(device) {
   const out = spawnSync('xcrun', ['simctl', 'spawn', device, 'launchctl', 'list'], {
     encoding: 'utf8',
   })
-  return out.status === 0 ? pidFromLaunchctl(out.stdout) : null
+  if (out.status !== 0) throw new Error(`can't list processes on ${device}: ${out.stderr.trim()}`)
+  return pidFromLaunchctl(out.stdout)
 }
 
 // Whether a recorded run counts, from what happened during it. Pure, so the
@@ -429,11 +453,6 @@ async function run({ positional, runs, device, label, template }) {
   const flow = path.join(root, '.maestro/perf', `${journey}.yaml`)
   if (!fs.existsSync(flow)) fail(`${flow} does not exist`)
   const udid = device ?? bootedDevice()
-  const others = otherDevicesRunningApp(udid)
-  if (others.length)
-    fail(
-      `${APP_ID} is also running on ${others.join(', ')}. Another simulator's app competes for the CPU and can be mistaken for this one; stop it (or ask the thread using it) first.`
-    )
   const name = label ?? new Date().toISOString().slice(0, 10)
   const runDir = path.join(root, 'perf/runs', name)
   fs.mkdirSync(runDir, { recursive: true })
@@ -443,6 +462,12 @@ async function run({ positional, runs, device, label, template }) {
   for (let n = 1; n <= runs; n++) {
     const tracePath = path.join(runDir, `${journey}-${n}.trace`)
     fs.rmSync(tracePath, { recursive: true, force: true })
+    // Checked before every run: another simulator can start the app mid-batch.
+    const others = otherDevicesRunningApp(udid)
+    if (others.length)
+      fail(
+        `${APP_ID} is also running on ${others.join(', ')}. Another simulator's app competes for the CPU and can be mistaken for this one; stop it (or ask the thread using it) first.`
+      )
     const { flowMs, ok, error, pids } = await record(udid, tracePath, flow, template)
     if (!ok) {
       results.push({ run: n, ok, flowMs, error })
@@ -453,7 +478,14 @@ async function run({ positional, runs, device, label, template }) {
     // overlaps the next run's recording.
     let summary
     try {
-      summary = await summarize(tracePath, { pids: new Set(pids) })
+      summary = await summarize(tracePath, {
+        pids: new Set(pids),
+        requireProfile: template === DEFAULT_TEMPLATE,
+      })
+      if (!captureCovers(summary.capture, flowMs))
+        throw new Error(
+          `the capture doesn't cover the journey (${summary.capture.durationS ?? '?'} s, ended: ${summary.capture.endReason ?? 'unknown'})`
+        )
     } catch (e) {
       results.push({ run: n, ok: false, flowMs, error: e.message })
       console.log(`run ${n}: failed: ${e.message}`)
