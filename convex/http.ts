@@ -1,4 +1,5 @@
 import { cleanSignup } from './waitlist'
+import { verifySvixSignature } from './clerkWebhook'
 import { httpRouter } from 'convex/server'
 import { httpAction } from './_generated/server'
 import type { ActionCtx } from './_generated/server'
@@ -329,6 +330,60 @@ http.route({
     }
     await ctx.runMutation(internal.waitlist.record, { ...result.value, updateTokenHash })
     return waitlistJson(request, 200, { ok: true })
+  }),
+})
+
+/**
+ * Clerk webhook. On `user.deleted` it purges the athlete's Convex records, so
+ * an account deleted in the Clerk dashboard, by support, or by a
+ * `deleteMyAccount` that failed after the Clerk step, still ends with no data
+ * left. Every other event type is acknowledged and ignored.
+ */
+http.route({
+  path: '/clerk-webhook',
+  method: 'POST',
+  handler: httpAction(async (ctx, request) => {
+    const secret = process.env.CLERK_WEBHOOK_SECRET
+    if (!secret) {
+      // A misconfigured deployment must not accept unverified deletions.
+      console.error('Clerk webhook: CLERK_WEBHOOK_SECRET is not set')
+      return new Response('Webhook not configured', { status: 500 })
+    }
+
+    const body = await request.text()
+    const verified = await verifySvixSignature(
+      secret,
+      {
+        id: request.headers.get('svix-id'),
+        timestamp: request.headers.get('svix-timestamp'),
+        signature: request.headers.get('svix-signature'),
+      },
+      body
+    )
+    if (!verified.ok) {
+      console.warn('Clerk webhook rejected:', verified.reason)
+      if (verified.reason === 'bad_secret') {
+        return new Response('Webhook not configured', { status: 500 })
+      }
+      return new Response('Invalid signature', { status: 401 })
+    }
+
+    let event: { type?: unknown; data?: { id?: unknown } }
+    try {
+      event = JSON.parse(body)
+    } catch {
+      return new Response('Invalid JSON', { status: 400 })
+    }
+
+    if (event.type !== 'user.deleted') return new Response(null, { status: 200 })
+
+    const clerkId = event.data?.id
+    if (typeof clerkId !== 'string' || clerkId.length === 0) {
+      return new Response('Missing user id', { status: 400 })
+    }
+
+    await ctx.runMutation(internal.users.purgeAthleteRecords, { clerkId })
+    return new Response(null, { status: 200 })
   }),
 })
 

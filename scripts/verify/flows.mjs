@@ -141,8 +141,8 @@ const ROUTE_FLOW_RULES = [
   },
   {
     match:
-      /^(app\/\(athlete\)\/(settings|profile)(\.tsx|\/)|components\/settings\/|\.maestro\/(web|journeys)\/(app-settings|settings-telemetry)\.yaml$)/,
-    flows: ['app-settings', 'settings-telemetry', 'sign-in'],
+      /^(app\/\(athlete\)\/(settings|profile)(\.tsx|\/)|components\/settings\/|\.maestro\/(web|journeys)\/(app-settings|settings-telemetry|settings-legal)\.yaml$)/,
+    flows: ['app-settings', 'settings-telemetry', 'settings-legal', 'sign-in'],
   },
   {
     // Profile hosts the Feedback & support rows the feedback journey drives.

@@ -3,13 +3,30 @@ import { Platform, Pressable, Share, StyleSheet, Text } from 'react-native'
 import { Button, Card, ScrollView, Separator, XStack, YStack } from 'tamagui'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Check, ChevronLeft, Copy, Share as ShareIcon } from '@tamagui/lucide-icons'
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  ExternalLink,
+  FileText,
+  HeartPulse,
+  LifeBuoy,
+  Share as ShareIcon,
+  Shield,
+  Trash2,
+} from '@tamagui/lucide-icons'
+import type { ColorTokens } from 'tamagui'
+import * as WebBrowser from 'expo-web-browser'
 import { useQuery } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { mcpAddress } from '../../lib/mcpAddress'
 import { useAuth } from '../../hooks/useAuth'
 import { ReplayExcludedSurface } from '../../components/ReplayExcludedSurface'
 import { TelemetryPreferencesCard } from '../../components/settings/TelemetryPreferencesCard'
+import { HealthDisclaimerSheet } from '../../components/settings/HealthDisclaimerSheet'
+import { DeleteAccountSheet } from '../../components/settings/DeleteAccountSheet'
+import { LEGAL_URLS } from '../../lib/legal'
 import {
   Body,
   Caption,
@@ -91,12 +108,61 @@ function AddressAction({ address }: { address: string }) {
   )
 }
 
+type IconComponent = typeof LifeBuoy
+
+/** One tappable row in a settings card: icon, label, and where it goes. */
+function SettingsRow({
+  icon: Icon,
+  label,
+  onPress,
+  external = false,
+  tone = '$color12',
+  testID,
+}: {
+  icon: IconComponent
+  label: string
+  onPress: () => void
+  external?: boolean
+  tone?: ColorTokens
+  testID: string
+}) {
+  const Trailing = external ? ExternalLink : ChevronRight
+  return (
+    <XStack
+      minH={52}
+      px="$4"
+      py="$3"
+      gap="$3"
+      items="center"
+      pressStyle={{ bg: '$surfaceHover' }}
+      onPress={onPress}
+      role="button"
+      aria-label={external ? `${label}, opens in browser` : label}
+      testID={testID}
+    >
+      <Icon size={18} color={tone === '$color12' ? '$color10' : tone} />
+      <Body flex={1} fontWeight="500" color={tone}>
+        {label}
+      </Body>
+      <Trailing size={external ? 16 : 20} color="$color9" />
+    </XStack>
+  )
+}
+
+function openLink(url: string) {
+  WebBrowser.openBrowserAsync(url).catch((error) => {
+    console.error('Failed to open link:', error)
+  })
+}
+
 export default function AthleteSettingsScreen() {
   const address = mcpAddress(process.env.EXPO_PUBLIC_CONVEX_URL)
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const { user, hasCompletedIntake } = useAuth()
   const programState = useQuery(api.userPrograms.getCurrentProgramState, user ? {} : 'skip')
+  const [disclaimerOpen, setDisclaimerOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
 
   return (
     <ReplayExcludedSurface>
@@ -182,9 +248,77 @@ export default function AthleteSettingsScreen() {
                 </YStack>
               </Card>
             </YStack>
+
+            <YStack gap="$3">
+              <SectionTitle>Support & Legal</SectionTitle>
+              <Card
+                bg="$surface"
+                rounded="$4"
+                borderWidth={1}
+                borderColor="$borderColor"
+                overflow="hidden"
+              >
+                <SettingsRow
+                  icon={LifeBuoy}
+                  label="Help & Support"
+                  external
+                  onPress={() => openLink(LEGAL_URLS.support)}
+                  testID="settings-support"
+                />
+                <Separator borderColor="$borderColor" />
+                <SettingsRow
+                  icon={Shield}
+                  label="Privacy Policy"
+                  external
+                  onPress={() => openLink(LEGAL_URLS.privacy)}
+                  testID="settings-privacy"
+                />
+                <Separator borderColor="$borderColor" />
+                <SettingsRow
+                  icon={FileText}
+                  label="Terms of Service"
+                  external
+                  onPress={() => openLink(LEGAL_URLS.terms)}
+                  testID="settings-terms"
+                />
+                <Separator borderColor="$borderColor" />
+                <SettingsRow
+                  icon={HeartPulse}
+                  label="Health & Fitness Disclaimer"
+                  onPress={() => setDisclaimerOpen(true)}
+                  testID="settings-disclaimer"
+                />
+              </Card>
+            </YStack>
+
+            {user ? (
+              <YStack gap="$3">
+                <SectionTitle>Account</SectionTitle>
+                <Card
+                  bg="$surface"
+                  rounded="$4"
+                  borderWidth={1}
+                  borderColor="$borderColor"
+                  overflow="hidden"
+                >
+                  <SettingsRow
+                    icon={Trash2}
+                    label="Delete account"
+                    tone="$red10"
+                    onPress={() => setDeleteOpen(true)}
+                    testID="settings-delete-account"
+                  />
+                </Card>
+                <Caption>
+                  Deletes your program, workout history and 1RM maxes from Wander Fit for good.
+                </Caption>
+              </YStack>
+            ) : null}
           </YStack>
         </ScrollView>
       </YStack>
+      <HealthDisclaimerSheet open={disclaimerOpen} onOpenChange={setDisclaimerOpen} />
+      {user ? <DeleteAccountSheet open={deleteOpen} onOpenChange={setDeleteOpen} /> : null}
     </ReplayExcludedSurface>
   )
 }

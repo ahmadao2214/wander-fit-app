@@ -163,6 +163,14 @@ jobs:
           path: e2e-artifacts/feedback/web/
           if-no-files-found: warn
           retention-days: 30
+      - name: Upload settings-legal evidence
+        if: always() && hashFiles('e2e-artifacts/settings-legal/web/.scrubbed') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-web-settings-legal
+          path: e2e-artifacts/settings-legal/web/
+          if-no-files-found: warn
+          retention-days: 30
       - name: Summary
         if: always()
         env:

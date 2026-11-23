@@ -1,0 +1,111 @@
+url: ${VERIFY_URL}
+---
+# App Settings → Support & Legal rows, the in-app Health & Fitness Disclaimer,
+# and both steps of Delete account, stopping short of deleting: the runner
+# owns the persona and deletes it after the flow.
+- runFlow: ../subflows/_evidence-start.yaml
+- runFlow: ../subflows/_open-sign-in.yaml
+- runFlow: ../subflows/_sign-in.yaml
+- extendedWaitUntil:
+    visible:
+      id: today-workout-card
+    timeout: 90000
+- tapOn: 'Profile'
+- extendedWaitUntil:
+    visible: 'Training info'
+    timeout: 30000
+# App settings sits near Sign Out, below the viewport; open the #sign-out link
+# the other settings journeys use (.maestro/flow-layout.md).
+- evalScript: ${var base = VERIFY_URL; if (base.endsWith('/')) base = base.slice(0, -1); if (base.endsWith('/sign-in')) base = base.slice(0, -8); output.signOutUrl = base + '/profile#sign-out'}
+- openLink: ${output.signOutUrl}
+- extendedWaitUntil:
+    visible:
+      id: profile-app-settings
+    timeout: 30000
+- tapOn:
+    id: profile-app-settings
+- extendedWaitUntil:
+    visible: 'App Settings'
+    timeout: 30000
+# Support & Legal and Account sit below Use with Claude, inside the
+# ScrollView: touch swipes bring them up.
+- repeat:
+    while:
+      notVisible:
+        id: 'Delete account'
+    times: 6
+    commands:
+      - swipe:
+          start: '50%, 80%'
+          end: '50%, 20%'
+          duration: 800
+- assertVisible: 'Support & Legal'
+# On web a pressable's accessibility label is its id. The three links open
+# the public pages in a new tab, so the flow checks them and doesn't follow.
+- assertVisible:
+    id: 'Help & Support, opens in browser'
+- assertVisible:
+    id: 'Privacy Policy, opens in browser'
+- assertVisible:
+    id: 'Terms of Service, opens in browser'
+- assertVisible:
+    id: 'Health & Fitness Disclaimer'
+- takeScreenshot: 01-support-legal
+- tapOn:
+    id: 'Health & Fitness Disclaimer'
+- extendedWaitUntil:
+    visible: '.*Not Medical Advice or Physical Therapy.*'
+    timeout: 15000
+- assertVisible: '.*General Strength & Conditioning Guidance Only.*'
+- takeScreenshot: 02-disclaimer
+- tapOn:
+    id: 'Close'
+- extendedWaitUntil:
+    notVisible: '.*Not Medical Advice or Physical Therapy.*'
+    timeout: 15000
+- tapOn:
+    id: 'Delete account'
+- extendedWaitUntil:
+    visible: 'Delete your account?'
+    timeout: 15000
+- assertVisible: '.*workout history.*'
+- assertVisible: '.*App Store or Google Play.*'
+- takeScreenshot: 03-delete-explain
+- tapOn:
+    id: delete-account-continue
+- extendedWaitUntil:
+    visible:
+      id: delete-account-confirm-input
+    timeout: 15000
+- assertVisible: 'Permanently delete my account'
+- takeScreenshot: 04-delete-confirm
+# Leave without deleting: Back to step one, then Keep my account.
+- tapOn:
+    id: delete-account-back
+- extendedWaitUntil:
+    visible: 'Delete your account?'
+    timeout: 15000
+# The sheet scrolls inside itself; Keep my account starts below the 625px
+# web viewport, which the driver omits. Drag the sheet's content up to it.
+- repeat:
+    while:
+      notVisible:
+        id: delete-account-cancel
+    times: 4
+    commands:
+      - swipe:
+          start: '50%, 85%'
+          end: '50%, 45%'
+          duration: 400
+- tapOn:
+    id: delete-account-cancel
+# A closed sheet parks just under the viewport's bottom edge, where its title
+# still counts as visible to the driver. Its buttons sit lower and don't.
+- extendedWaitUntil:
+    notVisible:
+      id: delete-account-cancel
+    timeout: 15000
+- assertVisible:
+    id: 'Delete account'
+- takeScreenshot: 05-account-kept
+- runFlow: ../subflows/_evidence-stop.yaml
