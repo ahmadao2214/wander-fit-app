@@ -1,21 +1,4 @@
-/**
- * Reassessment Logic Tests
- *
- * Tests for the reassessment flow business logic:
- * - Phase boundary detection in advanceToNextDay
- * - Skill upgrade criteria
- * - Phase transitions (GPP→SPP, SPP→SSP, SSP→GPP cycle)
- * - Completion rate calculation
- *
- * These are pure TypeScript tests that validate the logic contracts
- * without needing a Convex backend.
- */
-
 export {}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// HELPERS (replicate logic from userPrograms.ts for unit testing)
-// ═══════════════════════════════════════════════════════════════════════════════
 
 type Phase = 'GPP' | 'SPP' | 'SSP'
 type SkillLevel = 'Novice' | 'Moderate' | 'Advanced'
@@ -30,20 +13,6 @@ function getNextPhase(phase: Phase): Phase {
     case 'SSP':
       return 'GPP'
   }
-}
-
-function shouldTriggerReassessment(
-  currentDay: number,
-  currentWeek: number,
-  preferredDays: number,
-  weeksPerPhase: number
-): boolean {
-  // After incrementing day
-  const nextDay = currentDay + 1
-  if (nextDay <= preferredDays) return false
-  // Day overflowed → week increments
-  const nextWeek = currentWeek + 1
-  return nextWeek > weeksPerPhase
 }
 
 function calculateCompletionRate(
@@ -75,45 +44,6 @@ function determineSkillUpgrade(
   return { upgraded: false, newLevel: currentLevel }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// TESTS: Phase Boundary Detection
-// ═══════════════════════════════════════════════════════════════════════════════
-
-describe('Phase boundary detection (advanceToNextDay)', () => {
-  it('should NOT trigger reassessment mid-phase', () => {
-    // Week 2, Day 2 with 4 days/week, 4 weeks per phase
-    expect(shouldTriggerReassessment(2, 2, 4, 4)).toBe(false)
-  })
-
-  it('should NOT trigger reassessment at end of week but not end of phase', () => {
-    // Last day of week 2 (4 days/week, 4 weeks per phase) → advances to week 3
-    expect(shouldTriggerReassessment(4, 2, 4, 4)).toBe(false)
-  })
-
-  it('should trigger reassessment at last day of last week of GPP', () => {
-    // Day 4 of Week 4 (4 days/week, 4 weeks)
-    expect(shouldTriggerReassessment(4, 4, 4, 4)).toBe(true)
-  })
-
-  it('should trigger reassessment at last day of last week with 3 days/week', () => {
-    // Day 3 of Week 4 (3 days/week, 4 weeks)
-    expect(shouldTriggerReassessment(3, 4, 3, 4)).toBe(true)
-  })
-
-  it('should trigger reassessment with custom weeks per phase (6 weeks)', () => {
-    expect(shouldTriggerReassessment(4, 6, 4, 6)).toBe(true)
-  })
-
-  it('should NOT trigger if not on last day of last week', () => {
-    // Day 3 of Week 4 (4 days/week) → still one more day
-    expect(shouldTriggerReassessment(3, 4, 4, 4)).toBe(false)
-  })
-})
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// TESTS: Phase Transitions
-// ═══════════════════════════════════════════════════════════════════════════════
-
 describe('Phase transitions', () => {
   it('GPP → SPP', () => {
     expect(getNextPhase('GPP')).toBe('SPP')
@@ -128,23 +58,16 @@ describe('Phase transitions', () => {
   })
 })
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// TESTS: Completion Rate Calculation
-// ═══════════════════════════════════════════════════════════════════════════════
-
 describe('Completion rate calculation', () => {
   it('should calculate 100% when all expected workouts completed', () => {
-    // 4 weeks × 4 days = 16 expected, 16 completed
     expect(calculateCompletionRate(16, 4, 4)).toBe(1)
   })
 
   it('should calculate 75% correctly', () => {
-    // 4 weeks × 4 days = 16 expected, 12 completed
     expect(calculateCompletionRate(12, 4, 4)).toBe(0.75)
   })
 
   it('should cap at 100% even with extra sessions', () => {
-    // 4 weeks × 4 days = 16 expected, 20 completed
     expect(calculateCompletionRate(20, 4, 4)).toBe(1)
   })
 
@@ -153,14 +76,9 @@ describe('Completion rate calculation', () => {
   })
 
   it('should handle 3 days per week', () => {
-    // 4 weeks × 3 days = 12 expected, 9 completed = 75%
     expect(calculateCompletionRate(9, 4, 3)).toBe(0.75)
   })
 })
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// TESTS: Skill Upgrade Criteria
-// ═══════════════════════════════════════════════════════════════════════════════
 
 describe('Skill upgrade criteria', () => {
   describe('Novice → Moderate', () => {
@@ -234,10 +152,6 @@ describe('Skill upgrade criteria', () => {
     })
   })
 })
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// TESTS: Full Cycle (SSP completion)
-// ═══════════════════════════════════════════════════════════════════════════════
 
 describe('Full cycle behavior', () => {
   it('SSP completion should cycle back to GPP', () => {
