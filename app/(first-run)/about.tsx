@@ -53,11 +53,14 @@ const MONTHS = [
 function MonthChip({
   name,
   selected,
+  wide,
   onPress,
   testID,
 }: {
   name: string
   selected: boolean
+  /** Six to a row. On a narrow screen the chips would be too thin to tap. */
+  wide: boolean
   onPress: () => void
   testID: string
 }) {
@@ -70,7 +73,7 @@ function MonthChip({
       testID={testID}
       style={({ pressed }) => ({
         flexGrow: 1,
-        flexBasis: '22%',
+        flexBasis: wide ? '14%' : '22%',
         height: 48,
         borderRadius: 10,
         alignItems: 'center',
@@ -427,6 +430,7 @@ export default function FirstRunAbout() {
                 key={name}
                 name={name}
                 selected={birthMonth === i + 1}
+                wide={width >= 380}
                 testID={`birth-month-${i + 1}`}
                 onPress={() => {
                   selectionFeedback()

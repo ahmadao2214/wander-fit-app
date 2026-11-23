@@ -420,7 +420,7 @@ export function SavePlanSheet({
   }
 
   // Room for the checkbox above the buttons; the 14–17 sentence runs longer.
-  const chooseSnap = clerkUser ? 52 : 68
+  const chooseSnap = clerkUser ? 52 : 58
   const snapPoints = useMemo(
     () => [step === 'choose' && !disclaimerOpen ? chooseSnap : 90],
     [step, chooseSnap, disclaimerOpen]
