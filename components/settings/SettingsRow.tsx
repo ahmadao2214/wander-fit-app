@@ -26,6 +26,12 @@ export interface SettingsRowProps {
   /** Opens a web page: external-link icon, and VoiceOver says so. */
   external?: boolean
   tone?: ColorTokens
+  /**
+   * Leave a pressable row's spoken name to its own text (label, then the
+   * supporting line) and set no aria-label. Maestro web reports a labelled
+   * element by its label, not its testID, so rows a flow finds by testID use this.
+   */
+  nameFromContent?: boolean
   testID?: string
 }
 
@@ -44,6 +50,7 @@ export function SettingsRow({
   onPress,
   external = false,
   tone = '$color12',
+  nameFromContent = false,
   testID,
 }: SettingsRowProps) {
   const pressable = onPress !== undefined
@@ -53,13 +60,13 @@ export function SettingsRow({
   // together. A row with a control leaves the control as its own element.
   const factRow = !pressable && trailing === undefined
   const ariaLabel = pressable
-    ? external
-      ? `${label}, opens in browser`
-      : label
-    : factRow
-      ? value
-        ? `${label}, ${value}`
+    ? nameFromContent
+      ? undefined
+      : external
+        ? `${label}, opens in browser`
         : label
+    : factRow
+      ? [label, supporting, value].filter(Boolean).join(', ')
       : undefined
 
   return (
@@ -90,7 +97,8 @@ export function SettingsRow({
       {value ? (
         <Body
           color="$color10"
-          numberOfLines={1}
+          // A fact has nowhere else to be read in full, so it may wrap once
+          numberOfLines={factRow ? 2 : 1}
           shrink={1}
           text="right"
           {...(valueNumeric ? numeric : null)}

@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { YStack, Text, ScrollView, Spinner } from 'tamagui'
+import { useRef, useState } from 'react'
+import { YStack, Text, ScrollView, Spinner, useThemeName } from 'tamagui'
 import { useQuery } from 'convex/react'
 import { useIsFocused, useRouter } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
@@ -27,6 +27,10 @@ export default function ProfilePage() {
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const isFocused = useIsFocused()
+  const darkTheme = useThemeName().startsWith('dark')
+  // Whether the navy header is still under the status bar
+  const [overHeader, setOverHeader] = useState(true)
+  const headerHeight = useRef(Number.POSITIVE_INFINITY)
 
   // Sheet state for editing 1RM
   const [maxSheetOpen, setMaxSheetOpen] = useState(false)
@@ -71,15 +75,30 @@ export default function ProfilePage() {
 
   const latestIntake = intakeHistory?.[0]
 
-  const hasMaxes = coreLiftExercises !== undefined && coreLiftExercises.length > 0
+  // No program, no maxes card: the header has no phase track to sit under
+  const hasMaxes =
+    Boolean(programState) && coreLiftExercises !== undefined && coreLiftExercises.length > 0
 
   return (
     <ReplayExcludedSurface>
-      {/* The header is navy in both themes, so the clock and battery go light here only */}
-      {isFocused ? <StatusBar style="light" /> : null}
+      {/* The header is navy in both themes, so the clock and battery go light while it is under them */}
+      {isFocused ? <StatusBar style={overHeader || darkTheme ? 'light' : 'dark'} /> : null}
       <YStack flex={1} bg="$background">
-        <ScrollView flex={1} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          flex={1}
+          showsVerticalScrollIndicator={false}
+          scrollEventThrottle={32}
+          onScroll={(event) => {
+            // The status bar sits over the top inset. Once the header has scrolled
+            // out from under it, the page behind is light again.
+            const next = event.nativeEvent.contentOffset.y < headerHeight.current - insets.top
+            if (next !== overHeader) setOverHeader(next)
+          }}
+        >
           <ProfileHeader
+            onHeight={(height) => {
+              headerHeight.current = height
+            }}
             name={user.name}
             topInset={insets.top}
             overlap={hasMaxes ? MAX_TILES_OVERLAP : 0}
@@ -139,7 +158,8 @@ export default function ProfilePage() {
                   })}
                 />
               ) : null}
-              <SettingsRow label="Email" value={user.email} />
+              {/* On its own line: an address has no spaces to wrap at beside a label */}
+              <SettingsRow label="Email" supporting={user.email} />
             </SettingsGroup>
 
             <SettingsGroup label="Learn">
@@ -161,6 +181,7 @@ export default function ProfilePage() {
                 supporting="Share a quick private rating"
                 onPress={() => setRatingSheetOpen(true)}
                 testID="feedback-row-rate"
+                nameFromContent
               />
               <SettingsRow
                 icon={Bug}
@@ -168,6 +189,7 @@ export default function ProfilePage() {
                 supporting="Flag something broken or off"
                 onPress={() => setBugSheetOpen(true)}
                 testID="feedback-row-bug"
+                nameFromContent
               />
               <SettingsRow
                 icon={Sparkles}
@@ -175,6 +197,7 @@ export default function ProfilePage() {
                 supporting="Suggest an improvement"
                 onPress={() => setFeatureSheetOpen(true)}
                 testID="feedback-row-feature"
+                nameFromContent
               />
             </SettingsGroup>
 
@@ -187,6 +210,7 @@ export default function ProfilePage() {
                     router.push('/(athlete)/settings')
                   }}
                   testID="profile-app-settings"
+                  nameFromContent
                 />
               </SettingsGroup>
 

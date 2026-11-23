@@ -4,6 +4,10 @@ Routine calls the team made without asking, one line each, newest first. Anythin
 
 Format: `YYYY-MM-DD · who · decision · why`.
 
+- 2026-11-23 · Lead · The header counts weeks to the end of the three phases (weeksPerPhase × 3), not to totalProgramWeeks (Profile refresh) · the season countdown can be longer or shorter than the scheduled program; Astra showed "Week 12 of 14" with every bar full.
+- 2026-11-23 · Lead · Profile's four tappable rows set no aria-label (`nameFromContent`) (Profile refresh) · Maestro web reports a labelled element by its label, and four flows find these rows by testID.
+- 2026-11-23 · Lead · Email is a row with the address on its own line, and the header says the day ("Week 6 of 12 · Day 3") (Profile refresh) · Astra: a long address was cut off beside its label, and the old screen showed the day.
+- 2026-11-23 · Lead · The status bar turns dark again once the navy header scrolls out from under it; the maxes card needs a program to show (Profile refresh) · light icons vanished on the light page; the card overlaps a phase track that isn't there without a program.
 - 2026-11-23 · Lead · Profile's facts group keeps the label "Training info", not the spec's "Training" (Profile refresh) · six Maestro flows wait for that text to know Profile has loaded.
 - 2026-11-23 · Lead · Group labels on Profile and App settings stay at SectionTitle size, not the mockup's smaller label (Profile refresh) · VoiceOver still gets a heading and both screens match the rest of the app.
 - 2026-11-23 · Builder 2 · The Privacy switches take the shared row: label weight 500 not 600, minimum height 52 not 60 (Profile refresh) · one row style, as the spec asks.

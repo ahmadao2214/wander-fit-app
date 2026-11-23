@@ -45,7 +45,7 @@ describe('SettingsRow', () => {
     expect(getByText('3 days a week')).toBeTruthy()
   })
 
-  it('renders the supporting line and a truncating value', () => {
+  it('renders the supporting line, and a value that truncates on a row that opens something', () => {
     const { getByText, getByTestId } = render(
       <SettingsRow
         label="Email"
@@ -53,6 +53,7 @@ describe('SettingsRow', () => {
         supportingTestID="email-supporting"
         value="someone.with.a.long.address@example.com"
         valueNumeric
+        onPress={jest.fn()}
       />,
       { wrapper }
     )
@@ -97,5 +98,28 @@ describe('SettingsRow', () => {
   it('has no chevron on a fact row', () => {
     const { toJSON } = render(<SettingsRow label="Experience" value="2 years" />, { wrapper })
     expect(JSON.stringify(toJSON())).not.toMatch(/svg|RNSVG/i)
+  })
+  it('can leave its name to its own text, so a web flow still finds it by testID', () => {
+    const { getByTestId, queryByLabelText } = render(
+      <SettingsRow label="App settings" onPress={jest.fn()} nameFromContent testID="row" />,
+      { wrapper }
+    )
+    expect(getByTestId('row').props.role).toBe('button')
+    expect(queryByLabelText('App settings')).toBeNull()
+  })
+
+  it('lets a fact wrap once so a long value can be read', () => {
+    const { getByText } = render(
+      <SettingsRow label="Email" value="maximiliano.fitzgerald-okonkwo@westlakeprep.edu" />,
+      { wrapper }
+    )
+    expect(getByText('maximiliano.fitzgerald-okonkwo@westlakeprep.edu').props.numberOfLines).toBe(2)
+  })
+  it('reads a fact row with a supporting line as one element', () => {
+    const { getByLabelText } = render(
+      <SettingsRow label="Email" supporting="athlete@example.com" />,
+      { wrapper }
+    )
+    expect(getByLabelText('Email, athlete@example.com')).toBeTruthy()
   })
 })

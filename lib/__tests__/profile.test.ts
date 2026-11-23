@@ -107,8 +107,25 @@ describe('phaseTrack', () => {
     expect(t.overallWeek).toBe(5)
   })
 
-  it('never puts the overall week past the program length', () => {
-    const t = phaseTrack({ phase: 'SSP', week: 4, weeksPerPhase: 4, totalProgramWeeks: 10 })
+  it('counts to the end of the three phases when the season is further away', () => {
+    // 14 weeks to the season schedules 3 × 4
+    const t = phaseTrack({ phase: 'SSP', week: 4, weeksPerPhase: 4, totalProgramWeeks: 14 })
+    expect(t.summary).toBe('Week 12 of 12')
+    expect(t.segments.map((s) => s.fill)).toEqual([1, 1, 1])
+  })
+
+  it('counts the scheduled weeks when the season is closer than the program', () => {
+    // 1 week to the season still schedules 3 × 2
+    expect(
+      phaseTrack({ phase: 'GPP', week: 1, weeksPerPhase: 2, totalProgramWeeks: 1 }).summary
+    ).toBe('Week 1 of 6')
+    expect(
+      phaseTrack({ phase: 'SSP', week: 2, weeksPerPhase: 2, totalProgramWeeks: 1 }).summary
+    ).toBe('Week 6 of 6')
+  })
+
+  it('never puts the overall week past the program length when only the total is known', () => {
+    const t = phaseTrack({ phase: 'SSP', week: 4, weeksPerPhase: null, totalProgramWeeks: 10 })
     expect(t.overallWeek).toBe(10)
     expect(t.summary).toBe('Week 10 of 10')
   })

@@ -38,6 +38,26 @@ describe('ProfileHeader', () => {
     expect(getByTestId('phase-track')).toBeTruthy()
   })
 
+  it('counts to the end of the three phases, not to the season', () => {
+    const { getByTestId } = render(
+      <ProfileHeader
+        name="Test Athlete"
+        topInset={44}
+        program={{ ...program, phase: 'GPP', week: 1, weeksPerPhase: 5, totalProgramWeeks: 17 }}
+      />,
+      { wrapper: AllTheProviders }
+    )
+    expect(getByTestId('profile-week').props.children).toBe('Week 1 of 15')
+  })
+
+  it('says the day when it knows it', () => {
+    const { getByTestId } = render(
+      <ProfileHeader name="Test Athlete" topInset={44} program={{ ...program, day: 3 }} />,
+      { wrapper: AllTheProviders }
+    )
+    expect(getByTestId('profile-week').props.children).toBe('Week 6 of 12 · Day 3')
+  })
+
   it('shows only the name before there is a program', () => {
     const { getByTestId, queryByTestId } = render(
       <ProfileHeader name="Test Athlete" topInset={44} program={undefined} />,

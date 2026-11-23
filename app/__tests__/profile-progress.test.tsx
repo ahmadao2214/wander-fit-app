@@ -88,7 +88,7 @@ describe('Profile', () => {
     const { getByTestId, getByText } = render(<ProfilePage />, { wrapper: AllTheProviders })
     expect(getByTestId('profile-name').props.children).toBe('Test Athlete')
     expect(getByText('Novice · Basketball')).toBeTruthy()
-    expect(getByTestId('profile-week').props.children).toBe('Week 1 of 12')
+    expect(getByTestId('profile-week').props.children).toBe('Week 1 of 12 · Day 1')
     // The email moved out of the header into the Training rows
     expect(getByText('athlete@example.com')).toBeTruthy()
   })

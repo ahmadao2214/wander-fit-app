@@ -78,7 +78,14 @@ export function phaseTrack({
 }: PhaseTrackInput): PhaseTrack {
   const current: Phase = phase === 'SPP' || phase === 'SSP' ? phase : 'GPP'
   const perPhase = positiveWhole(weeksPerPhase) ?? DEFAULT_WEEKS_PER_PHASE
-  const totalWeeks = positiveWhole(totalProgramWeeks) ?? perPhase * PHASES.length
+  // The scheduled program is three phases of perPhase weeks. totalProgramWeeks
+  // is the weeks until the season: longer when it doesn't divide by three (14
+  // weeks, 3 × 4) and shorter when the season is close (1 week, 3 × 2). It only
+  // stands in when the phase length is unknown.
+  const knownPerPhase = positiveWhole(weeksPerPhase)
+  const totalWeeks = knownPerPhase
+    ? knownPerPhase * PHASES.length
+    : (positiveWhole(totalProgramWeeks) ?? perPhase * PHASES.length)
   const currentIndex = PHASES.indexOf(current)
   const clampedWeek = Math.min(Math.max(Number.isFinite(week) ? Math.floor(week) : 1, 1), perPhase)
 
