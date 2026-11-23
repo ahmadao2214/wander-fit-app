@@ -1,14 +1,18 @@
-import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
-import { countsAsDone, slotOnDate } from "./blockCompletion";
-import { loadProgramCompletion } from "./programCompletion";
-import { athleteDayArgs, athleteToday } from "./athleteClock";
-import { getWorkoutForDate } from "./workoutCalendar";
-import { DEFAULT_WEEKS_PER_PHASE, mapUserWeekToTemplateWeek } from "./weekMapping";
-import { v } from "convex/values";
-import { getCurrentUser } from "./authHelpers";
-import type { Doc, Id } from "./_generated/dataModel";
-import { alignCompletionsToTemplate, isWarmupExercise } from "../lib/executionOrder";
-import { activeSeconds, PAUSED_SESSION_MESSAGE, pausedSecondsAfterResume } from "../lib/sessionTiming";
+import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
+import { slotOnDate } from './blockCompletion'
+import { loadProgramCompletion } from './programCompletion'
+import { athleteDayArgs, athleteToday } from './athleteClock'
+import { getWorkoutForDate } from './workoutCalendar'
+import { DEFAULT_WEEKS_PER_PHASE, mapUserWeekToTemplateWeek } from './weekMapping'
+import { v } from 'convex/values'
+import { getCurrentUser } from './authHelpers'
+import type { Doc, Id } from './_generated/dataModel'
+import { alignCompletionsToTemplate, isWarmupExercise } from '../lib/executionOrder'
+import {
+  activeSeconds,
+  PAUSED_SESSION_MESSAGE,
+  pausedSecondsAfterResume,
+} from '../lib/sessionTiming'
 import {
   INTENSITY_CONFIG,
   BODYWEIGHT_INTENSITY_CONFIG,
@@ -25,7 +29,7 @@ import {
   getBodyweightVariant,
   formatTempo,
   normalizeAgeGroup,
-} from "./intensityScaling";
+} from './intensityScaling'
 
 /**
  * GPP Workout Sessions - Execution Tracking
@@ -41,16 +45,16 @@ import {
  */
 
 // Calendar date mapping types
-type CalendarPhase = "GPP" | "SPP" | "SSP";
+type CalendarPhase = 'GPP' | 'SPP' | 'SSP'
 
 interface WorkoutSlot {
-  phase: CalendarPhase;
-  week: number;
-  day: number;
+  phase: CalendarPhase
+  week: number
+  day: number
 }
 
 // Constants for calendar calculations
-const PHASE_ORDER: CalendarPhase[] = ["GPP", "SPP", "SSP"];
+const PHASE_ORDER: CalendarPhase[] = ['GPP', 'SPP', 'SSP']
 
 const DEFAULT_TRAINING_DAYS: Record<number, number[]> = {
   1: [1],
@@ -60,29 +64,27 @@ const DEFAULT_TRAINING_DAYS: Record<number, number[]> = {
   5: [1, 2, 3, 4, 5],
   6: [1, 2, 3, 4, 5, 6],
   7: [0, 1, 2, 3, 4, 5, 6],
-};
+}
 
-function getAbsoluteIndex(slot: WorkoutSlot, workoutsPerWeek: number, weeksPerPhase: number): number {
-  const phaseIdx = PHASE_ORDER.indexOf(slot.phase);
+function getAbsoluteIndex(
+  slot: WorkoutSlot,
+  workoutsPerWeek: number,
+  weeksPerPhase: number
+): number {
+  const phaseIdx = PHASE_ORDER.indexOf(slot.phase)
   return (
-    phaseIdx * weeksPerPhase * workoutsPerWeek +
-    (slot.week - 1) * workoutsPerWeek +
-    (slot.day - 1)
-  );
+    phaseIdx * weeksPerPhase * workoutsPerWeek + (slot.week - 1) * workoutsPerWeek + (slot.day - 1)
+  )
 }
 
 // Validators
-const phaseValidator = v.union(
-  v.literal("GPP"),
-  v.literal("SPP"),
-  v.literal("SSP")
-);
+const phaseValidator = v.union(v.literal('GPP'), v.literal('SPP'), v.literal('SSP'))
 
 const sessionStatusValidator = v.union(
-  v.literal("in_progress"),
-  v.literal("completed"),
-  v.literal("abandoned")
-);
+  v.literal('in_progress'),
+  v.literal('completed'),
+  v.literal('abandoned')
+)
 
 const setCompletionValidator = v.object({
   repsCompleted: v.optional(v.number()),
@@ -91,15 +93,15 @@ const setCompletionValidator = v.object({
   rpe: v.optional(v.number()), // Rate of Perceived Exertion 1-10
   completed: v.boolean(),
   skipped: v.boolean(),
-});
+})
 
 const exerciseCompletionValidator = v.object({
-  exerciseId: v.id("exercises"),
+  exerciseId: v.id('exercises'),
   completed: v.boolean(),
   skipped: v.boolean(),
   notes: v.optional(v.string()),
   sets: v.array(setCompletionValidator),
-});
+})
 
 function buildEmptySetCompletions(count: number) {
   return Array.from({ length: Math.max(1, count) }, () => ({
@@ -109,10 +111,10 @@ function buildEmptySetCompletions(count: number) {
     rpe: undefined,
     completed: false,
     skipped: false,
-  }));
+  }))
 }
 
-type SessionCompletion = Doc<"gpp_workout_sessions">["exercises"][number];
+type SessionCompletion = Doc<'gpp_workout_sessions'>['exercises'][number]
 
 /**
  * The saved completions in template order, one per template exercise, each
@@ -123,44 +125,60 @@ type SessionCompletion = Doc<"gpp_workout_sessions">["exercises"][number];
  * screen treats it.
  */
 function alignSessionExercises(
-  templateExercises: ReadonlyArray<{ exerciseId: SessionCompletion["exerciseId"]; section?: string; notes?: string }>,
+  templateExercises: ReadonlyArray<{
+    exerciseId: SessionCompletion['exerciseId']
+    section?: string
+    notes?: string
+  }>,
   saved: SessionCompletion[],
-  prescribedSetsAt: (index: number) => number,
+  prescribedSetsAt: (index: number) => number
 ): SessionCompletion[] {
-  const slots = templateExercises.map((ex) => ({ exerciseId: String(ex.exerciseId), section: ex.section, notes: ex.notes }));
-  const aligned = alignCompletionsToTemplate(slots, saved);
+  const slots = templateExercises.map((ex) => ({
+    exerciseId: String(ex.exerciseId),
+    section: ex.section,
+    notes: ex.notes,
+  }))
+  const aligned = alignCompletionsToTemplate(slots, saved)
   return aligned.map((completion, index) => {
-    const prescribedSets = prescribedSetsAt(index);
+    const prescribedSets = prescribedSetsAt(index)
     if (completion) {
-      return { ...completion, sets: normalizeSetCompletions(completion.sets, prescribedSets) };
+      return { ...completion, sets: normalizeSetCompletions(completion.sets, prescribedSets) }
     }
-    const exerciseId = templateExercises[index].exerciseId;
+    const exerciseId = templateExercises[index].exerciseId
     if (isWarmupExercise(slots[index])) {
       return {
         exerciseId,
         completed: true,
         skipped: true,
-        sets: Array.from({ length: Math.max(1, prescribedSets) }, () => ({ completed: true, skipped: true })),
-      };
+        sets: Array.from({ length: Math.max(1, prescribedSets) }, () => ({
+          completed: true,
+          skipped: true,
+        })),
+      }
     }
-    return { exerciseId, completed: false, skipped: false, sets: buildEmptySetCompletions(prescribedSets) };
-  });
+    return {
+      exerciseId,
+      completed: false,
+      skipped: false,
+      sets: buildEmptySetCompletions(prescribedSets),
+    }
+  })
 }
 
 function normalizeSetCompletions<
   T extends {
-    completed: boolean;
-    skipped: boolean;
-    repsCompleted?: number;
-    durationSeconds?: number;
-    weight?: number;
-    rpe?: number;
+    completed: boolean
+    skipped: boolean
+    repsCompleted?: number
+    durationSeconds?: number
+    weight?: number
+    rpe?: number
   },
 >(sets: T[], prescribedSets: number): T[] {
-  const targetCount = Math.max(1, prescribedSets);
+  const targetCount = Math.max(1, prescribedSets)
 
   if (sets.length === targetCount) {
-    return sets;
+    return sets
   }
 
   if (sets.length > targetCount) {
@@ -173,25 +191,29 @@ function normalizeSetCompletions<
       set.repsCompleted !== undefined ||
       set.durationSeconds !== undefined ||
       set.weight !== undefined ||
-      set.rpe !== undefined;
-    let keep = targetCount;
+      set.rpe !== undefined
+    let keep = targetCount
     sets.forEach((set, index) => {
-      if (hasData(set)) keep = Math.max(keep, index + 1);
-    });
-    return sets.slice(0, keep);
+      if (hasData(set)) keep = Math.max(keep, index + 1)
+    })
+    return sets.slice(0, keep)
   }
 
   return [
     ...sets,
-    ...Array.from({ length: targetCount - sets.length }, () => ({
-      repsCompleted: undefined,
-      durationSeconds: undefined,
-      weight: undefined,
-      rpe: undefined,
-      completed: false,
-      skipped: false,
-    } as T)),
-  ];
+    ...Array.from(
+      { length: targetCount - sets.length },
+      () =>
+        ({
+          repsCompleted: undefined,
+          durationSeconds: undefined,
+          weight: undefined,
+          rpe: undefined,
+          completed: false,
+          skipped: false,
+        }) as T
+    ),
+  ]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -200,7 +222,7 @@ function normalizeSetCompletions<
 
 /**
  * Get the current in-progress session for the user
- * 
+ *
  * NOTE: This query is defensive and returns null on any error
  * to prevent client crashes when data is inconsistent.
  */
@@ -208,124 +230,122 @@ export const getCurrentSession = query({
   args: {},
   handler: async (ctx) => {
     try {
-      const identity = await ctx.auth.getUserIdentity();
+      const identity = await ctx.auth.getUserIdentity()
       if (!identity) {
-        return null;
+        return null
       }
 
       const user = await ctx.db
-        .query("users")
-        .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
-        .first();
+        .query('users')
+        .withIndex('by_clerk', (q) => q.eq('clerkId', identity.subject))
+        .first()
 
       if (!user) {
-        return null;
+        return null
       }
 
       const session = await ctx.db
-        .query("gpp_workout_sessions")
-        .withIndex("by_user_status", (q) =>
-          q.eq("userId", user._id).eq("status", "in_progress")
-        )
-        .first();
+        .query('gpp_workout_sessions')
+        .withIndex('by_user_status', (q) => q.eq('userId', user._id).eq('status', 'in_progress'))
+        .first()
 
       if (!session) {
-        return null;
+        return null
       }
 
       // Get the template for context (may be null if deleted)
-      const template = await ctx.db.get(session.templateId);
+      const template = await ctx.db.get(session.templateId)
 
       return {
         ...session,
         template,
-      };
+      }
     } catch (error) {
-      console.error("getCurrentSession error:", error);
-      return null;
+      console.error('getCurrentSession error:', error)
+      return null
     }
   },
-});
+})
 
 /**
  * Get the most recent session for a specific template
  * Used to check if today's workout has been completed
- * 
+ *
  * NOTE: This query is defensive and returns null on any error
  * to prevent client crashes when data is inconsistent or when
  * called with invalid parameters from older client builds.
- * 
+ *
  * The templateId is optional to allow old clients that might pass
  * undefined values to gracefully fail instead of throwing validation errors.
  */
 export const getSessionForTemplate = query({
-  args: { templateId: v.optional(v.id("program_templates")) },
+  args: { templateId: v.optional(v.id('program_templates')) },
   handler: async (ctx, args) => {
     try {
       // Early return if no templateId provided
       if (!args.templateId) {
-        return null;
+        return null
       }
 
-      const identity = await ctx.auth.getUserIdentity();
+      const identity = await ctx.auth.getUserIdentity()
       if (!identity) {
-        return null;
+        return null
       }
 
       const user = await ctx.db
-        .query("users")
-        .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
-        .first();
+        .query('users')
+        .withIndex('by_clerk', (q) => q.eq('clerkId', identity.subject))
+        .first()
 
       if (!user) {
-        return null;
+        return null
       }
 
       // This athlete's most recent session for the template. Templates are
       // shared, so the index starts with the user: other athletes' sessions
       // must not push this one out of the result.
       const userSession = await ctx.db
-        .query("gpp_workout_sessions")
-        .withIndex("by_user_template", (q) =>
-          q.eq("userId", user._id).eq("templateId", args.templateId!)
+        .query('gpp_workout_sessions')
+        .withIndex('by_user_template', (q) =>
+          q.eq('userId', user._id).eq('templateId', args.templateId!)
         )
-        .order("desc")
-        .first();
+        .order('desc')
+        .first()
 
       if (!userSession) {
-        return null;
+        return null
       }
 
       // A completed session only makes the workout done for where the athlete
       // is now: not from an earlier run of the phase, and not in a later week
       // that repeats the workout (phases longer than four weeks)
-      if (userSession.status === "completed") {
+      if (userSession.status === 'completed') {
         const program = await ctx.db
-          .query("user_programs")
-          .withIndex("by_user", (q) => q.eq("userId", user._id))
-          .first();
+          .query('user_programs')
+          .withIndex('by_user', (q) => q.eq('userId', user._id))
+          .first()
         if (program) {
-          const completion = await loadProgramCompletion(ctx, program);
+          const completion = await loadProgramCompletion(ctx, program)
           if (!completion.isWorkoutDone(userSession.templateId)) {
-            return null;
+            return null
           }
         }
       }
 
       // Get the template for context (may be null if deleted)
-      const template = await ctx.db.get(userSession.templateId);
+      const template = await ctx.db.get(userSession.templateId)
 
       return {
         ...userSession,
         template,
-      };
+      }
     } catch (error) {
       // Log error for debugging but don't crash the client
-      console.error("getSessionForTemplate error:", error);
-      return null;
+      console.error('getSessionForTemplate error:', error)
+      return null
     }
   },
-});
+})
 
 /**
  * Get a specific session by ID with full details
@@ -336,60 +356,61 @@ export const getSessionForTemplate = query({
  * (the old Low/Moderate/High system) for backward compatibility.
  */
 export const getById = query({
-  args: { sessionId: v.id("gpp_workout_sessions") },
+  args: { sessionId: v.id('gpp_workout_sessions') },
   handler: async (ctx, args) => {
     // Same "not found" result for someone else's session, so IDs can't be probed
-    const user = await getCurrentUser(ctx);
+    const user = await getCurrentUser(ctx)
     if (!user) {
-      return null;
+      return null
     }
 
-    const session = await ctx.db.get(args.sessionId);
+    const session = await ctx.db.get(args.sessionId)
     if (!session || session.userId !== user._id) {
-      return null;
+      return null
     }
 
-    const template = await ctx.db.get(session.templateId);
+    const template = await ctx.db.get(session.templateId)
     if (!template) {
-      return { ...session, template: null, exerciseDetails: [] };
+      return { ...session, template: null, exerciseDetails: [] }
     }
 
     // Fetch all exercise details
-    const exerciseIds = template.exercises.map((e) => e.exerciseId);
-    const exercises = await Promise.all(
-      exerciseIds.map((id) => ctx.db.get(id))
-    );
+    const exerciseIds = template.exercises.map((e) => e.exerciseId)
+    const exercises = await Promise.all(exerciseIds.map((id) => ctx.db.get(id)))
 
-    const exerciseMap = new Map(
-      exercises.filter(Boolean).map((ex) => [ex!._id.toString(), ex!])
-    );
+    const exerciseMap = new Map(exercises.filter(Boolean).map((ex) => [ex!._id.toString(), ex!]))
 
     // Get user's 1RM records for intensity scaling
-    let userMaxMap: Record<string, number> = {};
+    let userMaxMap: Record<string, number> = {}
     if (session.userId) {
       const userMaxes = await ctx.db
-        .query("user_maxes")
-        .withIndex("by_user", (q) => q.eq("userId", session.userId))
-        .collect();
+        .query('user_maxes')
+        .withIndex('by_user', (q) => q.eq('userId', session.userId))
+        .collect()
 
       for (const max of userMaxes) {
-        userMaxMap[max.exerciseId.toString()] = max.oneRepMax;
+        userMaxMap[max.exerciseId.toString()] = max.oneRepMax
       }
     }
 
     // Check if we have the new scaling snapshot (category-specific system)
     if (session.scalingSnapshot) {
       // Use category-specific intensity system
-      const { categoryId, phase, ageGroup: rawAgeGroup, yearsOfExperience } = session.scalingSnapshot;
-      const ageGroup = normalizeAgeGroup(rawAgeGroup);
-      const experienceBucket = getExperienceBucket(yearsOfExperience);
+      const {
+        categoryId,
+        phase,
+        ageGroup: rawAgeGroup,
+        yearsOfExperience,
+      } = session.scalingSnapshot
+      const ageGroup = normalizeAgeGroup(rawAgeGroup)
+      const experienceBucket = getExperienceBucket(yearsOfExperience)
 
       const scaledExercises = template.exercises.map((prescription) => {
-        const exercise = exerciseMap.get(prescription.exerciseId.toString());
-        const oneRepMax = userMaxMap[prescription.exerciseId.toString()];
+        const exercise = exerciseMap.get(prescription.exerciseId.toString())
+        const oneRepMax = userMaxMap[prescription.exerciseId.toString()]
 
         // Detect exercise focus
-        const exerciseFocus = getExerciseFocus(exercise?.tags, exercise?.equipment);
+        const exerciseFocus = getExerciseFocus(exercise?.tags, exercise?.equipment)
 
         // Get category-specific parameters
         const params = getCategoryExerciseParameters(
@@ -400,19 +421,19 @@ export const getById = query({
           exerciseFocus,
           exercise?.tags,
           exercise?.equipment
-        );
+        )
 
         // Calculate average 1RM% for weight recommendation
-        const avgPercent = (params.oneRepMaxPercent.min + params.oneRepMaxPercent.max) / 2;
+        const avgPercent = (params.oneRepMaxPercent.min + params.oneRepMaxPercent.max) / 2
 
-        if (exerciseFocus === "bodyweight") {
+        if (exerciseFocus === 'bodyweight') {
           // Bodyweight exercise - get variant based on phase + experience
           const variantResult = getBodyweightVariant(
-            exercise?.slug || "",
+            exercise?.slug || '',
             phase as Phase,
             experienceBucket,
             exercise?.progressions
-          );
+          )
 
           return {
             ...prescription,
@@ -431,7 +452,7 @@ export const getById = query({
             targetWeight: undefined,
             percentOf1RM: undefined,
             hasOneRepMax: false,
-          };
+          }
         } else {
           // Weighted exercise (strength or power)
           return {
@@ -451,14 +472,18 @@ export const getById = query({
             tempo: formatTempo(params.tempo),
             hasOneRepMax: !!oneRepMax,
             exerciseFocus,
-          };
+          }
         }
-      });
+      })
 
-      const normalizedSessionExercises = alignSessionExercises(template.exercises, session.exercises, (index) => {
-        const scaledExercise = scaledExercises[index];
-        return scaledExercise?.scaledSets ?? scaledExercise?.sets ?? 1;
-      });
+      const normalizedSessionExercises = alignSessionExercises(
+        template.exercises,
+        session.exercises,
+        (index) => {
+          const scaledExercise = scaledExercises[index]
+          return scaledExercise?.scaledSets ?? scaledExercise?.sets ?? 1
+        }
+      )
 
       return {
         ...session,
@@ -475,39 +500,39 @@ export const getById = query({
             experienceBucket,
           },
         },
-      };
+      }
     }
 
     // FALLBACK: Use old intensity system (Low/Moderate/High) for backward compatibility
-    const intensity = (session.targetIntensity || "Moderate") as Intensity;
-    const config = INTENSITY_CONFIG[intensity];
-    const bwConfig = BODYWEIGHT_INTENSITY_CONFIG[intensity];
-    const avgPercent = (config.oneRepMaxPercent.min + config.oneRepMaxPercent.max) / 2;
+    const intensity = (session.targetIntensity || 'Moderate') as Intensity
+    const config = INTENSITY_CONFIG[intensity]
+    const bwConfig = BODYWEIGHT_INTENSITY_CONFIG[intensity]
+    const avgPercent = (config.oneRepMaxPercent.min + config.oneRepMaxPercent.max) / 2
 
     const scaledExercises = template.exercises.map((prescription) => {
-      const exercise = exerciseMap.get(prescription.exerciseId.toString());
-      const oneRepMax = userMaxMap[prescription.exerciseId.toString()];
-      const isBW = isBodyweightExercise(exercise?.equipment);
+      const exercise = exerciseMap.get(prescription.exerciseId.toString())
+      const oneRepMax = userMaxMap[prescription.exerciseId.toString()]
+      const isBW = isBodyweightExercise(exercise?.equipment)
 
       // Parse original reps to number for weighted exercises
-      const repsMatch = prescription.reps.match(/^(\d+)/);
-      const baseReps = repsMatch ? parseInt(repsMatch[1]) : 8;
+      const repsMatch = prescription.reps.match(/^(\d+)/)
+      const baseReps = repsMatch ? parseInt(repsMatch[1]) : 8
 
       if (isBW) {
         // Bodyweight exercise scaling
-        const scaledReps = scaleRepsOrDuration(prescription.reps, bwConfig.repsMultiplier);
+        const scaledReps = scaleRepsOrDuration(prescription.reps, bwConfig.repsMultiplier)
 
         // Determine variant based on intensity
-        let exerciseSlug = exercise?.slug || "";
-        let isSubstituted = false;
+        let exerciseSlug = exercise?.slug || ''
+        let isSubstituted = false
 
         if (exercise?.progressions) {
-          if (intensity === "Low" && exercise.progressions.easier) {
-            exerciseSlug = exercise.progressions.easier;
-            isSubstituted = true;
-          } else if (intensity === "High" && exercise.progressions.harder) {
-            exerciseSlug = exercise.progressions.harder;
-            isSubstituted = true;
+          if (intensity === 'Low' && exercise.progressions.easier) {
+            exerciseSlug = exercise.progressions.easier
+            isSubstituted = true
+          } else if (intensity === 'High' && exercise.progressions.harder) {
+            exerciseSlug = exercise.progressions.harder
+            isSubstituted = true
           }
         }
 
@@ -517,18 +542,24 @@ export const getById = query({
           // Scaled values
           scaledSets: prescription.sets,
           scaledReps: scaledReps,
-          scaledRestSeconds: Math.max(15, Math.round(prescription.restSeconds * config.restMultiplier)),
+          scaledRestSeconds: Math.max(
+            15,
+            Math.round(prescription.restSeconds * config.restMultiplier)
+          ),
           // Intensity metadata
           isBodyweight: true,
           isSubstituted,
           substitutedExerciseSlug: isSubstituted ? exerciseSlug : undefined,
           rpeTarget: config.rpeTarget,
-        };
+        }
       } else {
         // Weighted exercise scaling
-        const scaledSets = Math.max(1, Math.round(prescription.sets * config.setsMultiplier));
-        const scaledReps = Math.max(1, Math.round(baseReps * config.repsMultiplier));
-        const scaledRest = Math.max(15, Math.round(prescription.restSeconds * config.restMultiplier));
+        const scaledSets = Math.max(1, Math.round(prescription.sets * config.setsMultiplier))
+        const scaledReps = Math.max(1, Math.round(baseReps * config.repsMultiplier))
+        const scaledRest = Math.max(
+          15,
+          Math.round(prescription.restSeconds * config.restMultiplier)
+        )
 
         return {
           ...prescription,
@@ -545,14 +576,18 @@ export const getById = query({
           isSubstituted: false,
           rpeTarget: config.rpeTarget,
           hasOneRepMax: !!oneRepMax,
-        };
+        }
       }
-    });
+    })
 
-    const normalizedSessionExercises = alignSessionExercises(template.exercises, session.exercises, (index) => {
-      const scaledExercise = scaledExercises[index];
-      return scaledExercise?.scaledSets ?? scaledExercise?.sets ?? 1;
-    });
+    const normalizedSessionExercises = alignSessionExercises(
+      template.exercises,
+      session.exercises,
+      (index) => {
+        const scaledExercise = scaledExercises[index]
+        return scaledExercise?.scaledSets ?? scaledExercise?.sets ?? 1
+      }
+    )
 
     return {
       ...session,
@@ -566,48 +601,48 @@ export const getById = query({
           rpeTarget: config.rpeTarget,
         },
       },
-    };
+    }
   },
-});
+})
 
 /**
  * Get session history for the current user
  */
 /** The caller's GPP sessions, newest first, with their template's name and position. */
 export async function loadHistory(ctx: QueryCtx, limit = 20) {
-  const identity = await ctx.auth.getUserIdentity();
+  const identity = await ctx.auth.getUserIdentity()
   if (!identity) {
-    return [];
+    return []
   }
 
   const user = await ctx.db
-    .query("users")
-    .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
-    .first();
+    .query('users')
+    .withIndex('by_clerk', (q) => q.eq('clerkId', identity.subject))
+    .first()
 
   if (!user) {
-    return [];
+    return []
   }
 
   const sessions = await ctx.db
-    .query("gpp_workout_sessions")
-    .withIndex("by_user", (q) => q.eq("userId", user._id))
-    .order("desc")
-    .take(limit);
+    .query('gpp_workout_sessions')
+    .withIndex('by_user', (q) => q.eq('userId', user._id))
+    .order('desc')
+    .take(limit)
 
   // Enrich with template names
   return Promise.all(
     sessions.map(async (session) => {
-      const template = await ctx.db.get(session.templateId);
+      const template = await ctx.db.get(session.templateId)
       return {
         ...session,
-        templateName: template?.name || "Unknown Workout",
+        templateName: template?.name || 'Unknown Workout',
         phase: template?.phase,
         week: template?.week,
         day: template?.day,
-      };
+      }
     })
-  );
+  )
 }
 
 export const getHistory = query({
@@ -615,102 +650,63 @@ export const getHistory = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => loadHistory(ctx, args.limit || 20),
-});
-
-/**
- * Get IDs of all templates that have completed sessions
- * Used by Program tab to show completion status on workout cards
- */
-export const getCompletedTemplateIds = query({
-  args: {},
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return [];
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      return [];
-    }
-
-    const program = await ctx.db
-      .query("user_programs")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .first();
-
-    // Completed sessions, minus ones from an earlier run of the current phase
-    const completedSessions = (await ctx.db
-      .query("gpp_workout_sessions")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .filter((q) => q.eq(q.field("status"), "completed"))
-      .collect()).filter((s) => !program || countsAsDone(s, program));
-
-    // Return unique template IDs
-    const templateIds = Array.from(new Set(completedSessions.map((s) => s.templateId)));
-    return templateIds;
-  },
-});
+})
 
 /**
  * Get the last completed session for a specific template with full performance data
  * Used to show comparison on workout detail screen and inline during execution
  */
 export const getLastCompletedSessionForTemplate = query({
-  args: { templateId: v.id("program_templates") },
+  args: { templateId: v.id('program_templates') },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
+    const identity = await ctx.auth.getUserIdentity()
     if (!identity) {
-      return null;
+      return null
     }
 
     const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
-      .first();
+      .query('users')
+      .withIndex('by_clerk', (q) => q.eq('clerkId', identity.subject))
+      .first()
 
     if (!user) {
-      return null;
+      return null
     }
 
     // This athlete's most recent completed session for the template
     const lastCompleted = await ctx.db
-      .query("gpp_workout_sessions")
-      .withIndex("by_user_template", (q) =>
-        q.eq("userId", user._id).eq("templateId", args.templateId)
+      .query('gpp_workout_sessions')
+      .withIndex('by_user_template', (q) =>
+        q.eq('userId', user._id).eq('templateId', args.templateId)
       )
-      .order("desc")
-      .filter((q) => q.eq(q.field("status"), "completed"))
-      .first();
+      .order('desc')
+      .filter((q) => q.eq(q.field('status'), 'completed'))
+      .first()
 
     if (!lastCompleted) {
-      return null;
+      return null
     }
 
     // Get template for exercise names
-    const template = await ctx.db.get(args.templateId);
+    const template = await ctx.db.get(args.templateId)
     if (!template) {
-      return null;
+      return null
     }
 
     // Get exercise details for each exercise in the session
     const exerciseDetails = await Promise.all(
       (lastCompleted.exercises || []).map(async (sessionExercise, index) => {
-        const exercise = await ctx.db.get(sessionExercise.exerciseId);
+        const exercise = await ctx.db.get(sessionExercise.exerciseId)
 
         // Get prescribed data from template if available
-        const templateExercise = template.exercises?.[index];
-        const prescribedSets = templateExercise?.sets ?? sessionExercise.sets.length;
-        const prescribedReps = templateExercise?.reps ?? "?";
+        const templateExercise = template.exercises?.[index]
+        const prescribedSets = templateExercise?.sets ?? sessionExercise.sets.length
+        const prescribedReps = templateExercise?.reps ?? '?'
 
         return {
           exerciseId: sessionExercise.exerciseId,
-          exerciseName: exercise?.name || "Unknown",
-          exerciseSlug: exercise?.slug || "unknown",
+          exerciseName: exercise?.name || 'Unknown',
+          exerciseSlug: exercise?.slug || 'unknown',
           prescribedSets,
           prescribedReps,
           completed: sessionExercise.completed,
@@ -719,9 +715,9 @@ export const getLastCompletedSessionForTemplate = query({
             ...set,
             setNumber: setIdx + 1,
           })),
-        };
+        }
       })
-    );
+    )
 
     return {
       _id: lastCompleted._id,
@@ -730,20 +726,16 @@ export const getLastCompletedSessionForTemplate = query({
       targetIntensity: lastCompleted.targetIntensity,
       exercises: exerciseDetails,
       templateName: template.name,
-    };
+    }
   },
-});
+})
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MUTATIONS
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Intensity validator
-const intensityValidator = v.union(
-  v.literal("Low"),
-  v.literal("Moderate"),
-  v.literal("High")
-);
+const intensityValidator = v.union(v.literal('Low'), v.literal('Moderate'), v.literal('High'))
 
 /**
  * Start a new workout session
@@ -762,135 +754,133 @@ const intensityValidator = v.union(
  */
 export const startSession = mutation({
   args: {
-    templateId: v.id("program_templates"),
+    templateId: v.id('program_templates'),
     exerciseOrder: v.optional(v.array(v.number())),
     targetIntensity: v.optional(intensityValidator),
     skipCascade: v.optional(v.boolean()),
     ...athleteDayArgs,
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
+    const identity = await ctx.auth.getUserIdentity()
     if (!identity) {
-      throw new Error("Not authenticated");
+      throw new Error('Not authenticated')
     }
 
     const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
-      .first();
+      .query('users')
+      .withIndex('by_clerk', (q) => q.eq('clerkId', identity.subject))
+      .first()
 
     if (!user) {
-      throw new Error("User not found");
+      throw new Error('User not found')
     }
 
     // Get user's program for linking
     const userProgram = await ctx.db
-      .query("user_programs")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .first();
+      .query('user_programs')
+      .withIndex('by_user', (q) => q.eq('userId', user._id))
+      .first()
 
     if (!userProgram) {
-      throw new Error("No active program found. Please complete intake first.");
+      throw new Error('No active program found. Please complete intake first.')
     }
 
     // Check for existing in-progress session
     const existingSession = await ctx.db
-      .query("gpp_workout_sessions")
-      .withIndex("by_user_status", (q) =>
-        q.eq("userId", user._id).eq("status", "in_progress")
-      )
-      .first();
+      .query('gpp_workout_sessions')
+      .withIndex('by_user_status', (q) => q.eq('userId', user._id).eq('status', 'in_progress'))
+      .first()
 
     if (existingSession) {
       // A paused workout isn't dropped to start another: the athlete resumes
       // or discards it from Today first
       if (existingSession.templateId !== args.templateId) {
-        throw new Error(PAUSED_SESSION_MESSAGE);
+        throw new Error(PAUSED_SESSION_MESSAGE)
       }
       // Same workout: resume it instead of starting over
       return {
         sessionId: existingSession._id,
         isExisting: true,
-        message: "Resuming existing workout session",
+        message: 'Resuming existing workout session',
         cascadeApplied: false,
-      };
+      }
     }
 
     // Get the template to initialize exercises
-    const template = await ctx.db.get(args.templateId);
+    const template = await ctx.db.get(args.templateId)
     if (!template) {
-      throw new Error("Workout template not found");
+      throw new Error('Workout template not found')
     }
 
     // Starting a workout that's already done for where the athlete is now is
     // a Redo: logged, but it doesn't fill a slot or move the program forward
-    const completion = await loadProgramCompletion(ctx, userProgram);
-    const redo = completion.isWorkoutDone(args.templateId);
+    const completion = await loadProgramCompletion(ctx, userProgram)
+    const redo = completion.isWorkoutDone(args.templateId)
 
     // ─────────────────────────────────────────────────────────────────────────
     // CASCADE LOGIC: Auto-swap when starting a future workout
     // ─────────────────────────────────────────────────────────────────────────
-    let cascadeApplied = false;
-    let cascadeAffectedSlots = 0;
+    let cascadeApplied = false
+    let cascadeAffectedSlots = 0
 
     if (!args.skipCascade) {
       // Get intake for training days
-      const intake = await ctx.db.get(userProgram.intakeResponseId);
+      const intake = await ctx.db.get(userProgram.intakeResponseId)
 
       if (intake) {
         const trainingDays =
           intake.selectedTrainingDays ??
           DEFAULT_TRAINING_DAYS[intake.preferredTrainingDaysPerWeek] ??
-          DEFAULT_TRAINING_DAYS[3];
+          DEFAULT_TRAINING_DAYS[3]
 
         // The athlete's today, on their clock (see athleteClock)
-        const today = athleteToday(args);
-        const weeksPerPhase = userProgram.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
+        const today = athleteToday(args)
+        const weeksPerPhase = userProgram.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE
 
         // Get existing schedule overrides
         const existingOverride = await ctx.db
-          .query("user_schedule_overrides")
-          .withIndex("by_user_program", (q) => q.eq("userProgramId", userProgram._id))
-          .first();
+          .query('user_schedule_overrides')
+          .withIndex('by_user_program', (q) => q.eq('userProgramId', userProgram._id))
+          .first()
 
         // Today's slot, with the calendar's own mapping
         const todaySlot = slotOnDate(userProgram, (anchor) =>
           getWorkoutForDate(anchor, trainingDays, today, weeksPerPhase)
-        );
+        )
 
         if (todaySlot) {
           const selectedSlot: WorkoutSlot = {
             phase: template.phase as CalendarPhase,
             week: template.week,
             day: template.day,
-          };
+          }
 
-          const workoutsPerWeek = trainingDays.length;
-          const todayIndex = getAbsoluteIndex(todaySlot, workoutsPerWeek, weeksPerPhase);
+          const workoutsPerWeek = trainingDays.length
+          const todayIndex = getAbsoluteIndex(todaySlot, workoutsPerWeek, weeksPerPhase)
 
           // Get all templates for user's category and skill level
           const allTemplates = await ctx.db
-            .query("program_templates")
-            .withIndex("by_category_skill", (q) =>
+            .query('program_templates')
+            .withIndex('by_category_skill', (q) =>
               q
-                .eq("gppCategoryId", userProgram.gppCategoryId)
-                .eq("skillLevel", userProgram.skillLevel)
+                .eq('gppCategoryId', userProgram.gppCategoryId)
+                .eq('skillLevel', userProgram.skillLevel)
             )
-            .collect();
+            .collect()
 
           // Build template lookup
-          const templateLookup = new Map<string, (typeof allTemplates)[0]>();
+          const templateLookup = new Map<string, (typeof allTemplates)[0]>()
           for (const t of allTemplates) {
-            const key = `${t.phase}-${t.week}-${t.day}`;
-            templateLookup.set(key, t);
+            const key = `${t.phase}-${t.week}-${t.day}`
+            templateLookup.set(key, t)
           }
 
           // Build current slot assignments (considering existing overrides)
-          const slotOverrides = existingOverride?.slotOverrides ?? [];
-          const overrideLookup = new Map<string, string>();
+          const slotOverrides = existingOverride?.slotOverrides ?? []
+          const overrideLookup = new Map<string, string>()
           for (const override of slotOverrides) {
-            const key = `${override.phase}-${override.week}-${override.day}`;
-            overrideLookup.set(key, override.templateId.toString());
+            const key = `${override.phase}-${override.week}-${override.day}`
+            overrideLookup.set(key, override.templateId.toString())
           }
 
           // Get current template for a slot
@@ -899,50 +889,54 @@ export const startSession = mutation({
           const defaultTemplateForSlot = (slot: WorkoutSlot) =>
             templateLookup.get(
               `${slot.phase}-${mapUserWeekToTemplateWeek(slot.week, weeksPerPhase)}-${slot.day}`
-            );
+            )
           const getTemplateForSlot = (slot: WorkoutSlot) => {
-            const key = `${slot.phase}-${slot.week}-${slot.day}`;
-            const overrideId = overrideLookup.get(key);
+            const key = `${slot.phase}-${slot.week}-${slot.day}`
+            const overrideId = overrideLookup.get(key)
             if (overrideId) {
-              return allTemplates.find((t) => t._id.toString() === overrideId);
+              return allTemplates.find((t) => t._id.toString() === overrideId)
             }
-            return defaultTemplateForSlot(slot);
-          };
+            return defaultTemplateForSlot(slot)
+          }
 
           // Find which slot currently contains the selected template
-          let selectedTemplateCurrentSlot: WorkoutSlot | null = null;
+          let selectedTemplateCurrentSlot: WorkoutSlot | null = null
           for (const phase of PHASE_ORDER) {
             for (let week = 1; week <= weeksPerPhase; week++) {
               for (let day = 1; day <= workoutsPerWeek; day++) {
-                const slot: WorkoutSlot = { phase, week, day };
-                const slotTemplate = getTemplateForSlot(slot);
+                const slot: WorkoutSlot = { phase, week, day }
+                const slotTemplate = getTemplateForSlot(slot)
                 if (slotTemplate && slotTemplate._id.toString() === args.templateId.toString()) {
-                  selectedTemplateCurrentSlot = slot;
-                  break;
+                  selectedTemplateCurrentSlot = slot
+                  break
                 }
               }
-              if (selectedTemplateCurrentSlot) break;
+              if (selectedTemplateCurrentSlot) break
             }
-            if (selectedTemplateCurrentSlot) break;
+            if (selectedTemplateCurrentSlot) break
           }
 
           if (selectedTemplateCurrentSlot) {
-            const selectedIndex = getAbsoluteIndex(selectedTemplateCurrentSlot, workoutsPerWeek, weeksPerPhase);
+            const selectedIndex = getAbsoluteIndex(
+              selectedTemplateCurrentSlot,
+              workoutsPerWeek,
+              weeksPerPhase
+            )
 
             // Only cascade if selected workout is in the future (not today or past)
             if (selectedIndex > todayIndex) {
               // Generate all slots in order
-              const allSlots: WorkoutSlot[] = [];
+              const allSlots: WorkoutSlot[] = []
               for (const phase of PHASE_ORDER) {
                 for (let week = 1; week <= weeksPerPhase; week++) {
                   for (let day = 1; day <= workoutsPerWeek; day++) {
-                    allSlots.push({ phase, week, day });
+                    allSlots.push({ phase, week, day })
                   }
                 }
               }
 
               // Get slots in the cascade range
-              const slotsInRange = allSlots.slice(todayIndex, selectedIndex + 1);
+              const slotsInRange = allSlots.slice(todayIndex, selectedIndex + 1)
 
               // Don't cascade over a workout that's done, or over one the
               // athlete moved to another date on the calendar: the cascade
@@ -951,38 +945,43 @@ export const startSession = mutation({
               // swapped away could land in the past)
               const movedSlots = new Set(
                 (existingOverride?.dateOverrides ?? []).map((o) => `${o.phase}-${o.week}-${o.day}`)
-              );
+              )
               const canCascade = !slotsInRange.some(
-                (slot) => completion.isSlotDone(slot) || movedSlots.has(`${slot.phase}-${slot.week}-${slot.day}`)
-              );
+                (slot) =>
+                  completion.isSlotDone(slot) ||
+                  movedSlots.has(`${slot.phase}-${slot.week}-${slot.day}`)
+              )
 
               if (canCascade) {
                 // Build new slot overrides with cascade
-                const rangeTemplates: Array<{ slot: WorkoutSlot; template: (typeof allTemplates)[0] }> = [];
+                const rangeTemplates: Array<{
+                  slot: WorkoutSlot
+                  template: (typeof allTemplates)[0]
+                }> = []
                 for (const slot of slotsInRange) {
-                  const t = getTemplateForSlot(slot);
+                  const t = getTemplateForSlot(slot)
                   if (t) {
-                    rangeTemplates.push({ slot, template: t });
+                    rangeTemplates.push({ slot, template: t })
                   }
                 }
 
                 // Create new assignments
-                const newAssignments: Array<{ slot: WorkoutSlot; templateId: string }> = [];
+                const newAssignments: Array<{ slot: WorkoutSlot; templateId: string }> = []
 
                 // Today's slot gets the selected template
                 newAssignments.push({
                   slot: slotsInRange[0],
                   templateId: args.templateId.toString(),
-                });
+                })
 
                 // Each subsequent slot gets what was in the previous slot
                 for (let i = 1; i < slotsInRange.length; i++) {
-                  const prevSlotTemplate = rangeTemplates[i - 1]?.template;
+                  const prevSlotTemplate = rangeTemplates[i - 1]?.template
                   if (prevSlotTemplate) {
                     newAssignments.push({
                       slot: slotsInRange[i],
                       templateId: prevSlotTemplate._id.toString(),
-                    });
+                    })
                   }
                 }
 
@@ -992,53 +991,56 @@ export const startSession = mutation({
                     { phase: o.phase as CalendarPhase, week: o.week, day: o.day },
                     workoutsPerWeek,
                     weeksPerPhase
-                  );
-                  return oIndex < todayIndex || oIndex > selectedIndex;
-                });
+                  )
+                  return oIndex < todayIndex || oIndex > selectedIndex
+                })
 
                 // Add new cascade overrides
                 for (const assignment of newAssignments) {
-                  const defaultTemplate = defaultTemplateForSlot(assignment.slot);
-                  if (!defaultTemplate || defaultTemplate._id.toString() !== assignment.templateId) {
+                  const defaultTemplate = defaultTemplateForSlot(assignment.slot)
+                  if (
+                    !defaultTemplate ||
+                    defaultTemplate._id.toString() !== assignment.templateId
+                  ) {
                     const assignedTemplate = allTemplates.find(
                       (t) => t._id.toString() === assignment.templateId
-                    );
+                    )
                     if (assignedTemplate) {
                       newSlotOverrides.push({
                         phase: assignment.slot.phase,
                         week: assignment.slot.week,
                         day: assignment.slot.day,
                         templateId: assignedTemplate._id,
-                      });
+                      })
                     }
                   }
                 }
 
-                const now = Date.now();
+                const now = Date.now()
 
                 // Save override record, unless it would hand a finished
                 // session to a different slot (see keepsDone)
-                const keepsDone = completion.keepsDone(newSlotOverrides);
+                const keepsDone = completion.keepsDone(newSlotOverrides)
                 if (!keepsDone) {
                   // Leave the schedule as it is
                 } else if (existingOverride) {
                   await ctx.db.patch(existingOverride._id, {
                     slotOverrides: newSlotOverrides,
                     updatedAt: now,
-                  });
+                  })
                 } else {
-                  await ctx.db.insert("user_schedule_overrides", {
+                  await ctx.db.insert('user_schedule_overrides', {
                     userId: user._id,
                     userProgramId: userProgram._id,
                     slotOverrides: newSlotOverrides,
                     createdAt: now,
                     updatedAt: now,
-                  });
+                  })
                 }
 
                 if (keepsDone) {
-                  cascadeApplied = true;
-                  cascadeAffectedSlots = slotsInRange.length;
+                  cascadeApplied = true
+                  cascadeAffectedSlots = slotsInRange.length
                 }
               }
             }
@@ -1053,34 +1055,30 @@ export const startSession = mutation({
 
     // Get the latest intake for years of experience (for scaling snapshot)
     const intake = await ctx.db
-      .query("intake_responses")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .order("desc")
-      .first();
+      .query('intake_responses')
+      .withIndex('by_user', (q) => q.eq('userId', user._id))
+      .order('desc')
+      .first()
 
     // Create scaling snapshot to capture athlete profile at workout time
     const scalingSnapshot = {
       categoryId: userProgram.gppCategoryId,
-      phase: template.phase as "GPP" | "SPP" | "SSP",
+      phase: template.phase as 'GPP' | 'SPP' | 'SSP',
       ageGroup: normalizeAgeGroup(userProgram.ageGroup),
       yearsOfExperience: intake?.yearsOfExperience ?? 0,
-    };
+    }
 
-    const exerciseIds = template.exercises.map((ex) => ex.exerciseId);
-    const exercises = await Promise.all(
-      exerciseIds.map((id) => ctx.db.get(id))
-    );
-    const exerciseMap = new Map(
-      exercises.filter(Boolean).map((ex) => [ex!._id.toString(), ex!])
-    );
+    const exerciseIds = template.exercises.map((ex) => ex.exerciseId)
+    const exercises = await Promise.all(exerciseIds.map((id) => ctx.db.get(id)))
+    const exerciseMap = new Map(exercises.filter(Boolean).map((ex) => [ex!._id.toString(), ex!]))
 
     // Initialize exercise tracking structure using scaled set counts when available.
     const initialExercises = template.exercises.map((ex) => {
-      let prescribedSets = ex.sets;
+      let prescribedSets = ex.sets
 
       if (scalingSnapshot) {
-        const exercise = exerciseMap.get(ex.exerciseId.toString());
-        const exerciseFocus = getExerciseFocus(exercise?.tags, exercise?.equipment);
+        const exercise = exerciseMap.get(ex.exerciseId.toString())
+        const exerciseFocus = getExerciseFocus(exercise?.tags, exercise?.equipment)
         const params = getCategoryExerciseParameters(
           scalingSnapshot.categoryId as CategoryId,
           scalingSnapshot.phase as Phase,
@@ -1089,8 +1087,8 @@ export const startSession = mutation({
           exerciseFocus,
           exercise?.tags,
           exercise?.equipment
-        );
-        prescribedSets = params.sets;
+        )
+        prescribedSets = params.sets
       }
 
       return {
@@ -1098,17 +1096,17 @@ export const startSession = mutation({
         completed: false,
         skipped: false,
         sets: buildEmptySetCompletions(prescribedSets),
-      };
-    });
+      }
+    })
 
-    const now = Date.now();
+    const now = Date.now()
 
-    const sessionId = await ctx.db.insert("gpp_workout_sessions", {
+    const sessionId = await ctx.db.insert('gpp_workout_sessions', {
       userId: user._id,
       templateId: args.templateId,
       userProgramId: userProgram._id,
       startedAt: now,
-      status: "in_progress",
+      status: 'in_progress',
       exercises: initialExercises,
       exerciseOrder: args.exerciseOrder,
       targetIntensity: args.targetIntensity,
@@ -1121,31 +1119,31 @@ export const startSession = mutation({
         day: template.day,
         workoutDate: now,
       },
-    });
+    })
 
     return {
       sessionId,
       isExisting: false,
       message: cascadeApplied
         ? `Workout started! Schedule cascaded (${cascadeAffectedSlots} workouts shifted).`
-        : "Workout session started",
+        : 'Workout session started',
       cascadeApplied,
       cascadeAffectedSlots,
-    };
+    }
   },
-});
+})
 
 /** The order the workout screen reads from `getSessionForTemplate`. */
 export async function writeExerciseOrder(
   ctx: MutationCtx,
-  session: Doc<"gpp_workout_sessions">,
-  exerciseOrder: number[],
+  session: Doc<'gpp_workout_sessions'>,
+  exerciseOrder: number[]
 ) {
-  if (session.status !== "in_progress") {
-    throw new Error("Cannot update a completed or abandoned session");
+  if (session.status !== 'in_progress') {
+    throw new Error('Cannot update a completed or abandoned session')
   }
 
-  await ctx.db.patch(session._id, { exerciseOrder });
+  await ctx.db.patch(session._id, { exerciseOrder })
 }
 
 /**
@@ -1153,47 +1151,47 @@ export async function writeExerciseOrder(
  */
 export const updateProgress = mutation({
   args: {
-    sessionId: v.id("gpp_workout_sessions"),
+    sessionId: v.id('gpp_workout_sessions'),
     exercises: v.array(exerciseCompletionValidator),
     exerciseOrder: v.optional(v.array(v.number())), // For reordering (indices into template.exercises)
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
+    const identity = await ctx.auth.getUserIdentity()
     if (!identity) {
-      throw new Error("Not authenticated");
+      throw new Error('Not authenticated')
     }
 
     const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
-      .first();
+      .query('users')
+      .withIndex('by_clerk', (q) => q.eq('clerkId', identity.subject))
+      .first()
 
     if (!user) {
-      throw new Error("User not found");
+      throw new Error('User not found')
     }
 
-    const session = await ctx.db.get(args.sessionId);
+    const session = await ctx.db.get(args.sessionId)
     if (!session) {
-      throw new Error("Session not found");
+      throw new Error('Session not found')
     }
 
     if (session.userId !== user._id) {
-      throw new Error("Not authorized to update this session");
+      throw new Error('Not authorized to update this session')
     }
 
-    if (session.status !== "in_progress") {
-      throw new Error("Cannot update a completed or abandoned session");
+    if (session.status !== 'in_progress') {
+      throw new Error('Cannot update a completed or abandoned session')
     }
 
-    await ctx.db.patch(args.sessionId, { exercises: args.exercises });
+    await ctx.db.patch(args.sessionId, { exercises: args.exercises })
 
     if (args.exerciseOrder) {
-      await writeExerciseOrder(ctx, session, args.exerciseOrder);
+      await writeExerciseOrder(ctx, session, args.exerciseOrder)
     }
 
-    return { success: true };
+    return { success: true }
   },
-});
+})
 
 /**
  * Persists the dedicated workout-start telemetry marker once per session
@@ -1202,104 +1200,104 @@ export const updateProgress = mutation({
  */
 export const markWorkoutStarted = mutation({
   args: {
-    sessionId: v.id("gpp_workout_sessions"),
+    sessionId: v.id('gpp_workout_sessions'),
   },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
+    const user = await getCurrentUser(ctx)
     if (!user) {
-      throw new Error("Not authenticated");
+      throw new Error('Not authenticated')
     }
 
-    const session = await ctx.db.get(args.sessionId);
+    const session = await ctx.db.get(args.sessionId)
     if (!session) {
-      throw new Error("Session not found");
+      throw new Error('Session not found')
     }
 
     if (session.userId !== user._id) {
-      throw new Error("Not authorized to update this session");
+      throw new Error('Not authorized to update this session')
     }
 
-    if (session.status !== "in_progress") {
-      return { marked: false, alreadyStarted: session.workoutStartedAt !== undefined };
+    if (session.status !== 'in_progress') {
+      return { marked: false, alreadyStarted: session.workoutStartedAt !== undefined }
     }
 
     if (session.workoutStartedAt !== undefined) {
-      return { marked: false, alreadyStarted: true };
+      return { marked: false, alreadyStarted: true }
     }
 
-    await ctx.db.patch(args.sessionId, { workoutStartedAt: Date.now() });
-    return { marked: true, alreadyStarted: false };
+    await ctx.db.patch(args.sessionId, { workoutStartedAt: Date.now() })
+    return { marked: true, alreadyStarted: false }
   },
-});
+})
 
 /**
  * Complete the workout session
  */
 export const completeSession = mutation({
   args: {
-    sessionId: v.id("gpp_workout_sessions"),
+    sessionId: v.id('gpp_workout_sessions'),
     exercises: v.array(exerciseCompletionValidator),
     exerciseOrder: v.optional(v.array(v.number())), // Persist exercise order on complete
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
+    const identity = await ctx.auth.getUserIdentity()
     if (!identity) {
-      throw new Error("Not authenticated");
+      throw new Error('Not authenticated')
     }
 
     const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
-      .first();
+      .query('users')
+      .withIndex('by_clerk', (q) => q.eq('clerkId', identity.subject))
+      .first()
 
     if (!user) {
-      throw new Error("User not found");
+      throw new Error('User not found')
     }
 
-    const session = await ctx.db.get(args.sessionId);
+    const session = await ctx.db.get(args.sessionId)
     if (!session) {
-      throw new Error("Session not found");
+      throw new Error('Session not found')
     }
 
     if (session.userId !== user._id) {
-      throw new Error("Not authorized to complete this session");
+      throw new Error('Not authorized to complete this session')
     }
 
-    if (session.status !== "in_progress") {
-      throw new Error("Session is not in progress");
+    if (session.status !== 'in_progress') {
+      throw new Error('Session is not in progress')
     }
 
-    const now = Date.now();
-    const totalDurationSeconds = activeSeconds(session, now);
+    const now = Date.now()
+    const totalDurationSeconds = activeSeconds(session, now)
 
     const updates: {
-      exercises: typeof args.exercises;
-      completedAt: number;
-      totalDurationSeconds: number;
-      status: "completed";
-      pausedAt: undefined;
-      exerciseOrder?: number[];
+      exercises: typeof args.exercises
+      completedAt: number
+      totalDurationSeconds: number
+      status: 'completed'
+      pausedAt: undefined
+      exerciseOrder?: number[]
     } = {
       exercises: args.exercises,
       completedAt: now,
       totalDurationSeconds,
-      status: "completed",
+      status: 'completed',
       pausedAt: undefined,
-    };
-
-    if (args.exerciseOrder) {
-      updates.exerciseOrder = args.exerciseOrder;
     }
 
-    await ctx.db.patch(args.sessionId, updates);
+    if (args.exerciseOrder) {
+      updates.exerciseOrder = args.exerciseOrder
+    }
+
+    await ctx.db.patch(args.sessionId, updates)
 
     // Update user program's last workout date
-    const userProgram = await ctx.db.get(session.userProgramId);
+    const userProgram = await ctx.db.get(session.userProgramId)
     if (userProgram) {
       await ctx.db.patch(userProgram._id, {
         lastWorkoutDate: now,
         updatedAt: now,
-      });
+      })
 
       // Note: We intentionally do NOT clear todayFocusTemplateId here.
       // If user explicitly selected this workout as today's workout, it should
@@ -1311,31 +1309,31 @@ export const completeSession = mutation({
     return {
       success: true,
       totalDurationSeconds,
-      message: "Workout completed!",
-    };
+      message: 'Workout completed!',
+    }
   },
-});
+})
 
 /** The signed-in athlete's in-progress session, or an error saying why not. */
 async function getOwnInProgressSession(
   ctx: MutationCtx,
-  sessionId: Id<"gpp_workout_sessions">
-): Promise<Doc<"gpp_workout_sessions">> {
-  const user = await getCurrentUser(ctx);
+  sessionId: Id<'gpp_workout_sessions'>
+): Promise<Doc<'gpp_workout_sessions'>> {
+  const user = await getCurrentUser(ctx)
   if (!user) {
-    throw new Error("Not authenticated");
+    throw new Error('Not authenticated')
   }
-  const session = await ctx.db.get(sessionId);
+  const session = await ctx.db.get(sessionId)
   if (!session) {
-    throw new Error("Session not found");
+    throw new Error('Session not found')
   }
   if (session.userId !== user._id) {
-    throw new Error("Not authorized to change this session");
+    throw new Error('Not authorized to change this session')
   }
-  if (session.status !== "in_progress") {
-    throw new Error("Session is not in progress");
+  if (session.status !== 'in_progress') {
+    throw new Error('Session is not in progress')
   }
-  return session;
+  return session
 }
 
 /**
@@ -1344,40 +1342,40 @@ async function getOwnInProgressSession(
  */
 export const pauseSession = mutation({
   args: {
-    sessionId: v.id("gpp_workout_sessions"),
+    sessionId: v.id('gpp_workout_sessions'),
     exercises: v.optional(v.array(exerciseCompletionValidator)),
     exerciseOrder: v.optional(v.array(v.number())),
   },
   handler: async (ctx, args) => {
-    const session = await getOwnInProgressSession(ctx, args.sessionId);
+    const session = await getOwnInProgressSession(ctx, args.sessionId)
     await ctx.db.patch(args.sessionId, {
       // A second pause keeps the first pausedAt
       pausedAt: session.pausedAt ?? Date.now(),
       ...(args.exercises ? { exercises: args.exercises } : {}),
       ...(args.exerciseOrder ? { exerciseOrder: args.exerciseOrder } : {}),
-    });
-    return { success: true };
+    })
+    return { success: true }
   },
-});
+})
 
 /**
  * End a pause when the athlete opens the session again. The paused time is
  * added to pausedSeconds so the timer and duration leave it out.
  */
 export const resumeSession = mutation({
-  args: { sessionId: v.id("gpp_workout_sessions") },
+  args: { sessionId: v.id('gpp_workout_sessions') },
   handler: async (ctx, args) => {
-    const session = await getOwnInProgressSession(ctx, args.sessionId);
+    const session = await getOwnInProgressSession(ctx, args.sessionId)
     if (session.pausedAt === undefined) {
-      return { success: true };
+      return { success: true }
     }
     await ctx.db.patch(args.sessionId, {
       pausedSeconds: pausedSecondsAfterResume(session, Date.now()),
       pausedAt: undefined,
-    });
-    return { success: true };
+    })
+    return { success: true }
   },
-});
+})
 
 /**
  * Abandon the workout session: the athlete's explicit Discard on Today.
@@ -1385,56 +1383,56 @@ export const resumeSession = mutation({
  */
 export const abandonSession = mutation({
   args: {
-    sessionId: v.id("gpp_workout_sessions"),
+    sessionId: v.id('gpp_workout_sessions'),
     exercises: v.optional(v.array(exerciseCompletionValidator)),
     exerciseOrder: v.optional(v.array(v.number())), // Persist exercise order on abandon
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
+    const identity = await ctx.auth.getUserIdentity()
     if (!identity) {
-      throw new Error("Not authenticated");
+      throw new Error('Not authenticated')
     }
 
     const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
-      .first();
+      .query('users')
+      .withIndex('by_clerk', (q) => q.eq('clerkId', identity.subject))
+      .first()
 
     if (!user) {
-      throw new Error("User not found");
+      throw new Error('User not found')
     }
 
-    const session = await ctx.db.get(args.sessionId);
+    const session = await ctx.db.get(args.sessionId)
     if (!session) {
-      throw new Error("Session not found");
+      throw new Error('Session not found')
     }
 
     if (session.userId !== user._id) {
-      throw new Error("Not authorized to abandon this session");
+      throw new Error('Not authorized to abandon this session')
     }
 
-    if (session.status !== "in_progress") {
-      throw new Error("Session is not in progress");
+    if (session.status !== 'in_progress') {
+      throw new Error('Session is not in progress')
     }
 
-    const updates: { 
-      status: "abandoned"; 
-      exercises?: typeof args.exercises;
-      exerciseOrder?: number[];
+    const updates: {
+      status: 'abandoned'
+      exercises?: typeof args.exercises
+      exerciseOrder?: number[]
     } = {
-      status: "abandoned",
-    };
+      status: 'abandoned',
+    }
 
     if (args.exercises) {
-      updates.exercises = args.exercises;
+      updates.exercises = args.exercises
     }
 
     if (args.exerciseOrder) {
-      updates.exerciseOrder = args.exerciseOrder;
+      updates.exerciseOrder = args.exerciseOrder
     }
 
-    await ctx.db.patch(args.sessionId, updates);
+    await ctx.db.patch(args.sessionId, updates)
 
-    return { success: true, message: "Workout session abandoned" };
+    return { success: true, message: 'Workout session abandoned' }
   },
-});
+})
