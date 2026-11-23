@@ -459,6 +459,36 @@ describe('users.deleteMyAccount', () => {
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
+  it('reports the account deleted when the purge fails after Clerk, and retries the purge', async () => {
+    const { t, athlete } = await setup()
+    jest.spyOn(console, 'error').mockImplementation(() => {})
+    // Between the blocker check and the purge, the account gains trainer
+    // data, so the purge throws after Clerk has already deleted the user.
+    let blockingRow: Id<'users'> | null = null
+    jest.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+      blockingRow = await t.run((ctx) =>
+        ctx.db.insert('users', {
+          email: 'late@example.com',
+          name: 'Late',
+          clerkId: 'clerk_late',
+          trainerId: athlete,
+          createdAt: Date.now(),
+        })
+      )
+      return new Response(null, { status: 200 })
+    })
+
+    const result = await t.withIdentity(ATHLETE_IDENTITY).action(api.users.deleteMyAccount, {})
+
+    expect(result).toEqual({ deleted: true })
+    expect(await t.run((ctx) => ctx.db.get(athlete))).not.toBeNull()
+
+    // Once the purge can succeed, the scheduled retry finishes it.
+    await t.run((ctx) => ctx.db.delete(blockingRow!))
+    await t.finishAllScheduledFunctions(jest.runAllTimers)
+    expect(await rowsFor(t, athlete, 'athlete@example.com')).toEqual(allZero)
+  })
+
   it('finishes cleanly when the Convex row is already gone', async () => {
     const { t } = await setup()
     clerkOk()

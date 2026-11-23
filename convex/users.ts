@@ -219,6 +219,9 @@ export const accountDeletionBlocker = internalQuery({
  */
 export const PURGE_BATCH_SIZE = 200
 
+/** How long deleteMyAccount waits before it retries a purge that threw. */
+const PURGE_RETRY_MS = 60_000
+
 /**
  * Up to `limit` of the athlete's rows. `verifiedEmail` is the address Clerk
  * vouched for: invitations are matched on it, never on `users.email`, which
@@ -370,12 +373,21 @@ export const deleteMyAccount = action({
       throw new Error('Could not delete your account. Try again.')
     }
 
-    // A long history finishes in scheduled follow-up runs of the same purge.
-    await ctx.runMutation(internal.users.purgeAthleteRecords, {
+    const purge = {
       clerkId,
       // Only an address Clerk verified may pick which invitations go.
       verifiedEmail: identity.emailVerified === true ? identity.email : undefined,
-    })
+    }
+    // A long history finishes in scheduled follow-up runs of the same purge.
+    try {
+      await ctx.runMutation(internal.users.purgeAthleteRecords, purge)
+    } catch (error) {
+      // The Clerk account is gone, so the athlete's account is deleted and
+      // the app must say so. The purge runs again shortly, and Clerk's
+      // user.deleted webhook runs it too.
+      console.error('deleteMyAccount: purge failed after the Clerk delete; retrying', error)
+      await ctx.scheduler.runAfter(PURGE_RETRY_MS, internal.users.purgeAthleteRecords, purge)
+    }
     return { deleted: true }
   },
 })
