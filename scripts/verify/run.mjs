@@ -941,21 +941,29 @@ export function redactEvidence(dir, secret, skip = []) {
 }
 
 // Maestro's beta web driver occasionally crashes in Chromium/CDP within a few
-// seconds of launchApp before any screenshot is taken (e.g. #88 main run
+// seconds of launchApp before the flow takes any screenshot (e.g. #88 main run
 // 44995849336 failing at 3.4s on a 90s extendedWaitUntil). Retry once ONLY on
 // that cold-start signature; real assertion failures take >20s or happen after
-// screenshots exist and are never retried.
+// the flow has taken its own screenshots and are never retried.
 export function shouldRetryColdStart({ elapsedMs, hasScreenshots, attempt }) {
   return attempt === 0 && elapsedMs < 20_000 && !hasScreenshots
 }
 
-function hasScreenshotFiles(dir) {
+// Maestro saves its own step screenshots on every failure, under
+// `<run>/<flow>/screenshots/step-011-assertCondition-....png` (and one per
+// runFlow step). Those prove nothing about how far the flow got, so only the
+// flow's own `takeScreenshot` evidence (`<run>/<flow>/takeScreenshot/01-today.png`)
+// counts. Archived `attempt-N/` folders belong to an earlier attempt.
+const maestroStepShot = /^step-\d+-/i
+
+export function hasFlowEvidence(dir) {
   if (!fs.existsSync(dir)) return false
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name)
     if (entry.isDirectory()) {
-      if (hasScreenshotFiles(full)) return true
-    } else if (/\.png$/i.test(entry.name)) {
+      if (entry.name === 'screenshots' || /^attempt-\d+$/.test(entry.name)) continue
+      if (hasFlowEvidence(full)) return true
+    } else if (/\.png$/i.test(entry.name) && !maestroStepShot.test(entry.name)) {
       return true
     }
   }
@@ -997,11 +1005,11 @@ function runMaestro(flowFile, outDir, url, persona) {
       return
     }
     const elapsedMs = Date.now() - started
-    const hasScreenshots = hasScreenshotFiles(outDir)
+    const hasScreenshots = hasFlowEvidence(outDir)
     if (shouldRetryColdStart({ elapsedMs, hasScreenshots, attempt })) {
       archiveAttemptEvidence(outDir, `attempt-${attempt + 1}`)
       console.warn(
-        `retrying ${flowFile} once after cold-start Maestro exit ${result.status ?? 1} (${Math.round(elapsedMs / 1000)}s, no screenshots); preserved attempt-${attempt + 1}/`
+        `retrying ${flowFile} once after cold-start Maestro exit ${result.status ?? 1} (${Math.round(elapsedMs / 1000)}s, no flow screenshots); preserved attempt-${attempt + 1}/`
       )
       continue
     }
