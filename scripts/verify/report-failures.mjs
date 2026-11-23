@@ -7,7 +7,7 @@
 //                 prints what would be filed, and writes the failures to the
 //                 step output `failures`. It never calls GitHub.
 //   (default)     in the report job (issues: write, never on a PR): reads the
-//                 failures from FAILURES_JSON and files them. On any event
+//                 failures from FAILED_FLOWS and FAILURES_JSON and files them. On any event
 //                 other than schedule, workflow_dispatch and push, or with
 //                 --dry-run, it prints what it would do instead.
 import { spawnSync } from 'node:child_process'
@@ -119,8 +119,9 @@ export function findOpenIssues(gh, titles) {
       'open',
       '--search',
       `"${title}" in:title`,
+      // gh pages through results up to this limit.
       '--limit',
-      '100',
+      '1000',
       '--json',
       'number,title',
     ])
@@ -161,22 +162,34 @@ export function report({ failures, gh, dryRun, runUrl, artifactUrl = '', log = c
   return plan
 }
 
-// The report job gets the failures as JSON from the Android job's output.
-// Empty or unreadable means that job died before it could summarize.
-export function failuresFromJson(json) {
-  let parsed = null
-  try {
-    parsed = JSON.parse(json)
-  } catch {
-    parsed = null
+export const UNAVAILABLE_ERROR = 'Error text unavailable for this run. See the run log.'
+
+// The report job gets two outputs from the Android job: the failed flow names,
+// and the failures with their error text. GitHub drops a whole output that
+// contains a masked secret, so the details can go missing while the names
+// (fixed strings from the flow list) survive. Names win; a flow with no
+// details gets a fixed line. Nothing at all means the job died before it
+// could summarize, or failed outside the flows: one android-run report.
+export function failuresFromOutputs({ flowsJson = '', failuresJson = '' } = {}) {
+  const parse = (json) => {
+    try {
+      const parsed = JSON.parse(json)
+      return Array.isArray(parsed) ? parsed : null
+    } catch {
+      return null
+    }
   }
-  if (!Array.isArray(parsed)) return failuresFrom(null)
-  const failures = parsed
-    .filter((failure) => failure && typeof failure.flow === 'string')
-    .map((failure) => ({ flow: failure.flow, error: String(failure.error ?? '') }))
-  // The report job runs only when the Android job failed. No failed flow then
-  // means it failed somewhere else, which still deserves an issue.
-  if (failures.length === 0) {
+  const details = new Map(
+    (parse(failuresJson) || [])
+      .filter((failure) => failure && typeof failure.flow === 'string')
+      .map((failure) => [failure.flow, String(failure.error ?? '')])
+  )
+  const names = parse(flowsJson)
+  const flows = names
+    ? [...new Set(names.filter((flow) => typeof flow === 'string' && flow))]
+    : [...details.keys()]
+  if (names === null && parse(failuresJson) === null) return failuresFrom(null)
+  if (flows.length === 0) {
     return [
       {
         flow: RUN_FAILURE_FLOW,
@@ -184,7 +197,7 @@ export function failuresFromJson(json) {
       },
     ]
   }
-  return failures
+  return flows.map((flow) => ({ flow, error: details.get(flow) ?? UNAVAILABLE_ERROR }))
 }
 
 function runGh(args) {
@@ -225,7 +238,12 @@ function main() {
     const failures = failuresFrom(results, { scrubbed })
     report({ failures, gh: null, dryRun: true, runUrl, artifactUrl })
     if (process.env.GITHUB_OUTPUT) {
-      fs.appendFileSync(process.env.GITHUB_OUTPUT, `failures=${JSON.stringify(failures)}\n`)
+      // Names go in their own output: see failuresFromOutputs.
+      const flows = failures.map((failure) => failure.flow)
+      fs.appendFileSync(
+        process.env.GITHUB_OUTPUT,
+        `failed_flows=${JSON.stringify(flows)}\nfailures=${JSON.stringify(failures)}\n`
+      )
     }
     return
   }
@@ -234,7 +252,10 @@ function main() {
   if (dryRun) console.log(`[report] Dry run (event: ${event || 'none'}); filing nothing.`)
   try {
     report({
-      failures: failuresFromJson(process.env.FAILURES_JSON || ''),
+      failures: failuresFromOutputs({
+        flowsJson: process.env.FAILED_FLOWS || '',
+        failuresJson: process.env.FAILURES_JSON || '',
+      }),
       gh: runGh,
       dryRun,
       runUrl,

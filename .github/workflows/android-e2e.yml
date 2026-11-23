@@ -36,6 +36,7 @@ jobs:
     permissions:
       contents: read
     outputs:
+      failed_flows: ${{ steps.summary.outputs.failed_flows }}
       failures: ${{ steps.summary.outputs.failures }}
       artifact_url: ${{ steps.evidence.outputs.artifact-url }}
     env:
@@ -64,7 +65,11 @@ jobs:
       - run: bun install --frozen-lockfile
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
+      # Step timeouts add up to less than the job's 75 minutes. A step that
+      # times out fails; a job that times out is cancelled, which would skip
+      # teardown, the summary and the failure report.
       - name: Build release APK
+        timeout-minutes: 40
         run: node scripts/verify/android.mjs build
       - name: Cache Maestro
         id: maestro-cache
@@ -84,6 +89,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
       - name: Run Android flows
+        timeout-minutes: 25
         uses: reactivecircus/android-emulator-runner@v2
         with:
           # Full google_apis image, not ATD: ATD turns off the rendering that
@@ -154,6 +160,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          FAILED_FLOWS: ${{ needs.android-e2e.outputs.failed_flows }}
           FAILURES_JSON: ${{ needs.android-e2e.outputs.failures }}
           ARTIFACT_URL: ${{ needs.android-e2e.outputs.artifact_url }}
         run: node scripts/verify/report-failures.mjs

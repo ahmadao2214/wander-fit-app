@@ -1,13 +1,14 @@
 import {
   errorBlock,
   failuresFrom,
-  failuresFromJson,
+  failuresFromOutputs,
   findOpenIssues,
   ghArgs,
   issueTitle,
   planReports,
   report,
   shouldFile,
+  UNAVAILABLE_ERROR,
   WITHHELD_ERROR,
 } from './report-failures.mjs'
 
@@ -47,15 +48,35 @@ describe('failuresFrom', () => {
   })
 })
 
-describe('failuresFromJson', () => {
-  it('reads the Android job output, and reports android-run when it is empty or broken', () => {
-    expect(failuresFromJson('[{"flow":"sign-in","error":"boom"},{"nope":1}]')).toEqual([
-      { flow: 'sign-in', error: 'boom' },
+describe('failuresFromOutputs', () => {
+  const flows = (failures) => failures.map((failure) => failure.flow)
+
+  it('pairs each failed flow name with its error text', () => {
+    expect(
+      failuresFromOutputs({
+        flowsJson: '["sign-in"]',
+        failuresJson: '[{"flow":"sign-in","error":"boom"},{"nope":1}]',
+      })
+    ).toEqual([{ flow: 'sign-in', error: 'boom' }])
+  })
+
+  it('still names every failed flow when GitHub dropped the details output', () => {
+    expect(
+      failuresFromOutputs({ flowsJson: '["sign-in","native-launch"]', failuresJson: '' })
+    ).toEqual([
+      { flow: 'sign-in', error: UNAVAILABLE_ERROR },
+      { flow: 'native-launch', error: UNAVAILABLE_ERROR },
     ])
-    // The job failed but no flow did: still one android-run report.
-    expect(failuresFromJson('[]').map((failure) => failure.flow)).toEqual(['android-run'])
-    expect(failuresFromJson('').map((failure) => failure.flow)).toEqual(['android-run'])
-    expect(failuresFromJson('{oops').map((failure) => failure.flow)).toEqual(['android-run'])
+  })
+
+  it('reports android-run when the job failed outside the flows or never summarized', () => {
+    expect(flows(failuresFromOutputs({ flowsJson: '[]', failuresJson: '[]' }))).toEqual([
+      'android-run',
+    ])
+    expect(flows(failuresFromOutputs({}))).toEqual(['android-run'])
+    expect(flows(failuresFromOutputs({ flowsJson: '{oops', failuresJson: '' }))).toEqual([
+      'android-run',
+    ])
   })
 })
 
@@ -190,6 +211,7 @@ describe('findOpenIssues', () => {
     ])
     expect(calls[0]).toContain('"E2E failure: sign-in (android)" in:title')
     expect(calls[0]).not.toContain('--label')
+    expect(calls[0][calls[0].indexOf('--limit') + 1]).toBe('1000')
   })
 
   it('finds an unlabelled open issue, so no duplicate is opened', () => {

@@ -190,9 +190,18 @@ describe('android-e2e workflow', () => {
     expect(workflow.permissions).toEqual({ contents: 'read' })
     expect(JSON.stringify(job)).not.toMatch(/github\.token|GH_TOKEN/)
     expect(job.outputs).toEqual({
+      failed_flows: '${{ steps.summary.outputs.failed_flows }}',
       failures: '${{ steps.summary.outputs.failures }}',
       artifact_url: '${{ steps.evidence.outputs.artifact-url }}',
     })
+  })
+
+  it('times out the long steps before the job, so a timeout still reports', () => {
+    const minutes = (name) => job.steps.find((step) => step.name === name)['timeout-minutes']
+    const build = minutes('Build release APK')
+    const flows = minutes('Run Android flows')
+    expect([build, flows].every((value) => value > 0)).toBe(true)
+    expect(build + flows).toBeLessThanOrEqual(job['timeout-minutes'] - 10)
   })
 
   it('files issues in a separate job that never runs on a PR', () => {
@@ -207,6 +216,7 @@ describe('android-e2e workflow', () => {
     expect(step.env).toEqual({
       GH_TOKEN: '${{ github.token }}',
       GH_REPO: '${{ github.repository }}',
+      FAILED_FLOWS: '${{ needs.android-e2e.outputs.failed_flows }}',
       FAILURES_JSON: '${{ needs.android-e2e.outputs.failures }}',
       ARTIFACT_URL: '${{ needs.android-e2e.outputs.artifact_url }}',
     })
