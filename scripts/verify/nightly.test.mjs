@@ -123,9 +123,10 @@ describe('nightly persona sweep', () => {
     expect(runs.indexOf('bun install --frozen-lockfile')).toBeGreaterThan(-1)
     expect(runs.indexOf('bun install --frozen-lockfile')).toBeLessThan(runs.indexOf(sweepStep.run))
     expect(JSON.stringify(sweep.env || {})).not.toContain('secrets.')
-    const withSecrets = sweep.steps.filter((step) =>
-      JSON.stringify(step.env || {}).includes('secrets.')
-    )
+    expect(JSON.stringify(nightly.env || {})).not.toContain('secrets.')
+    // The whole step counts, so a secret in an action's `with` is caught too.
+    const withSecrets = sweep.steps.filter((step) => JSON.stringify(step).includes('secrets.'))
     expect(withSecrets).toEqual([sweepStep])
+    expect(sweep.permissions).toEqual({ contents: 'read' })
   })
 })

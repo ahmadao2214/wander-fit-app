@@ -368,7 +368,26 @@ function olderThanMs() {
   return amount * unit
 }
 
+// Pure: sweep deletes accounts in bulk, so it runs only against the
+// wander-fit-e2e dev deployment (a dev key, or .env.e2e locally) and a Clerk
+// test instance. A preview key or a live Clerk key is refused.
+export function assertSweepTarget({ mode, clerkSecret }) {
+  if (mode !== 'dev' && mode !== 'local') {
+    throw new Error(`persona sweep needs the wander-fit-e2e dev deployment, not "${mode}".`)
+  }
+  if (!String(clerkSecret || '').startsWith('sk_test_')) {
+    throw new Error('persona sweep needs a Clerk test key (sk_test_...).')
+  }
+}
+
 async function sweep() {
+  // Check both targets before the first delete. deleteOne removes the Clerk
+  // user first, so a bad Convex target found later would be too late.
+  try {
+    assertSweepTarget({ mode: convexInvocation().mode, clerkSecret: clerkSecret() })
+  } catch (error) {
+    fail(error.message)
+  }
   const cutoff = Date.now() - olderThanMs()
   const removed = []
   let offset = 0

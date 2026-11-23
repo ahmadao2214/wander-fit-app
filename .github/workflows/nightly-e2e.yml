@@ -171,8 +171,9 @@ jobs:
 
   # Deletes test athletes a crashed or cancelled run left behind (#83): every
   # generated e2e address in Clerk older than 2h, and its wander-fit-e2e dev
-  # data. No E2E job lives that long (the longest, Android, times out at 75
-  # min), so it never touches a live persona. Runs after the flows whether
+  # data. No CI job lives that long (the longest, Android, times out at 75
+  # min), so it never touches a live CI persona. A generated persona kept for
+  # a local session expires the same way after 2h. Runs after the flows whether
   # they passed or failed; skipped only when the run was cancelled.
   # No e2e-backend group: it neither deploys nor seeds, only calls the
   # deployed e2e:remove for accounts no live run owns, so main's E2E needn't

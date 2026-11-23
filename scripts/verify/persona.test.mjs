@@ -10,6 +10,7 @@ import {
   reviewPlan,
   signupEmail,
   writeCredentials,
+  assertSweepTarget,
 } from './persona.mjs'
 
 describe('persona sweep timestamps', () => {
@@ -207,5 +208,27 @@ describe('persona review account', () => {
       /reprovision/
     )
     expect(reviewPlan({ clerkId: 'user_1', saved, inspected: onboarded }).provision).toBe(false)
+  })
+})
+
+describe('assertSweepTarget', () => {
+  it('allows the dev deployment with a Clerk test key', () => {
+    expect(() => assertSweepTarget({ mode: 'dev', clerkSecret: 'sk_test_x' })).not.toThrow()
+    expect(() => assertSweepTarget({ mode: 'local', clerkSecret: 'sk_test_x' })).not.toThrow()
+  })
+
+  it('refuses a preview target, a live Clerk key and a missing key', () => {
+    expect(() => assertSweepTarget({ mode: 'preview', clerkSecret: 'sk_test_x' })).toThrow(
+      /dev deployment/
+    )
+    expect(() => assertSweepTarget({ mode: 'dev', clerkSecret: 'sk_live_x' })).toThrow(/test key/)
+    expect(() => assertSweepTarget({ mode: 'dev', clerkSecret: '' })).toThrow(/test key/)
+  })
+
+  it('runs before the first Clerk call in sweep', () => {
+    const source = fs.readFileSync(new URL('./persona.mjs', import.meta.url), 'utf8')
+    const body = source.slice(source.indexOf('async function sweep'))
+    expect(body.indexOf('assertSweepTarget(')).toBeGreaterThan(-1)
+    expect(body.indexOf('assertSweepTarget(')).toBeLessThan(body.indexOf('await clerk('))
   })
 })
