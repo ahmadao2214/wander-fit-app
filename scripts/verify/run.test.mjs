@@ -847,6 +847,18 @@ describe('Maestro retry after a DevTools transport crash', () => {
     },
     { name: 'no log at all under 20s', files: {}, elapsedMs: 5_000, reason: 'cold-start' },
     {
+      // A null cast whose JS error is not the transport exception: unproven.
+      name: 'null cast from a different JS error, under 20s',
+      files: {
+        [log]: cdpCrashLog.replace(
+          'No message with id 60 received within 30000ms',
+          'Some other JS failure'
+        ),
+      },
+      elapsedMs: 13_000,
+      reason: null,
+    },
+    {
       name: 'assertion false after crash lines',
       files: { [log]: `${cdpCrashLog}\n${assertionLog}` },
       elapsedMs: 40_000,

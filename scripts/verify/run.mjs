@@ -1040,13 +1040,13 @@ export function hasCdpTransportCrash(dir) {
   return maestroLogs(dir).some(isCdpTransportCrash)
 }
 
-// True when this attempt's log ends in a command failure that is not the
-// transport crash: a false assertion, a missing element. Never retried.
+// True when this attempt's log ends in a command failure that is not a proven
+// transport crash: a false assertion, a missing element, or a null cast that
+// doesn't meet every condition above. Never retried, by either rule.
 export function hasRealCommandFailure(dir) {
-  return maestroLogs(dir).some((log) => {
-    const failure = terminalCommandFailure(log)
-    return failure !== '' && !nullCast.test(`CommandFailed: ${failure}`)
-  })
+  return maestroLogs(dir).some(
+    (log) => terminalCommandFailure(log) !== '' && !isCdpTransportCrash(log)
+  )
 }
 
 // Why a failed launch earns its one retry, or null. Never once the flow has
