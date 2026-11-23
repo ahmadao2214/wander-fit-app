@@ -968,12 +968,103 @@ export function archiveAttemptEvidence(outDir, attemptLabel = 'attempt-1') {
   return true
 }
 
+// Maestro 2.12.1's web driver opens a new DevTools websocket for every JS call.
+// When Chrome closes one before it answers, the driver logs "No message with id
+// N received within 30000ms" (within seconds, not after 30), its executeJS
+// returns null, and deviceInfo dies casting that null to Int. The page on
+// screen is fine (#174).
+const logTime = /^(\d{2}):(\d{2}):(\d{2})\.(\d{3}) \[/
+const noMessage = /No message with id \d+ received within (\d+)ms/
+const nullCast = /CommandFailed: null cannot be cast to non-null type kotlin\.Int/
+
+function logMs(line) {
+  const match = logTime.exec(line)
+  if (!match) return null
+  const [, h, m, sec, ms] = match
+  return ((Number(h) * 60 + Number(m)) * 60 + Number(sec)) * 1000 + Number(ms)
+}
+
+// Milliseconds from an earlier log line to a later one; the log has no date,
+// so a negative gap means it crossed midnight.
+function elapsed(from, to) {
+  return to >= from ? to - from : to + 86_400_000 - from
+}
+
+const commandStart = /runCommands\S*: .* RUNNING\s*$/
+const jsError = /\[ERROR\].*Failed to execute JS/
+
+// Pure: the text of the last CommandFailed in a maestro.log, or '' if none.
+export function terminalCommandFailure(log) {
+  const lines = String(log || '').split('\n')
+  const failed = lines.findLastIndex((line) => /CommandFailed: /.test(line))
+  return failed === -1 ? '' : lines[failed].replace(/^.*CommandFailed: /, '').trim()
+}
+
+// Pure: is this maestro.log a DevTools transport crash, and only that?
+// Everything is read inside the command that failed, which runs from the last
+// "<command> RUNNING" line to the last CommandFailed:
+// - That CommandFailed must be the null cast. A crash followed by a real
+//   assertion failure is an assertion failure.
+// - The last "Failed to execute JS" error in that command must be the "No
+//   message" exception. One from an earlier command, or a different JS error
+//   in this one, doesn't count.
+// - It must have come back early: within half the timeout it names, measured
+//   from the command's start. A page that truly hangs for Maestro's full
+//   timeout is not a transport crash. No start line means no retry.
+// - The null cast must follow it within 10 s.
+export function isCdpTransportCrash(log) {
+  const lines = String(log || '').split('\n')
+  const failed = lines.findLastIndex((line) => /CommandFailed: /.test(line))
+  if (failed === -1 || !nullCast.test(lines[failed])) return false
+  const started = lines.findLastIndex((line, index) => index < failed && commandStart.test(line))
+  const error = lines.findLastIndex((line, index) => index < failed && jsError.test(line))
+  if (started === -1 || error <= started) return false
+  const timeout = noMessage.exec(lines[error + 1] || '')
+  if (!timeout) return false
+  const [startedAt, errorAt, failedAt] = [started, error, failed].map((i) => logMs(lines[i]))
+  if (startedAt === null || errorAt === null || failedAt === null) return false
+  if (elapsed(errorAt, failedAt) > 10_000) return false
+  return elapsed(startedAt, errorAt) < Number(timeout[1]) / 2
+}
+
+function maestroLogs(dir) {
+  if (!fs.existsSync(dir)) return []
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = path.join(dir, entry.name)
+    if (entry.isDirectory()) return /^attempt-\d+$/.test(entry.name) ? [] : maestroLogs(full)
+    return entry.name === 'maestro.log' ? [fs.readFileSync(full, 'utf8')] : []
+  })
+}
+
+export function hasCdpTransportCrash(dir) {
+  return maestroLogs(dir).some(isCdpTransportCrash)
+}
+
+// True when this attempt's log ends in a command failure that is not a proven
+// transport crash: a false assertion, a missing element, or a null cast that
+// doesn't meet every condition above. Never retried, by either rule.
+export function hasRealCommandFailure(dir) {
+  return maestroLogs(dir).some(
+    (log) => terminalCommandFailure(log) !== '' && !isCdpTransportCrash(log)
+  )
+}
+
+// Why a failed launch earns its one retry, or null. Never once the flow has
+// taken its own screenshots, and never for an assertion that came back false.
+export function retryReason(outDir, { status, elapsedMs }) {
+  if (status === 0 || hasFlowEvidence(outDir)) return null
+  if (hasRealCommandFailure(outDir)) return null
+  if (elapsedMs < 20_000) return 'cold-start'
+  if (hasCdpTransportCrash(outDir)) return 'cdp-transport'
+  return null
+}
+
 export function runWithColdStartRetry(outDir, launch, onRetry) {
   const first = launch()
-  if (first.status === 0 || first.elapsedMs >= 20_000 || hasFlowEvidence(outDir))
-    return first.status
+  const reason = retryReason(outDir, first)
+  if (!reason) return first.status
   archiveAttemptEvidence(outDir)
-  onRetry(first)
+  onRetry({ ...first, reason })
   return launch().status
 }
 
@@ -996,9 +1087,9 @@ function runMaestro(flowFile, outDir, url, persona) {
       const result = spawnSync(maestro, args, { cwd: root, stdio: 'inherit', env })
       return { status: result.status ?? 1, elapsedMs: performance.now() - started }
     },
-    ({ status, elapsedMs }) =>
+    ({ status, elapsedMs, reason }) =>
       console.warn(
-        `retrying ${flowFile} once after cold-start Maestro exit ${status} (${Math.round(elapsedMs / 1000)}s, no flow screenshots)`
+        `retrying ${flowFile} once after ${reason === 'cdp-transport' ? 'a Maestro DevTools transport crash' : 'cold-start Maestro'} exit ${status} (${Math.round(elapsedMs / 1000)}s, no flow screenshots)`
       )
   )
   if (status !== 0) {

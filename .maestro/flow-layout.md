@@ -33,3 +33,13 @@ After every tap, long press, or swipe, Maestro waits for the page to settle. On 
 Assert screens that stay up, not a state that lasts only while a request is in flight. The First Run journey asserts the Program tab's Up next card, which stays up, and runs `persona inspect`.
 
 A screen that sits under a fixed bottom bar can still put its target below the 625px viewport. Tapping it fails with `move target out of bounds`. Swipe the inner list first, as on the First Run's about-you screen.
+
+## DevTools transport crash
+
+Checked with Maestro 2.12.1 against CI logs from 2026-11-22 and 2026-11-23 (#174).
+
+Maestro's web driver opens a new DevTools websocket for every JS call. Now and then, in the first ten seconds after `launchApp`, Chrome closes one before it answers. `maestro.log` then shows `Failed to execute JS` with `No message with id N received within 30000ms`, and the command fails with `null cannot be cast to non-null type kotlin.Int`. Despite the message, the socket closed within seconds; nothing waited 30 seconds. The driver's `executeJS` retries only navigation errors, so it returns null, and `deviceInfo` throws on the null width.
+
+It hits whichever command reads the hierarchy first: the First Run assertion, the `first-run-sign-in` tap's settle wait, or the sign-in email tap. The failure screenshot shows the page rendered and ready. A wait in the flow does not help, because the wait reads the hierarchy too. The "33 seconds" in the runner summary is persona setup and Maestro start-up plus about eight seconds of flow.
+
+`scripts/verify/run.mjs` retries a flow once when the failed attempt's `maestro.log` has both lines and the flow took none of its own screenshots. An assertion that came back false never matches.
