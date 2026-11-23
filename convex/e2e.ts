@@ -324,6 +324,11 @@ export const inspect = internalQuery({
       .withIndex('by_user', (q) => q.eq('userId', user._id))
       .collect()
 
+    const reassessments = await ctx.db
+      .query('intake_responses')
+      .withIndex('by_user_type', (q) => q.eq('userId', user._id).eq('intakeType', 'reassessment'))
+      .collect()
+
     return {
       found: true as const,
       email: user.email,
@@ -335,6 +340,16 @@ export const inspect = internalQuery({
       phase: program?.currentPhase ?? null,
       week: program?.currentWeek ?? null,
       day: program?.currentDay ?? null,
+      // The end-of-block check-in still owed, and what it unlocked
+      reassessmentPendingForPhase: program?.reassessmentPendingForPhase ?? null,
+      sppUnlocked: program?.sppUnlockedAt !== undefined,
+      // Check-ins the athlete finished, oldest first
+      reassessments: reassessments.map((intake) => ({
+        completedPhase: intake.completedPhase ?? null,
+        decision: intake.reassessmentDecision ?? null,
+        phaseDifficulty: intake.selfAssessment?.phaseDifficulty ?? null,
+        maxesUpdated: intake.maxesUpdated ?? null,
+      })),
       // Oldest first, so a flow's own session is the last one.
       sessions: await Promise.all(
         sessions.map(async (session) => {

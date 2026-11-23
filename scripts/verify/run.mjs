@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 // Local web tracer. Same command runs in CI: export, serve, Maestro, keep evidence.
-import { spawn, spawnSync } from "node:child_process"
-import { createHash } from "node:crypto"
-import fs from "node:fs"
-import http from "node:http"
-import path from "node:path"
-import { fileURLToPath } from "node:url"
+import { spawn, spawnSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
+import fs from 'node:fs'
+import http from 'node:http'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import {
   BLOCKED_CONVEX_HOSTS,
   PLACEHOLDER_CONVEX_URL,
@@ -13,7 +13,7 @@ import {
   assertPreviewKey,
   convexHost,
   previewName,
-} from "./targets.mjs"
+} from './targets.mjs'
 import {
   balanceShards,
   defaultFlows,
@@ -28,31 +28,31 @@ import {
   root,
   selectAffectedFlows,
   webFlowFile,
-} from "./flows.mjs"
+} from './flows.mjs'
 import {
   convexInvocation,
   generatePassword,
   parseRunResult,
   signupEmail,
   writeCredentials,
-} from "./persona.mjs"
+} from './persona.mjs'
 
-const distDir = path.join(root, "dist-verify")
+const distDir = path.join(root, 'dist-verify')
 // The signed-out screen check. It is not a journey, so it is not under .maestro/web.
-const screenFlow = ".maestro/sign-in-screen.yaml"
-const screenEvidenceDir = evidenceDirFor("sign-in-screen")
+const screenFlow = '.maestro/sign-in-screen.yaml'
+const screenEvidenceDir = evidenceDirFor('sign-in-screen')
 // Files the Convex CLI may rewrite. Deploy restores them afterwards.
-const guardedFiles = [".env", ".env.local", ".gitignore"]
+const guardedFiles = ['.env', '.env.local', '.gitignore']
 // Tests set these so cleanup does not kill a live server.
-const stateFile = process.env.VERIFY_STATE_FILE || "/tmp/wander-fit-verify.json"
-const readyFile = process.env.VERIFY_READY_FILE || "/tmp/wander-fit-verify.ready"
-const logFile = process.env.VERIFY_LOG_FILE || "/tmp/wander-fit-verify.log"
+const stateFile = process.env.VERIFY_STATE_FILE || '/tmp/wander-fit-verify.json'
+const readyFile = process.env.VERIFY_READY_FILE || '/tmp/wander-fit-verify.ready'
+const logFile = process.env.VERIFY_LOG_FILE || '/tmp/wander-fit-verify.log'
 const port = Number(process.env.VERIFY_PORT || 4173)
 
 function readDotenv(file) {
   if (!fs.existsSync(file)) return {}
   const out = {}
-  for (const line of fs.readFileSync(file, "utf8").split("\n")) {
+  for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
     const match = line.match(/^([A-Z0-9_]+)=(.*)$/)
     if (!match) continue
     let value = match[2].trim()
@@ -71,11 +71,11 @@ function clerkKey() {
   if (process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY) {
     return process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY
   }
-  for (const name of [".env.local", ".env"]) {
+  for (const name of ['.env.local', '.env']) {
     const value = readDotenv(path.join(root, name)).EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY
     if (value) return value
   }
-  return ""
+  return ''
 }
 
 function e2eUrl() {
@@ -84,7 +84,7 @@ function e2eUrl() {
   if (process.env.EXPO_PUBLIC_CONVEX_URL_E2E !== undefined) {
     return process.env.EXPO_PUBLIC_CONVEX_URL_E2E.trim()
   }
-  return readDotenv(path.join(root, ".env.e2e")).EXPO_PUBLIC_CONVEX_URL_E2E || ""
+  return readDotenv(path.join(root, '.env.e2e')).EXPO_PUBLIC_CONVEX_URL_E2E || ''
 }
 
 function convexUrl() {
@@ -99,17 +99,16 @@ function submitMode() {
 }
 
 function maestroBin() {
-  const home = process.env.HOME || ""
-  const candidates = [
-    process.env.MAESTRO_BIN,
-    path.join(home, ".maestro/bin/maestro"),
-  ].filter(Boolean)
+  const home = process.env.HOME || ''
+  const candidates = [process.env.MAESTRO_BIN, path.join(home, '.maestro/bin/maestro')].filter(
+    Boolean
+  )
   for (const candidate of candidates) {
     if (fs.existsSync(candidate)) return candidate
   }
-  const which = spawnSync("bash", ["-lc", "command -v maestro"], { encoding: "utf8" })
+  const which = spawnSync('bash', ['-lc', 'command -v maestro'], { encoding: 'utf8' })
   if (which.status === 0 && which.stdout.trim()) return which.stdout.trim()
-  return ""
+  return ''
 }
 
 function fail(message) {
@@ -120,58 +119,74 @@ function fail(message) {
 // A Clerk publishable key is pk_test_ or pk_live_ plus base64 of the
 // Frontend API host and a trailing "$". Anything else never loads Clerk.
 export function clerkFrontendApi(key) {
-  const match = /^pk_(test|live)_([A-Za-z0-9+/=_-]+)$/.exec(String(key || "").trim())
-  if (!match) return ""
-  let decoded = ""
+  const match = /^pk_(test|live)_([A-Za-z0-9+/=_-]+)$/.exec(String(key || '').trim())
+  if (!match) return ''
+  let decoded = ''
   try {
-    decoded = Buffer.from(match[2], "base64").toString("utf8")
+    decoded = Buffer.from(match[2], 'base64').toString('utf8')
   } catch {
-    return ""
+    return ''
   }
-  if (!decoded.endsWith("$")) return ""
+  if (!decoded.endsWith('$')) return ''
   const host = decoded.slice(0, -1)
-  return /^[a-z0-9.-]+\.[a-z]{2,}$/i.test(host) ? host : ""
+  return /^[a-z0-9.-]+\.[a-z]{2,}$/i.test(host) ? host : ''
 }
 
 function git(args) {
-  const result = spawnSync("git", args, { cwd: root, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })
-  return result.status === 0 ? result.stdout : ""
+  const result = spawnSync('git', args, {
+    cwd: root,
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024 * 1024,
+  })
+  return result.status === 0 ? result.stdout : ''
 }
 
 function gitCommit() {
-  return git(["rev-parse", "HEAD"]).trim()
+  return git(['rev-parse', 'HEAD']).trim()
 }
 
 // What the export was built from: HEAD plus any uncommitted or untracked
 // change, so an agent verifying an edit it has not committed never drives an
 // older bundle. Gitignored output (dist-verify/, e2e-artifacts/) is left out.
-export function sourceStamp({ commit, diff, untracked, read = (file) => fs.readFileSync(path.join(root, file)) }) {
-  const hash = createHash("sha256").update(`${commit}\n`).update(diff)
-  for (const file of untracked.split("\n").filter(Boolean).sort()) {
+export function sourceStamp({
+  commit,
+  diff,
+  untracked,
+  read = (file) => fs.readFileSync(path.join(root, file)),
+}) {
+  const hash = createHash('sha256').update(`${commit}\n`).update(diff)
+  for (const file of untracked.split('\n').filter(Boolean).sort()) {
     hash.update(`\0${file}\0`)
     try {
       hash.update(read(file))
     } catch {
-      hash.update("missing")
+      hash.update('missing')
     }
   }
-  return hash.digest("hex").slice(0, 16)
+  return hash.digest('hex').slice(0, 16)
 }
 
 // Tracked files the web export itself rewrites (Metro regenerates the Tamagui
 // stylesheet). They are output, not source: stamping them would make every
 // export look changed while it ran, and a restored copy look like an edit.
-export const EXPORT_WRITES = ["tamagui-web.css"]
+export const EXPORT_WRITES = ['tamagui-web.css']
 
 export function stampDiffArgs() {
-  return ["diff", "HEAD", "--binary", "--", ".", ...EXPORT_WRITES.map((file) => `:(exclude)${file}`)]
+  return [
+    'diff',
+    'HEAD',
+    '--binary',
+    '--',
+    '.',
+    ...EXPORT_WRITES.map((file) => `:(exclude)${file}`),
+  ]
 }
 
 function currentStamp() {
   return sourceStamp({
     commit: gitCommit(),
     diff: git(stampDiffArgs()),
-    untracked: git(["ls-files", "--others", "--exclude-standard"]),
+    untracked: git(['ls-files', '--others', '--exclude-standard']),
   })
 }
 
@@ -184,19 +199,21 @@ async function probe(url, init = {}) {
     const text = await response.text()
     return { status: response.status, text }
   } catch (error) {
-    return { status: 0, text: "", error: error?.cause?.code || error?.message || String(error) }
+    return { status: 0, text: '', error: error?.cause?.code || error?.message || String(error) }
   }
 }
 
 async function convexQuery(url, name) {
-  const result = await probe(`${url.replace(/\/$/, "")}/api/query`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ path: name, args: {}, format: "json" }),
+  const result = await probe(`${url.replace(/\/$/, '')}/api/query`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ path: name, args: {}, format: 'json' }),
   })
   try {
     const parsed = JSON.parse(result.text)
-    return parsed.status === "success" ? { ok: true, value: parsed.value } : { ok: false, error: parsed.errorMessage || "query failed" }
+    return parsed.status === 'success'
+      ? { ok: true, value: parsed.value }
+      : { ok: false, error: parsed.errorMessage || 'query failed' }
   } catch {
     return { ok: false, error: result.error || `HTTP ${result.status}` }
   }
@@ -205,7 +222,7 @@ async function convexQuery(url, name) {
 function readServerState() {
   if (!fs.existsSync(stateFile)) return null
   try {
-    return JSON.parse(fs.readFileSync(stateFile, "utf8"))
+    return JSON.parse(fs.readFileSync(stateFile, 'utf8'))
   } catch {
     return { pid: 0 }
   }
@@ -228,20 +245,20 @@ async function gatherDoctorFacts({ server }) {
     clerkFrontendApi: clerkFrontendApi(key),
     clerkStatus: null,
     maestro: maestroBin(),
-    java: spawnSync("java", ["-version"], { encoding: "utf8" }).status === 0,
-    convexHost: "",
-    convexError: "",
+    java: spawnSync('java', ['-version'], { encoding: 'utf8' }).status === 0,
+    convexHost: '',
+    convexError: '',
     screenOnly: false,
     backendStatus: null,
     templates: null,
     sports: null,
-    seedError: "",
+    seedError: '',
     expectedCommit: gitCommit(),
     expectedStamp: currentStamp(),
     server: null,
     port,
   }
-  let url = ""
+  let url = ''
   try {
     url = convexUrl()
     facts.convexHost = convexHost(url)
@@ -253,17 +270,20 @@ async function gatherDoctorFacts({ server }) {
     facts.clerkStatus = (await probe(`https://${facts.clerkFrontendApi}/v1/environment`)).status
   }
   if (url && !facts.screenOnly) {
-    facts.backendStatus = (await probe(`${url.replace(/\/$/, "")}/version`)).status
-    const templates = await convexQuery(url, "programTemplates:seedStatus")
-    const sports = await convexQuery(url, "sports:list")
+    facts.backendStatus = (await probe(`${url.replace(/\/$/, '')}/version`)).status
+    const templates = await convexQuery(url, 'programTemplates:seedStatus')
+    const sports = await convexQuery(url, 'sports:list')
     if (templates.ok) facts.templates = templates.value?.hasTemplates === true
     if (sports.ok) facts.sports = Array.isArray(sports.value) ? sports.value.length : 0
-    facts.seedError = [templates, sports].filter((r) => !r.ok).map((r) => r.error).join("; ")
+    facts.seedError = [templates, sports]
+      .filter((r) => !r.ok)
+      .map((r) => r.error)
+      .join('; ')
   }
   if (server) {
     const state = readServerState()
     if (state) {
-      const ready = fs.existsSync(readyFile) ? fs.readFileSync(readyFile, "utf8") : ""
+      const ready = fs.existsSync(readyFile) ? fs.readFileSync(readyFile, 'utf8') : ''
       const page = await probe(verifyUrl())
       const build = await probe(`${verifyUrl()}verify-build.json`)
       let buildInfo = null
@@ -291,69 +311,97 @@ async function gatherDoctorFacts({ server }) {
 export function evaluateDoctor(facts) {
   const lines = []
   const problems = []
-  lines.push(`clerk publishable key: ${facts.clerkKeyPresent ? "present" : "missing"}`)
+  lines.push(`clerk publishable key: ${facts.clerkKeyPresent ? 'present' : 'missing'}`)
   if (!facts.clerkKeyPresent) {
-    problems.push("Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY. The sign-in screen stays on Loading without it.")
+    problems.push(
+      'Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY. The sign-in screen stays on Loading without it.'
+    )
   } else if (!facts.clerkFrontendApi) {
-    problems.push("EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY is not a valid Clerk publishable key (pk_test_/pk_live_ + encoded Frontend API host).")
+    problems.push(
+      'EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY is not a valid Clerk publishable key (pk_test_/pk_live_ + encoded Frontend API host).'
+    )
   } else {
-    lines.push(`clerk frontend api: ${facts.clerkStatus === 200 ? "reachable" : `HTTP ${facts.clerkStatus}`}`)
+    lines.push(
+      `clerk frontend api: ${facts.clerkStatus === 200 ? 'reachable' : `HTTP ${facts.clerkStatus}`}`
+    )
     if (facts.clerkStatus !== 200) {
-      problems.push(`Clerk rejected the publishable key or is unreachable (environment returned ${facts.clerkStatus || "no response"}).`)
+      problems.push(
+        `Clerk rejected the publishable key or is unreachable (environment returned ${facts.clerkStatus || 'no response'}).`
+      )
     }
   }
-  lines.push(`maestro: ${facts.maestro || "missing"}`)
+  lines.push(`maestro: ${facts.maestro || 'missing'}`)
   if (!facts.maestro) {
-    problems.push('Maestro is not installed. Install it with: curl -Ls "https://get.maestro.mobile.dev" | bash')
+    problems.push(
+      'Maestro is not installed. Install it with: curl -Ls "https://get.maestro.mobile.dev" | bash'
+    )
   }
-  if (!facts.java) problems.push("Java is not installed. Maestro needs Java 17.")
+  if (!facts.java) problems.push('Java is not installed. Maestro needs Java 17.')
   if (facts.convexError) {
     problems.push(facts.convexError)
   } else {
     lines.push(`convex host: ${facts.convexHost}`)
     if (facts.screenOnly) {
-      lines.push("convex mode: screen only (no wander-fit-e2e project configured)")
+      lines.push('convex mode: screen only (no wander-fit-e2e project configured)')
     } else {
-      lines.push(`backend: ${facts.backendStatus === 200 ? "reachable" : `HTTP ${facts.backendStatus}`}`)
+      lines.push(
+        `backend: ${facts.backendStatus === 200 ? 'reachable' : `HTTP ${facts.backendStatus}`}`
+      )
       if (facts.backendStatus !== 200) {
-        problems.push(`The e2e Convex deployment did not answer /version (${facts.backendStatus || "no response"}).`)
+        problems.push(
+          `The e2e Convex deployment did not answer /version (${facts.backendStatus || 'no response'}).`
+        )
       }
       lines.push(
-        `seed: program templates ${facts.templates === true ? "present" : facts.templates === false ? "missing" : "?"}, ${facts.sports ?? "?"} sports`
+        `seed: program templates ${facts.templates === true ? 'present' : facts.templates === false ? 'missing' : '?'}, ${facts.sports ?? '?'} sports`
       )
       if (facts.seedError) {
         problems.push(`Seed status query failed: ${facts.seedError}`)
       } else if (facts.templates !== true || !(facts.sports > 0)) {
-        problems.push("The e2e deployment is not seeded (no program templates or sports). Seeding is run.mjs deploy, which the founder or CI runs.")
+        problems.push(
+          'The e2e deployment is not seeded (no program templates or sports). Seeding is run.mjs deploy, which the founder or CI runs.'
+        )
       }
     }
   }
   lines.push(`port: ${facts.port}`)
   if (facts.server) {
     const s = facts.server
-    lines.push(`server: pid ${s.pid} ${s.alive ? "alive" : "gone"}, ${s.owned ? "owns" : "does not own"} port ${facts.port}, page HTTP ${s.pageStatus}`)
+    lines.push(
+      `server: pid ${s.pid} ${s.alive ? 'alive' : 'gone'}, ${s.owned ? 'owns' : 'does not own'} port ${facts.port}, page HTTP ${s.pageStatus}`
+    )
     if (!s.alive || !s.owned || s.pageStatus !== 200) {
-      problems.push("The recorded verify server is not the one answering. Run cleanup, then launch again.")
+      problems.push(
+        'The recorded verify server is not the one answering. Run cleanup, then launch again.'
+      )
     }
     if (s.port !== undefined && s.port !== facts.port) {
-      problems.push(`The recorded verify server listens on port ${s.port}, but VERIFY_PORT is ${facts.port}; doctor may be checking another server. Use the same VERIFY_PORT as launch, or run cleanup and launch again.`)
+      problems.push(
+        `The recorded verify server listens on port ${s.port}, but VERIFY_PORT is ${facts.port}; doctor may be checking another server. Use the same VERIFY_PORT as launch, or run cleanup and launch again.`
+      )
     }
     if (!s.build) {
-      problems.push("The served export has no verify-build.json. Export again with run.mjs launch after cleanup.")
+      problems.push(
+        'The served export has no verify-build.json. Export again with run.mjs launch after cleanup.'
+      )
     } else {
-      const commit = s.build.commit || "unknown"
+      const commit = s.build.commit || 'unknown'
       lines.push(`build: commit ${commit.slice(0, 12)}, convex ${s.build.convexHost}`)
       if (!facts.convexError && s.build.convexHost !== facts.convexHost) {
         problems.push(`The served build talks to ${s.build.convexHost}, not ${facts.convexHost}.`)
       }
       if (facts.expectedCommit && s.build.commit !== facts.expectedCommit) {
-        problems.push(`The served build is from ${commit.slice(0, 12)}, not HEAD ${facts.expectedCommit.slice(0, 12)}. Run cleanup, then launch again (launch re-exports).`)
+        problems.push(
+          `The served build is from ${commit.slice(0, 12)}, not HEAD ${facts.expectedCommit.slice(0, 12)}. Run cleanup, then launch again (launch re-exports).`
+        )
       } else if (facts.expectedStamp && s.build.stamp !== facts.expectedStamp) {
-        problems.push("The checkout changed since the served build was exported. Run cleanup, then launch again (launch re-exports).")
+        problems.push(
+          'The checkout changed since the served build was exported. Run cleanup, then launch again (launch re-exports).'
+        )
       }
     }
   } else {
-    lines.push("server: not running (launch starts it)")
+    lines.push('server: not running (launch starts it)')
   }
   return { lines, problems }
 }
@@ -367,7 +415,7 @@ async function doctor({ server = true } = {}) {
     for (const problem of problems) console.error(`- ${problem}`)
     process.exit(1)
   }
-  console.log("doctor: ok")
+  console.log('doctor: ok')
 }
 
 function scanExport() {
@@ -383,7 +431,7 @@ function scanExport() {
         continue
       }
       if (!/\.(js|html|json|txt|map)$/.test(entry.name)) continue
-      const text = fs.readFileSync(full, "utf8")
+      const text = fs.readFileSync(full, 'utf8')
       for (const host of BLOCKED_CONVEX_HOSTS) {
         if (text.includes(host)) hits.push(`${host} in ${path.relative(root, full)}`)
       }
@@ -391,10 +439,11 @@ function scanExport() {
     }
   }
   walk(distDir)
-  const baked = fs.readdirSync(path.join(distDir, "_expo/static/js/web"))
-    .filter((name) => name.endsWith(".js"))
-    .map((name) => fs.readFileSync(path.join(distDir, "_expo/static/js/web", name), "utf8"))
-    .join("\n")
+  const baked = fs
+    .readdirSync(path.join(distDir, '_expo/static/js/web'))
+    .filter((name) => name.endsWith('.js'))
+    .map((name) => fs.readFileSync(path.join(distDir, '_expo/static/js/web', name), 'utf8'))
+    .join('\n')
   if (!baked.includes(convexUrl())) {
     hits.push(`bundle is missing the intended Convex URL (${convexHost(convexUrl())})`)
   }
@@ -405,7 +454,7 @@ function scanExport() {
 // between the start and the end of the export.
 export function exportStamp(before, after) {
   if (before !== after) {
-    throw new Error("The checkout changed while the web export ran. Run launch again.")
+    throw new Error('The checkout changed while the web export ran. Run launch again.')
   }
   return before
 }
@@ -413,12 +462,12 @@ export function exportStamp(before, after) {
 function exportWeb() {
   const url = convexUrl()
   const key = clerkKey()
-  if (!key) fail("Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY.")
+  if (!key) fail('Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY.')
   // Stamp the source before Expo reads it. A file saved during the export
   // would otherwise give the old bundle the new stamp.
   const stampBefore = currentStamp()
   fs.rmSync(distDir, { recursive: true, force: true })
-  const env = { ...process.env, CI: "1", EXPO_NO_DOTENV: "1" }
+  const env = { ...process.env, CI: '1', EXPO_NO_DOTENV: '1' }
   delete env.CLERK_SECRET_KEY
   delete env.CONVEX_DEPLOY_KEY
   delete env.CONVEX_DEPLOY_KEY_E2E
@@ -426,18 +475,18 @@ function exportWeb() {
   env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY = key
   console.log(`exporting web with convex host ${convexHost(url)}`)
   const result = spawnSync(
-    "npx",
-    ["expo", "export", "--clear", "--platform", "web", "--output-dir", "dist-verify"],
-    { cwd: root, env, stdio: "inherit" }
+    'npx',
+    ['expo', 'export', '--clear', '--platform', 'web', '--output-dir', 'dist-verify'],
+    { cwd: root, env, stdio: 'inherit' }
   )
   if (result.status !== 0) process.exit(result.status ?? 1)
   const hits = scanExport()
   if (hits.length) {
-    console.error("Export contains a blocked deployment or a secret. Not serving it.")
+    console.error('Export contains a blocked deployment or a secret. Not serving it.')
     for (const hit of hits) console.error(`- ${hit}`)
     process.exit(1)
   }
-  let stamp = ""
+  let stamp = ''
   try {
     stamp = exportStamp(stampBefore, currentStamp())
   } catch (error) {
@@ -445,38 +494,47 @@ function exportWeb() {
     fail(error.message)
   }
   fs.writeFileSync(
-    path.join(distDir, "verify-build.json"),
-    JSON.stringify({ convexHost: convexHost(url), commit: gitCommit(), stamp, builtAt: new Date().toISOString() }, null, 2)
+    path.join(distDir, 'verify-build.json'),
+    JSON.stringify(
+      {
+        convexHost: convexHost(url),
+        commit: gitCommit(),
+        stamp,
+        builtAt: new Date().toISOString(),
+      },
+      null,
+      2
+    )
   )
 }
 
 function contentType(file) {
-  if (file.endsWith(".html")) return "text/html; charset=utf-8"
-  if (file.endsWith(".js")) return "text/javascript; charset=utf-8"
-  if (file.endsWith(".css")) return "text/css; charset=utf-8"
-  if (file.endsWith(".json")) return "application/json"
-  if (file.endsWith(".png")) return "image/png"
-  if (file.endsWith(".svg")) return "image/svg+xml"
-  if (file.endsWith(".woff2")) return "font/woff2"
-  return "application/octet-stream"
+  if (file.endsWith('.html')) return 'text/html; charset=utf-8'
+  if (file.endsWith('.js')) return 'text/javascript; charset=utf-8'
+  if (file.endsWith('.css')) return 'text/css; charset=utf-8'
+  if (file.endsWith('.json')) return 'application/json'
+  if (file.endsWith('.png')) return 'image/png'
+  if (file.endsWith('.svg')) return 'image/svg+xml'
+  if (file.endsWith('.woff2')) return 'font/woff2'
+  return 'application/octet-stream'
 }
 
 function startServer() {
   const rootWithSep = distDir.endsWith(path.sep) ? distDir : distDir + path.sep
   const server = http.createServer((request, response) => {
-    const pathname = decodeURIComponent(new URL(request.url, "http://127.0.0.1").pathname)
+    const pathname = decodeURIComponent(new URL(request.url, 'http://127.0.0.1').pathname)
     const relative = path
       .normalize(pathname)
-      .replace(/^[/\\]+/, "")
-      .replace(/^(\.\.(\/|\\|$))+/, "")
+      .replace(/^[/\\]+/, '')
+      .replace(/^(\.\.(\/|\\|$))+/, '')
     const candidates = relative
       ? [
           path.join(distDir, relative),
           path.join(distDir, `${relative}.html`),
-          path.join(distDir, relative, "index.html"),
-          path.join(distDir, "index.html"),
+          path.join(distDir, relative, 'index.html'),
+          path.join(distDir, 'index.html'),
         ]
-      : [path.join(distDir, "index.html")]
+      : [path.join(distDir, 'index.html')]
     const file = candidates.find((candidate) => {
       const resolved = path.resolve(candidate)
       return (
@@ -487,21 +545,21 @@ function startServer() {
     })
     if (!file) {
       response.writeHead(404)
-      response.end("not found")
+      response.end('not found')
       return
     }
-    response.writeHead(200, { "content-type": contentType(file) })
+    response.writeHead(200, { 'content-type': contentType(file) })
     fs.createReadStream(file).pipe(response)
   })
-  server.listen(port, "127.0.0.1")
+  server.listen(port, '127.0.0.1')
   return server
 }
 
 function readBuildInfo() {
-  const file = path.join(distDir, "verify-build.json")
-  if (!fs.existsSync(path.join(distDir, "index.html")) || !fs.existsSync(file)) return null
+  const file = path.join(distDir, 'verify-build.json')
+  if (!fs.existsSync(path.join(distDir, 'index.html')) || !fs.existsSync(file)) return null
   try {
-    return JSON.parse(fs.readFileSync(file, "utf8"))
+    return JSON.parse(fs.readFileSync(file, 'utf8'))
   } catch {
     return null
   }
@@ -526,33 +584,39 @@ function verifyUrl() {
 }
 
 function launch() {
-  if (exportIsStale(readBuildInfo(), { stamp: currentStamp(), convexHost: convexHost(convexUrl()) })) exportWeb()
+  if (
+    exportIsStale(readBuildInfo(), { stamp: currentStamp(), convexHost: convexHost(convexUrl()) })
+  )
+    exportWeb()
   const hits = scanExport()
-  if (hits.length) fail(`Refusing to serve a tainted export:\n${hits.join("\n")}`)
+  if (hits.length) fail(`Refusing to serve a tainted export:\n${hits.join('\n')}`)
   cleanupServer()
   // The log, ready and state files may sit in a directory that does not exist
   // yet (the nightly recipe uses $TMPDIR/verify-nightly/).
-  for (const file of [logFile, readyFile, stateFile]) fs.mkdirSync(path.dirname(file), { recursive: true })
-  const log = fs.openSync(logFile, "a")
-  const child = spawn(process.execPath, [fileURLToPath(import.meta.url), "serve"], {
+  for (const file of [logFile, readyFile, stateFile])
+    fs.mkdirSync(path.dirname(file), { recursive: true })
+  const log = fs.openSync(logFile, 'a')
+  const child = spawn(process.execPath, [fileURLToPath(import.meta.url), 'serve'], {
     cwd: root,
     detached: true,
-    stdio: ["ignore", log, log],
+    stdio: ['ignore', log, log],
   })
   child.unref()
   fs.writeFileSync(stateFile, JSON.stringify({ pid: child.pid, port }))
   const url = verifyUrl()
   const deadline = Date.now() + 15000
   while (Date.now() < deadline) {
-    const marked = fs.existsSync(readyFile) ? fs.readFileSync(readyFile, "utf8") : ""
+    const marked = fs.existsSync(readyFile) ? fs.readFileSync(readyFile, 'utf8') : ''
     if (ownServerReady(marked, child.pid)) {
-      const ready = spawnSync("bash", ["-lc", `curl -sf -o /dev/null "${url}"`], { encoding: "utf8" })
+      const ready = spawnSync('bash', ['-lc', `curl -sf -o /dev/null "${url}"`], {
+        encoding: 'utf8',
+      })
       if (ready.status === 0) {
         console.log(`serving ${url}`)
         return url
       }
     }
-    spawnSync("bash", ["-lc", "sleep 0.2"])
+    spawnSync('bash', ['-lc', 'sleep 0.2'])
   }
   cleanupServer()
   fail(`Server did not answer at ${url}`)
@@ -560,27 +624,28 @@ function launch() {
 
 function readPersonaFile() {
   if (!fs.existsSync(personaFile)) return null
-  const record = JSON.parse(fs.readFileSync(personaFile, "utf8"))
-  if (!record.email || !record.password) throw new Error("Persona file is missing email or password.")
+  const record = JSON.parse(fs.readFileSync(personaFile, 'utf8'))
+  if (!record.email || !record.password)
+    throw new Error('Persona file is missing email or password.')
   return record
 }
 
 function personaCredentials() {
   const record = readPersonaFile()
-  if (!record) fail("Missing e2e-artifacts/persona-latest.json. Run persona create first.")
+  if (!record) fail('Missing e2e-artifacts/persona-latest.json. Run persona create first.')
   return record
 }
 
 function maskPassword(password) {
   // Hide the generated password from the job log if anything echoes it.
-  if (process.env.GITHUB_ACTIONS === "true") console.log(`::add-mask::${password}`)
+  if (process.env.GITHUB_ACTIONS === 'true') console.log(`::add-mask::${password}`)
 }
 
 function createPersona(state) {
   const result = spawnSync(
     process.execPath,
-    ["scripts/verify/persona.mjs", "create", "--state", state, "--json"],
-    { cwd: root, encoding: "utf8" }
+    ['scripts/verify/persona.mjs', 'create', '--state', state, '--json'],
+    { cwd: root, encoding: 'utf8' }
   )
   if (result.stderr) process.stderr.write(result.stderr)
   if (result.status !== 0) {
@@ -594,10 +659,10 @@ function createPersona(state) {
     if (leftover) error.persona = leftover
     throw error
   }
-  const line = (result.stdout || "").trim().split("\n").filter(Boolean).at(-1) || ""
+  const line = (result.stdout || '').trim().split('\n').filter(Boolean).at(-1) || ''
   if (line) console.log(line)
   const persona = readPersonaFile()
-  if (!persona) throw new Error("persona create did not write e2e-artifacts/persona-latest.json")
+  if (!persona) throw new Error('persona create did not write e2e-artifacts/persona-latest.json')
   maskPassword(persona.password)
   return persona
 }
@@ -605,16 +670,26 @@ function createPersona(state) {
 // The First Run creates the Clerk user and the Convex row through the UI.
 // Write the cleanup record first, so a run that fails partway still deletes
 // whatever the app made. No Clerk or Convex call happens here.
-export function createSignupPersona({ file = personaFile, now = Date.now, mask = maskPassword } = {}) {
+export function createSignupPersona({
+  file = personaFile,
+  now = Date.now,
+  mask = maskPassword,
+} = {}) {
   const record = {
     email: signupEmail(now()),
     password: generatePassword(),
-    state: "signup",
+    state: 'signup',
     createdAt: new Date(now()).toISOString(),
   }
   writeCredentials(record, file)
   mask(record.password)
-  console.log(JSON.stringify({ email: record.email, state: record.state, credentialsFile: "e2e-artifacts/persona-latest.json" }))
+  console.log(
+    JSON.stringify({
+      email: record.email,
+      state: record.state,
+      credentialsFile: 'e2e-artifacts/persona-latest.json',
+    })
+  )
   return record
 }
 
@@ -637,8 +712,8 @@ function assertInspected(parsed, expected, describe) {
     ? Object.keys(expected).filter((key) => actual[key] !== expected[key])
     : Object.keys(expected)
   if (mismatched.length) {
-    const detail = actual ? JSON.stringify(actual) : "no inspect output"
-    throw new Error(`${describe} (${mismatched.join(", ")}): ${detail}`)
+    const detail = actual ? JSON.stringify(actual) : 'no inspect output'
+    throw new Error(`${describe} (${mismatched.join(', ')}): ${detail}`)
   }
 }
 
@@ -652,7 +727,7 @@ export function assertFirstRun(output, email) {
       found: true,
       intakeCompleted: true,
       hasProgram: true,
-      phase: "GPP",
+      phase: 'GPP',
       week: 1,
       day: 1,
       firstLaunchRecorded: true,
@@ -679,17 +754,17 @@ export function assertWorkoutLoop(output, email) {
       // and with every prescribed set logged; the skipped warmup is not one.
       allMainExercisesLogged:
         session !== null &&
-        typeof session.mainExercises === "number" &&
+        typeof session.mainExercises === 'number' &&
         session.mainExercises > 0 &&
         session.mainExercisesNotLogged === 0,
     },
     {
       found: true,
-      phase: "GPP",
+      phase: 'GPP',
       week: 1,
       day: 2,
       sessionCount: 1,
-      sessionStatus: "completed",
+      sessionStatus: 'completed',
       allMainExercisesLogged: true,
     },
     `the workout loop left ${email} without one finished session and the program on day 2`
@@ -697,10 +772,53 @@ export function assertWorkoutLoop(output, email) {
   return { phase: parsed.phase, week: parsed.week, day: parsed.day, sessions }
 }
 
+// The reassessment flow starts the phase-end persona at the end of GPP with
+// the check-in pending, answers Just right, skips the maxes, and picks Repeat
+// GPP. completeReassessment must clear the pending check-in, record one GPP
+// check-in with that answer, put the program back at GPP week 1 day 1, and
+// unlock nothing.
+export function assertReassessment(output, email) {
+  const parsed = parseInspect(output)
+  const reassessments = Array.isArray(parsed?.reassessments) ? parsed.reassessments : []
+  const checkIn = reassessments.length === 1 ? reassessments[0] : null
+  assertInspected(
+    parsed && {
+      ...parsed,
+      reassessmentCount: reassessments.length,
+      completedPhase: checkIn?.completedPhase ?? null,
+      decision: checkIn?.decision ?? null,
+      phaseDifficulty: checkIn?.phaseDifficulty ?? null,
+      maxesUpdated: checkIn?.maxesUpdated ?? null,
+    },
+    {
+      found: true,
+      phase: 'GPP',
+      week: 1,
+      day: 1,
+      reassessmentPendingForPhase: null,
+      sppUnlocked: false,
+      reassessmentCount: 1,
+      completedPhase: 'GPP',
+      decision: 'repeat',
+      phaseDifficulty: 'just_right',
+      maxesUpdated: false,
+    },
+    `the reassessment flow left ${email} without one repeated GPP check-in and GPP week 1 day 1`
+  )
+  return {
+    phase: parsed.phase,
+    week: parsed.week,
+    day: parsed.day,
+    reassessmentPendingForPhase: parsed.reassessmentPendingForPhase,
+    reassessments,
+  }
+}
+
 // Checks run on the account after Maestro passes, by flow.
 const inspectChecks = {
-  "first-run": assertFirstRun,
-  "workout-loop": assertWorkoutLoop,
+  'first-run': assertFirstRun,
+  'workout-loop': assertWorkoutLoop,
+  reassessment: assertReassessment,
 }
 
 // Flows with no entry are not inspected after Maestro passes.
@@ -713,8 +831,8 @@ function inspectPersona(persona, flow) {
   if (!check) throw new Error(`No inspect check for flow "${flow}".`)
   const result = spawnSync(
     process.execPath,
-    ["scripts/verify/persona.mjs", "inspect", persona.email, "--json"],
-    { cwd: root, encoding: "utf8" }
+    ['scripts/verify/persona.mjs', 'inspect', persona.email, '--json'],
+    { cwd: root, encoding: 'utf8' }
   )
   if (result.stderr) process.stderr.write(result.stderr)
   if (result.status !== 0) throw new Error(`persona inspect exited ${result.status ?? 1}`)
@@ -724,10 +842,14 @@ function inspectPersona(persona, flow) {
 }
 
 function deletePersona(persona) {
-  const result = spawnSync(process.execPath, ["scripts/verify/persona.mjs", "delete", persona.email], {
-    cwd: root,
-    encoding: "utf8",
-  })
+  const result = spawnSync(
+    process.execPath,
+    ['scripts/verify/persona.mjs', 'delete', persona.email],
+    {
+      cwd: root,
+      encoding: 'utf8',
+    }
+  )
   if (result.stderr) process.stderr.write(result.stderr)
   if (result.status !== 0) throw new Error(`persona delete exited ${result.status ?? 1}`)
 }
@@ -737,14 +859,14 @@ function deletePersona(persona) {
 // persona has to live in persona-pending.json instead.
 function releasePersonaFile(email) {
   if (!email || !fs.existsSync(personaFile)) return
-  const current = JSON.parse(fs.readFileSync(personaFile, "utf8"))
+  const current = JSON.parse(fs.readFileSync(personaFile, 'utf8'))
   if (current.email === email) fs.rmSync(personaFile, { force: true })
 }
 
 export function readPending(file = pendingFile) {
   if (!fs.existsSync(file)) return []
-  const parsed = JSON.parse(fs.readFileSync(file, "utf8"))
-  if (!Array.isArray(parsed)) throw new Error("persona-pending.json is not a list.")
+  const parsed = JSON.parse(fs.readFileSync(file, 'utf8'))
+  if (!Array.isArray(parsed)) throw new Error('persona-pending.json is not a list.')
   return parsed
 }
 
@@ -781,14 +903,14 @@ export function settlePersona(records, persona, outcome) {
 }
 
 function scrubMarker(dir) {
-  return path.join(dir, ".scrubbed")
+  return path.join(dir, '.scrubbed')
 }
 
 function evidenceDirs() {
   if (!fs.existsSync(artifactsDir)) return []
   return fs
     .readdirSync(artifactsDir)
-    .map((name) => path.join(artifactsDir, name, "web"))
+    .map((name) => path.join(artifactsDir, name, 'web'))
     .filter((dir) => fs.existsSync(dir))
 }
 
@@ -808,9 +930,9 @@ export function redactEvidence(dir, secret, skip = []) {
         continue
       }
       if (!entry.isFile() || binaryEvidence.test(entry.name)) continue
-      const text = fs.readFileSync(full, "utf8")
+      const text = fs.readFileSync(full, 'utf8')
       if (!text.includes(secret)) continue
-      fs.writeFileSync(full, text.split(secret).join("[redacted]"))
+      fs.writeFileSync(full, text.split(secret).join('[redacted]'))
       changed++
     }
   }
@@ -819,21 +941,29 @@ export function redactEvidence(dir, secret, skip = []) {
 }
 
 // Maestro's beta web driver occasionally crashes in Chromium/CDP within a few
-// seconds of launchApp before any screenshot is taken (e.g. #88 main run
+// seconds of launchApp before the flow takes any screenshot (e.g. #88 main run
 // 44995849336 failing at 3.4s on a 90s extendedWaitUntil). Retry once ONLY on
 // that cold-start signature; real assertion failures take >20s or happen after
-// screenshots exist and are never retried.
+// the flow has taken its own screenshots and are never retried.
 export function shouldRetryColdStart({ elapsedMs, hasScreenshots, attempt }) {
   return attempt === 0 && elapsedMs < 20_000 && !hasScreenshots
 }
 
-function hasScreenshotFiles(dir) {
+// Maestro saves its own step screenshots on every failure, under
+// `<run>/<flow>/screenshots/step-011-assertCondition-....png` (and one per
+// runFlow step). Those prove nothing about how far the flow got, so only the
+// flow's own `takeScreenshot` evidence (`<run>/<flow>/takeScreenshot/01-today.png`)
+// counts. Archived `attempt-N/` folders belong to an earlier attempt.
+const maestroStepShot = /^step-\d+-/i
+
+export function hasFlowEvidence(dir) {
   if (!fs.existsSync(dir)) return false
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name)
     if (entry.isDirectory()) {
-      if (hasScreenshotFiles(full)) return true
-    } else if (/\.png$/i.test(entry.name)) {
+      if (entry.name === 'screenshots' || /^attempt-\d+$/.test(entry.name)) continue
+      if (hasFlowEvidence(full)) return true
+    } else if (/\.png$/i.test(entry.name) && !maestroStepShot.test(entry.name)) {
       return true
     }
   }
@@ -843,7 +973,7 @@ function hasScreenshotFiles(dir) {
 // Moves the failed first attempt's Maestro output into a dedicated subfolder
 // (e.g. `attempt-1/`) inside `outDir` before retrying, so crash logs from the
 // original cold-start failure survive and are scrubbed alongside attempt 2.
-export function archiveAttemptEvidence(outDir, attemptLabel = "attempt-1") {
+export function archiveAttemptEvidence(outDir, attemptLabel = 'attempt-1') {
   if (!fs.existsSync(outDir)) return false
   const entries = fs.readdirSync(outDir).filter((name) => !/^attempt-\d+$/.test(name))
   if (!entries.length) return false
@@ -857,29 +987,29 @@ export function archiveAttemptEvidence(outDir, attemptLabel = "attempt-1") {
 
 function runMaestro(flowFile, outDir, url, persona) {
   const maestro = maestroBin()
-  if (!maestro) fail("Maestro is not installed.")
-  const args = ["test", "--headless", "--test-output-dir", outDir, "-e", `VERIFY_URL=${url}`]
-  const env = { ...process.env, MAESTRO_CLI_NO_ANALYTICS: "1" }
+  if (!maestro) fail('Maestro is not installed.')
+  const args = ['test', '--headless', '--test-output-dir', outDir, '-e', `VERIFY_URL=${url}`]
+  const env = { ...process.env, MAESTRO_CLI_NO_ANALYTICS: '1' }
   delete env.PERSONA_PASSWORD
   if (persona) {
-    args.push("-e", `PERSONA_EMAIL=${persona.email}`, "-e", `PERSONA_PASSWORD=${persona.password}`)
+    args.push('-e', `PERSONA_EMAIL=${persona.email}`, '-e', `PERSONA_PASSWORD=${persona.password}`)
   }
   args.push(flowFile)
   fs.rmSync(outDir, { recursive: true, force: true })
   fs.mkdirSync(outDir, { recursive: true })
   for (let attempt = 0; attempt < 2; attempt++) {
     const started = Date.now()
-    const result = spawnSync(maestro, args, { cwd: root, stdio: "inherit", env })
+    const result = spawnSync(maestro, args, { cwd: root, stdio: 'inherit', env })
     if (result.status === 0) {
       console.log(`evidence: ${outDir}`)
       return
     }
     const elapsedMs = Date.now() - started
-    const hasScreenshots = hasScreenshotFiles(outDir)
+    const hasScreenshots = hasFlowEvidence(outDir)
     if (shouldRetryColdStart({ elapsedMs, hasScreenshots, attempt })) {
       archiveAttemptEvidence(outDir, `attempt-${attempt + 1}`)
       console.warn(
-        `retrying ${flowFile} once after cold-start Maestro exit ${result.status ?? 1} (${Math.round(elapsedMs / 1000)}s, no screenshots); preserved attempt-${attempt + 1}/`
+        `retrying ${flowFile} once after cold-start Maestro exit ${result.status ?? 1} (${Math.round(elapsedMs / 1000)}s, no flow screenshots); preserved attempt-${attempt + 1}/`
       )
       continue
     }
@@ -889,13 +1019,13 @@ function runMaestro(flowFile, outDir, url, persona) {
   }
 }
 
-function drive(url, submitting = submitMode(), flow = "sign-in") {
+function drive(url, submitting = submitMode(), flow = 'sign-in') {
   if (submitting) {
     const persona = personaCredentials()
     console.log(`driving ${flow} for ${persona.email}`)
     runMaestro(webFlowFile(flow), evidenceDirFor(flow), url, persona)
   } else {
-    console.log("driving signed-out screen")
+    console.log('driving signed-out screen')
     runMaestro(screenFlow, screenEvidenceDir, url)
   }
 }
@@ -907,7 +1037,7 @@ export function runSuite(flows, steps, now = Date.now) {
   let pending = steps.readPending?.() ?? []
   for (const flow of flows) {
     const started = now()
-    const result = { flow, status: "passed", artifact: artifactName(flow) }
+    const result = { flow, status: 'passed', artifact: artifactName(flow) }
     const errors = []
     let persona = null
     try {
@@ -943,8 +1073,8 @@ export function runSuite(flows, steps, now = Date.now) {
       }
     }
     if (errors.length) {
-      result.status = "failed"
-      result.error = errors.join("; ")
+      result.status = 'failed'
+      result.error = errors.join('; ')
     }
     result.seconds = Math.round((now() - started) / 1000)
     results.push(result)
@@ -954,10 +1084,11 @@ export function runSuite(flows, steps, now = Date.now) {
 
 function selectFlows(requested) {
   const available = listWebFlows()
-  if (!available.length) fail("No flows under .maestro/web.")
+  if (!available.length) fail('No flows under .maestro/web.')
   if (!requested.length) return defaultFlows(available, process.env.VERIFY_FLOW_SET)
   const unknown = requested.filter((flow) => !available.includes(flow))
-  if (unknown.length) fail(`Unknown web flow: ${unknown.join(", ")}. Flows: ${available.join(", ")}`)
+  if (unknown.length)
+    fail(`Unknown web flow: ${unknown.join(', ')}. Flows: ${available.join(', ')}`)
   return requested
 }
 
@@ -965,14 +1096,15 @@ function redactFlow(flow, persona) {
   const dir = evidenceDirFor(flow)
   fs.rmSync(scrubMarker(dir), { force: true })
   redactEvidence(dir, persona.password)
-  if (fs.existsSync(dir)) fs.writeFileSync(scrubMarker(dir), "")
+  if (fs.existsSync(dir)) fs.writeFileSync(scrubMarker(dir), '')
 }
 
 const webIo = {
   createSeededPersona: createPersona,
   createSignupPersona: () => createSignupPersona(),
   inspectPersona,
-  runMaestro: (flow, url, persona) => runMaestro(webFlowFile(flow), evidenceDirFor(flow), url, persona),
+  runMaestro: (flow, url, persona) =>
+    runMaestro(webFlowFile(flow), evidenceDirFor(flow), url, persona),
   redact: redactFlow,
   deletePersona,
   readPending,
@@ -988,7 +1120,7 @@ export function webSuiteSteps(url, io = webIo) {
     createPersona: (flow) => {
       console.log(`\n== ${flow} (web) ==`)
       const mode = personaMode(flow)
-      return mode === "first-run" ? io.createSignupPersona() : io.createSeededPersona(mode)
+      return mode === 'first-run' ? io.createSignupPersona() : io.createSeededPersona(mode)
     },
     drive: (flow, persona) => {
       console.log(`driving ${flow} for ${persona.email}`)
@@ -1011,15 +1143,17 @@ function runWebFlows(url, flows) {
 
 function writeResults(results) {
   fs.mkdirSync(artifactsDir, { recursive: true })
-  fs.writeFileSync(resultsFile, JSON.stringify({ platform: "web", flows: results }, null, 2))
+  fs.writeFileSync(resultsFile, JSON.stringify({ platform: 'web', flows: results }, null, 2))
   for (const result of results) {
     const dir = evidenceDirFor(result.flow)
     fs.mkdirSync(dir, { recursive: true })
-    fs.writeFileSync(path.join(dir, "result.json"), JSON.stringify(result, null, 2))
+    fs.writeFileSync(path.join(dir, 'result.json'), JSON.stringify(result, null, 2))
   }
-  console.log("\nweb flows:")
+  console.log('\nweb flows:')
   for (const result of results) {
-    console.log(`- ${result.flow}: ${result.status} (${result.seconds}s)${result.error ? ` ${result.error}` : ""}`)
+    console.log(
+      `- ${result.flow}: ${result.status} (${result.seconds}s)${result.error ? ` ${result.error}` : ''}`
+    )
   }
 }
 
@@ -1043,7 +1177,7 @@ export function restoreFiles(snapshot) {
 function convexCli(args, env) {
   const snapshot = snapshotFiles(guardedFiles)
   try {
-    return spawnSync("npx", ["convex", ...args], { cwd: root, env, stdio: "inherit" })
+    return spawnSync('npx', ['convex', ...args], { cwd: root, env, stdio: 'inherit' })
   } finally {
     restoreFiles(snapshot)
   }
@@ -1052,8 +1186,8 @@ function convexCli(args, env) {
 function convexOutput(args, env) {
   const snapshot = snapshotFiles(guardedFiles)
   try {
-    const result = spawnSync("npx", ["convex", ...args], { cwd: root, env, encoding: "utf8" })
-    return { status: result.status, stdout: (result.stdout || "").trim() }
+    const result = spawnSync('npx', ['convex', ...args], { cwd: root, env, encoding: 'utf8' })
+    return { status: result.status, stdout: (result.stdout || '').trim() }
   } finally {
     restoreFiles(snapshot)
   }
@@ -1068,23 +1202,23 @@ function publishConvexUrl(url) {
 
 // convex deploy runs --cmd with the new deployment's URL in this variable.
 // `run.mjs record-url` writes it here for deployPreview to read back.
-const previewUrlFile = path.join(artifactsDir, "convex-preview-url.txt")
-const previewUrlVar = "EXPO_PUBLIC_CONVEX_URL_E2E"
+const previewUrlFile = path.join(artifactsDir, 'convex-preview-url.txt')
+const previewUrlVar = 'EXPO_PUBLIC_CONVEX_URL_E2E'
 
 // Seeding is handled after deploy by ensureSeeded(), which skips re-seeding
 // unchanged preview deployments via E2E_SEED_HASH.
 export function previewDeployArgs(name) {
   return [
-    "deploy",
-    "--preview-create",
+    'deploy',
+    '--preview-create',
     name,
-    "--codegen",
-    "disable",
-    "--typecheck",
-    "disable",
-    "--cmd",
-    "node scripts/verify/run.mjs record-url",
-    "--cmd-url-env-var-name",
+    '--codegen',
+    'disable',
+    '--typecheck',
+    'disable',
+    '--cmd',
+    'node scripts/verify/run.mjs record-url',
+    '--cmd-url-env-var-name',
     previewUrlVar,
   ]
 }
@@ -1097,11 +1231,11 @@ export function previewDeployArgs(name) {
 export const TEMPLATE_CATEGORIES = [1, 2, 3, 4]
 
 export function templateSeedArgs(categoryId, previewName) {
-  const target = previewName ? ["--preview-name", previewName] : []
+  const target = previewName ? ['--preview-name', previewName] : []
   return [
-    "run",
+    'run',
     ...target,
-    "generateTemplates:regenerateCategoryTemplates",
+    'generateTemplates:regenerateCategoryTemplates',
     JSON.stringify({ categoryId, failOnErrors: true }),
   ]
 }
@@ -1109,16 +1243,24 @@ export function templateSeedArgs(categoryId, previewName) {
 // The source files the seed and the template generator are built from:
 // seed.ts and generateTemplates.ts plus every repo file they import,
 // followed transitively. A change to any of them must reseed.
-export const SEED_ROOTS = ["convex/seed.ts", "convex/generateTemplates.ts"]
+export const SEED_ROOTS = ['convex/seed.ts', 'convex/generateTemplates.ts']
 
 // The deployment env var that records the seed inputs it was last seeded
 // from. Env vars cost no database bandwidth and need no table.
-export const SEED_MARKER = "E2E_SEED_HASH"
+export const SEED_MARKER = 'E2E_SEED_HASH'
 
 function resolveImport(fromFile, spec, exists) {
   const base = path.posix.normalize(path.posix.join(path.posix.dirname(fromFile), spec))
-  const stripped = base.replace(/\.(js|mjs|cjs)$/, "")
-  for (const candidate of [base, `${base}.ts`, `${base}.tsx`, `${base}.js`, `${base}/index.ts`, `${stripped}.ts`, `${stripped}.tsx`]) {
+  const stripped = base.replace(/\.(js|mjs|cjs)$/, '')
+  for (const candidate of [
+    base,
+    `${base}.ts`,
+    `${base}.tsx`,
+    `${base}.js`,
+    `${base}/index.ts`,
+    `${stripped}.ts`,
+    `${stripped}.tsx`,
+  ]) {
     if (exists(candidate)) return candidate
   }
   return null
@@ -1126,8 +1268,9 @@ function resolveImport(fromFile, spec, exists) {
 
 function walkRelativeImports({
   roots,
-  read = (file) => fs.readFileSync(path.join(root, file), "utf8"),
-  exists = (file) => fs.existsSync(path.join(root, file)) && fs.statSync(path.join(root, file)).isFile(),
+  read = (file) => fs.readFileSync(path.join(root, file), 'utf8'),
+  exists = (file) =>
+    fs.existsSync(path.join(root, file)) && fs.statSync(path.join(root, file)).isFile(),
 }) {
   const seen = new Set()
   const queue = [...roots]
@@ -1135,9 +1278,11 @@ function walkRelativeImports({
     const file = queue.shift()
     if (seen.has(file)) continue
     seen.add(file)
-    for (const [, spec] of read(file).matchAll(/(?:from|import)\s*\(?\s*["'](\.{1,2}\/[^"']+)["']/g)) {
+    for (const [, spec] of read(file).matchAll(
+      /(?:from|import)\s*\(?\s*["'](\.{1,2}\/[^"']+)["']/g
+    )) {
       const resolved = resolveImport(file, spec, exists)
-      if (resolved && !resolved.includes("/_generated/")) queue.push(resolved)
+      if (resolved && !resolved.includes('/_generated/')) queue.push(resolved)
     }
   }
   return [...seen].sort()
@@ -1145,8 +1290,9 @@ function walkRelativeImports({
 
 export function seedInputFiles({
   roots = SEED_ROOTS,
-  read = (file) => fs.readFileSync(path.join(root, file), "utf8"),
-  exists = (file) => fs.existsSync(path.join(root, file)) && fs.statSync(path.join(root, file)).isFile(),
+  read = (file) => fs.readFileSync(path.join(root, file), 'utf8'),
+  exists = (file) =>
+    fs.existsSync(path.join(root, file)) && fs.statSync(path.join(root, file)).isFile(),
 } = {}) {
   return walkRelativeImports({ roots, read, exists })
 }
@@ -1155,9 +1301,9 @@ export function seedInputsHash({
   files = seedInputFiles(),
   read = (file) => fs.readFileSync(path.join(root, file)),
 } = {}) {
-  const hash = createHash("sha256").update(JSON.stringify(TEMPLATE_CATEGORIES))
+  const hash = createHash('sha256').update(JSON.stringify(TEMPLATE_CATEGORIES))
   for (const file of files) hash.update(`\0${file}\0`).update(read(file))
-  return hash.digest("hex").slice(0, 16)
+  return hash.digest('hex').slice(0, 16)
 }
 
 // Pure: reseed unless the deployment holds templates across all categories and
@@ -1168,13 +1314,13 @@ export function shouldSeed({ marker, hash, hasTemplates }) {
   return !(hasTemplates && marker && marker === hash)
 }
 
-function listConvexSourceFiles(dir = path.join(root, "convex"), prefix = "convex") {
+function listConvexSourceFiles(dir = path.join(root, 'convex'), prefix = 'convex') {
   if (!fs.existsSync(dir)) return []
   const out = []
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const rel = `${prefix}/${entry.name}`
     if (entry.isDirectory()) {
-      if (entry.name === "__tests__" || entry.name === "_generated") continue
+      if (entry.name === '__tests__' || entry.name === '_generated') continue
       out.push(...listConvexSourceFiles(path.join(dir, entry.name), rel))
     } else if (/\.(ts|tsx|js|mjs)$/.test(entry.name)) {
       out.push(rel)
@@ -1187,13 +1333,14 @@ function listConvexSourceFiles(dir = path.join(root, "convex"), prefix = "convex
 // convex/ plus every relative import they reach (e.g. lib/today.ts, types/).
 export function convexRuntimeFiles({
   roots = listConvexSourceFiles(),
-  read = (file) => fs.readFileSync(path.join(root, file), "utf8"),
-  exists = (file) => fs.existsSync(path.join(root, file)) && fs.statSync(path.join(root, file)).isFile(),
+  read = (file) => fs.readFileSync(path.join(root, file), 'utf8'),
+  exists = (file) =>
+    fs.existsSync(path.join(root, file)) && fs.statSync(path.join(root, file)).isFile(),
 } = {}) {
   return walkRelativeImports({ roots, read, exists })
 }
 
-const CONVEX_CONFIG_FILES = new Set(["convex.json", "package.json", "bun.lock"])
+const CONVEX_CONFIG_FILES = new Set(['convex.json', 'package.json', 'bun.lock'])
 
 // Pure: a PR only needs its own Convex preview deployment when its diff touches
 // Convex runtime code, a file imported by Convex, or package/convex config.
@@ -1203,7 +1350,11 @@ export function needsConvexPreview(changedFiles, { runtimeFiles = convexRuntimeF
   const runtimeSet = new Set(runtimeFiles)
   return changedFiles.some((file) => {
     if (CONVEX_CONFIG_FILES.has(file)) return true
-    if (file.startsWith("convex/") && !file.startsWith("convex/__tests__/") && file !== "convex/README.md") {
+    if (
+      file.startsWith('convex/') &&
+      !file.startsWith('convex/__tests__/') &&
+      file !== 'convex/README.md'
+    ) {
       return true
     }
     return runtimeSet.has(file)
@@ -1213,40 +1364,49 @@ export function needsConvexPreview(changedFiles, { runtimeFiles = convexRuntimeF
 // Pure: picks "dev" (main/manual), "preview" (PR touching Convex runtime), or
 // "shared" (PR with no Convex runtime changes, reusing wander-fit-e2e).
 export function selectBackendMode({ eventName, changedFiles, runtimeFiles } = {}) {
-  if (eventName !== "pull_request") return "dev"
-  return needsConvexPreview(changedFiles, { runtimeFiles }) ? "preview" : "shared"
+  if (eventName !== 'pull_request') return 'dev'
+  return needsConvexPreview(changedFiles, { runtimeFiles }) ? 'preview' : 'shared'
 }
 
 // Disable git rename detection so moves/renames report BOTH the deleted source
 // path and the added destination path (e.g. moving a route into docs/ still
 // sees the deleted route instead of skipping E2E).
 export function prChangedFilesArgs() {
-  return ["diff", "--no-renames", "--name-only", "HEAD^1", "HEAD"]
+  return ['diff', '--no-renames', '--name-only', 'HEAD^1', 'HEAD']
 }
 
 function prChangedFiles() {
   // GitHub's pull_request checkout is a synthetic merge commit (HEAD^1 = base,
   // HEAD^2 = PR head). Refuse non-merge commits so a single-commit diff never
   // misses earlier commits on a branch.
-  const isMerge = spawnSync("git", ["rev-parse", "--verify", "--quiet", "HEAD^2"], { cwd: root, encoding: "utf8" })
+  const isMerge = spawnSync('git', ['rev-parse', '--verify', '--quiet', 'HEAD^2'], {
+    cwd: root,
+    encoding: 'utf8',
+  })
   if (isMerge.status !== 0) return null
-  const diff = spawnSync("git", prChangedFilesArgs(), { cwd: root, encoding: "utf8" })
+  const diff = spawnSync('git', prChangedFilesArgs(), { cwd: root, encoding: 'utf8' })
   if (diff.status !== 0) return null
-  return (diff.stdout || "")
-    .split("\n")
+  return (diff.stdout || '')
+    .split('\n')
     .map((line) => line.trim())
     .filter(Boolean)
 }
 
 function backendMode() {
-  const eventName = process.env.GITHUB_EVENT_NAME || ""
-  const changedFiles = eventName === "pull_request" ? prChangedFiles() : []
+  const eventName = process.env.GITHUB_EVENT_NAME || ''
+  const changedFiles = eventName === 'pull_request' ? prChangedFiles() : []
   const mode = selectBackendMode({ eventName, changedFiles })
-  console.log(`backend mode: ${mode} (event=${eventName || "local"})`)
+  console.log(`backend mode: ${mode} (event=${eventName || 'local'})`)
   if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `mode=${mode}\n`)
 }
 
-export function buildE2EPlan({ eventName, changedFiles, available = listWebFlows(), maxShards = 4, runtimeFiles } = {}) {
+export function buildE2EPlan({
+  eventName,
+  changedFiles,
+  available = listWebFlows(),
+  maxShards = 4,
+  runtimeFiles,
+} = {}) {
   const resolvedRuntimeFiles = runtimeFiles ?? convexRuntimeFiles()
   const mode = selectBackendMode({ eventName, changedFiles, runtimeFiles: resolvedRuntimeFiles })
   const { flows, reason } = selectAffectedFlows(changedFiles, {
@@ -1265,11 +1425,13 @@ export function buildE2EPlan({ eventName, changedFiles, available = listWebFlows
 }
 
 function planE2E() {
-  const eventName = process.env.GITHUB_EVENT_NAME || ""
-  const changedFiles = eventName === "pull_request" ? prChangedFiles() : []
+  const eventName = process.env.GITHUB_EVENT_NAME || ''
+  const changedFiles = eventName === 'pull_request' ? prChangedFiles() : []
   const maxShards = Number(process.env.VERIFY_MAX_SHARDS || 4)
   const plan = buildE2EPlan({ eventName, changedFiles, maxShards })
-  console.log(`e2e plan: mode=${plan.mode}, run_e2e=${plan.runE2E}, flows=${plan.flows.length}, shards=${plan.shards.length} (${plan.reason})`)
+  console.log(
+    `e2e plan: mode=${plan.mode}, run_e2e=${plan.runE2E}, flows=${plan.flows.length}, shards=${plan.shards.length} (${plan.reason})`
+  )
   if (process.env.GITHUB_OUTPUT) {
     fs.appendFileSync(
       process.env.GITHUB_OUTPUT,
@@ -1279,8 +1441,8 @@ function planE2E() {
         `flows=${JSON.stringify(plan.flows)}`,
         `shards=${JSON.stringify(plan.shards)}`,
         `reason=${plan.reason}`,
-        "",
-      ].join("\n")
+        '',
+      ].join('\n')
     )
   }
 }
@@ -1289,7 +1451,9 @@ function seedTemplates(env, previewName) {
   for (const categoryId of TEMPLATE_CATEGORIES) {
     const seeded = convexCli(templateSeedArgs(categoryId, previewName), env)
     if (seeded.status !== 0) {
-      fail(`generateTemplates:regenerateCategoryTemplates for category ${categoryId} exited ${seeded.status ?? 1}`)
+      fail(
+        `generateTemplates:regenerateCategoryTemplates for category ${categoryId} exited ${seeded.status ?? 1}`
+      )
     }
   }
 }
@@ -1310,7 +1474,7 @@ export function runEnsureSeeded({
     log(`seed inputs unchanged (${hash}); ${host} keeps its seed`)
     return { seeded: false }
   }
-  log(`seeding ${host} (inputs ${hash}, last seeded from ${marker || "nothing recorded"})`)
+  log(`seeding ${host} (inputs ${hash}, last seeded from ${marker || 'nothing recorded'})`)
   // Clear the marker before the first write so an interrupted/failed seed can
   // never leave mixed templates behind an older matching hash.
   clearMarker()
@@ -1320,17 +1484,20 @@ export function runEnsureSeeded({
   return { seeded: true }
 }
 
-function ensureSeeded({ env, host, previewName = "" }) {
-  const target = previewName ? ["--preview-name", previewName] : []
+function ensureSeeded({ env, host, previewName = '' }) {
+  const target = previewName ? ['--preview-name', previewName] : []
   return runEnsureSeeded({
     hash: seedInputsHash(),
     host,
     readMarker() {
-      const markerResult = convexOutput(["env", "get", ...target, SEED_MARKER], env)
-      return markerResult.status === 0 ? markerResult.stdout : ""
+      const markerResult = convexOutput(['env', 'get', ...target, SEED_MARKER], env)
+      return markerResult.status === 0 ? markerResult.stdout : ''
     },
     hasTemplates() {
-      const statusResult = convexOutput(["run", ...target, "programTemplates:seedStatus", "{}"], env)
+      const statusResult = convexOutput(
+        ['run', ...target, 'programTemplates:seedStatus', '{}'],
+        env
+      )
       if (statusResult.status !== 0) return false
       try {
         return parseRunResult(statusResult.stdout)?.hasTemplates === true
@@ -1339,18 +1506,19 @@ function ensureSeeded({ env, host, previewName = "" }) {
       }
     },
     clearMarker() {
-      const cleared = convexCli(["env", "remove", ...target, SEED_MARKER], env)
-      if (cleared.status !== 0) fail(`convex env remove ${SEED_MARKER} exited ${cleared.status ?? 1}`)
+      const cleared = convexCli(['env', 'remove', ...target, SEED_MARKER], env)
+      if (cleared.status !== 0)
+        fail(`convex env remove ${SEED_MARKER} exited ${cleared.status ?? 1}`)
     },
     seedAll() {
-      const seeded = convexCli(["run", ...target, "seed:seedAll", "{}"], env)
+      const seeded = convexCli(['run', ...target, 'seed:seedAll', '{}'], env)
       if (seeded.status !== 0) fail(`seed:seedAll exited ${seeded.status ?? 1}`)
     },
     seedTemplates() {
       seedTemplates(env, previewName)
     },
     setMarker(hash) {
-      const marked = convexCli(["env", "set", ...target, SEED_MARKER, hash], env)
+      const marked = convexCli(['env', 'set', ...target, SEED_MARKER, hash], env)
       if (marked.status !== 0) fail(`convex env set ${SEED_MARKER} exited ${marked.status ?? 1}`)
     },
   })
@@ -1361,9 +1529,9 @@ function ensureSeeded({ env, host, previewName = "" }) {
 // The preview key can reach only that project's previews, never app deployments.
 function deployPreview(key) {
   if (process.env.CONVEX_DEPLOY_KEY_E2E) {
-    fail("Set CONVEX_DEPLOY_KEY_E2E or CONVEX_PREVIEW_DEPLOY_KEY_E2E, not both.")
+    fail('Set CONVEX_DEPLOY_KEY_E2E or CONVEX_PREVIEW_DEPLOY_KEY_E2E, not both.')
   }
-  let name = ""
+  let name = ''
   try {
     assertPreviewKey(key)
     name = previewName(process.env.CONVEX_PREVIEW_NAME_E2E)
@@ -1372,12 +1540,12 @@ function deployPreview(key) {
   }
   const env = { ...process.env, CONVEX_DEPLOY_KEY: key }
   for (const variable of [
-    "CONVEX_DEPLOYMENT",
-    "CONVEX_DEPLOY_KEY_E2E",
-    "CONVEX_PREVIEW_DEPLOY_KEY_E2E",
-    "CLERK_SECRET_KEY",
-    "TEST_USER_PASSWORD",
-    "EXPO_PUBLIC_CONVEX_URL",
+    'CONVEX_DEPLOYMENT',
+    'CONVEX_DEPLOY_KEY_E2E',
+    'CONVEX_PREVIEW_DEPLOY_KEY_E2E',
+    'CLERK_SECRET_KEY',
+    'TEST_USER_PASSWORD',
+    'EXPO_PUBLIC_CONVEX_URL',
     previewUrlVar,
   ]) {
     delete env[variable]
@@ -1386,9 +1554,9 @@ function deployPreview(key) {
   console.log(`deploying convex functions to preview "${name}" of wander-fit-e2e`)
   const pushed = convexCli(previewDeployArgs(name), env)
   if (pushed.status !== 0) fail(`convex deploy exited ${pushed.status ?? 1}`)
-  const url = fs.existsSync(previewUrlFile) ? fs.readFileSync(previewUrlFile, "utf8").trim() : ""
-  if (!url) fail("convex deploy did not report the preview deployment URL.")
-  let host = ""
+  const url = fs.existsSync(previewUrlFile) ? fs.readFileSync(previewUrlFile, 'utf8').trim() : ''
+  if (!url) fail('convex deploy did not report the preview deployment URL.')
+  let host = ''
   try {
     host = assertConvexUrlAllowed(url)
   } catch (error) {
@@ -1405,9 +1573,9 @@ function deployPreview(key) {
 // - preview mode (PR touching Convex): deploy to pr-<N> preview & ensureSeeded.
 // - dev mode (main/local): push to wander-fit-e2e dev & ensureSeeded.
 function deployBackend() {
-  if (process.env.VERIFY_BACKEND_MODE === "shared") {
+  if (process.env.VERIFY_BACKEND_MODE === 'shared') {
     const url = e2eUrl()
-    let host = ""
+    let host = ''
     try {
       host = assertConvexUrlAllowed(url)
     } catch (error) {
@@ -1417,14 +1585,14 @@ function deployBackend() {
     publishConvexUrl(url)
     return
   }
-  const previewKey = process.env.CONVEX_PREVIEW_DEPLOY_KEY_E2E || ""
+  const previewKey = process.env.CONVEX_PREVIEW_DEPLOY_KEY_E2E || ''
   if (previewKey) {
     deployPreview(previewKey)
     return
   }
   const { env, host } = convexInvocation()
   console.log(`deploying convex functions to ${host}`)
-  const pushed = convexCli(["dev", "--once", "--codegen", "disable", "--typecheck", "disable"], env)
+  const pushed = convexCli(['dev', '--once', '--codegen', 'disable', '--typecheck', 'disable'], env)
   if (pushed.status !== 0) fail(`convex dev --once exited ${pushed.status ?? 1}`)
   ensureSeeded({ env, host })
   publishConvexUrl(e2eUrl())
@@ -1433,7 +1601,7 @@ function deployBackend() {
 function loosePersona() {
   if (!fs.existsSync(personaFile)) return null
   try {
-    const record = JSON.parse(fs.readFileSync(personaFile, "utf8"))
+    const record = JSON.parse(fs.readFileSync(personaFile, 'utf8'))
     if (!record?.email) return null
     return record
   } catch {
@@ -1471,7 +1639,9 @@ export function cleanupPending(records, hooks) {
   if (records.every((record) => record.scrubbed)) hooks.markScrubbed()
   else hooks.clearMarkers()
   if (failures.length) {
-    throw new Error(`teardown left ${failures.length} persona${failures.length === 1 ? "" : "s"}: ${failures.join("; ")}`)
+    throw new Error(
+      `teardown left ${failures.length} persona${failures.length === 1 ? '' : 's'}: ${failures.join('; ')}`
+    )
   }
 }
 
@@ -1491,7 +1661,7 @@ function teardown() {
     })
   }
   if (!pending.length) {
-    console.log("teardown: no persona left to delete")
+    console.log('teardown: no persona left to delete')
     return
   }
   const skip = [personaFile, pendingFile]
@@ -1500,7 +1670,7 @@ function teardown() {
       for (const dir of evidenceDirs()) fs.rmSync(scrubMarker(dir), { force: true })
     },
     markScrubbed() {
-      for (const dir of evidenceDirs()) fs.writeFileSync(scrubMarker(dir), "")
+      for (const dir of evidenceDirs()) fs.writeFileSync(scrubMarker(dir), '')
     },
     redact(record) {
       redactEvidence(artifactsDir, record.password, skip)
@@ -1519,7 +1689,7 @@ function teardown() {
 function cleanupServer() {
   if (fs.existsSync(stateFile)) {
     try {
-      const state = JSON.parse(fs.readFileSync(stateFile, "utf8"))
+      const state = JSON.parse(fs.readFileSync(stateFile, 'utf8'))
       if (state.pid) {
         try {
           process.kill(state.pid)
@@ -1544,50 +1714,50 @@ export function runDrive(url, submitting = submitMode()) {
 }
 
 async function main() {
-  const command = process.argv[2] || "all"
+  const command = process.argv[2] || 'all'
 
-  if (command === "serve") {
+  if (command === 'serve') {
     const server = startServer()
-    server.on("error", (error) => fail(error.message))
-    server.on("listening", () => {
+    server.on('error', (error) => fail(error.message))
+    server.on('listening', () => {
       fs.writeFileSync(readyFile, String(process.pid))
       console.log(`verify server on 127.0.0.1:${port}`)
     })
-  } else if (command === "doctor") {
+  } else if (command === 'doctor') {
     await doctor()
-  } else if (command === "export") {
+  } else if (command === 'export') {
     exportWeb()
-  } else if (command === "launch") {
+  } else if (command === 'launch') {
     launch()
-  } else if (command === "drive") {
+  } else if (command === 'drive') {
     const url = process.argv[3] || verifyUrl()
-    drive(url, submitMode(), process.argv[4] || "sign-in")
-  } else if (command === "cleanup") {
+    drive(url, submitMode(), process.argv[4] || 'sign-in')
+  } else if (command === 'cleanup') {
     cleanupServer()
     console.log(`left evidence in ${artifactsDir}`)
-  } else if (command === "screen") {
+  } else if (command === 'screen') {
     await doctor({ server: false })
     exportWeb()
     runDrive(launch(), false)
     console.log(`left evidence in ${screenEvidenceDir}`)
-  } else if (command === "backend-mode") {
+  } else if (command === 'backend-mode') {
     backendMode()
-  } else if (command === "plan") {
+  } else if (command === 'plan') {
     planE2E()
-  } else if (command === "deploy") {
+  } else if (command === 'deploy') {
     deployBackend()
-  } else if (command === "record-url") {
+  } else if (command === 'record-url') {
     // Called by convex deploy --cmd, not by hand.
-    const url = (process.env[previewUrlVar] || "").trim()
+    const url = (process.env[previewUrlVar] || '').trim()
     if (!url) fail(`record-url needs ${previewUrlVar} from convex deploy.`)
     fs.mkdirSync(path.dirname(previewUrlFile), { recursive: true })
     fs.writeFileSync(previewUrlFile, `${url}\n`)
-  } else if (command === "teardown") {
+  } else if (command === 'teardown') {
     teardown()
-  } else if (command === "all") {
+  } else if (command === 'all') {
     if (!e2eUrl()) {
       fail(
-        "all needs EXPO_PUBLIC_CONVEX_URL_E2E. The signed-out screen is: node scripts/verify/run.mjs screen"
+        'all needs EXPO_PUBLIC_CONVEX_URL_E2E. The signed-out screen is: node scripts/verify/run.mjs screen'
       )
     }
     const flows = selectFlows(process.argv.slice(3))
@@ -1604,9 +1774,9 @@ async function main() {
     }
     writeResults(results)
     console.log(`left evidence in ${artifactsDir}`)
-    if (results.some((result) => result.status !== "passed")) process.exit(1)
+    if (results.some((result) => result.status !== 'passed')) process.exit(1)
   } else {
-    fail("Use doctor, export, launch, drive, cleanup, screen, deploy, teardown, or all.")
+    fail('Use doctor, export, launch, drive, cleanup, screen, deploy, teardown, or all.')
   }
 }
 
