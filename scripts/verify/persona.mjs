@@ -6,7 +6,7 @@ import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { resolveConvexTarget } from './targets.mjs'
+import { E2E_DEV_HOST, resolveConvexTarget } from './targets.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const credentialsFile = path.join(root, 'e2e-artifacts/persona-latest.json')
@@ -368,7 +368,36 @@ function olderThanMs() {
   return amount * unit
 }
 
+// Pure: sweep deletes accounts in bulk, so it is stricter than the other
+// commands. It needs:
+// - a dev deploy key (mode "dev"). Not .env.e2e ("local"): there the Convex
+//   CLI can pick up a CONVEX_DEPLOY_KEY from .env.local and act on another
+//   deployment than the one checked here. Not a preview key either.
+// - the one wander-fit-e2e dev host, not just any host off the blocklist.
+// - a Clerk test instance.
+export function assertSweepTarget({ mode, host, clerkSecret }) {
+  if (mode !== 'dev') {
+    throw new Error(
+      `persona sweep needs CONVEX_DEPLOY_KEY_E2E (the wander-fit-e2e dev key), not "${mode}" mode.`
+    )
+  }
+  if (host !== E2E_DEV_HOST) {
+    throw new Error(`persona sweep runs only against ${E2E_DEV_HOST}, not "${host}".`)
+  }
+  if (!String(clerkSecret || '').startsWith('sk_test_')) {
+    throw new Error('persona sweep needs a Clerk test key (sk_test_...).')
+  }
+}
+
 async function sweep() {
+  // Check both targets before the first delete. deleteOne removes the Clerk
+  // user first, so a bad Convex target found later would be too late.
+  try {
+    const { mode, host } = convexInvocation()
+    assertSweepTarget({ mode, host, clerkSecret: clerkSecret() })
+  } catch (error) {
+    fail(error.message)
+  }
   const cutoff = Date.now() - olderThanMs()
   const removed = []
   let offset = 0
