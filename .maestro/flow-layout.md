@@ -8,7 +8,7 @@ Credentials are Maestro env vars. The runner passes `PERSONA_EMAIL` and `PERSONA
 
 Maestro web matches a React Native Web `testID` with `id:`. On the sign-in flow that is `sign-in-email`, `sign-in-password`, `sign-in-submit`, `today-workout-card`, and `sign-out`. An element with an accessibility label is reported by that label instead: the First Run's sport tiles and choice rows are `id: "Basketball"` or a text tap. Inputs and Tamagui buttons keep their testID (`save-plan-name`, `save-plan-code`, `first-run-continue`).
 
-Maestro web's `scroll` and `scrollUntilVisible` move `window` only, and the driver omits elements outside the viewport. A screen that scrolls inside a React Native `ScrollView` does not move. A `swipe` sends a touch drag, which does scroll that inner view. The First Run's about-you screen uses one to bring the years choices into view. The driver reports the testID as `resource-id`. `nativeID` is only for typing into an input whose xpath would otherwise collapse.
+Maestro web's `scroll` and `scrollUntilVisible` move `window` only, and the driver omits elements outside the viewport. A screen that scrolls inside a React Native `ScrollView` does not move. A `swipe` sends a touch drag, which does scroll that inner view. The First Run's about-you screen uses one to bring the birth year field into view. The driver reports the testID as `resource-id`. `nativeID` is only for typing into an input whose xpath would otherwise collapse.
 
 ## Subflow headers
 

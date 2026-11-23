@@ -316,6 +316,12 @@ export default defineSchema({
     // Telemetry & privacy preferences (Thread B2)
     analyticsOptOut: v.optional(v.boolean()), // Default false (undefined = opted in to zero-PII events)
     sessionReplayOptIn: v.optional(v.boolean()), // Default false (explicit adult 18+ opt-in only)
+
+    // Terms acceptance, from the First Run's checkbox. No date of birth is kept.
+    termsAcceptedAt: v.optional(v.number()),
+    termsVersion: v.optional(v.string()), // lib/legal.ts TERMS_VERSION
+    // Set only for 14-17: the athlete confirmed a parent or legal guardian's permission.
+    guardianConsentAcknowledgedAt: v.optional(v.number()),
   })
     .index('by_email', ['email'])
     .index('by_clerk', ['clerkId'])

@@ -1,13 +1,14 @@
 # First Run
 
-A signed-out athlete opens the app on the First Run (v2, "game night"; brief in `docs/first-run-v2/`): the promise, five questions on four screens (sport; season calendar; training days; a player card for age group and years training), a two-part reveal (Category, then Plan), then "Save your plan", which creates the account and the program in one step and lands on the Program tab with Day 1 up next. Nothing starts by itself. Terms: `GLOSSARY.md`. Decision: `docs/adr/0002-account-after-the-program-reveal.md`.
+A signed-out athlete opens the app on the First Run (v2, "game night"; brief in `docs/first-run-v2/`): the promise, five questions on four screens (sport; season calendar; training days; a player card for birth month and year, then years training), a two-part reveal (Category, then Plan), then "Save your plan", which creates the account and the program in one step and lands on the Program tab with Day 1 up next. Nothing starts by itself. Terms: `GLOSSARY.md`. Decision: `docs/adr/0002-account-after-the-program-reveal.md`.
 
 ## Sub-features
 
 - `first-run-promise`: a cleared browser opens on `LET'S BUILD YOUR PLAN FOR THIS SEASON.`, not `WELCOME BACK`.
-- `first-run-intake`: `PICK YOUR SPORT` with a `POPULAR` row; searching "hockey" shows Ice Hockey and Field Hockey and folds `POPULAR` away (regression); Basketball found by search; No set season; Mon/Wed/Fri preselected (`3 SESSIONS A WEEK`, `Mon / Wed / Fri`); `AGE GROUP` Performance, then `YEARS TRAINING FOR YOUR SPORT` New to training, which starts the reveal with no Continue.
+- `first-run-intake`: `PICK YOUR SPORT` with a `POPULAR` row; searching "hockey" shows Ice Hockey and Field Hockey and folds `POPULAR` away (regression); Basketball found by search; No set season; Mon/Wed/Fri preselected (`3 SESSIONS A WEEK`, `Mon / Wed / Fri`); `When were you born?` with June and 2000, which stamps only `18–35` on the card, then `YEARS TRAINING FOR YOUR SPORT` New to training, which starts the reveal with no Continue.
 - `first-run-reveal`: `BASKETBALL PLAN` (the category holds 3 s first; the journey reaches it again through the POWER chip: `BASKETBALL TRAINS FOR`, `Tap to go back to your plan`), `NO SET SEASON · 12-WEEK PLAN`, the phases in plain English (`Build the base`), the week line from the real GPP week 1 templates (`Day 1 · … · Lower Body A · About 28 min`) and the total `36`.
-- `first-run-save`: the sheet offers Google and email. The automated journey uses email, password and Clerk's code `424242` create the account and save the program.
+- `first-run-age-gate`: the birth question names no minimum age. A birth date under 14 shows `WanderFit isn't available for your age group yet.` with no retry, and an opaque device flag (`wanderfit.ageGateBlocked.v1`) keeps the step there. The sheet checks the flag again before it creates an account or saves the plan, so a second tab can't get past it. The month and year are never saved; only the age group is. Covered by Jest (`app/__tests__/first-run-about.test.tsx`, `app/__tests__/first-run-save.test.tsx`, `lib/__tests__/ageGate.test.ts`), not Maestro.
+- `first-run-save`: the sheet has no skip and offers Apple, Google and email; the acceptance checkbox (the 14–17 wording asks for a parent or legal guardian's permission) must be ticked before any of them, Create account or Save to this account work. The automated journey ticks it and uses email: email, password and Clerk's code `424242` create the account, record `termsAcceptedAt` and `termsVersion`, and save the program.
 - `first-run-program`: the save lands on the Program tab: `Up next · <day>` for Day 1 under the same phase bar, and no warm-up.
 - `first-run-inspect`: after Maestro passes, `persona inspect` shows `intakeCompleted`, `hasProgram`, GPP week 1 day 1 and `firstLaunchRecorded: true`.
 
@@ -25,16 +26,18 @@ Preconditions:
 
 - **Whole journey.** Run `node scripts/verify/run.mjs all first-run`. No account is made first: the runner writes a new `e2e-<run>-signup+clerk_test@example.com` address and a random password to `e2e-artifacts/persona-latest.json` and passes them as `PERSONA_EMAIL` and `PERSONA_PASSWORD`. It exits `0` with `- first-run: passed`.
 - **Entry.** `.maestro/web/first-run.yaml` launches with a cleared state and runs `.maestro/journeys/first-run.yaml`. `LET'S BUILD YOUR PLAN FOR THIS SEASON.` appears (`01-promise`).
-- **Intake.** The journey taps `id: "Basketball"` (`02-sport`), swipes the season list and taps `No set season` (`03-season`), keeps Mon/Wed/Fri (`04-days`), and picks Performance and New to training (`05-about`). The reveal starts with no Continue.
+- **Intake.** The journey taps `id: "Basketball"` (`02-sport`), swipes the season list and taps `No set season` (`03-season`), keeps Mon/Wed/Fri (`04-days`), enters June 2000 and sees `18–35` stamp, and picks New to training (`05-about`). The reveal starts with no Continue.
 - **Reveal.** The journey taps the POWER chip and sees `BASKETBALL TRAINS FOR` (`06-category`), goes back, and sees `NO SET SEASON · 12-WEEK PLAN`, `Build the base` and `36` (`07-plan`).
-- **Save.** `Save your plan` opens the sheet (`08-save-plan`); the journey fills `save-plan-name`, the email, the password and code `424242`. The Program tab shows `Up next · …` (`09-program`).
+- **Save.** `Save your plan` opens the sheet (`08-save-plan`); the journey ticks the acceptance checkbox, then fills `save-plan-name`, the email, the password and code `424242`. The Program tab shows `Up next · …` (`09-program`).
 - **Side effect.** After Maestro passes, the runner runs `persona inspect` and fails the flow unless it shows `intakeCompleted`, `hasProgram`, GPP W1 D1 and `firstLaunchRecorded: true`. The `inspect:` line is in the run's output.
 - **Proof.** `e2e-artifacts/first-run/web/<timestamp>/first-run/` holds `01-promise` through `09-program` under `takeScreenshot/` and `startRecording/recording.mp4`; `all` adds `e2e-artifacts/first-run/web/result.json` with `"status": "passed"`.
 
 ## Gotchas
 
 - Maestro web reports a pressable's accessibility label as its id, so sport tiles and choice rows match by label (`id: "Basketball"`, `tapOn: "No set season"`), not their testID. Inputs and Tamagui buttons keep their testID (`save-plan-name`, `first-run-continue`).
-- The season calendar pushes `No set season` below the 625px viewport, so the journey swipes the inner list before tapping it.
+- The season calendar pushes `No set season` below the 625px viewport, so the journey swipes the inner list before tapping it. The about-you screen does the same before the birth year field.
+- The acceptance checkbox's id on web is its whole sentence, so the journey matches `I agree to the Terms of Service.*|save-plan-accept`. The persona is an adult; the 14–17 sentence starts `I have my parent or legal guardian's permission`.
+- A device that hit the age dead end keeps it: clear site data (web) or reinstall (native) before running the journey there.
 - Don't assert the category beat on arrival: Maestro web's settle wait after the last answer can outlast its 3 s hold. Revisit it through the POWER chip.
 - Headlines are uppercased in the string (not with `textTransform`), so Maestro matches them in caps on web and native alike.
 - No set season keeps the program at 12 weeks whatever the date, so the session count is stable.

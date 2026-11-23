@@ -4,6 +4,8 @@ import { GoogleIcon } from './GoogleIcon'
 
 type SocialButtonProps = {
   onPress: () => void
+  /** Dimmed and inert, e.g. until the athlete accepts the terms. */
+  disabled?: boolean
   testID?: string
 }
 
@@ -22,7 +24,7 @@ function AppleLogo({ size = 20, color }: { size?: number; color: string }) {
  * Sign in with Apple. Apple's button contrast: a dark button in light mode
  * and a light button in dark mode, so it uses the theme's inverse colors.
  */
-export function AppleSignInButton({ onPress, testID }: SocialButtonProps) {
+export function AppleSignInButton({ onPress, disabled, testID }: SocialButtonProps) {
   const theme = useTheme()
   return (
     <Button
@@ -32,8 +34,11 @@ export function AppleSignInButton({ onPress, testID }: SocialButtonProps) {
       fontFamily="$body"
       fontWeight="700"
       rounded="$4"
-      pressStyle={{ bg: '$color11', scale: 0.98 }}
+      pressStyle={disabled ? undefined : { bg: '$color11', scale: 0.98 }}
       icon={<AppleLogo color={theme.background.val} />}
+      disabled={disabled}
+      aria-disabled={!!disabled}
+      opacity={disabled ? 0.45 : 1}
       onPress={onPress}
       testID={testID}
     >
@@ -43,7 +48,7 @@ export function AppleSignInButton({ onPress, testID }: SocialButtonProps) {
 }
 
 /** Sign in with Google, in Google's light button style. */
-export function GoogleSignInButton({ onPress, testID }: SocialButtonProps) {
+export function GoogleSignInButton({ onPress, disabled, testID }: SocialButtonProps) {
   return (
     <Button
       size="$5"
@@ -54,9 +59,12 @@ export function GoogleSignInButton({ onPress, testID }: SocialButtonProps) {
       fontWeight="500"
       color="#3c4043"
       rounded="$4"
-      hoverStyle={{ bg: '#f1f3f4', borderColor: '#c0c4c7' }}
-      pressStyle={{ bg: '#e8eaed', scale: 0.98 }}
+      hoverStyle={disabled ? undefined : { bg: '#f1f3f4', borderColor: '#c0c4c7' }}
+      pressStyle={disabled ? undefined : { bg: '#e8eaed', scale: 0.98 }}
       icon={<GoogleIcon size={20} />}
+      disabled={disabled}
+      aria-disabled={!!disabled}
+      opacity={disabled ? 0.45 : 1}
       onPress={onPress}
       testID={testID}
     >

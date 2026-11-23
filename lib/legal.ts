@@ -1,7 +1,9 @@
 /**
- * Public legal and support pages, and the versions of the documents an
- * athlete agrees to. Changing the domain is one env var (or the default here).
+ * Public legal and support pages, the versions of the documents an athlete
+ * agrees to, and the First Run's acceptance sentence. Changing the domain is
+ * one env var (or the default here). Pure, so the copy and URLs are testable.
  */
+import type { AgeGroup } from '../types'
 
 /** Placeholder until the final domain is attached. */
 export const DEFAULT_SITE_URL = 'https://wanderfit.app'
@@ -35,7 +37,21 @@ export const LEGAL_VERSIONS = {
 } as const
 
 /**
- * The full Health & Fitness Disclaimer shown in App Settings. Working draft
+ * The Terms of Service and Privacy Policy version an athlete accepts, stored
+ * on the users row (`termsVersion`).
+ */
+export const TERMS_VERSION = LEGAL_VERSIONS.termsVersion
+
+export type LegalPage = 'terms' | 'privacy'
+
+/** The hosted page, on EXPO_PUBLIC_SITE_URL when it's set. */
+export function legalUrl(page: LegalPage, raw = process.env.EXPO_PUBLIC_SITE_URL): string {
+  return `${siteUrl(raw)}/${page}`
+}
+
+/**
+ * The full Health & Fitness Disclaimer, shown in App Settings and in the
+ * First Run's Save your plan sheet. Working draft
  * (plans/legal-compliance/drafts/HEALTH_AND_FITNESS_DISCLAIMER.md, section 2):
  * it still needs attorney review before launch. Bump `disclaimerVersion` when
  * it changes.
@@ -66,3 +82,44 @@ export const HEALTH_DISCLAIMER = {
     },
   ],
 } as const
+
+/** A piece of the acceptance sentence: plain text, or a tappable document. */
+export type AcceptancePart = string | { link: LegalPage | 'disclaimer'; text: string }
+
+const TERMS = { link: 'terms', text: 'Terms of Service' } as const
+const PRIVACY = { link: 'privacy', text: 'Privacy Policy' } as const
+const DISCLAIMER = { link: 'disclaimer', text: 'Health & Fitness Disclaimer' } as const
+
+/**
+ * The acceptance sentence. Athletes 14–17 confirm a parent or legal
+ * guardian's permission; the wording needs attorney review before public launch.
+ */
+export function acceptanceParts(ageGroup: AgeGroup | undefined): AcceptancePart[] {
+  if (ageGroup === '14-17') {
+    return [
+      "I have my parent or legal guardian's permission to use WanderFit, and together we agree to the ",
+      TERMS,
+      ', ',
+      PRIVACY,
+      ', and ',
+      DISCLAIMER,
+      '.',
+    ]
+  }
+  return [
+    'I agree to the ',
+    TERMS,
+    ' and ',
+    PRIVACY,
+    ', and I acknowledge the ',
+    DISCLAIMER,
+    ' (general strength and conditioning guidance only, not medical advice).',
+  ]
+}
+
+/** The sentence as one string, for the checkbox's accessibility label. */
+export function acceptanceText(ageGroup: AgeGroup | undefined): string {
+  return acceptanceParts(ageGroup)
+    .map((part) => (typeof part === 'string' ? part : part.text))
+    .join('')
+}

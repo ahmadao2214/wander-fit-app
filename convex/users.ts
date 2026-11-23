@@ -5,6 +5,28 @@ import { internal } from './_generated/api'
 import type { Doc, Id, TableNames } from './_generated/dataModel'
 import { getCurrentUser as getCurrentUserDoc, requireCurrentUser } from './authHelpers'
 
+/**
+ * What the athlete agreed to in the First Run's checkbox: the terms version,
+ * and the age group that chose the wording. Only the age group is sent, never
+ * a birth date.
+ */
+const termsAcceptanceValidator = v.object({
+  termsVersion: v.string(),
+  ageGroup: v.union(v.literal('14-17'), v.literal('18-35'), v.literal('36+')),
+})
+
+/** The users fields an acceptance sets. The guardian stamp is for 14-17 only. */
+export function termsAcceptanceFields(
+  acceptance: { termsVersion: string; ageGroup: '14-17' | '18-35' | '36+' },
+  now: number
+): Pick<Doc<'users'>, 'termsAcceptedAt' | 'termsVersion' | 'guardianConsentAcknowledgedAt'> {
+  return {
+    termsAcceptedAt: now,
+    termsVersion: acceptance.termsVersion,
+    ...(acceptance.ageGroup === '14-17' ? { guardianConsentAcknowledgedAt: now } : {}),
+  }
+}
+
 // Create a new user after Clerk authentication
 export const createUser = mutation({
   args: {
@@ -14,6 +36,8 @@ export const createUser = mutation({
     // installed builds from before the trainer screens were removed send it.
     role: v.union(v.literal('trainer'), v.literal('client')),
     clerkId: v.string(),
+    // Optional for app builds from before the acceptance checkbox.
+    termsAcceptance: v.optional(termsAcceptanceValidator),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
@@ -35,16 +59,28 @@ export const createUser = mutation({
       throw new Error('User already exists')
     }
 
+    const now = Date.now()
     const userId = await ctx.db.insert('users', {
       // Prefer Clerk's verified email over the client-supplied one
       email: identity.email ?? args.email,
       name: args.name,
       role: args.role,
       clerkId: args.clerkId,
-      createdAt: Date.now(),
+      createdAt: now,
+      ...(args.termsAcceptance ? termsAcceptanceFields(args.termsAcceptance, now) : {}),
     })
 
     return userId
+  },
+})
+
+// Record the First Run acceptance for an athlete whose account already exists
+// (signed in before saving the plan, so createUser doesn't run).
+export const recordTermsAcceptance = mutation({
+  args: { termsAcceptance: termsAcceptanceValidator },
+  handler: async (ctx, args) => {
+    const user = await requireCurrentUser(ctx)
+    await ctx.db.patch(user._id, termsAcceptanceFields(args.termsAcceptance, Date.now()))
   },
 })
 
