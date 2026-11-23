@@ -62,9 +62,7 @@
       "run": 1,
       "ok": true,
       "flowMs": 47751,
-      "pids": [
-        38859
-      ],
+      "pids": [38859],
       "hangs": {
         "count": 0,
         "totalMs": 0,
@@ -83,9 +81,7 @@
       "run": 2,
       "ok": true,
       "flowMs": 44322,
-      "pids": [
-        38859
-      ],
+      "pids": [38859],
       "hangs": {
         "count": 0,
         "totalMs": 0,
@@ -104,9 +100,7 @@
       "run": 3,
       "ok": true,
       "flowMs": 44140,
-      "pids": [
-        38859
-      ],
+      "pids": [38859],
       "hangs": {
         "count": 0,
         "totalMs": 0,
@@ -125,9 +119,7 @@
       "run": 4,
       "ok": true,
       "flowMs": 47132,
-      "pids": [
-        38859
-      ],
+      "pids": [38859],
       "hangs": {
         "count": 0,
         "totalMs": 0,
@@ -146,9 +138,7 @@
       "run": 5,
       "ok": true,
       "flowMs": 45767,
-      "pids": [
-        38859
-      ],
+      "pids": [38859],
       "hangs": {
         "count": 0,
         "totalMs": 0,

@@ -472,6 +472,8 @@ function writeReport({ journey, label, template, device, results, commit, record
     out,
     `${JSON.stringify(buildReport({ journey, label, template, device, commit, recordedAt, results }), null, 2)}\n`
   )
+  // Match the repo's formatter so a committed report passes the format check.
+  spawnSync('bunx', ['--no-install', 'oxfmt', '--write', out], { cwd: root })
   console.log(`wrote ${path.relative(root, out)}`)
 }
 
