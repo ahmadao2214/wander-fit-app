@@ -9,6 +9,7 @@ import { GoogleIcon } from '../GoogleIcon'
 import { FieldLabel } from '../FieldLabel'
 import { VerificationCodeInput } from '../VerificationCodeInput'
 import { useFirstRunDraft } from '../../hooks/useFirstRunDraft'
+import { DRAFT_KEY, parseDraft } from '../../lib/firstRunDraft'
 import { analytics, type AuthMethod } from '../../lib/analytics'
 import { getSignUpFormErrors, getVerificationErrorMessage } from '../../lib/signUpErrors'
 import { useSavePlan } from './useSavePlan'
@@ -147,7 +148,8 @@ export function SavePlanSheet({
 
   useEffect(() => {
     if (!returningFromGoogle || !clerkUser || !draft || !open) return
-    if (sessionStorage.getItem('wf-google-save') !== String(draft.firstLaunchAt)) return
+    const approved = parseDraft(sessionStorage.getItem('wf-google-save'))
+    if (!approved || JSON.stringify(approved) !== JSON.stringify(parseDraft(JSON.stringify(draft)))) return
     sessionStorage.removeItem('wf-google-save')
     void finish({}, 'google')
   })
@@ -168,7 +170,9 @@ export function SavePlanSheet({
     try {
       if (provider === 'google' && Platform.OS === 'web') {
         if (!signIn || !draft) throw new Error('Sign-in is not ready')
-        sessionStorage.setItem('wf-google-save', String(draft.firstLaunchAt))
+        const snapshot = JSON.stringify(draft)
+        sessionStorage.setItem(DRAFT_KEY, snapshot)
+        sessionStorage.setItem('wf-google-save', snapshot)
         await signIn.authenticateWithRedirect({
           strategy: 'oauth_google',
           redirectUrl: '/google-save-callback',
