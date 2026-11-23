@@ -23,7 +23,16 @@ export default function GoogleSaveCallback() {
   }, [clerk, isLoaded])
 
   return (
-    <YStack flex={1} items="center" justify="center" px="$5" pt={insets.top + 20} pb={insets.bottom + 20} gap="$3" bg="$background">
+    <YStack
+      flex={1}
+      items="center"
+      justify="center"
+      px="$5"
+      pt={insets.top + 20}
+      pb={insets.bottom + 20}
+      gap="$3"
+      bg="$background"
+    >
       {failed ? (
         <>
           <Text>Google sign-in didn’t finish. Your plan is still here.</Text>

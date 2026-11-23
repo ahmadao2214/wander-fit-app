@@ -149,7 +149,8 @@ export function SavePlanSheet({
   useEffect(() => {
     if (!returningFromGoogle || !clerkUser || !draft || !open) return
     const approved = parseDraft(sessionStorage.getItem('wf-google-save'))
-    if (!approved || JSON.stringify(approved) !== JSON.stringify(parseDraft(JSON.stringify(draft)))) return
+    if (!approved || JSON.stringify(approved) !== JSON.stringify(parseDraft(JSON.stringify(draft))))
+      return
     sessionStorage.removeItem('wf-google-save')
     void finish({}, 'google')
   })
