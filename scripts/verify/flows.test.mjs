@@ -515,10 +515,12 @@ describe('sharding and affected-flow selection', () => {
       'app/(athlete)/settings.tsx',
       'components/settings/TelemetryPreferencesCard.tsx',
       '.maestro/journeys/settings-telemetry.yaml',
+      'components/settings/DeleteAccountSheet.tsx',
+      '.maestro/journeys/settings-legal.yaml',
     ]) {
       expect({ file, flows: selectAffectedFlows([file], { available }).flows }).toEqual({
         file,
-        flows: ['app-settings', 'settings-telemetry', 'sign-in'],
+        flows: ['app-settings', 'settings-legal', 'settings-telemetry', 'sign-in'],
       })
     }
     expect(selectAffectedFlows(['.maestro/journeys/feedback.yaml'], { available }).flows).toEqual([
@@ -527,6 +529,7 @@ describe('sharding and affected-flow selection', () => {
     expect(selectAffectedFlows(['app/(athlete)/profile.tsx'], { available }).flows).toEqual([
       'app-settings',
       'feedback',
+      'settings-legal',
       'settings-telemetry',
       'sign-in',
     ])

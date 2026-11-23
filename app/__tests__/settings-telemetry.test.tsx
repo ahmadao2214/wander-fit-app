@@ -18,6 +18,12 @@ jest.mock('react-native-safe-area-context', () => ({
 jest.mock('convex/react', () => ({
   useQuery: () => ({ ageGroup: '18-35' }),
   useMutation: () => mockUpdatePreferences,
+  useAction: () => jest.fn(),
+}))
+
+// The Delete account sheet signs out through Clerk.
+jest.mock('@clerk/clerk-expo', () => ({
+  useClerk: () => ({ signOut: jest.fn() }),
 }))
 
 jest.mock('../../hooks/useAuth', () => ({
