@@ -1,6 +1,9 @@
 /** @jest-environment jsdom */
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { TextEncoder } from 'node:util'
+
+global.TextEncoder = TextEncoder
 
 test.each(['success', 'http-error', 'network-error'])(
   'a superseded signup leaves the current form alone after %s',
