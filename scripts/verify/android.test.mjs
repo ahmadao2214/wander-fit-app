@@ -6,6 +6,7 @@ import {
   androidSuiteSteps,
   appId,
   evidenceScrubbed,
+  passwordEchoOff,
   buildEnv,
   maestroArgs,
   root,
@@ -174,5 +175,17 @@ describe('android-e2e workflow', () => {
     const upload = job.steps.find((step) => step.name === 'Upload Android evidence')
     expect(upload.if).toBe("always() && hashFiles('e2e-artifacts/android/.scrubbed') != ''")
     expect(upload.with.path).toBe('e2e-artifacts/android/')
+  })
+})
+
+describe('passwordEchoOff', () => {
+  it('only treats an explicit 0 as off; unset or 1 echoes', () => {
+    expect(passwordEchoOff('0')).toBe(true)
+    expect(passwordEchoOff('0\n')).toBe(true)
+    expect([passwordEchoOff('1'), passwordEchoOff('null'), passwordEchoOff('')]).toEqual([
+      false,
+      false,
+      false,
+    ])
   })
 })

@@ -108,6 +108,22 @@ export function maestroArgs(flow, outDir, persona = null) {
   return args
 }
 
+// Pure: Android reports the setting as "0" when password echo is off. An unset
+// setting ("null") means the device default, which echoes.
+export function passwordEchoOff(value) {
+  return String(value ?? '').trim() === '0'
+}
+
+function readShowPassword() {
+  const result = spawnSync('adb', ['shell', 'settings', 'get', 'system', 'show_password'], {
+    cwd: root,
+    encoding: 'utf8',
+  })
+  // null on failure, so a failed read is never mistaken for Android's "null"
+  // (unset) answer.
+  return result.status === 0 ? (result.stdout || '').trim() : null
+}
+
 // Pure: true unless some flow's password scrub failed.
 export function evidenceScrubbed(results) {
   return !results.some((result) => /redact failed/.test(result.error || ''))
@@ -183,11 +199,8 @@ function runFlows(requested) {
   // A system "isn't responding" dialog would cover the app and fail the flow
   // for a reason that has nothing to do with it. CI only: the emulator is
   // thrown away after the run, while a local device would keep the setting.
-  // Android also flashes each typed password character, which the sign-in
-  // video would capture; the screenshots and logs are scrubbed, the video can't be.
   if (process.env.CI) {
     run('adb', ['shell', 'settings', 'put', 'global', 'hide_error_dialogs', '1'])
-    run('adb', ['shell', 'settings', 'put', 'system', 'show_password', '0'])
   }
   // Start clean, so a stale scrub marker never vouches for this run.
   fs.rmSync(evidenceDir, { recursive: true, force: true })
@@ -216,11 +229,49 @@ function runFlows(requested) {
     writePending,
     releasePersona: (persona) => releasePersonaFile(persona.email),
   }
-  const results = runSuite(flows, androidSuiteSteps(io)).map((result) => ({
-    ...result,
-    platform: 'android',
-    artifact: 'e2e-android',
-  }))
+  // Android flashes each typed password character, which a recording or
+  // screenshot would capture, and redactEvidence can't scrub images or video.
+  // Turn the echo off and prove it before any flow types a password. All
+  // fallible setup (the install) is done by now, and the finally restores the
+  // device's own value whatever happens.
+  const needsPassword = flows.some((flow) => ANDROID_FLOWS[flow])
+  const previousEcho = needsPassword ? readShowPassword() : null
+  if (needsPassword && previousEcho === null) {
+    fail('Could not read Android password echo (show_password); refusing to type a password.')
+  }
+  let results
+  try {
+    if (needsPassword) {
+      run('adb', ['shell', 'settings', 'put', 'system', 'show_password', '0'])
+      if (!passwordEchoOff(readShowPassword())) {
+        throw new Error(
+          'Could not turn off Android password echo (show_password); refusing to type a password.'
+        )
+      }
+    }
+    results = runSuite(flows, androidSuiteSteps(io)).map((result) => ({
+      ...result,
+      platform: 'android',
+      artifact: 'e2e-android',
+    }))
+  } finally {
+    if (needsPassword && !passwordEchoOff(previousEcho)) {
+      // Android answers "null" when the setting is unset (device default).
+      const restored = run(
+        'adb',
+        previousEcho === 'null'
+          ? ['shell', 'settings', 'delete', 'system', 'show_password']
+          : ['shell', 'settings', 'put', 'system', 'show_password', previousEcho]
+      )
+      // `settings` can report a provider failure with exit 0, so read it back.
+      if (restored.status !== 0 || readShowPassword() !== previousEcho) {
+        console.error(
+          `[android] Could not restore show_password to ${previousEcho}; set it back on the device.`
+        )
+        process.exitCode = 1
+      }
+    }
+  }
   fs.mkdirSync(evidenceDir, { recursive: true })
   fs.writeFileSync(path.join(evidenceDir, 'results.json'), `${JSON.stringify(results, null, 2)}\n`)
   // CI uploads the evidence only when this marker exists, like the web runner:
