@@ -29,4 +29,8 @@ appId: com.offseason.asrafit
 - extendedWaitUntil:
     visible: "Let's build your plan for this season."
     timeout: 90000
+# The text reaches the view tree before the first frame paints; on a slow
+# Android emulator the screenshot otherwise caught a blank window.
+- waitForAnimationToEnd:
+    timeout: 10000
 - takeScreenshot: native-relaunch-first-run
