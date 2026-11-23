@@ -5,26 +5,26 @@
  */
 
 // Intake calculations
-export { getSkillLevel, getTrainingPhase } from "./calculations";
-export type { TrainingPhase } from "./calculations";
+export { getSkillLevel, getTrainingPhase } from './calculations'
+export type { TrainingPhase } from './calculations'
 
 // Intake UI utilities
-export { getExperienceSliderColor, getSportInitials, getSportSlug } from "./intakeUI";
-export type { IntensityColorToken } from "./intakeUI";
+export { getExperienceSliderColor, getSportInitials, getSportSlug } from './intakeUI'
+export type { IntensityColorToken } from './intakeUI'
 
 // Workout utilities
-export { parseReps, normalizeTrackedSets, isCardioExercise, CARDIO_TAGS, mapIntensityToLevel } from "./workout";
-export type { IntensityLevel, BackendIntensity } from "./workout";
+export {
+  parseReps,
+  normalizeTrackedSets,
+  isCardioExercise,
+  CARDIO_TAGS,
+  mapIntensityToLevel,
+} from './workout'
+export type { IntensityLevel, BackendIntensity } from './workout'
 
 // Auth state logic
-export {
-  computeAuthState,
-  isTrainer,
-  isAthlete,
-  hasCompletedIntake,
-} from "./authState";
-export type { AuthInputState, ComputedAuthState } from "./authState";
-
+export { computeAuthState, isTrainer, isAthlete, hasCompletedIntake } from './authState'
+export type { AuthInputState, ComputedAuthState } from './authState'
 
 // Schedule override logic
 export {
@@ -38,8 +38,8 @@ export {
   shouldClearTodayFocus,
   validateSwap,
   countOverridesByPhase,
-} from "./scheduleOverride";
-export type { WorkoutSlot, SlotOverride } from "./scheduleOverride";
+} from './scheduleOverride'
+export type { WorkoutSlot, SlotOverride } from './scheduleOverride'
 
 // Week mapping utilities
 export {
@@ -52,7 +52,7 @@ export {
   MIN_WEEKS_PER_PHASE,
   MAX_WEEKS_PER_PHASE,
   NUMBER_OF_PHASES,
-} from "./weekMapping";
+} from './weekMapping'
 
 // Intensity scaling (re-exported from convex/intensityScaling.ts - single source of truth)
 export {
@@ -68,7 +68,7 @@ export {
   isBodyweightExercise,
   getAvgOneRepMaxPercent,
   getRpeTarget,
-} from "./intensityScaling";
+} from './intensityScaling'
 export type {
   Intensity,
   IntensityConfig,
@@ -77,6 +77,4 @@ export type {
   BodyweightPrescription,
   ExerciseProgressions,
   ScaledBodyweightPrescription,
-} from "./intensityScaling";
-
-
+} from './intensityScaling'

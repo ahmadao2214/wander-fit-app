@@ -1,10 +1,10 @@
-import { query, mutation } from "./_generated/server";
-import { calendarStart, phaseAnchor } from "./blockCompletion";
-import { loadProgramCompletion } from "./programCompletion";
-import { athleteDate, athleteDayArgs, athleteToday } from "./athleteClock";
-import { countMainExercises } from "../lib/today";
-import { v } from "convex/values";
-import { mapUserWeekToTemplateWeek } from "./weekMapping";
+import { query, mutation } from './_generated/server'
+import { calendarStart, phaseAnchor } from './blockCompletion'
+import { loadProgramCompletion } from './programCompletion'
+import { athleteDate, athleteDayArgs, athleteToday } from './athleteClock'
+import { countMainExercises } from '../lib/today'
+import { v } from 'convex/values'
+import { mapUserWeekToTemplateWeek } from './weekMapping'
 
 /**
  * Workout Calendar - Calendar View Queries and Mutations
@@ -25,20 +25,20 @@ import { mapUserWeekToTemplateWeek } from "./weekMapping";
 // TYPES
 // ─────────────────────────────────────────────────────────────────────────────
 
-type Phase = "GPP" | "SPP" | "SSP";
+type Phase = 'GPP' | 'SPP' | 'SSP'
 
 interface WorkoutSlot {
-  phase: Phase;
-  week: number;
-  day: number;
+  phase: Phase
+  week: number
+  day: number
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-const PHASE_ORDER: Phase[] = ["GPP", "SPP", "SSP"];
-const DEFAULT_WEEKS_PER_PHASE = 4; // Fallback for existing users without dynamic weeks
+const PHASE_ORDER: Phase[] = ['GPP', 'SPP', 'SSP']
+const DEFAULT_WEEKS_PER_PHASE = 4 // Fallback for existing users without dynamic weeks
 
 // Default training days when none specified (common patterns)
 const DEFAULT_TRAINING_DAYS: Record<number, number[]> = {
@@ -49,22 +49,22 @@ const DEFAULT_TRAINING_DAYS: Record<number, number[]> = {
   5: [1, 2, 3, 4, 5], // Mon-Fri
   6: [1, 2, 3, 4, 5, 6], // Mon-Sat
   7: [0, 1, 2, 3, 4, 5, 6], // Every day
-};
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DATE HELPERS (duplicated from lib for server-side use)
 // ─────────────────────────────────────────────────────────────────────────────
 
 function startOfDay(date: Date): Date {
-  const result = new Date(date);
-  result.setHours(0, 0, 0, 0);
-  return result;
+  const result = new Date(date)
+  result.setHours(0, 0, 0, 0)
+  return result
 }
 
 function addDays(date: Date, days: number): Date {
-  const result = new Date(date);
-  result.setDate(result.getDate() + days);
-  return result;
+  const result = new Date(date)
+  result.setDate(result.getDate() + days)
+  return result
 }
 
 function isSameDay(a: Date, b: Date): boolean {
@@ -72,26 +72,26 @@ function isSameDay(a: Date, b: Date): boolean {
     a.getFullYear() === b.getFullYear() &&
     a.getMonth() === b.getMonth() &&
     a.getDate() === b.getDate()
-  );
+  )
 }
 
 function startOfWeek(date: Date): Date {
-  const result = startOfDay(date);
-  const day = result.getDay();
-  result.setDate(result.getDate() - day);
-  return result;
+  const result = startOfDay(date)
+  const day = result.getDay()
+  result.setDate(result.getDate() - day)
+  return result
 }
 
 function isSameWeek(a: Date, b: Date): boolean {
-  return isSameDay(startOfWeek(a), startOfWeek(b));
+  return isSameDay(startOfWeek(a), startOfWeek(b))
 }
 
 function findNextDayOfWeek(startDate: Date, dayOfWeek: number): Date {
-  const result = startOfDay(startDate);
-  const currentDay = result.getDay();
-  const daysUntil = (dayOfWeek - currentDay + 7) % 7;
-  result.setDate(result.getDate() + daysUntil);
-  return result;
+  const result = startOfDay(startDate)
+  const currentDay = result.getDay()
+  const daysUntil = (dayOfWeek - currentDay + 7) % 7
+  result.setDate(result.getDate() + daysUntil)
+  return result
 }
 
 /**
@@ -106,37 +106,37 @@ function findFirstTrainingDate(
   startDate: Date,
   trainingDays: number[]
 ): { date: Date; dayIndex: number } {
-  const start = startOfDay(startDate);
-  const startDayOfWeek = start.getDay();
+  const start = startOfDay(startDate)
+  const startDayOfWeek = start.getDay()
 
   // Find the first training day on or after startDayOfWeek
-  let dayIndex = trainingDays.findIndex(d => d >= startDayOfWeek);
+  let dayIndex = trainingDays.findIndex((d) => d >= startDayOfWeek)
 
   if (dayIndex === -1) {
     // All training days are before startDayOfWeek in the week
     // So we wrap to the first training day next week
-    dayIndex = 0;
-    const daysUntil = (trainingDays[0] - startDayOfWeek + 7) % 7;
-    const date = addDays(start, daysUntil === 0 ? 7 : daysUntil);
-    return { date, dayIndex };
+    dayIndex = 0
+    const daysUntil = (trainingDays[0] - startDayOfWeek + 7) % 7
+    const date = addDays(start, daysUntil === 0 ? 7 : daysUntil)
+    return { date, dayIndex }
   }
 
   // Found a training day in the current week
-  const daysUntil = trainingDays[dayIndex] - startDayOfWeek;
-  const date = addDays(start, daysUntil);
-  return { date, dayIndex };
+  const daysUntil = trainingDays[dayIndex] - startDayOfWeek
+  const date = addDays(start, daysUntil)
+  return { date, dayIndex }
 }
 
 function formatDateISO(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 function parseDateISO(dateStr: string): Date {
-  const [year, month, day] = dateStr.split("-").map(Number);
-  return new Date(year, month - 1, day);
+  const [year, month, day] = dateStr.split('-').map(Number)
+  return new Date(year, month - 1, day)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -154,47 +154,47 @@ function getDateForWorkout(
   weeksPerPhase: number = DEFAULT_WEEKS_PER_PHASE
 ): Date {
   if (trainingDays.length === 0) {
-    throw new Error("trainingDays must not be empty");
+    throw new Error('trainingDays must not be empty')
   }
 
-  const sortedDays = [...trainingDays].sort((a, b) => a - b);
-  const phaseIndex = PHASE_ORDER.indexOf(slot.phase);
+  const sortedDays = [...trainingDays].sort((a, b) => a - b)
+  const phaseIndex = PHASE_ORDER.indexOf(slot.phase)
   if (phaseIndex === -1) {
-    throw new Error(`Invalid phase: ${slot.phase}`);
+    throw new Error(`Invalid phase: ${slot.phase}`)
   }
 
-  const workoutsPerWeek = sortedDays.length;
+  const workoutsPerWeek = sortedDays.length
   const absoluteIndex =
     phaseIndex * weeksPerPhase * workoutsPerWeek +
     (slot.week - 1) * workoutsPerWeek +
-    (slot.day - 1);
+    (slot.day - 1)
 
-  const start = startOfDay(programStartDate);
+  const start = startOfDay(programStartDate)
 
   // Use findFirstTrainingDate to handle mid-week program starts
   // This ensures workouts start on the soonest training day (could be today)
-  const { date: firstTrainingDate, dayIndex: startDayIndex } = findFirstTrainingDate(start, sortedDays);
+  const { date: firstTrainingDate, dayIndex: startDayIndex } = findFirstTrainingDate(
+    start,
+    sortedDays
+  )
 
-  let workoutCount = 0;
-  let currentDate = firstTrainingDate;
-  let currentDayIndex = startDayIndex;
+  let workoutCount = 0
+  let currentDate = firstTrainingDate
+  let currentDayIndex = startDayIndex
 
   while (workoutCount < absoluteIndex) {
-    currentDayIndex = (currentDayIndex + 1) % sortedDays.length;
+    currentDayIndex = (currentDayIndex + 1) % sortedDays.length
     if (currentDayIndex === 0) {
-      currentDate = addDays(
-        currentDate,
-        7 - (sortedDays[sortedDays.length - 1] - sortedDays[0])
-      );
-      currentDate = findNextDayOfWeek(currentDate, sortedDays[0]);
+      currentDate = addDays(currentDate, 7 - (sortedDays[sortedDays.length - 1] - sortedDays[0]))
+      currentDate = findNextDayOfWeek(currentDate, sortedDays[0])
     } else {
-      const daysDiff = sortedDays[currentDayIndex] - sortedDays[currentDayIndex - 1];
-      currentDate = addDays(currentDate, daysDiff);
+      const daysDiff = sortedDays[currentDayIndex] - sortedDays[currentDayIndex - 1]
+      currentDate = addDays(currentDate, daysDiff)
     }
-    workoutCount++;
+    workoutCount++
   }
 
-  return currentDate;
+  return currentDate
 }
 
 /**
@@ -207,68 +207,68 @@ export function getWorkoutForDate(
   date: Date,
   weeksPerPhase: number = DEFAULT_WEEKS_PER_PHASE
 ): WorkoutSlot | null {
-  const targetDate = startOfDay(date);
-  const targetDayOfWeek = targetDate.getDay();
+  const targetDate = startOfDay(date)
+  const targetDayOfWeek = targetDate.getDay()
 
-  const sortedDays = [...trainingDays].sort((a, b) => a - b);
+  const sortedDays = [...trainingDays].sort((a, b) => a - b)
   if (!sortedDays.includes(targetDayOfWeek)) {
-    return null;
+    return null
   }
 
-  const start = startOfDay(programStartDate);
+  const start = startOfDay(programStartDate)
 
   // Use findFirstTrainingDate to handle mid-week program starts
   // This ensures workouts start on the soonest training day (could be today)
-  const { date: firstTrainingDate, dayIndex: startDayIndex } = findFirstTrainingDate(start, sortedDays);
+  const { date: firstTrainingDate, dayIndex: startDayIndex } = findFirstTrainingDate(
+    start,
+    sortedDays
+  )
 
   if (targetDate < firstTrainingDate) {
-    return null;
+    return null
   }
 
-  let workoutIndex = 0;
-  let currentDate = firstTrainingDate;
-  let currentDayIndex = startDayIndex;
+  let workoutIndex = 0
+  let currentDate = firstTrainingDate
+  let currentDayIndex = startDayIndex
 
   // Increase limit for longer programs (max 8 weeks × 3 phases × 7 days = 168)
-  const maxWorkouts = weeksPerPhase * PHASE_ORDER.length * sortedDays.length + 50;
+  const maxWorkouts = weeksPerPhase * PHASE_ORDER.length * sortedDays.length + 50
 
   while (!isSameDay(currentDate, targetDate)) {
-    currentDayIndex = (currentDayIndex + 1) % sortedDays.length;
+    currentDayIndex = (currentDayIndex + 1) % sortedDays.length
     if (currentDayIndex === 0) {
       // Moving to next week - jump to the first training day
-      currentDate = addDays(
-        currentDate,
-        7 - (sortedDays[sortedDays.length - 1] - sortedDays[0])
-      );
-      currentDate = findNextDayOfWeek(currentDate, sortedDays[0]);
+      currentDate = addDays(currentDate, 7 - (sortedDays[sortedDays.length - 1] - sortedDays[0]))
+      currentDate = findNextDayOfWeek(currentDate, sortedDays[0])
     } else {
-      const daysDiff = sortedDays[currentDayIndex] - sortedDays[currentDayIndex - 1];
-      currentDate = addDays(currentDate, daysDiff);
+      const daysDiff = sortedDays[currentDayIndex] - sortedDays[currentDayIndex - 1]
+      currentDate = addDays(currentDate, daysDiff)
     }
-    workoutIndex++;
+    workoutIndex++
 
     if (workoutIndex > maxWorkouts) {
-      return null;
+      return null
     }
   }
 
-  const workoutsPerWeek = sortedDays.length;
-  const totalWorkoutsPerPhase = weeksPerPhase * workoutsPerWeek;
+  const workoutsPerWeek = sortedDays.length
+  const totalWorkoutsPerPhase = weeksPerPhase * workoutsPerWeek
 
-  const phaseIndex = Math.floor(workoutIndex / totalWorkoutsPerPhase);
+  const phaseIndex = Math.floor(workoutIndex / totalWorkoutsPerPhase)
   if (phaseIndex >= PHASE_ORDER.length) {
-    return null;
+    return null
   }
 
-  const withinPhaseIndex = workoutIndex % totalWorkoutsPerPhase;
-  const week = Math.floor(withinPhaseIndex / workoutsPerWeek) + 1;
-  const day = (withinPhaseIndex % workoutsPerWeek) + 1;
+  const withinPhaseIndex = workoutIndex % totalWorkoutsPerPhase
+  const week = Math.floor(withinPhaseIndex / workoutsPerWeek) + 1
+  const day = (withinPhaseIndex % workoutsPerWeek) + 1
 
   return {
     phase: PHASE_ORDER[phaseIndex],
     week,
     day,
-  };
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -279,11 +279,7 @@ export function getWorkoutForDate(
 // MUTATIONS
 // ─────────────────────────────────────────────────────────────────────────────
 
-const phaseValidator = v.union(
-  v.literal("GPP"),
-  v.literal("SPP"),
-  v.literal("SSP")
-);
+const phaseValidator = v.union(v.literal('GPP'), v.literal('SPP'), v.literal('SSP'))
 
 /**
  * Move a workout to a specific calendar date
@@ -305,167 +301,188 @@ export const moveWorkoutToDate = mutation({
     ...athleteDayArgs,
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
+    const identity = await ctx.auth.getUserIdentity()
     if (!identity) {
-      throw new Error("Not authenticated");
+      throw new Error('Not authenticated')
     }
 
     const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
-      .first();
+      .query('users')
+      .withIndex('by_clerk', (q) => q.eq('clerkId', identity.subject))
+      .first()
 
     if (!user) {
-      throw new Error("User not found");
+      throw new Error('User not found')
     }
 
     const program = await ctx.db
-      .query("user_programs")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .first();
+      .query('user_programs')
+      .withIndex('by_user', (q) => q.eq('userId', user._id))
+      .first()
 
     if (!program) {
-      throw new Error("No active program found");
+      throw new Error('No active program found')
     }
 
     // Check phase is unlocked
-    const unlockedPhases: Phase[] = ["GPP"];
-    if (program.sppUnlockedAt) unlockedPhases.push("SPP");
-    if (program.sspUnlockedAt) unlockedPhases.push("SSP");
+    const unlockedPhases: Phase[] = ['GPP']
+    if (program.sppUnlockedAt) unlockedPhases.push('SPP')
+    if (program.sspUnlockedAt) unlockedPhases.push('SSP')
 
     if (!unlockedPhases.includes(args.sourcePhase)) {
-      throw new Error(`Phase ${args.sourcePhase} is locked`);
+      throw new Error(`Phase ${args.sourcePhase} is locked`)
     }
 
     // Get intake for training days
-    const intakeResponse = await ctx.db.get(program.intakeResponseId);
+    const intakeResponse = await ctx.db.get(program.intakeResponseId)
     if (!intakeResponse) {
-      throw new Error("Intake response not found");
+      throw new Error('Intake response not found')
     }
 
     const trainingDays =
       intakeResponse.selectedTrainingDays ??
       DEFAULT_TRAINING_DAYS[intakeResponse.preferredTrainingDaysPerWeek] ??
-      DEFAULT_TRAINING_DAYS[3];
+      DEFAULT_TRAINING_DAYS[3]
 
-    const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
+    const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE
 
     // Validate source slot
     if (args.sourceWeek < 1 || args.sourceWeek > weeksPerPhase) {
-      throw new Error("Invalid source week");
+      throw new Error('Invalid source week')
     }
     if (args.sourceDay < 1 || args.sourceDay > trainingDays.length) {
-      throw new Error("Invalid source day");
+      throw new Error('Invalid source day')
     }
 
     // Parse target date
-    const targetDate = parseDateISO(args.targetDateISO);
+    const targetDate = parseDateISO(args.targetDateISO)
 
     // Get existing overrides
     const existingOverride = await ctx.db
-      .query("user_schedule_overrides")
-      .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
-      .first();
+      .query('user_schedule_overrides')
+      .withIndex('by_user_program', (q) => q.eq('userProgramId', program._id))
+      .first()
 
-    const dateOverrides = existingOverride?.dateOverrides ?? [];
-    const slotOverrides = existingOverride?.slotOverrides ?? [];
+    const dateOverrides = existingOverride?.dateOverrides ?? []
+    const slotOverrides = existingOverride?.slotOverrides ?? []
 
     // Build lookup for current date assignments
-    const dateOverrideLookup = new Map<string, string>(); // slot key -> dateISO
+    const dateOverrideLookup = new Map<string, string>() // slot key -> dateISO
     for (const override of dateOverrides) {
-      const key = `${override.phase}-${override.week}-${override.day}`;
-      dateOverrideLookup.set(key, override.dateISO);
+      const key = `${override.phase}-${override.week}-${override.day}`
+      dateOverrideLookup.set(key, override.dateISO)
     }
 
     // Get the source slot's current effective date
-    const sourceKey = `${args.sourcePhase}-${args.sourceWeek}-${args.sourceDay}`;
-    const sourceCurrentDate = dateOverrideLookup.get(sourceKey) ??
-      formatDateISO(getDateForWorkout(phaseAnchor(program, args.sourcePhase), trainingDays, {
-        phase: args.sourcePhase,
-        week: args.sourceWeek,
-        day: args.sourceDay,
-      }, weeksPerPhase));
+    const sourceKey = `${args.sourcePhase}-${args.sourceWeek}-${args.sourceDay}`
+    const sourceCurrentDate =
+      dateOverrideLookup.get(sourceKey) ??
+      formatDateISO(
+        getDateForWorkout(
+          phaseAnchor(program, args.sourcePhase),
+          trainingDays,
+          {
+            phase: args.sourcePhase,
+            week: args.sourceWeek,
+            day: args.sourceDay,
+          },
+          weeksPerPhase
+        )
+      )
 
     // If source is already on target date, nothing to do
     if (sourceCurrentDate === args.targetDateISO) {
-      return { success: true, noChange: true };
+      return { success: true, noChange: true }
     }
 
     // SAME-WEEK CONSTRAINT: Workouts can only move within the same calendar week
     // Exception: Last week of program allows moves up to 7 days forward
-    const LAST_WEEK_BUFFER_DAYS = 7;
-    const sourceDate = parseDateISO(sourceCurrentDate);
+    const LAST_WEEK_BUFFER_DAYS = 7
+    const sourceDate = parseDateISO(sourceCurrentDate)
 
     // NO PAST DATES CONSTRAINT: Cannot move workouts to dates in the past
-    const todayStart = athleteToday(args);
+    const todayStart = athleteToday(args)
     if (targetDate < todayStart) {
-      throw new Error("Cannot move workout to a past date");
+      throw new Error('Cannot move workout to a past date')
     }
 
     // Calculate the last workout date in the program
     const lastWorkoutSlot: WorkoutSlot = {
-      phase: "SSP",
+      phase: 'SSP',
       week: weeksPerPhase,
       day: trainingDays.length,
-    };
-    const programEndDate = getDateForWorkout(phaseAnchor(program, "SSP"), trainingDays, lastWorkoutSlot, weeksPerPhase);
-    const isLastWeek = isSameWeek(sourceDate, programEndDate);
+    }
+    const programEndDate = getDateForWorkout(
+      phaseAnchor(program, 'SSP'),
+      trainingDays,
+      lastWorkoutSlot,
+      weeksPerPhase
+    )
+    const isLastWeek = isSameWeek(sourceDate, programEndDate)
 
     if (isLastWeek) {
       // Last week: allow moves up to LAST_WEEK_BUFFER_DAYS forward
-      const maxDate = addDays(sourceDate, LAST_WEEK_BUFFER_DAYS);
+      const maxDate = addDays(sourceDate, LAST_WEEK_BUFFER_DAYS)
       if (targetDate > maxDate) {
-        throw new Error(`Cannot move workout more than ${LAST_WEEK_BUFFER_DAYS} days forward from the last week`);
+        throw new Error(
+          `Cannot move workout more than ${LAST_WEEK_BUFFER_DAYS} days forward from the last week`
+        )
       }
     } else {
       // Normal weeks: must stay within the same calendar week
       if (!isSameWeek(sourceDate, targetDate)) {
-        throw new Error("Workouts can only be moved within the same week");
+        throw new Error('Workouts can only be moved within the same week')
       }
     }
 
     // Find if any slot is currently on the target date
-    let targetSlot: WorkoutSlot | null = null;
+    let targetSlot: WorkoutSlot | null = null
     for (const phase of PHASE_ORDER) {
-      if (!unlockedPhases.includes(phase)) continue; // Only check unlocked phases
+      if (!unlockedPhases.includes(phase)) continue // Only check unlocked phases
       for (let week = 1; week <= weeksPerPhase; week++) {
         for (let day = 1; day <= trainingDays.length; day++) {
-          const slot: WorkoutSlot = { phase, week, day };
-          const slotKey = `${phase}-${week}-${day}`;
+          const slot: WorkoutSlot = { phase, week, day }
+          const slotKey = `${phase}-${week}-${day}`
 
           // Skip if this is the source slot
-          if (slotKey === sourceKey) continue;
+          if (slotKey === sourceKey) continue
 
-          const slotDate = dateOverrideLookup.get(slotKey) ??
-            formatDateISO(getDateForWorkout(phaseAnchor(program, slot.phase), trainingDays, slot, weeksPerPhase));
+          const slotDate =
+            dateOverrideLookup.get(slotKey) ??
+            formatDateISO(
+              getDateForWorkout(phaseAnchor(program, slot.phase), trainingDays, slot, weeksPerPhase)
+            )
 
           if (slotDate === args.targetDateISO) {
-            targetSlot = slot;
-            break;
+            targetSlot = slot
+            break
           }
         }
-        if (targetSlot) break;
+        if (targetSlot) break
       }
-      if (targetSlot) break;
+      if (targetSlot) break
     }
 
     // Neither workout may be one that's done
-    const completion = await loadProgramCompletion(ctx, program);
-    if (completion.isSlotDone({ phase: args.sourcePhase, week: args.sourceWeek, day: args.sourceDay })) {
-      throw new Error("Cannot move a completed workout");
+    const completion = await loadProgramCompletion(ctx, program)
+    if (
+      completion.isSlotDone({ phase: args.sourcePhase, week: args.sourceWeek, day: args.sourceDay })
+    ) {
+      throw new Error('Cannot move a completed workout')
     }
     if (targetSlot && completion.isSlotDone(targetSlot)) {
-      throw new Error("Cannot swap with a completed workout");
+      throw new Error('Cannot swap with a completed workout')
     }
 
     // Build new dateOverrides
     // Remove existing overrides for source (and target if swapping)
     const newDateOverrides = dateOverrides.filter((o) => {
-      const k = `${o.phase}-${o.week}-${o.day}`;
-      if (k === sourceKey) return false;
-      if (targetSlot && k === `${targetSlot.phase}-${targetSlot.week}-${targetSlot.day}`) return false;
-      return true;
-    });
+      const k = `${o.phase}-${o.week}-${o.day}`
+      if (k === sourceKey) return false
+      if (targetSlot && k === `${targetSlot.phase}-${targetSlot.week}-${targetSlot.day}`)
+        return false
+      return true
+    })
 
     // Source slot moves to target date
     newDateOverrides.push({
@@ -473,7 +490,7 @@ export const moveWorkoutToDate = mutation({
       week: args.sourceWeek,
       day: args.sourceDay,
       dateISO: args.targetDateISO,
-    });
+    })
 
     // If target had a workout, it moves to source's original date
     if (targetSlot) {
@@ -482,26 +499,26 @@ export const moveWorkoutToDate = mutation({
         week: targetSlot.week,
         day: targetSlot.day,
         dateISO: sourceCurrentDate,
-      });
+      })
     }
 
-    const now = Date.now();
+    const now = Date.now()
 
     // Save overrides
     if (existingOverride) {
       await ctx.db.patch(existingOverride._id, {
         dateOverrides: newDateOverrides,
         updatedAt: now,
-      });
+      })
     } else {
-      await ctx.db.insert("user_schedule_overrides", {
+      await ctx.db.insert('user_schedule_overrides', {
         userId: user._id,
         userProgramId: program._id,
         slotOverrides: [],
         dateOverrides: newDateOverrides,
         createdAt: now,
         updatedAt: now,
-      });
+      })
     }
 
     return {
@@ -511,9 +528,9 @@ export const moveWorkoutToDate = mutation({
         toDate: args.targetDateISO,
         swappedWith: targetSlot,
       },
-    };
+    }
   },
-});
+})
 
 /**
  * Get program metadata for calendar display
@@ -521,71 +538,72 @@ export const moveWorkoutToDate = mutation({
 export const getProgramCalendarMeta = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
+    const identity = await ctx.auth.getUserIdentity()
     if (!identity) {
-      return null;
+      return null
     }
 
     const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
-      .first();
+      .query('users')
+      .withIndex('by_clerk', (q) => q.eq('clerkId', identity.subject))
+      .first()
 
     if (!user) {
-      return null;
+      return null
     }
 
     const program = await ctx.db
-      .query("user_programs")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .first();
+      .query('user_programs')
+      .withIndex('by_user', (q) => q.eq('userId', user._id))
+      .first()
 
     if (!program) {
-      return null;
+      return null
     }
 
-    const intakeResponse = await ctx.db.get(program.intakeResponseId);
+    const intakeResponse = await ctx.db.get(program.intakeResponseId)
     if (!intakeResponse) {
-      return null;
+      return null
     }
 
     const trainingDays =
       intakeResponse.selectedTrainingDays ??
       DEFAULT_TRAINING_DAYS[intakeResponse.preferredTrainingDaysPerWeek] ??
-      DEFAULT_TRAINING_DAYS[3];
+      DEFAULT_TRAINING_DAYS[3]
 
     // Get dynamic weeks per phase (fallback to 4 for existing users)
-    const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
+    const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE
 
-    const programStartDate = calendarStart(program);
+    const programStartDate = calendarStart(program)
 
     // Calculate program end date
     const lastWorkoutSlot: WorkoutSlot = {
-      phase: "SSP",
+      phase: 'SSP',
       week: weeksPerPhase,
       day: trainingDays.length,
-    };
-    const programEndDate = getDateForWorkout(phaseAnchor(program, "SSP"),
+    }
+    const programEndDate = getDateForWorkout(
+      phaseAnchor(program, 'SSP'),
       trainingDays,
       lastWorkoutSlot,
       weeksPerPhase
-    );
+    )
 
     // Calculate total and completed workouts using dynamic weeksPerPhase
-    const totalWorkouts = PHASE_ORDER.length * weeksPerPhase * trainingDays.length;
+    const totalWorkouts = PHASE_ORDER.length * weeksPerPhase * trainingDays.length
 
     const completedSessions = await ctx.db
-      .query("gpp_workout_sessions")
-      .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
-      .filter((q) => q.eq(q.field("status"), "completed"))
-      .collect();
+      .query('gpp_workout_sessions')
+      .withIndex('by_user_program', (q) => q.eq('userProgramId', program._id))
+      .filter((q) => q.eq(q.field('status'), 'completed'))
+      .collect()
 
-    const completedWorkouts = completedSessions.length;
+    const completedWorkouts = completedSessions.length
 
     // Determine unlocked phases
-    const unlockedPhases: Phase[] = ["GPP"];
-    if (program.sppUnlockedAt) unlockedPhases.push("SPP");
-    if (program.sspUnlockedAt) unlockedPhases.push("SSP");
+    const unlockedPhases: Phase[] = ['GPP']
+    if (program.sppUnlockedAt) unlockedPhases.push('SPP')
+    if (program.sspUnlockedAt) unlockedPhases.push('SSP')
 
     return {
       programStartDate: formatDateISO(programStartDate),
@@ -599,9 +617,9 @@ export const getProgramCalendarMeta = query({
       unlockedPhases,
       gppCategoryId: program.gppCategoryId,
       skillLevel: program.skillLevel,
-    };
+    }
   },
-});
+})
 
 /**
  * Get FULL calendar view for entire program duration
@@ -619,161 +637,158 @@ export const getProgramCalendarMeta = query({
 export const getFullProgramCalendar = query({
   args: athleteDayArgs,
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
+    const identity = await ctx.auth.getUserIdentity()
     if (!identity) {
-      return null;
+      return null
     }
 
     const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
-      .first();
+      .query('users')
+      .withIndex('by_clerk', (q) => q.eq('clerkId', identity.subject))
+      .first()
 
     if (!user) {
-      return null;
+      return null
     }
 
     // Get user's program
     const program = await ctx.db
-      .query("user_programs")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .first();
+      .query('user_programs')
+      .withIndex('by_user', (q) => q.eq('userId', user._id))
+      .first()
 
     if (!program) {
-      return null;
+      return null
     }
 
     // Get intake response for training days
-    const intakeResponse = await ctx.db.get(program.intakeResponseId);
+    const intakeResponse = await ctx.db.get(program.intakeResponseId)
     if (!intakeResponse) {
-      return null;
+      return null
     }
 
     // Get training days
     const trainingDays =
       intakeResponse.selectedTrainingDays ??
       DEFAULT_TRAINING_DAYS[intakeResponse.preferredTrainingDaysPerWeek] ??
-      DEFAULT_TRAINING_DAYS[3];
+      DEFAULT_TRAINING_DAYS[3]
 
     // Get dynamic weeks per phase (fallback to 4 for existing users)
-    const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
+    const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE
 
-    const programStartDate = calendarStart(program);
+    const programStartDate = calendarStart(program)
 
     // Calculate program end date (last workout of SSP)
     const lastWorkoutSlot: WorkoutSlot = {
-      phase: "SSP",
+      phase: 'SSP',
       week: weeksPerPhase,
       day: trainingDays.length,
-    };
-    const programEndDate = getDateForWorkout(phaseAnchor(program, "SSP"),
+    }
+    const programEndDate = getDateForWorkout(
+      phaseAnchor(program, 'SSP'),
       trainingDays,
       lastWorkoutSlot,
       weeksPerPhase
-    );
+    )
 
     // Get schedule overrides
     const scheduleOverride = await ctx.db
-      .query("user_schedule_overrides")
-      .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
-      .first();
+      .query('user_schedule_overrides')
+      .withIndex('by_user_program', (q) => q.eq('userProgramId', program._id))
+      .first()
 
     // Which slots are done, and by which session
-    const completion = await loadProgramCompletion(ctx, program);
+    const completion = await loadProgramCompletion(ctx, program)
 
     // Get all templates for user's category and skill level
     const templates = await ctx.db
-      .query("program_templates")
-      .withIndex("by_category_skill", (q) =>
-        q
-          .eq("gppCategoryId", program.gppCategoryId)
-          .eq("skillLevel", program.skillLevel)
+      .query('program_templates')
+      .withIndex('by_category_skill', (q) =>
+        q.eq('gppCategoryId', program.gppCategoryId).eq('skillLevel', program.skillLevel)
       )
-      .collect();
+      .collect()
 
     // Build template lookup
-    const templateLookup = new Map<string, (typeof templates)[0]>();
+    const templateLookup = new Map<string, (typeof templates)[0]>()
     for (const template of templates) {
-      const key = `${template.phase}-${template.week}-${template.day}`;
-      templateLookup.set(key, template);
+      const key = `${template.phase}-${template.week}-${template.day}`
+      templateLookup.set(key, template)
     }
 
     // Apply slot overrides (which template is at each slot)
-    const slotOverrides = scheduleOverride?.slotOverrides ?? [];
-    const overrideLookup = new Map<string, string>();
+    const slotOverrides = scheduleOverride?.slotOverrides ?? []
+    const overrideLookup = new Map<string, string>()
     for (const override of slotOverrides) {
-      const key = `${override.phase}-${override.week}-${override.day}`;
-      overrideLookup.set(key, override.templateId.toString());
+      const key = `${override.phase}-${override.week}-${override.day}`
+      overrideLookup.set(key, override.templateId.toString())
     }
 
     // Apply date overrides (which date each slot appears on)
-    const dateOverrides = scheduleOverride?.dateOverrides ?? [];
-    const dateOverrideLookup = new Map<string, string>(); // slot key -> dateISO
+    const dateOverrides = scheduleOverride?.dateOverrides ?? []
+    const dateOverrideLookup = new Map<string, string>() // slot key -> dateISO
     for (const override of dateOverrides) {
-      const key = `${override.phase}-${override.week}-${override.day}`;
-      dateOverrideLookup.set(key, override.dateISO);
+      const key = `${override.phase}-${override.week}-${override.day}`
+      dateOverrideLookup.set(key, override.dateISO)
     }
 
     // Determine unlocked phases
-    const unlockedPhases: Phase[] = ["GPP"];
-    if (program.sppUnlockedAt) unlockedPhases.push("SPP");
-    if (program.sspUnlockedAt) unlockedPhases.push("SSP");
+    const unlockedPhases: Phase[] = ['GPP']
+    if (program.sppUnlockedAt) unlockedPhases.push('SPP')
+    if (program.sspUnlockedAt) unlockedPhases.push('SSP')
 
     // Today's info
-    const today = athleteToday(args);
-    const todayISO = formatDateISO(today);
+    const today = athleteToday(args)
+    const todayISO = formatDateISO(today)
 
     // Current slot
     const currentSlot: WorkoutSlot = {
       phase: program.currentPhase as Phase,
       week: program.currentWeek,
       day: program.currentDay,
-    };
+    }
 
     // Check for in-progress session
     const inProgressSession = await ctx.db
-      .query("gpp_workout_sessions")
-      .withIndex("by_user_status", (q) =>
-        q.eq("userId", user._id).eq("status", "in_progress")
-      )
-      .first();
+      .query('gpp_workout_sessions')
+      .withIndex('by_user_status', (q) => q.eq('userId', user._id).eq('status', 'in_progress'))
+      .first()
 
     // Build calendar data for ALL dates
     const calendarData: Record<
       string,
       {
-        date: string;
+        date: string
         workouts: Array<{
-          templateId: string;
-          name: string;
-          phase: Phase;
-          week: number;
-          day: number;
-          exerciseCount: number;
-          estimatedDurationMinutes: number;
-          isCompleted: boolean;
-          isToday: boolean;
-          isInProgress: boolean;
-          isLocked: boolean; // Phase not yet unlocked (visible but not draggable)
-          completedOnDate?: string;
-        }>;
+          templateId: string
+          name: string
+          phase: Phase
+          week: number
+          day: number
+          exerciseCount: number
+          estimatedDurationMinutes: number
+          isCompleted: boolean
+          isToday: boolean
+          isInProgress: boolean
+          isLocked: boolean // Phase not yet unlocked (visible but not draggable)
+          completedOnDate?: string
+        }>
       }
-    > = {};
+    > = {}
 
     // Generate dates from 2 weeks before program start to 2 weeks after end
-    const bufferDays = 14;
-    const startDate = addDays(programStartDate, -bufferDays);
-    const endDate = addDays(programEndDate, bufferDays);
+    const bufferDays = 14
+    const startDate = addDays(programStartDate, -bufferDays)
+    const endDate = addDays(programEndDate, bufferDays)
 
     // Initialize calendar with empty days
-    let currentDate = startDate;
+    let currentDate = startDate
     while (currentDate <= endDate) {
-      const dateISO = formatDateISO(currentDate);
+      const dateISO = formatDateISO(currentDate)
       calendarData[dateISO] = {
         date: dateISO,
         workouts: [],
-      };
-      currentDate = addDays(currentDate, 1);
+      }
+      currentDate = addDays(currentDate, 1)
     }
 
     // Iterate through all workout slots and place them on their effective dates
@@ -781,44 +796,47 @@ export const getFullProgramCalendar = query({
     for (const phase of PHASE_ORDER) {
       for (let week = 1; week <= weeksPerPhase; week++) {
         for (let day = 1; day <= trainingDays.length; day++) {
-          const slot: WorkoutSlot = { phase, week, day };
-          const slotKey = `${phase}-${week}-${day}`;
-          const isLocked = !unlockedPhases.includes(phase);
+          const slot: WorkoutSlot = { phase, week, day }
+          const slotKey = `${phase}-${week}-${day}`
+          const isLocked = !unlockedPhases.includes(phase)
 
           // Determine effective date: check dateOverride first, then use default
-          let effectiveDate: Date;
-          const dateOverride = dateOverrideLookup.get(slotKey);
+          let effectiveDate: Date
+          const dateOverride = dateOverrideLookup.get(slotKey)
           if (dateOverride) {
-            effectiveDate = parseDateISO(dateOverride);
+            effectiveDate = parseDateISO(dateOverride)
           } else {
-            effectiveDate = getDateForWorkout(phaseAnchor(program, slot.phase), trainingDays, slot, weeksPerPhase);
+            effectiveDate = getDateForWorkout(
+              phaseAnchor(program, slot.phase),
+              trainingDays,
+              slot,
+              weeksPerPhase
+            )
           }
-          const effectiveDateISO = formatDateISO(effectiveDate);
+          const effectiveDateISO = formatDateISO(effectiveDate)
 
           // Skip if date is outside our range
-          if (!calendarData[effectiveDateISO]) continue;
+          if (!calendarData[effectiveDateISO]) continue
 
           // Get template for this slot (considering slot overrides)
-          const overrideTemplateId = !isLocked ? overrideLookup.get(slotKey) : undefined;
-          let template: (typeof templates)[0] | undefined;
+          const overrideTemplateId = !isLocked ? overrideLookup.get(slotKey) : undefined
+          let template: (typeof templates)[0] | undefined
 
           if (overrideTemplateId) {
-            template = templates.find(
-              (t) => t._id.toString() === overrideTemplateId
-            );
+            template = templates.find((t) => t._id.toString() === overrideTemplateId)
           } else {
             // Map user week to template week (1-4) preserving periodization curve
-            const templateWeek = mapUserWeekToTemplateWeek(week, weeksPerPhase);
-            const templateSlotKey = `${phase}-${templateWeek}-${day}`;
-            template = templateLookup.get(templateSlotKey);
+            const templateWeek = mapUserWeekToTemplateWeek(week, weeksPerPhase)
+            const templateSlotKey = `${phase}-${templateWeek}-${day}`
+            template = templateLookup.get(templateSlotKey)
           }
 
           if (template) {
-            const doneBy = completion.sessionFor(slot);
-            const isCompleted = !!doneBy;
-            const isTodayDate = effectiveDateISO === todayISO;
+            const doneBy = completion.sessionFor(slot)
+            const isCompleted = !!doneBy
+            const isTodayDate = effectiveDateISO === todayISO
             const isInProgress =
-              inProgressSession?.templateId.toString() === template._id.toString();
+              inProgressSession?.templateId.toString() === template._id.toString()
 
             calendarData[effectiveDateISO].workouts.push({
               templateId: template._id.toString(),
@@ -833,15 +851,17 @@ export const getFullProgramCalendar = query({
               isToday: isTodayDate && !isCompleted,
               isInProgress,
               isLocked,
-              completedOnDate: doneBy?.completedAt ? formatDateISO(athleteDate(doneBy.completedAt, args)) : undefined,
-            });
+              completedOnDate: doneBy?.completedAt
+                ? formatDateISO(athleteDate(doneBy.completedAt, args))
+                : undefined,
+            })
           } else {
             // Template not found - this usually means templates need to be regenerated
-            const templateWeek = mapUserWeekToTemplateWeek(week, weeksPerPhase);
+            const templateWeek = mapUserWeekToTemplateWeek(week, weeksPerPhase)
             console.warn(
               `No template found for ${phase}-W${templateWeek}-D${day} ` +
-              `(userWeek: ${week}) - templates may need regeneration`
-            );
+                `(userWeek: ${week}) - templates may need regeneration`
+            )
           }
         }
       }
@@ -851,15 +871,15 @@ export const getFullProgramCalendar = query({
     // Redos included: a workout logged on a day shows on that day
     for (const session of completion.logged) {
       if (session.completedAt) {
-        const completionDateISO = formatDateISO(athleteDate(session.completedAt, args));
+        const completionDateISO = formatDateISO(athleteDate(session.completedAt, args))
         if (calendarData[completionDateISO]) {
           const alreadyAdded = calendarData[completionDateISO].workouts.some(
             (w) => w.templateId === session.templateId.toString()
-          );
+          )
           if (!alreadyAdded) {
             const template = templates.find(
               (t) => t._id.toString() === session.templateId.toString()
-            );
+            )
             if (template) {
               calendarData[completionDateISO].workouts.push({
                 templateId: template._id.toString(),
@@ -874,7 +894,7 @@ export const getFullProgramCalendar = query({
                 isInProgress: false,
                 isLocked: false, // Completed workouts are never locked
                 completedOnDate: completionDateISO,
-              });
+              })
             }
           }
         }
@@ -882,7 +902,7 @@ export const getFullProgramCalendar = query({
     }
 
     // Calculate totals using dynamic weeksPerPhase
-    const totalWorkouts = PHASE_ORDER.length * weeksPerPhase * trainingDays.length;
+    const totalWorkouts = PHASE_ORDER.length * weeksPerPhase * trainingDays.length
 
     return {
       calendarData,
@@ -898,6 +918,6 @@ export const getFullProgramCalendar = query({
       unlockedPhases,
       todayFocusTemplateId: scheduleOverride?.todayFocusTemplateId?.toString(),
       gppCategoryId: program.gppCategoryId, // Category for consistent color scheme
-    };
+    }
   },
-});
+})
