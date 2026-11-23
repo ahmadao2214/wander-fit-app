@@ -142,6 +142,7 @@ export function cleanSignup(raw: unknown, serverTime: string): CleanResult {
 }
 
 const signupArgs = {
+  updateTokenHash: v.optional(v.string()),
   role: v.union(v.literal('athlete_14_17'), v.literal('athlete_18_plus'), v.literal('parent')),
   email: v.string(),
   parentEmail: v.optional(v.string()),
@@ -152,7 +153,7 @@ const signupArgs = {
 
 /**
  * Save a cleaned Beta On-Ramp sign-up. Repeat submissions for the same
- * normalized email update the existing row instead of duplicating, preserving
+ * normalized email and matching private token update the existing row instead of duplicating, preserving
  * `createdAt` and initial `source` attribution if a repeat omits `?ref=`.
  */
 export const record = internalMutation({
@@ -165,6 +166,9 @@ export const record = internalMutation({
       .first()
 
     if (existing) {
+      if (!existing.updateTokenHash || existing.updateTokenHash !== args.updateTokenHash) {
+        return { id: existing._id, updated: false }
+      }
       await ctx.db.patch(existing._id, {
         role: args.role,
         parentEmail: args.role === 'athlete_14_17' ? args.parentEmail : undefined,

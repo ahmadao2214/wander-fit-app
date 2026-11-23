@@ -831,7 +831,7 @@ export default defineSchema({
   /**
    * Landing-page Beta On-Ramp sign-ups (landing/). Written only by the public
    * POST /waitlist HTTP route through internal.waitlist.record.
-   * One row per normalized email; repeat submissions update role, intent, and seasonDate.
+   * One row per normalized email. Updates require the original signup’s private token.
    */
   waitlist_signups: defineTable({
     role: v.union(v.literal('athlete_14_17'), v.literal('athlete_18_plus'), v.literal('parent')),
@@ -840,6 +840,7 @@ export default defineSchema({
     // Willingness-to-pay anchor: $35 Season Pass, $15/mo, or just trying the free beta
     intent: v.union(v.literal('season_pass'), v.literal('monthly'), v.literal('free_beta_only')),
     seasonDate: v.optional(v.string()), // YYYY-MM-DD from hero calendar, optional
+    updateTokenHash: v.optional(v.string()),
     source: v.optional(v.string()), // ?ref= or utm_source on the landing URL (e.g. gym-flyer)
     createdAt: v.number(),
     updatedAt: v.number(),

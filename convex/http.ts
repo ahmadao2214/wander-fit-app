@@ -319,7 +319,15 @@ http.route({
       )
     }
 
-    await ctx.runMutation(internal.waitlist.record, result.value)
+    const token = (body as Record<string, unknown>).updateToken
+    let updateTokenHash: string | undefined
+    if (typeof token === 'string' && /^[0-9a-f]{64}$/.test(token)) {
+      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token))
+      updateTokenHash = Array.from(new Uint8Array(digest), (b) =>
+        b.toString(16).padStart(2, '0')
+      ).join('')
+    }
+    await ctx.runMutation(internal.waitlist.record, { ...result.value, updateTokenHash })
     return waitlistJson(request, 200, { ok: true })
   }),
 })

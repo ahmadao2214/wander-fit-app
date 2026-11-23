@@ -60,6 +60,22 @@ const offsetOf = (d) =>
       DAY
   )
 
+// A private token lets the same tab amend a signup without exposing an email lookup.
+function signupToken(email) {
+  const key = 'wf-signup-token:' + email.toLowerCase()
+  try {
+    const saved = sessionStorage.getItem(key)
+    if (saved) return saved
+    const token = Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) =>
+      b.toString(16).padStart(2, '0')
+    ).join('')
+    sessionStorage.setItem(key, token)
+    return token
+  } catch {
+    return undefined
+  }
+}
+
 function readUnlocked() {
   try {
     return localStorage.getItem(unlockKey) === 'true'
@@ -564,7 +580,7 @@ form.addEventListener('submit', async (e) => {
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, updateToken: signupToken(email) }),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))

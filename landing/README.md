@@ -29,7 +29,7 @@ Open `http://localhost:4173/?preview=1` to test the form locally without posting
 The Beta On-Ramp form posts JSON to `<meta name="waitlist-endpoint">` in `index.html` (`https://fleet-mallard-22.convex.site/waitlist`):
 
 - Route: `POST /waitlist` (`convex/http.ts`) with CORS (`LANDING_ORIGIN` env var or `*` fallback), 4KB body cap (`413`), IP + per-email fixed-window rate limiting (`429` + `Retry-After`), and honeypot spam drop (`200`).
-- Validation & persistence: `cleanSignup`, `checkRateLimit`, and `record` (`convex/waitlist.ts`) storing into `waitlist_signups` (upserted by normalized `email`) and `waitlist_rate_limits`.
+- Validation & persistence: `cleanSignup`, `checkRateLimit`, and `record` (`convex/waitlist.ts`) storing into `waitlist_signups` (one row per normalized email, with edits limited to the original signup token) and `waitlist_rate_limits`.
 - Deploying Convex backend updates: run `bun run typecheck && bun run test:ci` first, then `npx convex deploy --typecheck=disable` (Convex's own typecheck chokes on Jest test files).
 
 ## Tests

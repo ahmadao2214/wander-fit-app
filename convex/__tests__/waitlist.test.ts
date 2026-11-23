@@ -137,10 +137,14 @@ describe('waitlist.record', () => {
   it('upserts by normalized email, preserving createdAt and initial source', async () => {
     const t = newTest()
     const firstPayload = (cleanSignup(youthAthlete, TODAY) as { ok: true; value: any }).value
-    const first = await t.mutation(internal.waitlist.record, firstPayload)
+    const first = await t.mutation(internal.waitlist.record, {
+      ...firstPayload,
+      updateTokenHash: 'original',
+    })
     expect(first.updated).toBe(false)
 
     const second = await t.mutation(internal.waitlist.record, {
+      updateTokenHash: 'original',
       role: 'athlete_14_17',
       email: 'maya@example.com',
       intent: 'monthly',
@@ -230,6 +234,55 @@ describe('POST /waitlist', () => {
     expect(rows.map((r) => [r.role, r.email, r.intent])).toEqual([
       ['athlete_14_17', 'maya@example.com', 'season_pass'],
     ])
+  })
+
+  it('keeps an existing tokenless signup unchanged on a token-bearing submission', async () => {
+    const t = newTest()
+    await t.run((ctx) =>
+      ctx.db.insert('waitlist_signups', {
+        role: 'parent',
+        email: 'legacy@example.com',
+        intent: 'monthly',
+        createdAt: 1,
+        updatedAt: 1,
+      })
+    )
+    const snapshot = () => t.run((ctx) => ctx.db.query('waitlist_signups').collect())
+    const before = await snapshot()
+    const response = await post(
+      t,
+      JSON.stringify({
+        role: 'athlete_18_plus',
+        email: 'legacy@example.com',
+        intent: 'season_pass',
+        updateToken: 'ab'.repeat(32),
+      })
+    )
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ ok: true })
+    expect(await snapshot()).toEqual(before)
+  })
+
+  it('preserves saved fields unless a repeat submission supplies the original token', async () => {
+    const t = newTest()
+    const signup = { ...youthAthlete, seasonDate: futureDate() }
+    const token = 'ab'.repeat(32)
+    const send = async (data: object) => {
+      const response = await post(t, JSON.stringify(data))
+      expect(response.status).toBe(200)
+      expect(await response.json()).toEqual({ ok: true })
+    }
+    await send({ ...signup, updateToken: token })
+    const snapshot = () => t.run((ctx) => ctx.db.query('waitlist_signups').collect())
+    const saved = await snapshot()
+    expect(saved[0].updateTokenHash).toMatch(/^[a-f0-9]{64}$/)
+    expect(saved[0].updateTokenHash).not.toBe(token)
+    const edit = { ...signup, role: 'parent', intent: 'monthly' }
+    await send(edit)
+    await send({ ...edit, updateToken: 'cd'.repeat(32) })
+    expect(await snapshot()).toEqual(saved)
+    await send({ ...edit, updateToken: token })
+    expect(await snapshot()).toMatchObject([{ role: 'parent', intent: 'monthly' }])
   })
 
   it('returns 400 with validation error and saves nothing', async () => {
