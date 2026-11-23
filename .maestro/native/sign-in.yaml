@@ -1,7 +1,8 @@
 # Native sign-in journey (#83): an onboarded persona signs in, reaches Today
 # with its workout card, opens Profile, signs out, and lands on the First Run.
 # Same steps as .maestro/journeys/sign-in.yaml, which signs out through a web
-# URL; native scrolls the Profile list to the button instead.
+# URL; native scrolls the Profile list to the button instead, and hides the
+# keyboard before Sign In.
 # The runner passes PERSONA_EMAIL and PERSONA_PASSWORD with -e. The shared
 # subflows are headed `url: ${VERIFY_URL}`; the runner passes VERIFY_URL=native
 # so that header resolves, and this entry's appId picks the device driver.
@@ -13,7 +14,19 @@ appId: com.offseason.asrafit
 - runFlow: ../subflows/_evidence-start.yaml
 - runFlow: ../subflows/_open-sign-in.yaml
 - takeScreenshot: 01-sign-in
-- runFlow: ../subflows/_sign-in.yaml
+# Same steps as ../subflows/_sign-in.yaml, plus hideKeyboard: on Android the
+# keyboard covers Sign In, and Maestro can't find a covered button. The shared
+# subflow stays as is for web, which has no on-screen keyboard.
+- tapOn:
+    id: sign-in-email
+- inputText: ${PERSONA_EMAIL}
+- tapOn:
+    id: sign-in-password
+- inputText: ${PERSONA_PASSWORD}
+- takeScreenshot: 02-filled
+- hideKeyboard
+- tapOn:
+    id: sign-in-submit
 - extendedWaitUntil:
     visible:
       id: today-heading
