@@ -55,6 +55,12 @@ jest.mock('expo-auth-session', () => ({
 const mockOpenBrowser = jest.fn(async (_url: string) => ({}))
 jest.mock('expo-web-browser', () => ({ openBrowserAsync: (url: string) => mockOpenBrowser(url) }))
 
+// The age gate's device flag; a test sets it to act as another tab closing the gate.
+let mockAgeGateLocked = false
+jest.mock('../../lib/ageGateLockStorage', () => ({
+  ageGateLock: { isLocked: async () => mockAgeGateLocked, lock: async () => {} },
+}))
+
 const mockCreateUser = jest.fn(async (_args: unknown) => 'u1')
 const mockRecordTerms = jest.fn(async (_args: unknown) => null)
 const mockCompleteIntake = jest.fn(async (_args: unknown) => ({ keptExistingProgram: false }))
@@ -120,6 +126,7 @@ async function signUpWithEmail() {
 
 beforeEach(async () => {
   jest.clearAllMocks()
+  mockAgeGateLocked = false
   mockClerk.user = null
   mockSignedIn = null
   mockConvexUser = null
@@ -144,6 +151,7 @@ describe('Save your plan', () => {
     ['save-plan-google', 'oauth_google'],
   ])('%s starts %s and returns to wanderfit://oauth', async (testID, strategy) => {
     await show()
+    await press('save-plan-accept')
     await press(testID)
     expect(mockStartSSOFlow).toHaveBeenCalledWith({ strategy, redirectUrl: 'wanderfit://oauth' })
     // No session came back, so nothing is saved and the draft stays.
@@ -157,6 +165,7 @@ describe('Save your plan', () => {
       signUp: { emailAddress: 'g@b.co', firstName: 'Gia', lastName: '' },
     } as never)
     await show()
+    await press('save-plan-accept')
     await press('save-plan-google')
     expect(mockSetActive).toHaveBeenCalledWith({ session: 'sess_g' })
     expect(mockCreateUser).toHaveBeenCalledWith(expect.objectContaining({ name: 'Gia' }))
@@ -170,6 +179,7 @@ describe('Save your plan', () => {
     mockStartSSOFlow.mockRejectedValueOnce(new Error('cancelled'))
     jest.spyOn(console, 'error').mockImplementation(() => {})
     await show()
+    await press('save-plan-accept')
     await press('save-plan-apple')
     expect(screen.getByTestId('save-plan-error').props.children).toMatch(
       /Apple sign-in didn't finish/
@@ -182,6 +192,7 @@ describe('Save your plan', () => {
       setActive: mockSetActive,
     })
     await show()
+    await press('save-plan-accept')
     await press('save-plan-google')
     expect(mockStartSSOFlow).toHaveBeenCalledWith({
       strategy: 'oauth_google',
@@ -201,6 +212,7 @@ describe('Save your plan', () => {
       authSessionResult: { type: 'cancel' },
     })
     await show()
+    await press('save-plan-accept')
     await press('save-plan-google')
     expect(mockCompleteIntake).not.toHaveBeenCalled()
     expect(testDraft.current.current()?.answers).toEqual(answers)
@@ -221,7 +233,8 @@ describe('Save your plan', () => {
     try {
       Platform.OS = 'web'
       await show()
-      await press('save-plan-google')
+      await press('save-plan-accept')
+    await press('save-plan-google')
       expect(JSON.parse(sessionStorage.getItem('wanderfit.firstRunDraft.v1')!)).toEqual(
         testDraft.current.current()
       )
@@ -455,6 +468,56 @@ describe('Save your plan, acceptance', () => {
     await press('save-plan-disclaimer-back')
     expect(screen.queryByTestId('save-plan-disclaimer')).toBeNull()
     expect(isChecked()).toBe(true)
+  })
+
+  it.each(['save-plan-apple', 'save-plan-google'])(
+    'keeps %s off until the athlete ticks the box',
+    async (testID) => {
+      await show()
+      await press(testID)
+      expect(mockStartSSOFlow).not.toHaveBeenCalled()
+      await press('save-plan-accept')
+      await press(testID)
+      expect(mockStartSSOFlow).toHaveBeenCalledTimes(1)
+    }
+  )
+
+  it('creates no account when the age gate closed on this device after the reveal opened', async () => {
+    const onOpenChange = jest.fn()
+    render(<SavePlanSheet open onOpenChange={onOpenChange} nextLabel="Tomorrow" />, { wrapper })
+    await act(async () => {})
+    await press('save-plan-accept')
+    // Another tab enters a birth date under the minimum age.
+    mockAgeGateLocked = true
+
+    await press('save-plan-google')
+    expect(mockStartSSOFlow).not.toHaveBeenCalled()
+
+    await press('save-plan-email')
+    fireEvent.changeText(screen.getByTestId('save-plan-name'), 'Sam')
+    fireEvent.changeText(screen.getByTestId('save-plan-email-input'), 'a@b.co')
+    fireEvent.changeText(screen.getByTestId('save-plan-password'), 'long-enough-1')
+    await press('save-plan-create')
+    expect(mockSignUp.create).not.toHaveBeenCalled()
+
+    expect(mockCreateUser).not.toHaveBeenCalled()
+    expect(mockCompleteIntake).not.toHaveBeenCalled()
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+    expect(mockReplace).toHaveBeenCalledWith('/(first-run)/about')
+  })
+
+  it('saves no plan to an existing account once the age gate has closed', async () => {
+    mockSignedIn = { id: 'user_1', primaryEmailAddress: { emailAddress: 'a@b.co' } }
+    mockClerk.user = mockSignedIn
+    mockConvexUser = { _id: 'u1' }
+    await show()
+    await press('save-plan-accept')
+    mockAgeGateLocked = true
+    await press('save-plan-signed-in')
+    await act(async () => {})
+    expect(mockRecordTerms).not.toHaveBeenCalled()
+    expect(mockCompleteIntake).not.toHaveBeenCalled()
+    expect(mockReplace).toHaveBeenCalledWith('/(first-run)/about')
   })
 
   it('keeps Save to this account off until ticked, then records the acceptance on the existing account', async () => {
