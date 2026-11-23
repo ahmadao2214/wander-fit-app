@@ -8,6 +8,7 @@ import { isGeneratedEmail } from "./persona.mjs"
 import {
   archiveAttemptEvidence,
   assertFirstRun,
+  assertReassessment,
   assertWorkoutLoop,
   cleanupPending,
   createSignupPersona,
@@ -365,6 +366,62 @@ describe("persona modes", () => {
     expect(needsInspect("workout-exit-resume")).toBe(false)
     expect(needsInspect("first-run")).toBe(true)
     expect(needsInspect("workout-loop")).toBe(true)
+    expect(needsInspect("reassessment")).toBe(true)
+  })
+
+  it("inspects the reassessment flow's phase-end persona after Maestro passes", () => {
+    const { calls, io } = webIo()
+    runSuite(["reassessment"], webSuiteSteps("http://127.0.0.1:1", io), () => 0)
+    expect(calls.filter((call) => call.startsWith("create") || call.startsWith("inspect"))).toEqual([
+      "create phase-end",
+      "inspect reassessment e2e.3+clerk_test@example.com",
+    ])
+  })
+
+  it("requires the pending check-in cleared, one repeated GPP check-in, and GPP week 1 day 1", () => {
+    const email = "e2e.3+clerk_test@example.com"
+    const checkIn = { completedPhase: "GPP", decision: "repeat", phaseDifficulty: "just_right", maxesUpdated: false }
+    const done = {
+      found: true,
+      email,
+      hasProgram: true,
+      phase: "GPP",
+      week: 1,
+      day: 1,
+      reassessmentPendingForPhase: null,
+      sppUnlocked: false,
+      reassessments: [checkIn],
+      sessions: [],
+    }
+    expect(assertReassessment(`noise\n${JSON.stringify(done, null, 2)}\n`, email)).toMatchObject({
+      phase: "GPP",
+      week: 1,
+      day: 1,
+      reassessmentPendingForPhase: null,
+    })
+    // The check-in never saved: still pending at the end of the block
+    const pending = { ...done, week: 4, day: 7, reassessmentPendingForPhase: "GPP", reassessments: [] }
+    expect(() => assertReassessment(JSON.stringify(pending), email)).toThrow(
+      /\(week, day, reassessmentPendingForPhase, reassessmentCount, completedPhase, decision, phaseDifficulty, maxesUpdated\)/
+    )
+    // Moved on instead of repeating
+    expect(() =>
+      assertReassessment(
+        JSON.stringify({ ...done, phase: "SPP", sppUnlocked: true, reassessments: [{ ...checkIn, decision: "move_on" }] }),
+        email
+      )
+    ).toThrow(/\(phase, sppUnlocked, decision\)/)
+    expect(() =>
+      assertReassessment(JSON.stringify({ ...done, reassessments: [{ ...checkIn, maxesUpdated: true }] }), email)
+    ).toThrow(/\(maxesUpdated\)/)
+    expect(() => assertReassessment(JSON.stringify({ ...done, reassessments: [checkIn, checkIn] }), email)).toThrow(
+      /reassessmentCount/
+    )
+    // An inspect without the reassessment fields, as before this check existed
+    const { reassessmentPendingForPhase, sppUnlocked, reassessments, ...older } = done
+    expect(() => assertReassessment(JSON.stringify(older), email)).toThrow(/sppUnlocked, reassessmentCount/)
+    expect(() => assertReassessment(JSON.stringify({ found: false, email }), email)).toThrow(/found/)
+    expect(() => assertReassessment("", email)).toThrow(/no inspect output/)
   })
 
   it("inspects the workout loop's onboarded persona, and not the sign-in one", () => {

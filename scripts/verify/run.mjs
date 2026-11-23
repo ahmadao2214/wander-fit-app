@@ -697,10 +697,53 @@ export function assertWorkoutLoop(output, email) {
   return { phase: parsed.phase, week: parsed.week, day: parsed.day, sessions }
 }
 
+// The reassessment flow starts the phase-end persona at the end of GPP with
+// the check-in pending, answers Just right, skips the maxes, and picks Repeat
+// GPP. completeReassessment must clear the pending check-in, record one GPP
+// check-in with that answer, put the program back at GPP week 1 day 1, and
+// unlock nothing.
+export function assertReassessment(output, email) {
+  const parsed = parseInspect(output)
+  const reassessments = Array.isArray(parsed?.reassessments) ? parsed.reassessments : []
+  const checkIn = reassessments.length === 1 ? reassessments[0] : null
+  assertInspected(
+    parsed && {
+      ...parsed,
+      reassessmentCount: reassessments.length,
+      completedPhase: checkIn?.completedPhase ?? null,
+      decision: checkIn?.decision ?? null,
+      phaseDifficulty: checkIn?.phaseDifficulty ?? null,
+      maxesUpdated: checkIn?.maxesUpdated ?? null,
+    },
+    {
+      found: true,
+      phase: "GPP",
+      week: 1,
+      day: 1,
+      reassessmentPendingForPhase: null,
+      sppUnlocked: false,
+      reassessmentCount: 1,
+      completedPhase: "GPP",
+      decision: "repeat",
+      phaseDifficulty: "just_right",
+      maxesUpdated: false,
+    },
+    `the reassessment flow left ${email} without one repeated GPP check-in and GPP week 1 day 1`
+  )
+  return {
+    phase: parsed.phase,
+    week: parsed.week,
+    day: parsed.day,
+    reassessmentPendingForPhase: parsed.reassessmentPendingForPhase,
+    reassessments,
+  }
+}
+
 // Checks run on the account after Maestro passes, by flow.
 const inspectChecks = {
   "first-run": assertFirstRun,
   "workout-loop": assertWorkoutLoop,
+  reassessment: assertReassessment,
 }
 
 // Flows with no entry are not inspected after Maestro passes.
