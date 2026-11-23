@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ComponentRef, type ReactNode } from 'react'
-import { Pressable, Text as RNText, View } from 'react-native'
-import { Redirect, useRouter, type Href } from 'expo-router'
+import { Platform, Pressable, Text as RNText, View } from 'react-native'
+import { Redirect, useLocalSearchParams, useRouter, type Href } from 'expo-router'
 import { useQuery } from 'convex/react'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Animated, {
@@ -140,7 +140,9 @@ export default function FirstRunReveal() {
   const motion = useIntakeMotion()
   const { draft } = useFirstRunDraft()
   const { sport, category, missing: sportMissing } = useIntakeSport()
-  const [saving, setSaving] = useState(false)
+  const { saveWith } = useLocalSearchParams<{ saveWith?: string }>()
+  const returningFromGoogle = Platform.OS === 'web' && saveWith === 'google'
+  const [saving, setSaving] = useState(returningFromGoogle)
   const [story, setStory] = useState<RevealPart>('category')
   const [revisit, setRevisit] = useState(false)
   const [planRun, setPlanRun] = useState<PlanRun | null>(null)
@@ -309,6 +311,7 @@ export default function FirstRunReveal() {
       />
       <SavePlanSheet
         open={saving}
+        returningFromGoogle={returningFromGoogle}
         onOpenChange={setSaving}
         nextLabel={dayLabel(firstTrainingDate(trainingDays, now), now)}
       />

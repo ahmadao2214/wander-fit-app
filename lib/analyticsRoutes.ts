@@ -53,6 +53,7 @@ export const WEB_ROUTE_PATTERNS: readonly string[] = [
   '/about',
   '/celebration',
   '/days',
+  '/google-save-callback',
   '/history',
   '/maxes',
   '/profile',
