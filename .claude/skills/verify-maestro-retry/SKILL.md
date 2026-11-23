@@ -5,7 +5,7 @@ description: Recheck the bounded retry contract when Maestro launch, evidence co
 
 Run `bun install --frozen-lockfile`, then `bunx jest --runInBand --runTestsByPath scripts/verify/cold-start-model.test.mjs`. The locked Jest runner enumerates the production operation against a disposable filesystem rather than simulating its file traversal.
 
-A quick failure before flow progress gets exactly one fresh launch, after its evidence is archived. Other outcomes stop immediately; callers receive the last exit status. Mistaking a runner diagnostic for progress makes a recoverable crash fail the verification job.
+A failure before flow progress gets exactly one fresh launch, after its evidence is archived, when it was quick (under 20 seconds) or its `maestro.log` shows the DevTools transport crash (`retryReason`, `hasCdpTransportCrash`; see `.maestro/flow-layout.md`). The transport case is covered in `scripts/verify/run.test.mjs`. Other outcomes stop immediately; callers receive the last exit status. Mistaking a runner diagnostic for progress makes a recoverable crash fail the verification job.
 
 Coverage: `scripts/verify/run.mjs` (`runWithColdStartRetry`, `hasFlowEvidence`, `archiveAttemptEvidence`) and `scripts/verify/cold-start-model.test.mjs`, verified at `d0a2f7b6093e14f6057d1688d1f49a9f9c5afd4f`. Compare those paths to the sync commit before interpreting a failure. Advance the commit only after checking the oracle against the new evidence contract.
 

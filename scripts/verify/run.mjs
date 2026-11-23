@@ -968,12 +968,46 @@ export function archiveAttemptEvidence(outDir, attemptLabel = 'attempt-1') {
   return true
 }
 
+// Maestro 2.12.1's web driver opens a new DevTools websocket for every JS call.
+// When Chrome closes one before it answers, the driver logs "No message with id
+// N received within 30000ms" (at once, not after 30 seconds), its executeJS
+// returns null, and deviceInfo dies casting that null to Int. The page on
+// screen is fine. Both lines must be in the same attempt's log (#174).
+const cdpTransportCrash = [
+  /No message with id \d+ received within \d+ms/,
+  /CommandFailed: null cannot be cast to non-null type kotlin\.Int/,
+]
+
+export function hasCdpTransportCrash(dir) {
+  if (!fs.existsSync(dir)) return false
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name)
+    if (entry.isDirectory()) {
+      if (/^attempt-\d+$/.test(entry.name)) continue
+      if (hasCdpTransportCrash(full)) return true
+    } else if (entry.name === 'maestro.log') {
+      const log = fs.readFileSync(full, 'utf8')
+      if (cdpTransportCrash.every((line) => line.test(log))) return true
+    }
+  }
+  return false
+}
+
+// Why a failed launch earns its one retry, or null. Never once the flow has
+// taken its own screenshots, and never for an assertion that came back false.
+export function retryReason(outDir, { status, elapsedMs }) {
+  if (status === 0 || hasFlowEvidence(outDir)) return null
+  if (elapsedMs < 20_000) return 'cold-start'
+  if (hasCdpTransportCrash(outDir)) return 'cdp-transport'
+  return null
+}
+
 export function runWithColdStartRetry(outDir, launch, onRetry) {
   const first = launch()
-  if (first.status === 0 || first.elapsedMs >= 20_000 || hasFlowEvidence(outDir))
-    return first.status
+  const reason = retryReason(outDir, first)
+  if (!reason) return first.status
   archiveAttemptEvidence(outDir)
-  onRetry(first)
+  onRetry({ ...first, reason })
   return launch().status
 }
 
@@ -996,9 +1030,9 @@ function runMaestro(flowFile, outDir, url, persona) {
       const result = spawnSync(maestro, args, { cwd: root, stdio: 'inherit', env })
       return { status: result.status ?? 1, elapsedMs: performance.now() - started }
     },
-    ({ status, elapsedMs }) =>
+    ({ status, elapsedMs, reason }) =>
       console.warn(
-        `retrying ${flowFile} once after cold-start Maestro exit ${status} (${Math.round(elapsedMs / 1000)}s, no flow screenshots)`
+        `retrying ${flowFile} once after ${reason === 'cdp-transport' ? 'a Maestro DevTools transport crash' : 'cold-start Maestro'} exit ${status} (${Math.round(elapsedMs / 1000)}s, no flow screenshots)`
       )
   )
   if (status !== 0) {

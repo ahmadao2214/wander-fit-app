@@ -12,11 +12,14 @@ import {
   assertWorkoutLoop,
   cleanupPending,
   createSignupPersona,
+  hasCdpTransportCrash,
   ownServerReady,
   readPending,
   redactEvidence,
   restoreFiles,
+  retryReason,
   runSuite,
+  runWithColdStartRetry,
   backendFingerprintPaths,
   DIRTY_TREE,
   fingerprintFromLsTree,
@@ -719,6 +722,98 @@ describe('evidence redaction', () => {
       expect(fs.readFileSync(path.join(dir, '2026-11-22_150010/logs/maestro.log'), 'utf8')).toBe(
         'pass with [redacted]'
       )
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  })
+})
+
+// Lines from the feedback flow's maestro.log, PR #163 run 45161483340 attempt 1 (#174).
+const cdpCrashLog = [
+  '11:04:47.976 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tapping on element:  UiElement(...resource-id=first-run-sign-in...)',
+  '11:04:51.939 [ERROR] maestro.drivers.CdpWebDriver.invokeSuspend: Failed to execute JS',
+  'java.lang.IllegalStateException: No message with id 60 received within 30000ms',
+  '\tat maestro.drivers.CdpWebDriver.deviceInfo(CdpWebDriver.kt:276)',
+  '11:04:52.986 [ERROR] maestro.orchestra.Orchestra.executeCommands: [Command execution] CommandFailed: null cannot be cast to non-null type kotlin.Int',
+].join('\n')
+const assertionLog =
+  '00:31:39.396 [ERROR] maestro.orchestra.Orchestra.executeCommands: [Command execution] CommandFailed: Assertion is false: id: today-workout-card is visible'
+
+describe('Maestro retry after a DevTools transport crash', () => {
+  const layout = (files) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-cdp-'))
+    for (const [name, text] of Object.entries(files)) {
+      const file = path.join(dir, name)
+      fs.mkdirSync(path.dirname(file), { recursive: true })
+      fs.writeFileSync(file, text)
+    }
+    return dir
+  }
+  const log = '2026-11-23_110429/feedback/logs/maestro.log'
+  const cases = [
+    { name: 'crash at 33s', files: { [log]: cdpCrashLog }, elapsedMs: 33_000, reason: 'cdp-transport' },
+    { name: 'crash under 20s', files: { [log]: cdpCrashLog }, elapsedMs: 13_000, reason: 'cold-start' },
+    { name: 'assertion false at 40s', files: { [log]: assertionLog }, elapsedMs: 40_000, reason: null },
+    {
+      name: 'only the websocket line',
+      files: { [log]: cdpCrashLog.split('\n').slice(0, 4).join('\n') },
+      elapsedMs: 33_000,
+      reason: null,
+    },
+    {
+      name: 'crash after a flow screenshot',
+      files: { [log]: cdpCrashLog, 'run/takeScreenshot/01-today.png': 'png' },
+      elapsedMs: 33_000,
+      reason: null,
+    },
+    {
+      name: 'crash only in an archived attempt',
+      files: { [`attempt-1/${log}`]: cdpCrashLog, [log]: assertionLog },
+      elapsedMs: 33_000,
+      reason: null,
+    },
+    { name: 'passed', files: { [log]: cdpCrashLog }, elapsedMs: 33_000, status: 0, reason: null },
+  ]
+
+  it.each(cases)('$name → $reason', ({ files, elapsedMs, status = 1, reason }) => {
+    const dir = layout(files)
+    try {
+      expect(retryReason(dir, { status, elapsedMs })).toBe(reason)
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('reads a crash in a nested maestro.log and ignores attempt folders', () => {
+    const dir = layout({ [`attempt-2/${log}`]: cdpCrashLog })
+    try {
+      expect(hasCdpTransportCrash(dir)).toBe(false)
+      fs.mkdirSync(path.join(dir, '2026-11-23_110832/feedback/logs'), { recursive: true })
+      fs.writeFileSync(path.join(dir, '2026-11-23_110832/feedback/logs/maestro.log'), cdpCrashLog)
+      expect(hasCdpTransportCrash(dir)).toBe(true)
+      expect(hasCdpTransportCrash(path.join(dir, 'missing'))).toBe(false)
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('archives the crashed attempt and launches exactly once more', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-cdp-'))
+    try {
+      const trace = []
+      const status = runWithColdStartRetry(
+        dir,
+        () => {
+          trace.push('launch')
+          const file = path.join(dir, trace.length === 1 ? log : '2026-11-23_110832/x/logs/maestro.log')
+          fs.mkdirSync(path.dirname(file), { recursive: true })
+          fs.writeFileSync(file, cdpCrashLog)
+          return { status: 1, elapsedMs: 33_000 }
+        },
+        ({ reason }) => trace.push(`retry:${reason}`)
+      )
+      expect({ status, trace }).toEqual({ status: 1, trace: ['launch', 'retry:cdp-transport', 'launch'] })
+      expect(fs.existsSync(path.join(dir, 'attempt-1', log))).toBe(true)
     } finally {
       fs.rmSync(dir, { recursive: true, force: true })
     }
