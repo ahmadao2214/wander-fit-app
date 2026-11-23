@@ -117,4 +117,15 @@ describe('Profile status bar', () => {
     const { queryByTestId } = render(<ProfilePage />, { wrapper: AllTheProviders })
     expect(queryByTestId('status-bar')).toBeNull()
   })
+
+  it('re-checks when the header changes height, without waiting for a scroll', () => {
+    const { getByTestId, scrollTo, style } = renderProfile()
+    scrollTo(200)
+    expect(style()).toBe('light')
+    // The header gets shorter (the program loaded, or the name shrank to fit)
+    fireEvent(getByTestId('profile-header'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 402, height: OVERSCROLL + 150 } },
+    })
+    expect(style()).toBe('dark')
+  })
 })

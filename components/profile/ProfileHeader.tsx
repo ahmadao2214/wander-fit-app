@@ -34,7 +34,6 @@ export interface ProfileHeaderProps {
     week: number
     day?: number | null
     weeksPerPhase?: number | null
-    totalProgramWeeks?: number | null
     skillLevel?: string | null
     sportName?: string | null
   } | null
@@ -107,7 +106,6 @@ export function ProfileHeader({
               phase={program.phase}
               week={program.week}
               weeksPerPhase={program.weeksPerPhase}
-              totalProgramWeeks={program.totalProgramWeeks}
               fillColor={TRACK_FILL}
             />
           </YStack>

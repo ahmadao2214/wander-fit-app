@@ -31,11 +31,22 @@ export default function ProfilePage() {
   // Whether the navy header is still under the status bar
   const [overHeader, setOverHeader] = useState(true)
   const headerHeight = useRef(Number.POSITIVE_INFINITY)
+  const scrollY = useRef(0)
+  // The header's height changes when the program loads or the name shrinks to
+  // fit, so the check runs on layout as well as on scroll.
+  const checkOverHeader = () => {
+    const next = scrollY.current < headerHeight.current - insets.top
+    setOverHeader((was) => (was === next ? was : next))
+  }
 
   // Sheet state for editing 1RM
   const [maxSheetOpen, setMaxSheetOpen] = useState(false)
-  // All three lifts at once, for an athlete who has entered none
-  const [bulkMaxOpen, setBulkMaxOpen] = useState(false)
+  // All three lifts at once, for an athlete who has entered none. The lifts are
+  // captured when the sheet opens: it resets its fields whenever its list
+  // changes, and a live query update would wipe what is being typed.
+  const [bulkLifts, setBulkLifts] = useState<
+    { _id: string; name: string; slug: string; currentMax: number | null }[] | null
+  >(null)
   const [selectedExercise, setSelectedExercise] = useState<{
     _id: string
     name: string
@@ -97,13 +108,14 @@ export default function ProfilePage() {
           onScroll={(event) => {
             // The status bar sits over the top inset. Once the header has scrolled
             // out from under it, the page behind is light again.
-            const next = event.nativeEvent.contentOffset.y < headerHeight.current - insets.top
-            if (next !== overHeader) setOverHeader(next)
+            scrollY.current = event.nativeEvent.contentOffset.y
+            checkOverHeader()
           }}
         >
           <ProfileHeader
             onHeight={(height) => {
               headerHeight.current = height
+              checkOverHeader()
             }}
             name={user.name}
             topInset={insets.top}
@@ -126,7 +138,16 @@ export default function ProfilePage() {
             ) : hasMaxes ? (
               <MaxTiles
                 lifts={coreLiftExercises}
-                onAddAll={() => setBulkMaxOpen(true)}
+                onAddAll={() =>
+                  setBulkLifts(
+                    coreLiftExercises.map((lift) => ({
+                      _id: lift._id,
+                      name: lift.name,
+                      slug: lift.slug,
+                      currentMax: lift.currentMax,
+                    }))
+                  )
+                }
                 onPress={(slug) => {
                   const exercise = coreLiftExercises.find((lift) => lift.slug === slug)
                   if (!exercise) return
@@ -245,18 +266,15 @@ export default function ProfilePage() {
           />
         )}
 
-        {bulkMaxOpen && coreLiftExercises ? (
+        {bulkLifts ? (
           <OneRepMaxSheet
-            open={bulkMaxOpen}
-            onOpenChange={setBulkMaxOpen}
+            open
+            onOpenChange={(open) => {
+              if (!open) setBulkLifts(null)
+            }}
             mode="bulk"
-            exercises={coreLiftExercises.map((lift) => ({
-              _id: lift._id,
-              name: lift.name,
-              slug: lift.slug,
-              currentMax: lift.currentMax,
-            }))}
-            onComplete={() => setBulkMaxOpen(false)}
+            exercises={bulkLifts}
+            onComplete={() => setBulkLifts(null)}
           />
         ) : null}
 

@@ -19,7 +19,6 @@ export interface PhaseTrackProps {
   phase: Phase | string | null | undefined
   week: number
   weeksPerPhase?: number | null
-  totalProgramWeeks?: number | null
   trackColor?: PhaseTrackColor
   fillColor?: PhaseTrackColor
   currentTextColor?: PhaseTrackColor
@@ -33,14 +32,13 @@ export function PhaseTrack({
   phase,
   week,
   weeksPerPhase,
-  totalProgramWeeks,
   trackColor = 'rgba(255,255,255,0.24)',
   fillColor = '$brand5',
   currentTextColor = '#F8FAFC',
   textColor = '#94A3B8',
   testID = 'phase-track',
 }: PhaseTrackProps) {
-  const track = phaseTrack({ phase, week, weeksPerPhase, totalProgramWeeks })
+  const track = phaseTrack({ phase, week, weeksPerPhase })
 
   return (
     <XStack

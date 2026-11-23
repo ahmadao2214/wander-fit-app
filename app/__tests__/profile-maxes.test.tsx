@@ -5,6 +5,8 @@ import config from '../../tamagui.config'
 
 let mockProgram: any
 let mockLifts: any
+// Every list the bulk sheet was rendered with, in order
+const mockSheetLists: any[] = []
 
 jest.mock('convex/react', () => ({
   useQuery: (name: string) => {
@@ -48,11 +50,14 @@ jest.mock('../../components/SignOutButton', () => ({ SignOutButton: () => null }
 jest.mock('../../components/OneRepMaxSheet', () => {
   const { Text } = require('react-native')
   return {
-    OneRepMaxSheet: ({ mode, exercise, exercises }: any) => (
-      <Text testID={`max-sheet-${mode}`}>
-        {mode === 'bulk' ? exercises.map((e: any) => e.slug).join(',') : exercise.slug}
-      </Text>
-    ),
+    OneRepMaxSheet: ({ mode, exercise, exercises }: any) => {
+      if (mode === 'bulk') mockSheetLists.push(exercises)
+      return (
+        <Text testID={`max-sheet-${mode}`}>
+          {mode === 'bulk' ? exercises.map((e: any) => e.slug).join(',') : exercise.slug}
+        </Text>
+      )
+    },
   }
 })
 
@@ -114,5 +119,19 @@ describe('Profile maxes', () => {
     expect(queryByTestId('max-add-all')).toBeNull()
     fireEvent.press(getByTestId('max-row-bench_press'))
     expect(getByTestId('max-sheet-single').props.children).toBe('bench_press')
+  })
+
+  it('keeps the sheet on the lifts it opened with while the query updates under it', () => {
+    mockProgram = program
+    mockLifts = [lift('back_squat', 'Back Squat', null), lift('bench_press', 'Bench Press', null)]
+    const view = render(<ProfilePage />, { wrapper: AllTheProviders })
+    fireEvent.press(view.getByTestId('max-add-all'))
+    const opened = mockSheetLists.at(-1)
+
+    // A live update hands Profile a new array; the sheet resets its fields
+    // whenever its list changes, so it must not see one.
+    mockLifts = [lift('back_squat', 'Back Squat', null), lift('bench_press', 'Bench Press', null)]
+    view.rerender(<ProfilePage />)
+    expect(mockSheetLists.at(-1)).toBe(opened)
   })
 })

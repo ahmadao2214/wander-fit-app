@@ -13,7 +13,6 @@ const program = {
   phase: 'SPP',
   week: 2,
   weeksPerPhase: 4,
-  totalProgramWeeks: 12,
   skillLevel: 'Moderate',
   sportName: 'Track & Field (Throws)',
 }
@@ -43,7 +42,7 @@ describe('ProfileHeader', () => {
       <ProfileHeader
         name="Test Athlete"
         topInset={44}
-        program={{ ...program, phase: 'GPP', week: 1, weeksPerPhase: 5, totalProgramWeeks: 17 }}
+        program={{ ...program, phase: 'GPP', week: 1, weeksPerPhase: 5 }}
       />,
       { wrapper: AllTheProviders }
     )

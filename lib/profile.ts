@@ -55,7 +55,6 @@ export interface PhaseTrackInput {
   phase: Phase | string | null | undefined
   week: number
   weeksPerPhase?: number | null
-  totalProgramWeeks?: number | null
 }
 
 function positiveWhole(n: number | null | undefined): number | null {
@@ -70,22 +69,14 @@ function weeksLabel(n: number): string {
  * Where the athlete is in the three-phase program, for the Profile header's
  * phase track. An unknown phase reads as GPP, as lib/phase.ts does.
  */
-export function phaseTrack({
-  phase,
-  week,
-  weeksPerPhase,
-  totalProgramWeeks,
-}: PhaseTrackInput): PhaseTrack {
+export function phaseTrack({ phase, week, weeksPerPhase }: PhaseTrackInput): PhaseTrack {
   const current: Phase = phase === 'SPP' || phase === 'SSP' ? phase : 'GPP'
   const perPhase = positiveWhole(weeksPerPhase) ?? DEFAULT_WEEKS_PER_PHASE
-  // The scheduled program is three phases of perPhase weeks. totalProgramWeeks
-  // is the weeks until the season: longer when it doesn't divide by three (14
-  // weeks, 3 × 4) and shorter when the season is close (1 week, 3 × 2). It only
-  // stands in when the phase length is unknown.
-  const knownPerPhase = positiveWhole(weeksPerPhase)
-  const totalWeeks = knownPerPhase
-    ? knownPerPhase * PHASES.length
-    : (positiveWhole(totalProgramWeeks) ?? perPhase * PHASES.length)
+  // The program is three phases of perPhase weeks. The season countdown
+  // (totalProgramWeeks on the program) is not its length: it is longer when it
+  // doesn't divide by three (14 weeks, 3 × 4) and shorter when the season is
+  // close (1 week, 3 × 2). So the count uses the same length as the bars.
+  const totalWeeks = perPhase * PHASES.length
   const currentIndex = PHASES.indexOf(current)
   const clampedWeek = Math.min(Math.max(Number.isFinite(week) ? Math.floor(week) : 1, 1), perPhase)
 

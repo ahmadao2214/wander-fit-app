@@ -14,7 +14,7 @@ const hidden = { includeHiddenElements: true }
 describe('PhaseTrack', () => {
   it('renders three segments in phase order', () => {
     const { getByTestId, getByText } = render(
-      <PhaseTrack phase="GPP" week={3} weeksPerPhase={4} totalProgramWeeks={12} />,
+      <PhaseTrack phase="GPP" week={3} weeksPerPhase={4} />,
       { wrapper: AllTheProviders }
     )
     for (const phase of ['GPP', 'SPP', 'SSP']) {
@@ -25,7 +25,7 @@ describe('PhaseTrack', () => {
 
   it('labels the current phase by week and the others by length', () => {
     const { getByText, getAllByText } = render(
-      <PhaseTrack phase="SPP" week={2} weeksPerPhase={4} totalProgramWeeks={12} />,
+      <PhaseTrack phase="SPP" week={2} weeksPerPhase={4} />,
       { wrapper: AllTheProviders }
     )
     expect(getByText('Week 2 of 4', hidden)).toBeTruthy()
@@ -33,27 +33,25 @@ describe('PhaseTrack', () => {
   })
 
   it('fills earlier phases, part of the current one, and none of the later', () => {
-    const { getByTestId } = render(
-      <PhaseTrack phase="SPP" week={2} weeksPerPhase={4} totalProgramWeeks={12} />,
-      { wrapper: AllTheProviders }
-    )
+    const { getByTestId } = render(<PhaseTrack phase="SPP" week={2} weeksPerPhase={4} />, {
+      wrapper: AllTheProviders,
+    })
     expect(getByTestId('phase-track-fill-GPP', hidden)).toHaveStyle({ width: '100%' })
     expect(getByTestId('phase-track-fill-SPP', hidden)).toHaveStyle({ width: '50%' })
     expect(getByTestId('phase-track-fill-SSP', hidden)).toHaveStyle({ width: '0%' })
   })
 
   it('marks the current phase in the brighter text colour', () => {
-    const { getByText } = render(
-      <PhaseTrack phase="SSP" week={1} weeksPerPhase={4} totalProgramWeeks={12} />,
-      { wrapper: AllTheProviders }
-    )
+    const { getByText } = render(<PhaseTrack phase="SSP" week={1} weeksPerPhase={4} />, {
+      wrapper: AllTheProviders,
+    })
     expect(getByText('SSP', hidden)).toHaveStyle({ color: '#F8FAFC' })
     expect(getByText('GPP', hidden)).toHaveStyle({ color: '#94A3B8' })
   })
 
   it('is one progress bar with one spoken label', () => {
     const { getByRole, queryByText } = render(
-      <PhaseTrack phase="GPP" week={3} weeksPerPhase={4} totalProgramWeeks={12} />,
+      <PhaseTrack phase="GPP" week={3} weeksPerPhase={4} />,
       { wrapper: AllTheProviders }
     )
     const bar = getByRole('progressbar')
