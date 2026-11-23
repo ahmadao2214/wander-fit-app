@@ -39,6 +39,7 @@ jest.mock('../../convex/_generated/api', () => ({
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ back: jest.fn(), push: jest.fn(), replace: jest.fn() }),
+  useIsFocused: () => true,
 }))
 
 jest.mock('react-native-safe-area-context', () => ({

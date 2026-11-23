@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Keyboard, Platform } from 'react-native'
 import { YStack, XStack, Text, Button, Input, Sheet, H3, Separator, Spinner } from 'tamagui'
 import { Supporting } from './Typography'
 import { X, Check, Dumbbell } from '@tamagui/lucide-icons'
@@ -146,8 +147,28 @@ export function OneRepMaxSheet({
 
   const handleSave = mode === 'single' ? handleSaveSingle : handleSaveBulk
 
-  // Snap points: taller for bulk mode
-  const snapPoints = mode === 'bulk' ? [70] : [45]
+  // The number pad has no Done key and covers the lower half of the screen, so
+  // the sheet rises while it is up, and its body scrolls with room under it for
+  // the keyboard: Save can always be brought above it (AGENTS.md, "Sheet
+  // Components with Inputs").
+  const [keyboardHeight, setKeyboardHeight] = useState(0)
+  const isKeyboardVisible = keyboardHeight > 0
+  useEffect(() => {
+    if (Platform.OS === 'web') return
+    const showSub = Keyboard.addListener('keyboardDidShow', (event) =>
+      setKeyboardHeight(event.endCoordinates.height)
+    )
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => setKeyboardHeight(0))
+    return () => {
+      showSub.remove()
+      hideSub.remove()
+    }
+  }, [])
+
+  // Snap points: taller for bulk mode, and taller again over the keyboard
+  const restingSnap = mode === 'bulk' ? 70 : 45
+  const keyboardSnap = mode === 'bulk' ? 92 : 80
+  const snapPoints = [isKeyboardVisible ? keyboardSnap : restingSnap]
 
   return (
     <Sheet
@@ -161,121 +182,137 @@ export function OneRepMaxSheet({
       <Sheet.Frame p="$4" bg="$background" width="100%">
         <Sheet.Handle />
 
-        <YStack gap="$4" pt="$2">
-          {/* Header */}
-          <XStack items="center" justify="space-between">
-            <YStack>
-              <H3 fontFamily="$body">{mode === 'single' ? 'Set 1RM' : 'Set Your Maxes'}</H3>
-              {mode === 'single' && exercise && (
-                <Text fontSize={13} fontFamily="$body" color="$color9">
-                  {exercise.name}
-                </Text>
-              )}
-            </YStack>
-            <Button size="$3" circular bg="$color3" icon={X} onPress={() => onOpenChange(false)} />
-          </XStack>
+        <Sheet.ScrollView
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ pb: keyboardHeight }}
+        >
+          <YStack gap="$4" pt="$2">
+            {/* Header */}
+            <XStack items="center" justify="space-between">
+              <YStack>
+                <H3 fontFamily="$body">{mode === 'single' ? 'Set 1RM' : 'Set Your Maxes'}</H3>
+                {mode === 'single' && exercise && (
+                  <Text fontSize={13} fontFamily="$body" color="$color9">
+                    {exercise.name}
+                  </Text>
+                )}
+              </YStack>
+              <Button
+                size="$3"
+                circular
+                bg="$color3"
+                icon={X}
+                onPress={() => onOpenChange(false)}
+                aria-label="Close"
+                testID="max-sheet-close"
+              />
+            </XStack>
 
-          <Separator />
+            <Separator />
 
-          {/* Single Mode: Weight Input */}
-          {mode === 'single' && (
-            <YStack gap="$2">
-              <Text fontFamily="$body" fontWeight="600" fontSize={14} color="$color11">
-                Max Weight
-              </Text>
-              <XStack items="center" gap="$2">
-                <Input
-                  flex={1}
-                  size="$5"
-                  placeholder="Enter weight"
-                  keyboardType="numeric"
-                  value={weight}
-                  onChangeText={handleWeightChange}
-                  fontFamily="$body"
-                  fontSize={18}
-                  borderColor={error ? '$red8' : undefined}
-                />
-                <Text fontFamily="$body" color="$color9" fontSize={16}>
-                  lbs
+            {/* Single Mode: Weight Input */}
+            {mode === 'single' && (
+              <YStack gap="$2">
+                <Text fontFamily="$body" fontWeight="600" fontSize={14} color="$color11">
+                  Max Weight
                 </Text>
-              </XStack>
-              {error ? (
-                <Text fontSize={12} fontFamily="$body" color="$red10" pt="$1">
-                  {error}
-                </Text>
-              ) : (
-                <Text fontSize={12} fontFamily="$body" color="$color10" pt="$1">
-                  Your one rep max for this exercise
-                </Text>
-              )}
-            </YStack>
-          )}
+                <XStack items="center" gap="$2">
+                  <Input
+                    flex={1}
+                    size="$5"
+                    placeholder="Enter weight"
+                    keyboardType="numeric"
+                    value={weight}
+                    onChangeText={handleWeightChange}
+                    fontFamily="$body"
+                    fontSize={18}
+                    borderColor={error ? '$red8' : undefined}
+                  />
+                  <Text fontFamily="$body" color="$color9" fontSize={16}>
+                    lbs
+                  </Text>
+                </XStack>
+                {error ? (
+                  <Text fontSize={12} fontFamily="$body" color="$red10" pt="$1">
+                    {error}
+                  </Text>
+                ) : (
+                  <Text fontSize={12} fontFamily="$body" color="$color10" pt="$1">
+                    Your one rep max for this exercise
+                  </Text>
+                )}
+              </YStack>
+            )}
 
-          {/* Bulk Mode: Multiple Inputs */}
-          {mode === 'bulk' && exercises && (
-            <YStack gap="$4">
-              {exercises.map((ex) => {
-                const fieldError = bulkErrors[ex.slug]
-                return (
-                  <YStack key={ex.slug} gap="$2">
-                    <XStack items="center" gap="$2">
-                      <Dumbbell size={16} color="$color10" />
-                      <Text fontFamily="$body" fontWeight="600" fontSize={14} color="$color11">
-                        {ex.name}
-                      </Text>
-                    </XStack>
-                    <XStack items="center" gap="$2">
-                      <Input
-                        flex={1}
-                        size="$4"
-                        placeholder="—"
-                        keyboardType="numeric"
-                        value={bulkWeights[ex.slug] || ''}
-                        onChangeText={(text) => handleBulkWeightChange(ex.slug, text)}
-                        fontFamily="$body"
-                        borderColor={fieldError ? '$red8' : undefined}
-                      />
-                      <Text fontFamily="$body" color="$color9">
-                        lbs
-                      </Text>
-                    </XStack>
-                    {fieldError && <Supporting color="$red10">{fieldError}</Supporting>}
-                  </YStack>
-                )
-              })}
-            </YStack>
-          )}
+            {/* Bulk Mode: Multiple Inputs */}
+            {mode === 'bulk' && exercises && (
+              <YStack gap="$4">
+                {exercises.map((ex) => {
+                  const fieldError = bulkErrors[ex.slug]
+                  return (
+                    <YStack key={ex.slug} gap="$2">
+                      <XStack items="center" gap="$2">
+                        <Dumbbell size={16} color="$color10" />
+                        <Text fontFamily="$body" fontWeight="600" fontSize={14} color="$color11">
+                          {ex.name}
+                        </Text>
+                      </XStack>
+                      <XStack items="center" gap="$2">
+                        <Input
+                          flex={1}
+                          size="$4"
+                          placeholder="—"
+                          keyboardType="numeric"
+                          value={bulkWeights[ex.slug] || ''}
+                          onChangeText={(text) => handleBulkWeightChange(ex.slug, text)}
+                          testID={`max-input-${ex.slug}`}
+                          fontFamily="$body"
+                          borderColor={fieldError ? '$red8' : undefined}
+                        />
+                        <Text fontFamily="$body" color="$color9">
+                          lbs
+                        </Text>
+                      </XStack>
+                      {fieldError && <Supporting color="$red10">{fieldError}</Supporting>}
+                    </YStack>
+                  )
+                })}
+              </YStack>
+            )}
 
-          {/* Action Buttons */}
-          <XStack gap="$3" pt="$2">
-            <Button
-              flex={1}
-              size="$4"
-              bg="$color3"
-              color="$color11"
-              fontFamily="$body"
-              fontWeight="600"
-              onPress={() => onOpenChange(false)}
-              disabled={isSaving}
-            >
-              Cancel
-            </Button>
-            <Button
-              flex={2}
-              size="$4"
-              bg={hasErrors ? '$color6' : '$primary'}
-              color="white"
-              icon={isSaving ? undefined : Check}
-              fontFamily="$body"
-              fontWeight="600"
-              onPress={handleSave}
-              disabled={isSaving || hasErrors}
-              opacity={hasErrors ? 0.6 : 1}
-            >
-              {isSaving ? <Spinner color="white" /> : 'Save'}
-            </Button>
-          </XStack>
-        </YStack>
+            {/* Action Buttons */}
+            <XStack gap="$3" pt="$2">
+              <Button
+                flex={1}
+                size="$4"
+                bg="$color3"
+                color="$color11"
+                fontFamily="$body"
+                fontWeight="600"
+                onPress={() => onOpenChange(false)}
+                disabled={isSaving}
+              >
+                Cancel
+              </Button>
+              <Button
+                flex={2}
+                size="$4"
+                bg={hasErrors ? '$color6' : '$primary'}
+                color="white"
+                icon={isSaving ? undefined : Check}
+                fontFamily="$body"
+                fontWeight="600"
+                onPress={handleSave}
+                testID="max-save"
+                disabled={isSaving || hasErrors}
+                opacity={hasErrors ? 0.6 : 1}
+              >
+                {isSaving ? <Spinner color="white" /> : 'Save'}
+              </Button>
+            </XStack>
+          </YStack>
+        </Sheet.ScrollView>
       </Sheet.Frame>
     </Sheet>
   )
