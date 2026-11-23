@@ -1587,28 +1587,35 @@ export function sharedBackendAction({ deployedTree = '', headTree = '', mainTree
   return 'reuse-stale'
 }
 
-// Pure: the paths whose content is the deployed backend: all of convex/, the
-// files Convex imports from outside it (e.g. lib/sessionTiming.ts), and
-// convex.json.
+// Pure: the paths whose content is the deployed backend: convex/ (listed per
+// commit, so a file main adds is in main's hash), the files Convex imports
+// from outside it (e.g. lib/sessionTiming.ts), and the config and dependency
+// files. A new outside import also edits a convex/ file, so it changes the hash.
 export function backendFingerprintPaths(runtimeFiles = []) {
   const outside = runtimeFiles.filter((file) => !file.startsWith('convex/'))
-  return [...new Set(['convex', 'convex.json', ...outside])].sort()
+  return [...new Set(['convex', ...CONVEX_CONFIG_FILES, ...outside])].sort()
 }
 
-// Pure: one hash over `git ls-tree` output (object ids per path), so any change
-// to a listed file or anything under convex/ changes it.
+// Same exclusions as needsConvexPreview: these never reach the deployment, so
+// a shared PR that edits only them still matches main.
+function isBackendFingerprintFile(file) {
+  return !file.startsWith('convex/__tests__/') && file !== 'convex/README.md'
+}
+
+// Pure: one hash over `git ls-tree -r` output (object id per file), so any
+// change to a backend file, or a file added or removed, changes it.
 export function fingerprintFromLsTree(stdout) {
   const lines = (stdout || '')
     .split('\n')
     .map((line) => line.trim())
-    .filter(Boolean)
+    .filter((line) => line && isBackendFingerprintFile(line.slice(line.indexOf('\t') + 1)))
     .sort()
   if (lines.length === 0) return ''
   return createHash('sha256').update(lines.join('\n')).digest('hex')
 }
 
 function backendFingerprint(ref, paths = backendFingerprintPaths(convexRuntimeFiles())) {
-  const result = spawnSync('git', ['ls-tree', ref, '--', ...paths], {
+  const result = spawnSync('git', ['ls-tree', '-r', ref, '--', ...paths], {
     cwd: root,
     encoding: 'utf8',
   })
@@ -1669,11 +1676,10 @@ function deployBackend() {
       const { env } = convexInvocation()
       const deployed = convexOutput(['env', 'get', DEPLOYED_TREE_VAR], env)
       const paths = backendFingerprintPaths(convexRuntimeFiles())
-      const action = sharedBackendAction({
-        deployedTree: deployed.status === 0 ? deployed.stdout : '',
-        headTree: backendFilesDirty(paths) ? '' : backendFingerprint('HEAD', paths),
-        mainTree: mainBackendFingerprint(paths),
-      })
+      const deployedTree = deployed.status === 0 ? deployed.stdout : ''
+      const headTree = backendFilesDirty(paths) ? '' : backendFingerprint('HEAD', paths)
+      const mainTree = headTree && headTree !== deployedTree ? mainBackendFingerprint(paths) : ''
+      const action = sharedBackendAction({ deployedTree, headTree, mainTree })
       if (action === 'catch-up') {
         console.log("wander-fit-e2e is behind main's backend code; deploying main's code first")
         deployDev()

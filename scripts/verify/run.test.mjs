@@ -831,20 +831,38 @@ describe('sharedBackendAction', () => {
 })
 
 describe('backend fingerprint', () => {
-  it('covers convex/, convex.json and the files Convex imports from outside it', () => {
+  it('covers convex/, config and dependency files, and the files Convex imports', () => {
     expect(
       backendFingerprintPaths(['convex/a.ts', 'lib/sessionTiming.ts', 'lib/sessionTiming.ts'])
-    ).toEqual(['convex', 'convex.json', 'lib/sessionTiming.ts'])
+    ).toEqual(['bun.lock', 'convex', 'convex.json', 'lib/sessionTiming.ts', 'package.json'])
   })
 
+  const listing = (...rows) => rows.map(([id, file]) => `100644 blob ${id}\t${file}`).join('\n')
+
   it('changes when an imported file outside convex/ changes', () => {
-    const before = 'tree aaa\tconvex\nblob bbb\tlib/sessionTiming.ts'
-    const after = 'tree aaa\tconvex\nblob ccc\tlib/sessionTiming.ts'
+    const before = listing(['aaa', 'convex/a.ts'], ['bbb', 'lib/sessionTiming.ts'])
+    const after = listing(['aaa', 'convex/a.ts'], ['ccc', 'lib/sessionTiming.ts'])
     expect(fingerprintFromLsTree(before)).not.toBe(fingerprintFromLsTree(after))
-    expect(fingerprintFromLsTree(before)).toBe(
-      fingerprintFromLsTree('blob bbb\tlib/sessionTiming.ts\ntree aaa\tconvex\n')
-    )
     expect(fingerprintFromLsTree('')).toBe('')
+  })
+
+  it('declines catch-up when main adds a standalone Convex file the PR lacks', () => {
+    const pr = fingerprintFromLsTree(listing(['aaa', 'convex/a.ts']))
+    const main = fingerprintFromLsTree(listing(['aaa', 'convex/a.ts'], ['ddd', 'convex/new.ts']))
+    expect(pr).not.toBe(main)
+    expect(sharedBackendAction({ deployedTree: '', headTree: pr, mainTree: main })).toBe(
+      'reuse-stale'
+    )
+  })
+
+  it('ignores convex tests and the convex README, like the preview selector', () => {
+    const base = listing(['aaa', 'convex/a.ts'])
+    const withTests = listing(
+      ['aaa', 'convex/a.ts'],
+      ['eee', 'convex/__tests__/a.test.ts'],
+      ['fff', 'convex/README.md']
+    )
+    expect(fingerprintFromLsTree(withTests)).toBe(fingerprintFromLsTree(base))
   })
 
   it('a dirty deploy never matches a commit, so the next shared run catches up', () => {
