@@ -4,6 +4,10 @@ Routine calls the team made without asking, one line each, newest first. Anythin
 
 Format: `YYYY-MM-DD · who · decision · why`.
 
+- 2026-11-23 · Lead · Profile's facts group keeps the label "Training info", not the spec's "Training" (Profile refresh) · six Maestro flows wait for that text to know Profile has loaded.
+- 2026-11-23 · Lead · Group labels on Profile and App settings stay at SectionTitle size, not the mockup's smaller label (Profile refresh) · VoiceOver still gets a heading and both screens match the rest of the app.
+- 2026-11-23 · Builder 2 · The Privacy switches take the shared row: label weight 500 not 600, minimum height 52 not 60 (Profile refresh) · one row style, as the spec asks.
+- 2026-11-23 · Builder 2 · SettingsRow has a supportingTestID, and a row with a control puts no label on the row itself (Profile refresh) · `analytics-opt-in-status` is read by a test, and Maestro's "Share anonymous usage analytics" must still match only the Switch.
 - 2026-11-23 · Builder 1 · PhaseTrack colour props are typed GetThemeValueForKey<'color'>, not ColorTokens (Profile refresh) · the header's fixed hex and rgba values aren't tokens; the type still takes tokens like $brand5.
 - 2026-11-23 · Builder 1 · phaseTrack also returns the spoken label, and the progress bar sets no min/max/now value (Profile refresh) · the label is pure logic and tested in lib; a value would make VoiceOver read the position twice.
 - 2026-11-23 · Builder 1 · A weeksPerPhase or totalProgramWeeks below 1 uses the fallback, and a fractional week rounds down (Profile refresh) · the track never divides by zero or shows "Week 2.5".
