@@ -380,9 +380,7 @@ describe('users.deleteMyAccount', () => {
     const { t, athlete } = await setup()
     const fetchSpy = clerkOk()
 
-    const result = await t
-      .withIdentity(ATHLETE_IDENTITY)
-      .action(api.users.deleteMyAccount, {})
+    const result = await t.withIdentity(ATHLETE_IDENTITY).action(api.users.deleteMyAccount, {})
 
     expect(result).toEqual({ deleted: true })
     expect(fetchSpy).toHaveBeenCalledTimes(1)
@@ -397,9 +395,7 @@ describe('users.deleteMyAccount', () => {
     const { t, athlete } = await setup()
     jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 404 }))
 
-    const result = await t
-      .withIdentity(ATHLETE_IDENTITY)
-      .action(api.users.deleteMyAccount, {})
+    const result = await t.withIdentity(ATHLETE_IDENTITY).action(api.users.deleteMyAccount, {})
 
     expect(result).toEqual({ deleted: true })
     expect(await rowsFor(t, athlete, 'athlete@example.com')).toEqual(allZero)
@@ -451,9 +447,7 @@ describe('users.deleteMyAccount', () => {
     clerkOk()
     await t.mutation(internal.users.purgeAthleteRecords, { clerkId: 'clerk_athlete' })
 
-    const result = await t
-      .withIdentity(ATHLETE_IDENTITY)
-      .action(api.users.deleteMyAccount, {})
+    const result = await t.withIdentity(ATHLETE_IDENTITY).action(api.users.deleteMyAccount, {})
     expect(result).toEqual({ deleted: true })
   })
 })
