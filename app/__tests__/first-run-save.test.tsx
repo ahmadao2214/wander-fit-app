@@ -234,7 +234,7 @@ describe('Save your plan', () => {
       Platform.OS = 'web'
       await show()
       await press('save-plan-accept')
-    await press('save-plan-google')
+      await press('save-plan-google')
       expect(JSON.parse(sessionStorage.getItem('wanderfit.firstRunDraft.v1')!)).toEqual(
         testDraft.current.current()
       )
