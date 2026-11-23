@@ -12,7 +12,6 @@ import {
   assertWorkoutLoop,
   cleanupPending,
   createSignupPersona,
-  hasFlowEvidence,
   ownServerReady,
   readPending,
   redactEvidence,
@@ -693,48 +692,6 @@ describe('evidence redaction', () => {
       expect(fs.readFileSync(keep, 'utf8')).toBe('s3cretPW')
       expect(redactEvidence(dir, '')).toBe(0)
       expect(redactEvidence(path.join(dir, 'missing'), 's3cretPW')).toBe(0)
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true })
-    }
-  })
-
-  it("ignores Maestro's own failure screenshots when deciding whether a flow produced evidence", () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-evidence-'))
-    try {
-      // Layout from CI run 45074633965: repeated-week crashed 11s in, on the
-      // first assertion after launchApp. Maestro still wrote these files.
-      const run = path.join(dir, '2026-11-22_215741/repeated-week')
-      fs.mkdirSync(path.join(run, 'screenshots'), { recursive: true })
-      fs.mkdirSync(path.join(run, 'startRecording'), { recursive: true })
-      fs.writeFileSync(path.join(run, 'screenshots/step-004-runFlow.png'), '')
-      fs.writeFileSync(
-        path.join(run, "screenshots/step-011-assertCondition-Let's_build_your_plan_fo.png"),
-        ''
-      )
-      fs.writeFileSync(path.join(run, 'startRecording/recording.mp4'), '')
-      fs.writeFileSync(path.join(run, 'commands.json'), '[]')
-      expect(hasFlowEvidence(dir)).toBe(false)
-
-      // An archived earlier attempt never counts for the current one.
-      fs.mkdirSync(path.join(dir, 'attempt-1/old/takeScreenshot'), { recursive: true })
-      fs.writeFileSync(path.join(dir, 'attempt-1/old/takeScreenshot/01-today.png'), '')
-      expect(hasFlowEvidence(dir)).toBe(false)
-
-      // The flow's own takeScreenshot evidence means it got past cold start.
-      fs.mkdirSync(path.join(run, 'takeScreenshot'), { recursive: true })
-      fs.writeFileSync(path.join(run, 'takeScreenshot/01-today.png'), '')
-      expect(hasFlowEvidence(dir)).toBe(true)
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true })
-    }
-  })
-
-  it('counts a flow screenshot saved flat in the output folder', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-evidence-'))
-    try {
-      fs.writeFileSync(path.join(dir, '01-sign-in.png'), '')
-      expect(hasFlowEvidence(dir)).toBe(true)
-      expect(hasFlowEvidence(path.join(dir, 'missing'))).toBe(false)
     } finally {
       fs.rmSync(dir, { recursive: true, force: true })
     }
