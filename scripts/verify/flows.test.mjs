@@ -589,3 +589,45 @@ describe('sharding and affected-flow selection', () => {
     }
   })
 })
+
+describe('Maestro install in E2E workflows', () => {
+  const nightly = parse(
+    fs.readFileSync(path.join(root, '.github/workflows/nightly-e2e.yml'), 'utf8')
+  )
+  const jobsWithMaestro = [
+    ['web-e2e-run shard', shardJob],
+    ...Object.entries(nightly.jobs).filter(([, job]) =>
+      (job.steps || []).some((step) => step.name === 'Install Maestro')
+    ),
+  ]
+
+  it('installs one pinned, cached Maestro instead of piping the installer into bash', () => {
+    expect(jobsWithMaestro.length).toBeGreaterThan(1)
+    for (const [name, job] of jobsWithMaestro) {
+      const steps = job.steps || []
+      const names = steps.map((step) => step.name)
+      const cache = steps.find((step) => step.name === 'Cache Maestro')
+      const install = steps.find((step) => step.name === 'Install Maestro')
+      expect({ name, cachePath: cache?.with?.path, key: cache?.with?.key }).toEqual({
+        name,
+        cachePath: '~/.maestro',
+        key: "maestro-${{ runner.os }}-${{ hashFiles('scripts/ci/install-maestro.sh') }}",
+      })
+      expect({ name, if: install.if, run: install.run }).toEqual({
+        name,
+        if: "steps.maestro-cache.outputs.cache-hit != 'true'",
+        run: 'bash scripts/ci/install-maestro.sh',
+      })
+      expect(names.indexOf('Cache Maestro')).toBeLessThan(names.indexOf('Install Maestro'))
+      expect(names).toContain('Add Maestro to PATH')
+      expect(steps.filter((step) => /get\.maestro\.mobile\.dev/.test(step.run || ''))).toEqual([])
+    }
+  })
+
+  it('pins a Maestro version and checksum in the installer', () => {
+    const script = fs.readFileSync(path.join(root, 'scripts/ci/install-maestro.sh'), 'utf8')
+    expect(script).toMatch(/^MAESTRO_VERSION="\d+\.\d+\.\d+"$/m)
+    expect(script).toMatch(/^MAESTRO_SHA256="[0-9a-f]{64}"$/m)
+    expect(script).toMatch(/--retry-all-errors/)
+  })
+})

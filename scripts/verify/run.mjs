@@ -332,9 +332,7 @@ export function evaluateDoctor(facts) {
   }
   lines.push(`maestro: ${facts.maestro || 'missing'}`)
   if (!facts.maestro) {
-    problems.push(
-      'Maestro is not installed. Install it with: curl -Ls "https://get.maestro.mobile.dev" | bash'
-    )
+    problems.push('Maestro is not installed. Install it with: bash scripts/ci/install-maestro.sh')
   }
   if (!facts.java) problems.push('Java is not installed. Maestro needs Java 17.')
   if (facts.convexError) {
