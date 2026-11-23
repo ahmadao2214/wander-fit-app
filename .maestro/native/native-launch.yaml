@@ -25,7 +25,8 @@ appId: com.offseason.asrafit
 - takeScreenshot: native-launch-sign-in
 - stopApp
 - launchApp
+# A cold start on an Android emulator takes ~36 s, same budget as the first launch.
 - extendedWaitUntil:
     visible: "Let's build your plan for this season."
-    timeout: 30000
+    timeout: 90000
 - takeScreenshot: native-relaunch-first-run

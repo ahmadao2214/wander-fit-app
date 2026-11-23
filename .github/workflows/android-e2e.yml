@@ -1,0 +1,97 @@
+# Android E2E (#83): builds a release APK against the wander-fit-e2e backend
+# and runs the native Maestro flows on an Android emulator. It runs nightly, on
+# manual dispatch, and on PRs labelled run-native-e2e. It is advisory: no
+# branch protection rule requires it.
+#
+# It never deploys. It uses the backend main last deployed, like a shared-mode
+# PR, so it takes no e2e-backend lock and never makes PRs queue behind a
+# 20-30 minute emulator run.
+name: Android E2E
+
+on:
+  schedule:
+    - cron: "47 7 * * *"
+  workflow_dispatch:
+  pull_request:
+    types: [labeled, synchronize, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android-e2e:
+    name: Android E2E
+    # PRs run it only with the label, and never from forks (no variables).
+    if: >-
+      ${{ github.event_name != 'pull_request' ||
+      (contains(github.event.pull_request.labels.*.name, 'run-native-e2e') &&
+      github.event.pull_request.head.repo.full_name == github.repository) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      EXPO_PUBLIC_CONVEX_URL_E2E: ${{ vars.EXPO_PUBLIC_CONVEX_URL_E2E }}
+      EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      ANDROID_ABI: x86_64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.5
+      - name: Cache Bun packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            bun-${{ runner.os }}-
+      - run: bun install --frozen-lockfile
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+      - name: Build release APK
+        run: node scripts/verify/android.mjs build
+      - name: Cache Maestro
+        id: maestro-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.maestro
+          key: maestro-${{ runner.os }}-${{ hashFiles('scripts/ci/install-maestro.sh') }}
+      - name: Install Maestro
+        if: steps.maestro-cache.outputs.cache-hit != 'true'
+        run: bash scripts/ci/install-maestro.sh
+      - name: Add Maestro to PATH
+        run: echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      # KVM gives the x86_64 emulator hardware acceleration on Ubuntu runners.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run Android flows
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: node scripts/verify/android.mjs run
+      - name: Upload Android evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-android
+          path: e2e-artifacts/android/
+          if-no-files-found: warn
+          retention-days: 14

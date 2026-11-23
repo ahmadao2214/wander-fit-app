@@ -13,6 +13,8 @@
     ".claude/**",
     "patches/**",
     "dist-verify/**",
+    "dist-android/**",
+    "android/**",
     "e2e-artifacts/**",
     "tsconfig.base.json",
     "assets/lottie/**"
