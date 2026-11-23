@@ -161,7 +161,7 @@ export function findFirstTrainingDate(
   const startDayOfWeek = start.getDay()
 
   // Find the first training day on or after startDayOfWeek
-  let dayIndex = trainingDays.findIndex(d => d >= startDayOfWeek)
+  let dayIndex = trainingDays.findIndex((d) => d >= startDayOfWeek)
 
   if (dayIndex === -1) {
     // All training days are before startDayOfWeek in the week
@@ -218,7 +218,10 @@ export function getDateForWorkout(
 
   // Use findFirstTrainingDate to handle mid-week program starts
   // This ensures workouts start on the soonest training day (could be today)
-  const { date: firstTrainingDate, dayIndex: startDayIndex } = findFirstTrainingDate(start, sortedDays)
+  const { date: firstTrainingDate, dayIndex: startDayIndex } = findFirstTrainingDate(
+    start,
+    sortedDays
+  )
 
   let workoutCount = 0
   let currentDate = firstTrainingDate
@@ -228,10 +231,7 @@ export function getDateForWorkout(
     currentDayIndex = (currentDayIndex + 1) % sortedDays.length
     if (currentDayIndex === 0) {
       // Wrapped around to start of week - move to next calendar week
-      currentDate = addDays(
-        currentDate,
-        7 - (sortedDays[sortedDays.length - 1] - sortedDays[0])
-      )
+      currentDate = addDays(currentDate, 7 - (sortedDays[sortedDays.length - 1] - sortedDays[0]))
       currentDate = findNextDayOfWeek(currentDate, sortedDays[0])
     } else {
       // Move to next training day in same week
@@ -271,7 +271,10 @@ export function getWorkoutForDate(
   const start = startOfDay(programStartDate)
 
   // Use findFirstTrainingDate to handle mid-week program starts
-  const { date: firstTrainingDate, dayIndex: startDayIndex } = findFirstTrainingDate(start, sortedDays)
+  const { date: firstTrainingDate, dayIndex: startDayIndex } = findFirstTrainingDate(
+    start,
+    sortedDays
+  )
 
   if (targetDate < firstTrainingDate) {
     return null // Before program start
@@ -289,10 +292,7 @@ export function getWorkoutForDate(
     currentDayIndex = (currentDayIndex + 1) % sortedDays.length
     if (currentDayIndex === 0) {
       // Moving to next week - jump to the first training day
-      currentDate = addDays(
-        currentDate,
-        7 - (sortedDays[sortedDays.length - 1] - sortedDays[0])
-      )
+      currentDate = addDays(currentDate, 7 - (sortedDays[sortedDays.length - 1] - sortedDays[0]))
       currentDate = findNextDayOfWeek(currentDate, sortedDays[0])
     } else {
       const daysDiff = sortedDays[currentDayIndex] - sortedDays[currentDayIndex - 1]
@@ -398,11 +398,16 @@ export function getProgramEndDate(
   trainingDays: number[],
   weeksPerPhase: number = DEFAULT_WEEKS_PER_PHASE
 ): Date {
-  return getDateForWorkout(programStartDate, trainingDays, {
-    phase: 'SSP',
-    week: weeksPerPhase,
-    day: trainingDays.length,
-  }, weeksPerPhase)
+  return getDateForWorkout(
+    programStartDate,
+    trainingDays,
+    {
+      phase: 'SSP',
+      week: weeksPerPhase,
+      day: trainingDays.length,
+    },
+    weeksPerPhase
+  )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -120,9 +120,9 @@ describe('Web PostHog transport & payload scrubbing (S1, S2, S4)', () => {
 
       // S2: Zero localStorage writes and zero $opt_in / $opt_out events
       expect(localStorageWrites).toEqual([])
-      expect(
-        observedPayloads.some((p) => p.event === '$opt_in' || p.event === '$opt_out')
-      ).toBe(false)
+      expect(observedPayloads.some((p) => p.event === '$opt_in' || p.event === '$opt_out')).toBe(
+        false
+      )
 
       // Both $identify and workout_opened survived scrubbing (opted-out event was dropped)
       const eventNames = observedPayloads.map((p) => p.event)

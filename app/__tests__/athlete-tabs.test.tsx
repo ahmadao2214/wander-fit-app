@@ -26,16 +26,20 @@ jest.mock('react-native-safe-area-context', () => ({
 describe('athlete tab destinations', () => {
   beforeEach(() => jest.clearAllMocks())
 
-  it.each(['workout', 'training-science', 'settings'])('keeps %s reachable without a tab button', (name) => {
-    render(<AthleteLayout />)
+  it.each(['workout', 'training-science', 'settings'])(
+    'keeps %s reachable without a tab button',
+    (name) => {
+      render(<AthleteLayout />)
 
-    const screen = jest.requireMock('expo-router').Tabs.Screen.mock.calls
-      .map(([props]: [{ name: string; options: any }]) => props)
-      .find((props: { name: string }) => props.name === name)
+      const screen = jest
+        .requireMock('expo-router')
+        .Tabs.Screen.mock.calls.map(([props]: [{ name: string; options: any }]) => props)
+        .find((props: { name: string }) => props.name === name)
 
-    expect(screen.options.href).toBeUndefined()
-    expect(screen.options.hidden).not.toBe(true)
-    expect(screen.options.tabBarButton()).toBeNull()
-    expect(screen.options.tabBarItemStyle).toEqual({ display: 'none' })
-  })
+      expect(screen.options.href).toBeUndefined()
+      expect(screen.options.hidden).not.toBe(true)
+      expect(screen.options.tabBarButton()).toBeNull()
+      expect(screen.options.tabBarItemStyle).toEqual({ display: 'none' })
+    }
+  )
 })

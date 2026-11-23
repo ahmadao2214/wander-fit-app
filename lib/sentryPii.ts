@@ -24,10 +24,7 @@ export interface ResolvedSentryConfig {
  * In development (__DEV__), Sentry remains disabled unless
  * EXPO_PUBLIC_SENTRY_ENABLE_IN_DEV=true is explicitly set.
  */
-export function resolveSentryConfig(
-  env: SentryEnvInput,
-  isDev: boolean
-): ResolvedSentryConfig {
+export function resolveSentryConfig(env: SentryEnvInput, isDev: boolean): ResolvedSentryConfig {
   const dsn = env.EXPO_PUBLIC_SENTRY_DSN?.trim() || undefined
   const enableInDev = env.EXPO_PUBLIC_SENTRY_ENABLE_IN_DEV?.trim().toLowerCase() === 'true'
   const diagnosticsEnabled = env.EXPO_PUBLIC_SENTRY_DEBUG_TOOLS?.trim().toLowerCase() === 'true'
@@ -396,7 +393,10 @@ export function scrubSentryEvent(event: ErrorEvent, _hint?: EventHint): ErrorEve
 
   // 5. Tags
   if (next.tags) {
-    const cleanTags: Record<string, string | number | boolean | bigint | symbol | null | undefined> = {}
+    const cleanTags: Record<
+      string,
+      string | number | boolean | bigint | symbol | null | undefined
+    > = {}
     for (const [k, v] of Object.entries(next.tags)) {
       if (isSensitiveKey(k)) {
         cleanTags[k] = REDACTED

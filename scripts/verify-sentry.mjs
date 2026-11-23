@@ -37,8 +37,7 @@ function checkMetroConfig() {
   const source = fs.readFileSync(metroPath, 'utf8')
   const sentryMetro = require('@sentry/react-native/metro')
   const hasGetSentryExpoConfig =
-    typeof sentryMetro.getSentryExpoConfig === 'function' &&
-    source.includes('getSentryExpoConfig')
+    typeof sentryMetro.getSentryExpoConfig === 'function' && source.includes('getSentryExpoConfig')
   const disablesWebReplay = /includeWebReplay\s*:\s*false/.test(source)
   return {
     ok: hasGetSentryExpoConfig,
@@ -108,9 +107,7 @@ function main(argv = process.argv.slice(2)) {
   const upload = resolveUploadDecision(env)
   console.log(
     `[info] Source map upload: ${
-      upload.shouldUpload
-        ? `READY (${upload.org}/${upload.project})`
-        : `DORMANT (${upload.reason})`
+      upload.shouldUpload ? `READY (${upload.org}/${upload.project})` : `DORMANT (${upload.reason})`
     }`
   )
 

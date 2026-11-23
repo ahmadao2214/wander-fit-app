@@ -1,6 +1,6 @@
 /**
  * Workout Components
- * 
+ *
  * Components for the workout execution screen.
  */
 

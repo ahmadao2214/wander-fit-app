@@ -1,5 +1,12 @@
 import React, { useEffect, useState } from 'react'
-import { Pressable, Text as RNText, View, useWindowDimensions, type TextStyle, type ViewStyle } from 'react-native'
+import {
+  Pressable,
+  Text as RNText,
+  View,
+  useWindowDimensions,
+  type TextStyle,
+  type ViewStyle,
+} from 'react-native'
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -86,10 +93,7 @@ export function Headline({
 export function Label({ children, style }: { children: string; style?: TextStyle }) {
   return (
     <RNText
-      style={[
-        { fontFamily: BODY_BOLD, fontSize: 12, letterSpacing: 1.6, color: NIGHT.fg2 },
-        style,
-      ]}
+      style={[{ fontFamily: BODY_BOLD, fontSize: 12, letterSpacing: 1.6, color: NIGHT.fg2 }, style]}
     >
       {children.toUpperCase()}
     </RNText>
@@ -129,7 +133,11 @@ export function NightButton({
         style,
       ]}
     >
-      <RNText style={{ fontFamily: BODY_BOLD, fontSize: 17, color: disabled ? NIGHT.fg2 : '#FFFFFF' }}>{label}</RNText>
+      <RNText
+        style={{ fontFamily: BODY_BOLD, fontSize: 17, color: disabled ? NIGHT.fg2 : '#FFFFFF' }}
+      >
+        {label}
+      </RNText>
     </Pressable>
   )
 }
@@ -169,7 +177,15 @@ export function SportShape({
  * drifts slowly. With `fly` it arrives from the tile, growing in as the page
  * turns.
  */
-export function SportBackdrop({ name, moving, fly = false }: { name: string; moving: boolean; fly?: boolean }) {
+export function SportBackdrop({
+  name,
+  moving,
+  fly = false,
+}: {
+  name: string
+  moving: boolean
+  fly?: boolean
+}) {
   const enter = useSharedValue(fly && moving ? 0 : 1)
   const sway = useSharedValue(0)
   useEffect(() => {
@@ -179,7 +195,11 @@ export function SportBackdrop({ name, moving, fly = false }: { name: string; mov
       return
     }
     enter.value = withTiming(1, { duration: 620, easing: PAGE_EASE })
-    sway.value = withRepeat(withTiming(1, { duration: 14000, easing: Easing.inOut(Easing.sin) }), -1, true)
+    sway.value = withRepeat(
+      withTiming(1, { duration: 14000, easing: Easing.inOut(Easing.sin) }),
+      -1,
+      true
+    )
   }, [moving, enter, sway])
   const style = useAnimatedStyle(() => ({
     opacity: 1 - enter.value * 0.9,
@@ -202,7 +222,19 @@ export function SportBackdrop({ name, moving, fly = false }: { name: string; mov
   )
 }
 
-function DriftShape({ name, top, delay, seconds, moving }: { name: string; top: number; delay: number; seconds: number; moving: boolean }) {
+function DriftShape({
+  name,
+  top,
+  delay,
+  seconds,
+  moving,
+}: {
+  name: string
+  top: number
+  delay: number
+  seconds: number
+  moving: boolean
+}) {
   const { width } = useWindowDimensions()
   const x = useSharedValue(moving ? 0 : 0.45)
   useEffect(() => {
@@ -213,15 +245,30 @@ function DriftShape({ name, top, delay, seconds, moving }: { name: string; top: 
     // Start part-way across so the screen is never empty, then loop.
     const start = (delay % seconds) / seconds
     x.value = start
-    x.value = withTiming(1, { duration: (1 - start) * seconds * 1000, easing: Easing.linear }, (done) => {
-      if (!done) return
-      x.value = 0
-      x.value = withRepeat(withTiming(1, { duration: seconds * 1000, easing: Easing.linear }), -1, false)
-    })
+    x.value = withTiming(
+      1,
+      { duration: (1 - start) * seconds * 1000, easing: Easing.linear },
+      (done) => {
+        if (!done) return
+        x.value = 0
+        x.value = withRepeat(
+          withTiming(1, { duration: seconds * 1000, easing: Easing.linear }),
+          -1,
+          false
+        )
+      }
+    )
   }, [moving, delay, seconds, x])
-  const style = useAnimatedStyle(() => ({ transform: [{ translateX: -280 + x.value * (width + 300) }] }))
+  const style = useAnimatedStyle(() => ({
+    transform: [{ translateX: -280 + x.value * (width + 300) }],
+  }))
   return (
-    <Animated.View style={[{ position: 'absolute', top, left: 0, width: 240, height: 240, opacity: 0.14 }, style]}>
+    <Animated.View
+      style={[
+        { position: 'absolute', top, left: 0, width: 240, height: 240, opacity: 0.14 },
+        style,
+      ]}
+    >
       <SportShape name={name} size={240} />
     </Animated.View>
   )

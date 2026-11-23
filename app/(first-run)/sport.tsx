@@ -6,7 +6,14 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import { Spinner } from 'tamagui'
 import { api } from '../../convex/_generated/api'
 import { IntakeFrame } from '../../components/first-run/IntakeFrame'
-import { BODY, BODY_SEMI, Headline, Label, SportShape, headlineSize } from '../../components/first-run/Night'
+import {
+  BODY,
+  BODY_SEMI,
+  Headline,
+  Label,
+  SportShape,
+  headlineSize,
+} from '../../components/first-run/Night'
 import { PAGE_EASE } from '../../components/first-run/intakeMotion'
 import { useIntakeMotion } from '../../components/first-run/useIntakeMotion'
 import { useReachStep } from '../../components/first-run/useReachStep'
@@ -67,10 +74,22 @@ function SportTile({
         }}
       >
         {/* The tapped sport plays its move once; nothing else moves with it. */}
-        <SportShape name={name} size={icon} play={selected && moving && playKey !== null} playKey={playKey ?? 0} speed={1.6} />
+        <SportShape
+          name={name}
+          size={icon}
+          play={selected && moving && playKey !== null}
+          playKey={playKey ?? 0}
+          speed={1.6}
+        />
         <RNText
           numberOfLines={2}
-          style={{ fontFamily: BODY_SEMI, fontSize: 12, lineHeight: 15, color: NIGHT.fg, textAlign: 'center' }}
+          style={{
+            fontFamily: BODY_SEMI,
+            fontSize: 12,
+            lineHeight: 15,
+            color: NIGHT.fg,
+            textAlign: 'center',
+          }}
         >
           {name}
         </RNText>
@@ -93,7 +112,17 @@ export function TintLayer({ color, moving }: { color: string; moving: boolean })
   }, [color, moving, k])
   const style = useAnimatedStyle(() => ({ opacity: k.value }))
   return (
-    <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: layers.under }}>
+    <View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: layers.under,
+      }}
+    >
       <Animated.View style={[{ flex: 1, backgroundColor: layers.over }, style]} />
     </View>
   )
@@ -101,7 +130,10 @@ export function TintLayer({ color, moving }: { color: string; moving: boolean })
 
 function Grid({ children }: { children: ReactNode }) {
   return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 8 }} accessibilityRole="radiogroup">
+    <View
+      style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 8 }}
+      accessibilityRole="radiogroup"
+    >
       {children}
     </View>
   )
@@ -126,7 +158,9 @@ export default function FirstRunSport() {
   // matches sit right under the field instead of below the fold.
   const searching = search.trim() !== ''
   const shownRest = searching
-    ? (sports ?? []).filter((s) => matchesSearch(s.name, search)).sort((a, b) => a.name.localeCompare(b.name))
+    ? (sports ?? [])
+        .filter((s) => matchesSearch(s.name, search))
+        .sort((a, b) => a.name.localeCompare(b.name))
     : rest
 
   const select = (sport: { _id: string }) => {
@@ -135,7 +169,10 @@ export default function FirstRunSport() {
     void save({ sportId: sport._id })
   }
 
-  const tile = (s: { _id: string; name: string; gppCategoryId: number }, size: 'large' | 'small') => (
+  const tile = (
+    s: { _id: string; name: string; gppCategoryId: number },
+    size: 'large' | 'small'
+  ) => (
     <SportTile
       key={s._id}
       name={s.name}
@@ -147,7 +184,10 @@ export default function FirstRunSport() {
       onPress={() => select(s)}
     />
   )
-  const pad = (n: number) => Array.from({ length: (3 - (n % 3)) % 3 }, (_, i) => <View key={`pad-${i}`} style={{ width: '31.5%' }} />)
+  const pad = (n: number) =>
+    Array.from({ length: (3 - (n % 3)) % 3 }, (_, i) => (
+      <View key={`pad-${i}`} style={{ width: '31.5%' }} />
+    ))
 
   return (
     <IntakeFrame
@@ -211,7 +251,15 @@ export default function FirstRunSport() {
             }}
           />
           {shownRest.length === 0 ? (
-            <RNText style={{ fontFamily: BODY, fontSize: 15, color: NIGHT.fg2, textAlign: 'center', paddingVertical: 16 }}>
+            <RNText
+              style={{
+                fontFamily: BODY,
+                fontSize: 15,
+                color: NIGHT.fg2,
+                textAlign: 'center',
+                paddingVertical: 16,
+              }}
+            >
               No sport matches “{search.trim()}”. Pick General Fitness if yours isn't listed.
             </RNText>
           ) : (

@@ -52,7 +52,9 @@ describe('SettingsScreen', () => {
     expect(getByText('Privacy')).toBeTruthy()
     expect(getByText('Use with Claude')).toBeTruthy()
     expect(getByText('Share anonymous usage analytics')).toBeTruthy()
-    expect(getByTestId('analytics-opt-in-status').props.children).toMatch(/Never includes your name/)
+    expect(getByTestId('analytics-opt-in-status').props.children).toMatch(
+      /Never includes your name/
+    )
 
     fireEvent.press(getByLabelText('Back'))
     expect(mockNavigate).toHaveBeenCalledWith('/(athlete)/profile')

@@ -8,20 +8,20 @@
  * under the old names. Delete this file once no installed build older than
  * that change is in use.
  */
-import { query } from "./_generated/server";
-import { v } from "convex/values";
-import { loadHistory } from "./gppWorkoutSessions";
+import { query } from './_generated/server'
+import { v } from 'convex/values'
+import { loadHistory } from './gppWorkoutSessions'
 
 export const getHistory = query({
   args: {
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const sessions = await loadHistory(ctx, args.limit || 20);
+    const sessions = await loadHistory(ctx, args.limit || 20)
     return sessions.map((session) => ({
       ...session,
       totalDuration: session.totalDurationSeconds,
       workout: { name: session.templateName },
-    }));
+    }))
   },
-});
+})

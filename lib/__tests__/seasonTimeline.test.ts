@@ -1,4 +1,4 @@
-export {};
+export {}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SEASON TIMELINE HELPER TESTS
@@ -66,7 +66,11 @@ function isDateInRange(date: Date, today: Date, selectedDate: Date | null): bool
   if (!selectedDate) return false
   const dateTime = date.getTime()
   const todayTime = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()
-  const selectedTime = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()).getTime()
+  const selectedTime = new Date(
+    selectedDate.getFullYear(),
+    selectedDate.getMonth(),
+    selectedDate.getDate()
+  ).getTime()
   return dateTime >= todayTime && dateTime <= selectedTime
 }
 
@@ -78,7 +82,7 @@ describe('getWeeksBetween', () => {
 
   it('returns 1 for a day within the same week', () => {
     const start = new Date(2024, 5, 15) // Saturday
-    const end = new Date(2024, 5, 16)   // Sunday (1 day later)
+    const end = new Date(2024, 5, 16) // Sunday (1 day later)
     expect(getWeeksBetween(start, end)).toBe(1)
   })
 
@@ -101,8 +105,8 @@ describe('getWeeksBetween', () => {
   })
 
   it('returns 12 for approximately 3 months', () => {
-    const start = new Date(2024, 5, 1)  // June 1
-    const end = new Date(2024, 8, 1)    // September 1
+    const start = new Date(2024, 5, 1) // June 1
+    const end = new Date(2024, 8, 1) // September 1
     const weeks = getWeeksBetween(start, end)
     expect(weeks).toBeGreaterThanOrEqual(13)
     expect(weeks).toBeLessThanOrEqual(14)
@@ -110,15 +114,15 @@ describe('getWeeksBetween', () => {
 
   it('handles year boundaries', () => {
     const start = new Date(2024, 11, 15) // December 15, 2024
-    const end = new Date(2025, 0, 15)    // January 15, 2025
+    const end = new Date(2025, 0, 15) // January 15, 2025
     const weeks = getWeeksBetween(start, end)
     expect(weeks).toBeGreaterThanOrEqual(4)
     expect(weeks).toBeLessThanOrEqual(5)
   })
 
   it('handles leap year February', () => {
-    const start = new Date(2024, 1, 1)  // Feb 1, 2024 (leap year)
-    const end = new Date(2024, 1, 29)   // Feb 29, 2024
+    const start = new Date(2024, 1, 1) // Feb 1, 2024 (leap year)
+    const end = new Date(2024, 1, 29) // Feb 29, 2024
     expect(getWeeksBetween(start, end)).toBe(4)
   })
 })
@@ -127,9 +131,9 @@ describe('getMonthDays', () => {
   it('returns array divisible by 7 (full weeks)', () => {
     // Test several months
     const months = [
-      [2024, 0],  // January
-      [2024, 1],  // February
-      [2024, 5],  // June
+      [2024, 0], // January
+      [2024, 1], // February
+      [2024, 5], // June
       [2024, 11], // December
     ]
 
@@ -148,7 +152,7 @@ describe('getMonthDays', () => {
     // So startPadding = 1 (one day of December 31 before)
 
     // Count actual January days in the array
-    const januaryDays = days.filter(d => d.getMonth() === 0 && d.getFullYear() === 2024)
+    const januaryDays = days.filter((d) => d.getMonth() === 0 && d.getFullYear() === 2024)
     expect(januaryDays.length).toBe(31)
   })
 
@@ -172,13 +176,13 @@ describe('getMonthDays', () => {
 
   it('handles February in leap year correctly', () => {
     const days = getMonthDays(2024, 1) // February 2024 (leap year)
-    const februaryDays = days.filter(d => d.getMonth() === 1 && d.getFullYear() === 2024)
+    const februaryDays = days.filter((d) => d.getMonth() === 1 && d.getFullYear() === 2024)
     expect(februaryDays.length).toBe(29)
   })
 
   it('handles February in non-leap year correctly', () => {
     const days = getMonthDays(2023, 1) // February 2023 (not leap year)
-    const februaryDays = days.filter(d => d.getMonth() === 1 && d.getFullYear() === 2023)
+    const februaryDays = days.filter((d) => d.getMonth() === 1 && d.getFullYear() === 2023)
     expect(februaryDays.length).toBe(28)
   })
 })
@@ -323,10 +327,7 @@ describe('Animation Complete State', () => {
    * when the sport icon animation finishes
    */
 
-  function getFlagOpacity(
-    hasSportName: boolean,
-    animationComplete: boolean
-  ): number {
+  function getFlagOpacity(hasSportName: boolean, animationComplete: boolean): number {
     return hasSportName && animationComplete ? 0 : 1
   }
 

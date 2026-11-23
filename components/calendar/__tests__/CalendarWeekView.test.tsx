@@ -2,23 +2,40 @@ import React from 'react'
 import { render, fireEvent } from '@testing-library/react-native'
 import { TamaguiProvider } from 'tamagui'
 import config from '../../../tamagui.config'
-import { CalendarWeekView, CalendarWeekViewProps, CalendarWorkout, clipToViewport } from '../CalendarWeekView'
+import {
+  CalendarWeekView,
+  CalendarWeekViewProps,
+  CalendarWorkout,
+  clipToViewport,
+} from '../CalendarWeekView'
 import { formatDateISO, startOfWeek, addDays } from '../../../lib/calendarUtils'
 
 // The day row is what's under test here, not the gesture-handler card
 jest.mock('../DraggableWorkoutCard', () => ({
-  DraggableWorkoutCard: ({ name, moveTargets, onMove }: {
+  DraggableWorkoutCard: ({
+    name,
+    moveTargets,
+    onMove,
+  }: {
     name: string
     moveTargets?: { dateISO: string; label: string }[]
     onMove?: (dateISO: string) => void
   }) => {
     const React = require('react')
     const { Text } = require('react-native')
-    return React.createElement(Text, {
-      testID: `card-${name}`,
-      accessibilityActions: moveTargets?.map((t) => ({ name: t.dateISO, label: `Move to ${t.label}` })),
-      onAccessibilityAction: (e: { nativeEvent: { actionName: string } }) => onMove?.(e.nativeEvent.actionName),
-    }, name)
+    return React.createElement(
+      Text,
+      {
+        testID: `card-${name}`,
+        accessibilityActions: moveTargets?.map((t) => ({
+          name: t.dateISO,
+          label: `Move to ${t.label}`,
+        })),
+        onAccessibilityAction: (e: { nativeEvent: { actionName: string } }) =>
+          onMove?.(e.nativeEvent.actionName),
+      },
+      name
+    )
   },
 }))
 
@@ -74,7 +91,9 @@ describe('CalendarWeekView', () => {
   })
 
   it('puts each workout on its own day and marks the other days Rest', () => {
-    const { getByTestId, getAllByText } = render(<CalendarWeekView {...props} />, { wrapper: AllTheProviders })
+    const { getByTestId, getAllByText } = render(<CalendarWeekView {...props} />, {
+      wrapper: AllTheProviders,
+    })
     expect(getByTestId(`week-day-${iso[1]}`)).toHaveTextContent(/Lower Body Foundation/)
     expect(getByTestId(`week-day-${iso[3]}`)).toHaveTextContent(/Upper Push\/Pull/)
     expect(getByTestId(`week-day-${iso[5]}`)).toHaveTextContent(/Power & Conditioning/)
@@ -83,7 +102,9 @@ describe('CalendarWeekView', () => {
 
   it('names today for screen readers', () => {
     const today = new Date()
-    const { getAllByLabelText } = render(<CalendarWeekView {...props} />, { wrapper: AllTheProviders })
+    const { getAllByLabelText } = render(<CalendarWeekView {...props} />, {
+      wrapper: AllTheProviders,
+    })
     const todays = getAllByLabelText(/, today/)
     expect(todays).toHaveLength(1)
     expect(todays[0].props.accessibilityLabel).toContain(`${today.getDate()}`)
@@ -100,23 +121,30 @@ describe('CalendarWeekView', () => {
     }
     // React Native's Jest View keeps measureInWindow on its prototype
     const { View } = require('react-native')
-    const measure = jest
-      .spyOn(View.prototype, 'measureInWindow')
-      .mockImplementation(function (this: { props: { testID?: string } }, ...args: unknown[]) {
-        const cb = args[0] as (x: number, y: number, w: number, h: number) => void
-        const r = this.props.testID ? rects[this.props.testID] : undefined
-        if (r) cb(...r)
-      })
+    const measure = jest.spyOn(View.prototype, 'measureInWindow').mockImplementation(function (
+      this: { props: { testID?: string } },
+      ...args: unknown[]
+    ) {
+      const cb = args[0] as (x: number, y: number, w: number, h: number) => void
+      const r = this.props.testID ? rects[this.props.testID] : undefined
+      if (r) cb(...r)
+    })
     const onDropZoneLayout = jest.fn()
     const onDropZoneUnregister = jest.fn()
     const dragProps = { ...props, onDropZoneLayout, onDropZoneUnregister }
     try {
-      const { getByTestId, rerender } = render(<CalendarWeekView {...dragProps} />, { wrapper: AllTheProviders })
-      fireEvent(getByTestId('week-pages'), 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 402, height: 500 } } })
+      const { getByTestId, rerender } = render(<CalendarWeekView {...dragProps} />, {
+        wrapper: AllTheProviders,
+      })
+      fireEvent(getByTestId('week-pages'), 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width: 402, height: 500 } },
+      })
       onDropZoneLayout.mockClear()
       onDropZoneUnregister.mockClear()
 
-      rerender(<CalendarWeekView {...dragProps} dragSourceSlot={{ phase: 'GPP', week: 1, day: 1 }} />)
+      rerender(
+        <CalendarWeekView {...dragProps} dragSourceSlot={{ phase: 'GPP', week: 1, day: 1 }} />
+      )
     } finally {
       measure.mockRestore()
     }
@@ -138,14 +166,21 @@ describe('CalendarWeekView', () => {
         currentWeek={next[0]}
         programStartDate={nextIso[0]}
         programEndDate={nextIso[6]}
-        calendarData={{ [nextIso[3]]: { date: nextIso[3], workouts: [workout('Upper Push/Pull', 2)] } }}
+        calendarData={{
+          [nextIso[3]]: { date: nextIso[3], workouts: [workout('Upper Push/Pull', 2)] },
+        }}
         onMoveWorkout={onMoveWorkout}
       />,
       { wrapper: AllTheProviders }
     )
     const card = getByTestId('card-Upper Push/Pull')
     expect(card.props.accessibilityActions.map((a: { label: string }) => a.label)).toEqual([
-      'Move to Sunday', 'Move to Monday', 'Move to Tuesday', 'Move to Thursday', 'Move to Friday', 'Move to Saturday',
+      'Move to Sunday',
+      'Move to Monday',
+      'Move to Tuesday',
+      'Move to Thursday',
+      'Move to Friday',
+      'Move to Saturday',
     ])
     fireEvent(card, 'accessibilityAction', { nativeEvent: { actionName: nextIso[5] } })
     expect(onMoveWorkout).toHaveBeenCalledWith('GPP', 1, 2, nextIso[5])
@@ -161,14 +196,19 @@ describe('CalendarWeekView', () => {
         programStartDate={nextIso[0]}
         programEndDate={nextIso[6]}
         calendarData={{
-          [nextIso[1]]: { date: nextIso[1], workouts: [{ ...workout('Lower Body Foundation', 1), isCompleted: true }] },
+          [nextIso[1]]: {
+            date: nextIso[1],
+            workouts: [{ ...workout('Lower Body Foundation', 1), isCompleted: true }],
+          },
           [nextIso[3]]: { date: nextIso[3], workouts: [workout('Upper Push/Pull', 2)] },
         }}
         onMoveWorkout={jest.fn()}
       />,
       { wrapper: AllTheProviders }
     )
-    const labels = getByTestId('card-Upper Push/Pull').props.accessibilityActions.map((a: { label: string }) => a.label)
+    const labels = getByTestId('card-Upper Push/Pull').props.accessibilityActions.map(
+      (a: { label: string }) => a.label
+    )
     expect(labels).not.toContain('Move to Monday')
     expect(labels).toContain('Move to Tuesday')
   })
@@ -178,7 +218,11 @@ describe('CalendarWeekView', () => {
     // Tuesday's own workout isn't done, so the server would swap with it.
     const next = days.map((d) => addDays(d, 7))
     const nextIso = next.map(formatDateISO)
-    const done = { ...workout('Lower Body Foundation', 1), isCompleted: true, completedOnDate: nextIso[2] }
+    const done = {
+      ...workout('Lower Body Foundation', 1),
+      isCompleted: true,
+      completedOnDate: nextIso[2],
+    }
     const { getByTestId } = render(
       <CalendarWeekView
         {...props}
@@ -194,7 +238,9 @@ describe('CalendarWeekView', () => {
       />,
       { wrapper: AllTheProviders }
     )
-    const labels = getByTestId('card-Upper Push/Pull').props.accessibilityActions.map((a: { label: string }) => a.label)
+    const labels = getByTestId('card-Upper Push/Pull').props.accessibilityActions.map(
+      (a: { label: string }) => a.label
+    )
     expect(labels).toContain('Move to Tuesday')
     expect(labels).not.toContain('Move to Monday')
   })
@@ -209,7 +255,10 @@ describe('CalendarWeekView', () => {
         programStartDate={nextIso[0]}
         programEndDate={nextIso[6]}
         calendarData={{
-          [nextIso[1]]: { date: nextIso[1], workouts: [{ ...workout('Lower Body Foundation', 1), isCompleted: true }] },
+          [nextIso[1]]: {
+            date: nextIso[1],
+            workouts: [{ ...workout('Lower Body Foundation', 1), isCompleted: true }],
+          },
           [nextIso[3]]: { date: nextIso[3], workouts: [workout('Upper Push/Pull', 2)] },
         }}
         dragSourceSlot={{ phase: 'GPP', week: 1, day: 2 }}
@@ -222,9 +271,14 @@ describe('CalendarWeekView', () => {
   })
 
   it('never offers a day that has already passed', () => {
-    const { getByTestId } = render(<CalendarWeekView {...props} onMoveWorkout={jest.fn()} />, { wrapper: AllTheProviders })
+    const { getByTestId } = render(<CalendarWeekView {...props} onMoveWorkout={jest.fn()} />, {
+      wrapper: AllTheProviders,
+    })
     const today = new Date()
-    const offered: string[] = getByTestId('card-Power & Conditioning').props.accessibilityActions?.map((a: { name: string }) => a.name) ?? []
+    const offered: string[] =
+      getByTestId('card-Power & Conditioning').props.accessibilityActions?.map(
+        (a: { name: string }) => a.name
+      ) ?? []
     const past = offered.filter((iso) => iso < formatDateISO(today))
     expect(past).toEqual([])
   })
@@ -232,10 +286,14 @@ describe('CalendarWeekView', () => {
   it('labels the week arrows', () => {
     // Only the arrow that has a week to go to is shown; here the program is one week
     const { queryByLabelText } = render(
-      <CalendarWeekView {...props} programEndDate={formatDateISO(addDays(sunday, 13))} calendarData={{
-        ...calendarData,
-        [formatDateISO(addDays(sunday, 8))]: { date: '', workouts: [workout('Next Week', 4)] },
-      }} />,
+      <CalendarWeekView
+        {...props}
+        programEndDate={formatDateISO(addDays(sunday, 13))}
+        calendarData={{
+          ...calendarData,
+          [formatDateISO(addDays(sunday, 8))]: { date: '', workouts: [workout('Next Week', 4)] },
+        }}
+      />,
       { wrapper: AllTheProviders }
     )
     expect(queryByLabelText('Next week')).toBeTruthy()
@@ -253,7 +311,12 @@ describe('clipToViewport', () => {
   })
 
   it('trims a row cut off at the top, so the header above takes no drop', () => {
-    expect(clipToViewport({ x: 12, y: 170, width: 378, height: 56 }, viewport)).toEqual({ x: 12, y: 200, width: 378, height: 26 })
+    expect(clipToViewport({ x: 12, y: 170, width: 378, height: 56 }, viewport)).toEqual({
+      x: 12,
+      y: 200,
+      width: 378,
+      height: 26,
+    })
   })
 
   it('drops a row scrolled out of view, which would sit under the header or tab bar', () => {

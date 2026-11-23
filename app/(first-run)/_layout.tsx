@@ -19,7 +19,8 @@ import { NIGHT } from '../../lib/firstRunStory'
  */
 export default function FirstRunLayout() {
   const motion = useIntakeMotion()
-  const animation = motion.pageTurn === 'slide' ? 'slide_from_right' : motion.pageTurn === 'fade' ? 'fade' : 'none'
+  const animation =
+    motion.pageTurn === 'slide' ? 'slide_from_right' : motion.pageTurn === 'fade' ? 'fade' : 'none'
 
   return (
     <ReplayExcludedSurface>

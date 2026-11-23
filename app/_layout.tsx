@@ -18,9 +18,7 @@ initSentry()
 primeReducedMotion()
 
 // Import Google Fonts
-import {
-  BebasNeue_400Regular,
-} from '@expo-google-fonts/bebas-neue'
+import { BebasNeue_400Regular } from '@expo-google-fonts/bebas-neue'
 import {
   PlusJakartaSans_400Regular,
   PlusJakartaSans_500Medium,
@@ -45,13 +43,13 @@ function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     // Display font - Bebas Neue for headers
     BebasNeue: BebasNeue_400Regular,
-    
+
     // Body font - Plus Jakarta Sans for all UI text
     PlusJakartaSans: PlusJakartaSans_400Regular,
     PlusJakartaSansMedium: PlusJakartaSans_500Medium,
     PlusJakartaSansSemiBold: PlusJakartaSans_600SemiBold,
     PlusJakartaSansBold: PlusJakartaSans_700Bold,
-    
+
     // Keep Inter as fallback for Tamagui internals
     Inter: require('@tamagui/font-inter/otf/Inter-Medium.otf'),
     InterBold: require('@tamagui/font-inter/otf/Inter-Bold.otf'),
@@ -103,7 +101,7 @@ function RootLayoutNav() {
             headerShown: false,
           }}
         />
-        
+
         {/* Reassessment flow (phase completion check-in) */}
         <Stack.Screen
           name="(reassessment)"

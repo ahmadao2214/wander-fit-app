@@ -127,7 +127,11 @@ export interface AthleteColors {
 export function athleteColors(lit: boolean, tile: string): AthleteColors {
   return lit
     ? { body: '#FFFFFF', far: mixHex('#FFFFFF', tile, 0.62), tool: '#0B1220' }
-    : { body: mixHex('#FFFFFF', tile, 0.24), far: mixHex('#FFFFFF', tile, 0.14), tool: mixHex('#FFFFFF', tile, 0.2) }
+    : {
+        body: mixHex('#FFFFFF', tile, 0.24),
+        far: mixHex('#FFFFFF', tile, 0.14),
+        tool: mixHex('#FFFFFF', tile, 0.2),
+      }
 }
 
 /** Stroke widths: torso, upper arm, forearm, thigh, shin, foot. */
@@ -154,7 +158,9 @@ export function athleteStrokes(
   const out: Stroke[] = []
   const line = (x1: number, y1: number, x2: number, y2: number, w: number, color: string) => {
     // The Endurance cut faces the other way: mirror inside the 100-wide frame.
-    out.push(pose.flip ? { x1: 100 - x1, y1, x2: 100 - x2, y2, w, color } : { x1, y1, x2, y2, w, color })
+    out.push(
+      pose.flip ? { x1: 100 - x1, y1, x2: 100 - x2, y2, w, color } : { x1, y1, x2, y2, w, color }
+    )
   }
   const [sx, sy] = step(rx, ry, tor, L.torso)
 

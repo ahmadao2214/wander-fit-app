@@ -42,13 +42,23 @@ export function animated(keys) {
   return { a: 1, k }
 }
 
-export function transform({ p = [0, 0, 0], a = [0, 0, 0], s = [100, 100, 100], r = 0, o = 100 } = {}) {
+export function transform({
+  p = [0, 0, 0],
+  a = [0, 0, 0],
+  s = [100, 100, 100],
+  r = 0,
+  o = 100,
+} = {}) {
   const wrap = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : fixed(v))
   return { o: wrap(o), r: wrap(r), p: wrap(p), a: wrap(a), s: wrap(s) }
 }
 
 /** Position with X and Y as separate properties, so every player draws a straight path. */
-export const splitPosition = (x, y) => ({ s: true, x: typeof x === 'number' ? fixed(x) : x, y: typeof y === 'number' ? fixed(y) : y })
+export const splitPosition = (x, y) => ({
+  s: true,
+  x: typeof x === 'number' ? fixed(x) : x,
+  y: typeof y === 'number' ? fixed(y) : y,
+})
 
 const roundPoints = (points) => points.map((p) => p.map((n) => round(n)))
 
@@ -59,12 +69,29 @@ export const path = ({ v, i, o, c }) => ({
 
 export const rgb = (hex) => {
   const n = parseInt(hex.replace('#', ''), 16)
-  return [round(((n >> 16) & 255) / 255, 3), round(((n >> 8) & 255) / 255, 3), round((n & 255) / 255, 3), 1]
+  return [
+    round(((n >> 16) & 255) / 255, 3),
+    round(((n >> 8) & 255) / 255, 3),
+    round((n & 255) / 255, 3),
+    1,
+  ]
 }
 
-export const fill = (hex, opacity = 100) => ({ ty: 'fl', c: fixed(rgb(hex)), o: fixed(opacity), r: 1 })
+export const fill = (hex, opacity = 100) => ({
+  ty: 'fl',
+  c: fixed(rgb(hex)),
+  o: fixed(opacity),
+  r: 1,
+})
 
-export const stroke = (hex, width) => ({ ty: 'st', c: fixed(rgb(hex)), o: fixed(100), w: fixed(width), lc: 2, lj: 2 })
+export const stroke = (hex, width) => ({
+  ty: 'st',
+  c: fixed(rgb(hex)),
+  o: fixed(100),
+  w: fixed(width),
+  lc: 2,
+  lj: 2,
+})
 
 export const group = (nm, items, offset = [0, 0], rotation = 0) => ({
   ty: 'gr',
@@ -97,7 +124,11 @@ const layerBase = (ind, nm, op, parent) => ({
   bm: 0,
 })
 
-export const nullLayer = ({ ind, nm, op, parent, ks }) => ({ ...layerBase(ind, nm, op, parent), ty: 3, ks })
+export const nullLayer = ({ ind, nm, op, parent, ks }) => ({
+  ...layerBase(ind, nm, op, parent),
+  ty: 3,
+  ks,
+})
 
 export const shapeLayer = ({ ind, nm, op, parent, ks = transform(), shapes }) => ({
   ...layerBase(ind, nm, op, parent),

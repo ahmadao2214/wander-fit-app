@@ -38,10 +38,7 @@ export default function ResultsScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const reassessmentStatus = useQuery(
-    api.userPrograms.getReassessmentStatus,
-    user ? {} : 'skip'
-  )
+  const reassessmentStatus = useQuery(api.userPrograms.getReassessmentStatus, user ? {} : 'skip')
 
   const completeReassessment = useMutation(api.userPrograms.completeReassessment)
 
@@ -135,7 +132,13 @@ export default function ResultsScreen() {
           </XStack>
 
           {/* Check-in summary: one card, divided rows */}
-          <Card bg="$surface" rounded="$4" borderWidth={1} borderColor="$borderColor" overflow="hidden">
+          <Card
+            bg="$surface"
+            rounded="$4"
+            borderWidth={1}
+            borderColor="$borderColor"
+            overflow="hidden"
+          >
             {summaryRows.map((row, index) => (
               <XStack
                 key={row.label}
@@ -157,7 +160,12 @@ export default function ResultsScreen() {
           {/* The choice */}
           <YStack gap="$3" accessibilityRole="radiogroup">
             {options.map((option) => {
-              const copy = decisionCopy(option, phase, nextPhase, reassessmentStatus.isFullCycleComplete)
+              const copy = decisionCopy(
+                option,
+                phase,
+                nextPhase,
+                reassessmentStatus.isFullCycleComplete
+              )
               const selected = decision === option
               return (
                 <Card

@@ -2,7 +2,8 @@ import { weeksOnPlan, localDayArgs, toLocalDayNumber, dateToDayNumber } from '..
 
 // Mondays: 2026-10-26, 11-02, 11-09, 11-16, 11-23
 /** Noon UTC on a date, so the UTC tests never sit near midnight */
-const at = (date: string, hourUtc = 12) => Date.parse(`${date}T${String(hourUtc).padStart(2, '0')}:00:00Z`)
+const at = (date: string, hourUtc = 12) =>
+  Date.parse(`${date}T${String(hourUtc).padStart(2, '0')}:00:00Z`)
 const utc = { timezoneOffsetMinutes: 0 }
 
 /** A Mon/Wed/Fri athlete's sessions for the week starting on a Monday */
@@ -13,11 +14,17 @@ const monWedFri = (monday: string) => {
 
 describe('weeksOnPlan', () => {
   it('is 0 with no workouts', () => {
-    expect(weeksOnPlan({ completedAt: [], workoutsPerWeek: 3, today: '2026-11-18', ...utc })).toBe(0)
+    expect(weeksOnPlan({ completedAt: [], workoutsPerWeek: 3, today: '2026-11-18', ...utc })).toBe(
+      0
+    )
   })
 
   it('counts consecutive full weeks, including this week once it is on plan', () => {
-    const completedAt = [...monWedFri('2026-11-02'), ...monWedFri('2026-11-09'), ...monWedFri('2026-11-16')]
+    const completedAt = [
+      ...monWedFri('2026-11-02'),
+      ...monWedFri('2026-11-09'),
+      ...monWedFri('2026-11-16'),
+    ]
     expect(weeksOnPlan({ completedAt, workoutsPerWeek: 3, today: '2026-11-21', ...utc })).toBe(3)
   })
 
@@ -25,13 +32,20 @@ describe('weeksOnPlan', () => {
     // Scheduled Mon/Wed/Fri, trained Tue/Thu/Sun instead
     const completedAt = [
       ...monWedFri('2026-11-02'),
-      at('2026-11-10'), at('2026-11-12'), at('2026-11-15'),
+      at('2026-11-10'),
+      at('2026-11-12'),
+      at('2026-11-15'),
     ]
     expect(weeksOnPlan({ completedAt, workoutsPerWeek: 3, today: '2026-11-16', ...utc })).toBe(2)
   })
 
   it('counts two workouts on one day as two', () => {
-    const completedAt = [at('2026-11-02', 9), at('2026-11-02', 15), at('2026-11-09'), at('2026-11-11')]
+    const completedAt = [
+      at('2026-11-02', 9),
+      at('2026-11-02', 15),
+      at('2026-11-09'),
+      at('2026-11-11'),
+    ]
     expect(weeksOnPlan({ completedAt, workoutsPerWeek: 2, today: '2026-11-12', ...utc })).toBe(2)
   })
 
@@ -65,38 +79,70 @@ describe('weeksOnPlan', () => {
   it('does not end the streak while the program is paused', () => {
     const completedAt = [...monWedFri('2026-11-02'), ...monWedFri('2026-11-09')]
     const pausedAt = at('2026-11-15')
-    expect(weeksOnPlan({ completedAt, workoutsPerWeek: 3, today: '2026-11-25', pausedAt, ...utc })).toBe(2)
+    expect(
+      weeksOnPlan({ completedAt, workoutsPerWeek: 3, today: '2026-11-25', pausedAt, ...utc })
+    ).toBe(2)
   })
 
   it('means the same for a 2-day and a 7-day program', () => {
     const twoDay = [at('2026-11-02'), at('2026-11-05'), at('2026-11-09'), at('2026-11-12')]
-    expect(weeksOnPlan({ completedAt: twoDay, workoutsPerWeek: 2, today: '2026-11-16', ...utc })).toBe(2)
-    const sevenDay = Array.from({ length: 14 }, (_, i) => (dateToDayNumber('2026-11-02') + i) * 86_400_000 + 43_200_000)
-    expect(weeksOnPlan({ completedAt: sevenDay, workoutsPerWeek: 7, today: '2026-11-16', ...utc })).toBe(2)
+    expect(
+      weeksOnPlan({ completedAt: twoDay, workoutsPerWeek: 2, today: '2026-11-16', ...utc })
+    ).toBe(2)
+    const sevenDay = Array.from(
+      { length: 14 },
+      (_, i) => (dateToDayNumber('2026-11-02') + i) * 86_400_000 + 43_200_000
+    )
+    expect(
+      weeksOnPlan({ completedAt: sevenDay, workoutsPerWeek: 7, today: '2026-11-16', ...utc })
+    ).toBe(2)
     // Six of seven is short: the finished week ends the run
-    expect(weeksOnPlan({ completedAt: sevenDay.slice(0, 13), workoutsPerWeek: 7, today: '2026-11-17', ...utc })).toBe(0)
+    expect(
+      weeksOnPlan({
+        completedAt: sevenDay.slice(0, 13),
+        workoutsPerWeek: 7,
+        today: '2026-11-17',
+        ...utc,
+      })
+    ).toBe(0)
   })
 
   it('treats a missing or out-of-range weekly count as 1 to 7', () => {
     const completedAt = [at('2026-11-02'), at('2026-11-09')]
     expect(weeksOnPlan({ completedAt, workoutsPerWeek: 0, today: '2026-11-16', ...utc })).toBe(2)
-    expect(weeksOnPlan({ completedAt, workoutsPerWeek: Number.NaN, today: '2026-11-16', ...utc })).toBe(2)
+    expect(
+      weeksOnPlan({ completedAt, workoutsPerWeek: Number.NaN, today: '2026-11-16', ...utc })
+    ).toBe(2)
     expect(weeksOnPlan({ completedAt, workoutsPerWeek: 12, today: '2026-11-10', ...utc })).toBe(0)
   })
 
   it("puts a Sunday-night workout in the athlete's week, west of UTC", () => {
     // Sunday 2026-11-08, 9pm in New York (UTC-5) is Monday 02:00 UTC
     const sundayNight = at('2026-11-09', 2)
-    const completedAt = [at('2026-11-02', 15), at('2026-11-04', 15), sundayNight, at('2026-11-10', 15), at('2026-11-12', 15)]
+    const completedAt = [
+      at('2026-11-02', 15),
+      at('2026-11-04', 15),
+      sundayNight,
+      at('2026-11-10', 15),
+      at('2026-11-12', 15),
+    ]
     const newYork = { timezoneOffsetMinutes: 300 }
-    expect(weeksOnPlan({ completedAt, workoutsPerWeek: 3, today: '2026-11-13', ...newYork })).toBe(1)
+    expect(weeksOnPlan({ completedAt, workoutsPerWeek: 3, today: '2026-11-13', ...newYork })).toBe(
+      1
+    )
     // In UTC the same workout lands on Monday, so week one is short and week two full
     expect(weeksOnPlan({ completedAt, workoutsPerWeek: 3, today: '2026-11-13', ...utc })).toBe(1)
-    expect(weeksOnPlan({ completedAt, workoutsPerWeek: 2, today: '2026-11-13', ...newYork })).toBe(2)
+    expect(weeksOnPlan({ completedAt, workoutsPerWeek: 2, today: '2026-11-13', ...newYork })).toBe(
+      2
+    )
   })
 
   it('ends the run on an empty finished week between two trained ones', () => {
-    const completedAt = [...monWedFri('2026-10-26'), ...monWedFri('2026-11-09'), ...monWedFri('2026-11-16')]
+    const completedAt = [
+      ...monWedFri('2026-10-26'),
+      ...monWedFri('2026-11-09'),
+      ...monWedFri('2026-11-16'),
+    ]
     expect(weeksOnPlan({ completedAt, workoutsPerWeek: 3, today: '2026-11-21', ...utc })).toBe(2)
   })
 
@@ -104,7 +150,14 @@ describe('weeksOnPlan', () => {
     const completedAt = [...monWedFri('2026-11-02'), ...monWedFri('2026-11-09')]
     const started = Date.now()
     expect(weeksOnPlan({ completedAt, workoutsPerWeek: 3, today: '9999-12-31', ...utc })).toBe(0)
-    expect(weeksOnPlan({ completedAt, workoutsPerWeek: 3, today: '2026-11-16', timezoneOffsetMinutes: 1e12 })).toBe(0)
+    expect(
+      weeksOnPlan({
+        completedAt,
+        workoutsPerWeek: 3,
+        today: '2026-11-16',
+        timezoneOffsetMinutes: 1e12,
+      })
+    ).toBe(0)
     expect(Date.now() - started).toBeLessThan(1000)
   })
 
@@ -125,6 +178,9 @@ describe('day helpers', () => {
 
   it('gives the local date and offset for the query', () => {
     const now = new Date(2026, 10, 16, 23, 30)
-    expect(localDayArgs(now)).toEqual({ today: '2026-11-16', timezoneOffsetMinutes: now.getTimezoneOffset() })
+    expect(localDayArgs(now)).toEqual({
+      today: '2026-11-16',
+      timezoneOffsetMinutes: now.getTimezoneOffset(),
+    })
   })
 })

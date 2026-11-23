@@ -1,12 +1,7 @@
 import { TouchableOpacity, Pressable, StyleSheet, View, Platform } from 'react-native'
-import { 
-  YStack, 
-  XStack, 
-  Text, 
-  Card,
-} from 'tamagui'
+import { YStack, XStack, Text, Card } from 'tamagui'
 import { Caption } from './Typography'
-import { 
+import {
   GripVertical,
   ChevronDown,
   ChevronUp,
@@ -60,10 +55,10 @@ interface ExerciseAccordionItemProps {
 
 /**
  * ExerciseAccordionItem - Collapsible exercise card for workout summary
- * 
+ *
  * Collapsed state: Shows exercise number, name, and sets x reps at a glance
  * Expanded state: Shows full exercise details including tempo, rest, notes, instructions
- * 
+ *
  * Includes a drag handle for reordering exercises via long-press
  */
 export function ExerciseAccordionItem({
@@ -85,9 +80,9 @@ export function ExerciseAccordionItem({
 
   return (
     <Card
-      borderColor={isActive ? phase.fill : "$borderColor"}
+      borderColor={isActive ? phase.fill : '$borderColor'}
       borderWidth={isActive ? 2 : 1}
-      bg={isActive ? "$color2" : "$background"}
+      bg={isActive ? '$color2' : '$background'}
       elevation={isActive ? 4 : 0}
       mb="$2"
     >
@@ -99,17 +94,11 @@ export function ExerciseAccordionItem({
             onLongPress={drag}
             delayLongPress={Platform.OS === 'web' ? 100 : 150}
             disabled={isActive}
-            style={[
-              styles.dragHandle,
-              Platform.OS === 'web' && styles.dragHandleWeb,
-            ]}
+            style={[styles.dragHandle, Platform.OS === 'web' && styles.dragHandleWeb]}
             hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
           >
-            <View style={[
-              styles.dragHandleInner,
-              isActive && styles.dragHandleActive
-            ]}>
-              <GripVertical size={20} color={isActive ? phase.text : "$color9"} />
+            <View style={[styles.dragHandleInner, isActive && styles.dragHandleActive]}>
+              <GripVertical size={20} color={isActive ? phase.text : '$color9'} />
             </View>
           </Pressable>
         )}
@@ -130,11 +119,7 @@ export function ExerciseAccordionItem({
         </Card>
 
         {/* Tappable area for toggle */}
-        <TouchableOpacity 
-          style={styles.exerciseInfo}
-          onPress={onToggle}
-          activeOpacity={0.7}
-        >
+        <TouchableOpacity style={styles.exerciseInfo} onPress={onToggle} activeOpacity={0.7}>
           <XStack items="center" gap="$2" flex={1}>
             {/* Exercise Name */}
             <Text flex={1} fontWeight="500" fontSize="$4" numberOfLines={1}>
@@ -160,18 +145,19 @@ export function ExerciseAccordionItem({
       {isExpanded && (
         <YStack gap="$3" px="$4" pb="$4">
           {/* Tags - filter out warm_up and cool_down */}
-          {exerciseDetails?.tags && exerciseDetails.tags.filter(t => t !== 'warm_up' && t !== 'cool_down').length > 0 && (
-            <XStack gap="$1" flexWrap="wrap">
-              {exerciseDetails.tags
-                .filter(tag => tag !== 'warm_up' && tag !== 'cool_down')
-                .slice(0, 3)
-                .map((tag) => (
-                  <Card key={tag} bg="$gray3" px="$2" py="$0.5" rounded="$2">
-                    <Caption>{tag.replace(/_/g, ' ')}</Caption>
-                  </Card>
-                ))}
-            </XStack>
-          )}
+          {exerciseDetails?.tags &&
+            exerciseDetails.tags.filter((t) => t !== 'warm_up' && t !== 'cool_down').length > 0 && (
+              <XStack gap="$1" flexWrap="wrap">
+                {exerciseDetails.tags
+                  .filter((tag) => tag !== 'warm_up' && tag !== 'cool_down')
+                  .slice(0, 3)
+                  .map((tag) => (
+                    <Card key={tag} bg="$gray3" px="$2" py="$0.5" rounded="$2">
+                      <Caption>{tag.replace(/_/g, ' ')}</Caption>
+                    </Card>
+                  ))}
+              </XStack>
+            )}
 
           {/* Exercise Details Row */}
           <XStack gap="$4" flexWrap="wrap">
@@ -206,7 +192,7 @@ export function ExerciseAccordionItem({
                 </Text>
               </XStack>
             )}
-            
+
             <XStack items="center" gap="$2">
               <RotateCcw size={16} color="$color10" />
               <Text fontSize="$3" color="$color11">
@@ -217,7 +203,7 @@ export function ExerciseAccordionItem({
 
           {/* Superset Indicator */}
           {exercise.superset && (
-            <Card bg={"$purple2" as any} p="$2" rounded="$2">
+            <Card bg={'$purple2' as any} p="$2" rounded="$2">
               <Text fontSize="$2" color="purple" fontWeight="500">
                 Superset {exercise.superset}
               </Text>

@@ -86,7 +86,7 @@ export function decisionCopy(
   decision: ReassessmentDecision,
   phase: Phase,
   nextPhase: Phase,
-  isFullCycleComplete: boolean,
+  isFullCycleComplete: boolean
 ) {
   if (decision === 'repeat') {
     return {

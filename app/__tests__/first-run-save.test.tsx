@@ -11,7 +11,12 @@ jest.mock('../../lib/firstRunStorage', () => ({
 
 // Clerk: a sign-up that verifies, and a session whose user appears on setActive.
 const mockClerk: {
-  user: null | { id: string; primaryEmailAddress: { emailAddress: string }; fullName: string; firstName: string }
+  user: null | {
+    id: string
+    primaryEmailAddress: { emailAddress: string }
+    fullName: string
+    firstName: string
+  }
   signOut: jest.Mock
 } = { user: null, signOut: jest.fn(async () => {}) }
 // The signed-in user the sheet sees through useUser
@@ -19,10 +24,19 @@ let mockSignedIn: null | { primaryEmailAddress: { emailAddress: string } } = nul
 const mockSignUp = {
   create: jest.fn(async () => ({})),
   prepareEmailAddressVerification: jest.fn(async () => ({})),
-  attemptEmailAddressVerification: jest.fn(async () => ({ status: 'complete', createdSessionId: 'sess_1', createdUserId: 'user_1' })),
+  attemptEmailAddressVerification: jest.fn(async () => ({
+    status: 'complete',
+    createdSessionId: 'sess_1',
+    createdUserId: 'user_1',
+  })),
 }
 const mockSetActive = jest.fn(async () => {
-  mockClerk.user = { id: 'user_1', primaryEmailAddress: { emailAddress: 'a@b.co' }, fullName: 'Sam', firstName: 'Sam' }
+  mockClerk.user = {
+    id: 'user_1',
+    primaryEmailAddress: { emailAddress: 'a@b.co' },
+    fullName: 'Sam',
+    firstName: 'Sam',
+  }
 })
 jest.mock('@clerk/clerk-expo', () => ({
   useSignUp: () => ({ isLoaded: true, signUp: mockSignUp, setActive: mockSetActive }),
@@ -104,8 +118,16 @@ describe('Save your plan', () => {
     await show()
     await signUpWithEmail()
 
-    expect(mockSignUp.create).toHaveBeenCalledWith({ emailAddress: 'a@b.co', password: 'long-enough-1' })
-    expect(mockCreateUser).toHaveBeenCalledWith({ clerkId: 'user_1', email: 'a@b.co', name: 'Sam', role: 'client' })
+    expect(mockSignUp.create).toHaveBeenCalledWith({
+      emailAddress: 'a@b.co',
+      password: 'long-enough-1',
+    })
+    expect(mockCreateUser).toHaveBeenCalledWith({
+      clerkId: 'user_1',
+      email: 'a@b.co',
+      name: 'Sam',
+      role: 'client',
+    })
     expect(mockCompleteIntake).toHaveBeenCalledWith(
       expect.objectContaining({
         sportId: 'basketball',
@@ -117,7 +139,10 @@ describe('Save your plan', () => {
         firstLaunchAt: 1000,
       })
     )
-    expect(mockReplace).toHaveBeenCalledWith({ pathname: '/(athlete)/program', params: { welcome: '1', next: 'Tomorrow' } })
+    expect(mockReplace).toHaveBeenCalledWith({
+      pathname: '/(athlete)/program',
+      params: { welcome: '1', next: 'Tomorrow' },
+    })
     expect(testDraft.current.current()).toBeNull()
     expect((await testDraft.reopen()).answers).toEqual({})
   })
@@ -126,7 +151,10 @@ describe('Save your plan', () => {
     mockCompleteIntake.mockResolvedValueOnce({ keptExistingProgram: true })
     await show()
     await signUpWithEmail()
-    expect(mockReplace).toHaveBeenCalledWith({ pathname: '/(athlete)/program', params: { welcome: '1', kept: '1' } })
+    expect(mockReplace).toHaveBeenCalledWith({
+      pathname: '/(athlete)/program',
+      params: { welcome: '1', kept: '1' },
+    })
   })
 
   it('keeps the draft and says so when saving fails', async () => {
@@ -181,7 +209,9 @@ describe('Save your plan', () => {
     await press('save-plan-change-email')
     fireEvent.changeText(screen.getByTestId('save-plan-email-input'), 'a@b.co')
     await press('save-plan-create')
-    expect(mockSignUp.create).toHaveBeenLastCalledWith(expect.objectContaining({ emailAddress: 'a@b.co' }))
+    expect(mockSignUp.create).toHaveBeenLastCalledWith(
+      expect.objectContaining({ emailAddress: 'a@b.co' })
+    )
   })
 
   it('hides Change email while the code is being checked', async () => {
@@ -189,7 +219,8 @@ describe('Save your plan', () => {
     mockSignUp.attemptEmailAddressVerification.mockImplementationOnce(
       () =>
         new Promise((resolve) => {
-          finishVerify = () => resolve({ status: 'complete', createdSessionId: 'sess_1', createdUserId: 'user_1' })
+          finishVerify = () =>
+            resolve({ status: 'complete', createdSessionId: 'sess_1', createdUserId: 'user_1' })
         })
     )
     await show()

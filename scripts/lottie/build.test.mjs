@@ -6,13 +6,19 @@ import { BEATS, LOOP_FRAMES } from './motion.mjs'
 const assets = path.join(__dirname, '../../assets/lottie/sports')
 
 describe('sport icon generator', () => {
-  it.each(Object.keys(SPORTS))('matches the committed %s.json (rebuild with node scripts/lottie/build.mjs)', (slug) => {
-    const committed = fs.readFileSync(path.join(assets, `${slug}.json`), 'utf8')
-    expect(JSON.stringify(SPORTS[slug]())).toBe(committed)
-  })
+  it.each(Object.keys(SPORTS))(
+    'matches the committed %s.json (rebuild with node scripts/lottie/build.mjs)',
+    (slug) => {
+      const committed = fs.readFileSync(path.join(assets, `${slug}.json`), 'utf8')
+      expect(JSON.stringify(SPORTS[slug]())).toBe(committed)
+    }
+  )
 
   it('has a generator for every committed file', () => {
-    const committed = fs.readdirSync(assets).filter((f) => f.endsWith('.json')).map((f) => f.slice(0, -5))
+    const committed = fs
+      .readdirSync(assets)
+      .filter((f) => f.endsWith('.json'))
+      .map((f) => f.slice(0, -5))
     expect(Object.keys(SPORTS).sort()).toEqual(committed.sort())
   })
 

@@ -8,42 +8,42 @@
  * Every seeded sport has one. A name missing from this map (a sport added
  * later, or a typo) shows the static fallback in SportIcon.
  */
-import type { AnimationObject } from "lottie-react-native";
-import { getSportSlug } from "./intakeUI";
+import type { AnimationObject } from 'lottie-react-native'
+import { getSportSlug } from './intakeUI'
 
 /** Parsed Lottie JSON, as lottie-react-native accepts it. */
-export type SportAnimationSource = AnimationObject;
+export type SportAnimationSource = AnimationObject
 
 export const SPORT_ANIMATIONS: Readonly<Record<string, SportAnimationSource>> = {
-  badminton: require("../assets/lottie/sports/badminton.json"),
-  baseball: require("../assets/lottie/sports/baseball.json"),
-  basketball: require("../assets/lottie/sports/basketball.json"),
-  cheerleading: require("../assets/lottie/sports/cheerleading.json"),
-  cricket: require("../assets/lottie/sports/cricket.json"),
-  "cross-country": require("../assets/lottie/sports/cross-country.json"),
-  diving: require("../assets/lottie/sports/diving.json"),
-  "field-hockey": require("../assets/lottie/sports/field-hockey.json"),
-  football: require("../assets/lottie/sports/football.json"),
-  "general-fitness": require("../assets/lottie/sports/general-fitness.json"),
-  golf: require("../assets/lottie/sports/golf.json"),
-  gymnastics: require("../assets/lottie/sports/gymnastics.json"),
-  "ice-hockey": require("../assets/lottie/sports/ice-hockey.json"),
-  lacrosse: require("../assets/lottie/sports/lacrosse.json"),
-  "martial-arts": require("../assets/lottie/sports/martial-arts.json"),
-  racquetball: require("../assets/lottie/sports/racquetball.json"),
-  rugby: require("../assets/lottie/sports/rugby.json"),
-  soccer: require("../assets/lottie/sports/soccer.json"),
-  softball: require("../assets/lottie/sports/softball.json"),
-  swimming: require("../assets/lottie/sports/swimming.json"),
-  tennis: require("../assets/lottie/sports/tennis.json"),
-  "track-distance": require("../assets/lottie/sports/track-distance.json"),
-  "track-sprints-jumps": require("../assets/lottie/sports/track-sprints-jumps.json"),
-  "ultimate-frisbee": require("../assets/lottie/sports/ultimate-frisbee.json"),
-  volleyball: require("../assets/lottie/sports/volleyball.json"),
-  weightlifting: require("../assets/lottie/sports/weightlifting.json"),
-  wrestling: require("../assets/lottie/sports/wrestling.json"),
-};
+  badminton: require('../assets/lottie/sports/badminton.json'),
+  baseball: require('../assets/lottie/sports/baseball.json'),
+  basketball: require('../assets/lottie/sports/basketball.json'),
+  cheerleading: require('../assets/lottie/sports/cheerleading.json'),
+  cricket: require('../assets/lottie/sports/cricket.json'),
+  'cross-country': require('../assets/lottie/sports/cross-country.json'),
+  diving: require('../assets/lottie/sports/diving.json'),
+  'field-hockey': require('../assets/lottie/sports/field-hockey.json'),
+  football: require('../assets/lottie/sports/football.json'),
+  'general-fitness': require('../assets/lottie/sports/general-fitness.json'),
+  golf: require('../assets/lottie/sports/golf.json'),
+  gymnastics: require('../assets/lottie/sports/gymnastics.json'),
+  'ice-hockey': require('../assets/lottie/sports/ice-hockey.json'),
+  lacrosse: require('../assets/lottie/sports/lacrosse.json'),
+  'martial-arts': require('../assets/lottie/sports/martial-arts.json'),
+  racquetball: require('../assets/lottie/sports/racquetball.json'),
+  rugby: require('../assets/lottie/sports/rugby.json'),
+  soccer: require('../assets/lottie/sports/soccer.json'),
+  softball: require('../assets/lottie/sports/softball.json'),
+  swimming: require('../assets/lottie/sports/swimming.json'),
+  tennis: require('../assets/lottie/sports/tennis.json'),
+  'track-distance': require('../assets/lottie/sports/track-distance.json'),
+  'track-sprints-jumps': require('../assets/lottie/sports/track-sprints-jumps.json'),
+  'ultimate-frisbee': require('../assets/lottie/sports/ultimate-frisbee.json'),
+  volleyball: require('../assets/lottie/sports/volleyball.json'),
+  weightlifting: require('../assets/lottie/sports/weightlifting.json'),
+  wrestling: require('../assets/lottie/sports/wrestling.json'),
+}
 
 export function getSportAnimation(name: string): SportAnimationSource | undefined {
-  return SPORT_ANIMATIONS[getSportSlug(name)];
+  return SPORT_ANIMATIONS[getSportSlug(name)]
 }

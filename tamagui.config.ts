@@ -1,16 +1,25 @@
 import { defaultConfig } from '@tamagui/config/v4'
 import { RADIUS, spaceTokens } from './lib/spaceScale'
 import { createTamagui, createTokens, createFont } from 'tamagui'
-import { 
-  blue, blueDark, 
-  orange, orangeDark, 
-  green, greenDark,
-  yellow, yellowDark,
-  red, redDark,
-  purple, purpleDark,
-  cyan, cyanDark,
-  gray, grayDark,
-  slate, slateDark
+import {
+  blue,
+  blueDark,
+  orange,
+  orangeDark,
+  green,
+  greenDark,
+  yellow,
+  yellowDark,
+  red,
+  redDark,
+  purple,
+  purpleDark,
+  cyan,
+  cyanDark,
+  gray,
+  grayDark,
+  slate,
+  slateDark,
 } from '@tamagui/colors'
 import { phaseThemeColors } from './lib/phase'
 
@@ -25,18 +34,18 @@ import { phaseThemeColors } from './lib/phase'
 
 const brandColors = {
   // Primary Brand - Electric Blue
-  brand1: '#EFF6FF',   // Lightest blue background
-  brand2: '#DBEAFE',   // Light blue surface
-  brand3: '#BFDBFE',   // Blue highlight
-  brand4: '#93C5FD',   // Blue accent light
-  brand5: '#60A5FA',   // Blue accent
-  brand6: '#3B82F6',   // Blue primary
-  brand7: '#2563EB',   // Electric Blue - PRIMARY BRAND COLOR
-  brand8: '#1D4ED8',   // Blue pressed
-  brand9: '#1E40AF',   // Blue deep
-  brand10: '#1E3A8A',  // Blue darker
-  brand11: '#172554',  // Blue text on light
-  brand12: '#0F172A',  // Deep Navy - Text
+  brand1: '#EFF6FF', // Lightest blue background
+  brand2: '#DBEAFE', // Light blue surface
+  brand3: '#BFDBFE', // Blue highlight
+  brand4: '#93C5FD', // Blue accent light
+  brand5: '#60A5FA', // Blue accent
+  brand6: '#3B82F6', // Blue primary
+  brand7: '#2563EB', // Electric Blue - PRIMARY BRAND COLOR
+  brand8: '#1D4ED8', // Blue pressed
+  brand9: '#1E40AF', // Blue deep
+  brand10: '#1E3A8A', // Blue darker
+  brand11: '#172554', // Blue text on light
+  brand12: '#0F172A', // Deep Navy - Text
 
   // Secondary - Flame Orange (Energy/Achievements)
   accent1: '#FFF7ED',
@@ -44,7 +53,7 @@ const brandColors = {
   accent3: '#FED7AA',
   accent4: '#FDBA74',
   accent5: '#FB923C',
-  accent6: '#F97316',  // Flame Orange - SECONDARY ACCENT
+  accent6: '#F97316', // Flame Orange - SECONDARY ACCENT
   accent7: '#EA580C',
   accent8: '#C2410C',
   accent9: '#9A3412',
@@ -61,7 +70,7 @@ const intensityColors = {
   intensityLow3: '#A7F3D0',
   intensityLow4: '#6EE7B7',
   intensityLow5: '#34D399',
-  intensityLow6: '#10B981',  // Emerald - LOW INTENSITY
+  intensityLow6: '#10B981', // Emerald - LOW INTENSITY
   intensityLow7: '#059669',
   intensityLow8: '#047857',
   intensityLow9: '#065F46',
@@ -75,7 +84,7 @@ const intensityColors = {
   intensityMed3: '#FDE68A',
   intensityMed4: '#FCD34D',
   intensityMed5: '#FBBF24',
-  intensityMed6: '#F59E0B',  // Amber - MEDIUM INTENSITY
+  intensityMed6: '#F59E0B', // Amber - MEDIUM INTENSITY
   intensityMed7: '#D97706',
   intensityMed8: '#B45309',
   intensityMed9: '#92400E',
@@ -89,7 +98,7 @@ const intensityColors = {
   intensityHigh3: '#FECACA',
   intensityHigh4: '#FCA5A5',
   intensityHigh5: '#F87171',
-  intensityHigh6: '#EF4444',  // Coral Red - HIGH INTENSITY
+  intensityHigh6: '#EF4444', // Coral Red - HIGH INTENSITY
   intensityHigh7: '#DC2626',
   intensityHigh8: '#B91C1C',
   intensityHigh9: '#991B1B',
@@ -105,7 +114,7 @@ const categoryColors = {
   catEnduranceLight: '#99F6E4',
   catEnduranceDark: '#0D9488',
 
-  // Category 2: Power - Purple  
+  // Category 2: Power - Purple
   catPower: '#A855F7',
   catPowerLight: '#E9D5FF',
   catPowerDark: '#9333EA',
@@ -126,11 +135,11 @@ const semanticColors = {
   success: '#10B981',
   successLight: '#D1FAE5',
   successDark: '#059669',
-  
+
   warning: '#F59E0B',
   warningLight: '#FEF3C7',
   warningDark: '#D97706',
-  
+
   error: '#F43F5E',
   errorLight: '#FFE4E6',
   errorDark: '#E11D48',
@@ -173,7 +182,7 @@ const customTokens = createTokens({
 
 const lightTheme = {
   // Base background and surfaces
-  background: '#FAFBFC',        // Fresh White
+  background: '#FAFBFC', // Fresh White
   backgroundHover: '#F1F5F9',
   backgroundPress: '#E2E8F0',
   backgroundFocus: '#F1F5F9',
@@ -186,7 +195,7 @@ const lightTheme = {
   surfaceActive: '#F1F5F9',
 
   // Text colors
-  color: '#0F172A',             // Deep Navy - primary text
+  color: '#0F172A', // Deep Navy - primary text
   colorHover: '#1E293B',
   colorPress: '#334155',
   colorFocus: '#0F172A',
@@ -198,13 +207,13 @@ const lightTheme = {
   color3: '#E2E8F0',
   color4: '#CBD5E1',
   color5: '#94A3B8',
-  color6: '#64748B',            // Muted Slate - secondary text
+  color6: '#64748B', // Muted Slate - secondary text
   color7: '#475569',
   color8: '#334155',
   color9: '#1E293B',
-  color10: '#5F6F86',           // Secondary text: 4.5:1 on the background, cards and $brand1
-  color11: '#334155',           // Strong text
-  color12: '#0F172A',           // Primary text
+  color10: '#5F6F86', // Secondary text: 4.5:1 on the background, cards and $brand1
+  color11: '#334155', // Strong text
+  color12: '#0F172A', // Primary text
 
   // Primary brand (Electric Blue)
   primary: '#2563EB',
@@ -242,8 +251,8 @@ const lightTheme = {
 
   // Brand colors in theme
   ...brandColors,
-  
-  // Intensity colors  
+
+  // Intensity colors
   ...intensityColors,
 
   // Category colors
@@ -270,7 +279,7 @@ const lightTheme = {
 
 const darkTheme = {
   // Base background and surfaces
-  background: '#0F172A',        // Deep Navy background
+  background: '#0F172A', // Deep Navy background
   backgroundHover: '#1E293B',
   backgroundPress: '#334155',
   backgroundFocus: '#1E293B',
@@ -278,12 +287,12 @@ const darkTheme = {
   backgroundTransparent: 'rgba(15, 23, 42, 0)',
 
   // Card and surface colors
-  surface: '#1E293B',           // Charcoal cards
+  surface: '#1E293B', // Charcoal cards
   surfaceHover: '#334155',
   surfaceActive: '#475569',
 
   // Text colors
-  color: '#F8FAFC',             // Light text on dark
+  color: '#F8FAFC', // Light text on dark
   colorHover: '#E2E8F0',
   colorPress: '#CBD5E1',
   colorFocus: '#F8FAFC',
@@ -295,13 +304,13 @@ const darkTheme = {
   color3: '#1E293B',
   color4: '#334155',
   color5: '#475569',
-  color6: '#64748B',            
+  color6: '#64748B',
   color7: '#94A3B8',
   color8: '#CBD5E1',
   color9: '#E2E8F0',
-  color10: '#94A3B8',           // Secondary text shorthand
-  color11: '#CBD5E1',           // Strong text
-  color12: '#F8FAFC',           // Primary text
+  color10: '#94A3B8', // Secondary text shorthand
+  color11: '#CBD5E1', // Strong text
+  color12: '#F8FAFC', // Primary text
 
   // Primary brand (Electric Blue). The fill stays at #2563EB in dark mode so
   // white labels pass AA (5.2:1; #3B82F6 was 3.7:1). Blue text and icons use
@@ -413,11 +422,11 @@ const darkTheme = {
   success: '#34D399',
   successLight: '#065F46',
   successDark: '#10B981',
-  
+
   warning: '#FBBF24',
   warningLight: '#78350F',
   warningDark: '#F59E0B',
-  
+
   error: '#FB7185',
   errorLight: '#881337',
   errorDark: '#F43F5E',
@@ -688,28 +697,32 @@ export type IntensityLevel = 'low' | 'medium' | 'high'
 // Map intensity to theme name
 export const intensityThemeMap = {
   low: 'intensity_low',
-  medium: 'intensity_medium', 
+  medium: 'intensity_medium',
   high: 'intensity_high',
 } as const
 
 // GPP Category IDs to accent colors
 export const categoryAccentColors = {
-  1: { // Endurance
+  1: {
+    // Endurance
     primary: categoryColors.catEndurance,
     light: categoryColors.catEnduranceLight,
     dark: categoryColors.catEnduranceDark,
   },
-  2: { // Power
+  2: {
+    // Power
     primary: categoryColors.catPower,
     light: categoryColors.catPowerLight,
     dark: categoryColors.catPowerDark,
   },
-  3: { // Rotation
+  3: {
+    // Rotation
     primary: categoryColors.catRotation,
     light: categoryColors.catRotationLight,
     dark: categoryColors.catRotationDark,
   },
-  4: { // Strength
+  4: {
+    // Strength
     primary: categoryColors.catStrength,
     light: categoryColors.catStrengthLight,
     dark: categoryColors.catStrengthDark,
@@ -717,12 +730,12 @@ export const categoryAccentColors = {
 } as const
 
 // Brand color constants for direct use
-export const brandPrimary = '#2563EB'  // Electric Blue
+export const brandPrimary = '#2563EB' // Electric Blue
 
 /** Tab bar label colors, for React Navigation (outside Tamagui's theme). */
 export const tabTints = {
   light: { active: lightTheme.tabActive, inactive: lightTheme.tabInactive },
   dark: { active: darkTheme.tabActive, inactive: darkTheme.tabInactive },
 } as const
-export const brandAccent = '#F97316'   // Flame Orange
-export const brandNavy = '#0F172A'     // Deep Navy
+export const brandAccent = '#F97316' // Flame Orange
+export const brandNavy = '#0F172A' // Deep Navy

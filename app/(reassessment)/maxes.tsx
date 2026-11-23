@@ -1,14 +1,5 @@
 import { useState, useEffect } from 'react'
-import {
-  YStack,
-  XStack,
-  Text,
-  Button,
-  Card,
-  ScrollView,
-  Input,
-  Spinner,
-} from 'tamagui'
+import { YStack, XStack, Text, Button, Card, ScrollView, Input, Spinner } from 'tamagui'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api'
@@ -38,10 +29,7 @@ export default function MaxesScreen() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSaving, setIsSaving] = useState(false)
 
-  const coreLifts = useQuery(
-    api.userMaxes.getCoreLiftExercises,
-    user ? {} : 'skip'
-  )
+  const coreLifts = useQuery(api.userMaxes.getCoreLiftExercises, user ? {} : 'skip')
 
   const setMultipleMaxes = useMutation(api.userMaxes.setMultipleMaxes)
 
@@ -78,8 +66,10 @@ export default function MaxesScreen() {
     const num = parseInt(value, 10)
     if (isNaN(num)) return null
 
-    if (num > currentMax) return { icon: ArrowUp, color: '$green10' as const, label: `+${num - currentMax}` }
-    if (num < currentMax) return { icon: ArrowDown, color: '$red10' as const, label: `${num - currentMax}` }
+    if (num > currentMax)
+      return { icon: ArrowUp, color: '$green10' as const, label: `+${num - currentMax}` }
+    if (num < currentMax)
+      return { icon: ArrowDown, color: '$red10' as const, label: `${num - currentMax}` }
     return { icon: Minus, color: '$color9' as const, label: 'No change' }
   }
 
@@ -161,7 +151,9 @@ export default function MaxesScreen() {
               />
               <YStack flex={1}>
                 <Title accessibilityRole="header">Update your maxes</Title>
-                <Supporting color="$color10">Enter a new 1RM, or skip if nothing changed.</Supporting>
+                <Supporting color="$color10">
+                  Enter a new 1RM, or skip if nothing changed.
+                </Supporting>
               </YStack>
             </XStack>
 
@@ -171,55 +163,53 @@ export default function MaxesScreen() {
               const error = errors[lift.slug]
 
               return (
-                  <Card
-                    key={lift.slug}
-                    p="$4"
-                    bg="$surface"
-                    borderWidth={1}
-                    borderColor={error ? '$red6' : '$borderColor'}
-                    borderCurve="continuous"
-                    rounded="$4"
-                    gap="$3"
-                  >
-                    <XStack justify="space-between" items="center">
-                      <Body fontWeight="700">{lift.name}</Body>
-                      {lift.currentMax && (
-                        <Supporting color="$color10" style={numeric}>
-                          Current: {lift.currentMax} lbs
-                        </Supporting>
-                      )}
-                    </XStack>
-
-                    <XStack items="center" gap="$3">
-                      <Input
-                        flex={1}
-                        size="$4"
-                        placeholder={lift.currentMax ? `${lift.currentMax}` : 'Enter 1RM'}
-                        value={maxValues[lift.slug] ?? ''}
-                        onChangeText={(val) => handleValueChange(lift.slug, val)}
-                        keyboardType="numeric"
-                        fontFamily="$body"
-                        fontWeight="700"
-                        fontSize={18}
-                        bg="$background"
-                        borderColor={error ? '$red6' : '$borderColor'}
-                        rounded="$3"
-                      />
-                      <Supporting color="$color10">lbs</Supporting>
-                      {change && (
-                        <XStack items="center" gap="$1" minW={60}>
-                          <change.icon size={16} color={change.color} />
-                          <Supporting fontWeight="600" color={change.color} style={numeric}>
-                            {change.label}
-                          </Supporting>
-                        </XStack>
-                      )}
-                    </XStack>
-
-                    {error && (
-                      <Supporting color="$red10">{error}</Supporting>
+                <Card
+                  key={lift.slug}
+                  p="$4"
+                  bg="$surface"
+                  borderWidth={1}
+                  borderColor={error ? '$red6' : '$borderColor'}
+                  borderCurve="continuous"
+                  rounded="$4"
+                  gap="$3"
+                >
+                  <XStack justify="space-between" items="center">
+                    <Body fontWeight="700">{lift.name}</Body>
+                    {lift.currentMax && (
+                      <Supporting color="$color10" style={numeric}>
+                        Current: {lift.currentMax} lbs
+                      </Supporting>
                     )}
-                  </Card>
+                  </XStack>
+
+                  <XStack items="center" gap="$3">
+                    <Input
+                      flex={1}
+                      size="$4"
+                      placeholder={lift.currentMax ? `${lift.currentMax}` : 'Enter 1RM'}
+                      value={maxValues[lift.slug] ?? ''}
+                      onChangeText={(val) => handleValueChange(lift.slug, val)}
+                      keyboardType="numeric"
+                      fontFamily="$body"
+                      fontWeight="700"
+                      fontSize={18}
+                      bg="$background"
+                      borderColor={error ? '$red6' : '$borderColor'}
+                      rounded="$3"
+                    />
+                    <Supporting color="$color10">lbs</Supporting>
+                    {change && (
+                      <XStack items="center" gap="$1" minW={60}>
+                        <change.icon size={16} color={change.color} />
+                        <Supporting fontWeight="600" color={change.color} style={numeric}>
+                          {change.label}
+                        </Supporting>
+                      </XStack>
+                    )}
+                  </XStack>
+
+                  {error && <Supporting color="$red10">{error}</Supporting>}
+                </Card>
               )
             })}
 

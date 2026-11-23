@@ -113,150 +113,156 @@ export function SetEditSheet({
       dismissOnSnapToBottom
     >
       <Sheet.Overlay />
-      <Sheet.Frame
-        p="$4"
-        bg="$background"
-        maxW={400}
-        self="center"
-        width="100%"
-      >
+      <Sheet.Frame p="$4" bg="$background" maxW={400} self="center" width="100%">
         <Sheet.Handle />
 
         <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        <YStack gap="$4" pt="$2">
-          {/* Header */}
-          <XStack items="center" justify="space-between">
-            <YStack>
-              <H3 fontFamily="$body">Set {setNumber}</H3>
-              <Supporting color="$color9">
-                Prescribed: {prescribedReps} reps
-              </Supporting>
-            </YStack>
-            <Button
-              size="$3"
-              circular
-              bg="$color3"
-              icon={X}
-              onPress={() => onOpenChange(false)}
-            />
-          </XStack>
-
-          <Separator />
-
-          {/* Reps Stepper */}
-          <YStack gap="$2">
-            <Supporting fontWeight="600" color="$color11">
-              Reps Completed
-            </Supporting>
-            <XStack items="center" justify="center" gap="$4">
-              <Button
-                size="$3"
-                circular
-                bg="$color4"
-                icon={Minus}
-                onPress={() => setReps(Math.max(0, reps - 1))}
-              />
-              <YStack width={50} items="center">
-                <Text fontSize={32} fontFamily="$body" fontWeight="700" color="$color12" style={numeric}>
-                  {reps}
-                </Text>
+          <YStack gap="$4" pt="$2">
+            {/* Header */}
+            <XStack items="center" justify="space-between">
+              <YStack>
+                <H3 fontFamily="$body">Set {setNumber}</H3>
+                <Supporting color="$color9">Prescribed: {prescribedReps} reps</Supporting>
               </YStack>
               <Button
                 size="$3"
                 circular
-                bg="$color4"
-                icon={Plus}
-                onPress={() => setReps(reps + 1)}
+                bg="$color3"
+                icon={X}
+                onPress={() => onOpenChange(false)}
               />
             </XStack>
-          </YStack>
 
-          <Separator />
+            <Separator />
 
-          {/* Weight Input */}
-          <YStack gap="$2">
-            <Supporting fontWeight="600" color="$color11">
-              Weight (optional)
-            </Supporting>
-            <XStack items="center" gap="$2">
-              <Input
+            {/* Reps Stepper */}
+            <YStack gap="$2">
+              <Supporting fontWeight="600" color="$color11">
+                Reps Completed
+              </Supporting>
+              <XStack items="center" justify="center" gap="$4">
+                <Button
+                  size="$3"
+                  circular
+                  bg="$color4"
+                  icon={Minus}
+                  onPress={() => setReps(Math.max(0, reps - 1))}
+                />
+                <YStack width={50} items="center">
+                  <Text
+                    fontSize={32}
+                    fontFamily="$body"
+                    fontWeight="700"
+                    color="$color12"
+                    style={numeric}
+                  >
+                    {reps}
+                  </Text>
+                </YStack>
+                <Button
+                  size="$3"
+                  circular
+                  bg="$color4"
+                  icon={Plus}
+                  onPress={() => setReps(reps + 1)}
+                />
+              </XStack>
+            </YStack>
+
+            <Separator />
+
+            {/* Weight Input */}
+            <YStack gap="$2">
+              <Supporting fontWeight="600" color="$color11">
+                Weight (optional)
+              </Supporting>
+              <XStack items="center" gap="$2">
+                <Input
+                  flex={1}
+                  size="$4"
+                  placeholder="0"
+                  keyboardType="numeric"
+                  value={weight}
+                  onChangeText={setWeight}
+                  fontFamily="$body"
+                />
+                <Text fontFamily="$body" color="$color9">
+                  lbs
+                </Text>
+              </XStack>
+            </YStack>
+
+            <Separator />
+
+            {/* RPE Slider */}
+            <YStack gap="$2">
+              <XStack items="center" justify="space-between">
+                <Supporting fontWeight="600" color="$color11">
+                  RPE
+                </Supporting>
+                <Text
+                  fontSize={18}
+                  fontFamily="$body"
+                  fontWeight="700"
+                  color="$primaryText"
+                  style={numeric}
+                >
+                  {rpe}/10
+                </Text>
+              </XStack>
+              <Slider
+                value={[rpe]}
+                onValueChange={(val) => setRpe(val[0])}
+                min={1}
+                max={10}
+                step={1}
+              >
+                <Slider.Track bg="$color4" height={6} rounded={3}>
+                  <Slider.TrackActive bg="$primary" />
+                </Slider.Track>
+                <Slider.Thumb
+                  index={0}
+                  size={24}
+                  bg="$primary"
+                  borderWidth={2}
+                  borderColor="white"
+                  circular
+                  elevate
+                />
+              </Slider>
+              <XStack justify="space-between">
+                <Caption color="$color9">Easy</Caption>
+                <Caption color="$color9">Max effort</Caption>
+              </XStack>
+            </YStack>
+
+            {/* Action Buttons */}
+            <XStack gap="$3" pt="$2">
+              <Button
                 flex={1}
                 size="$4"
-                placeholder="0"
-                keyboardType="numeric"
-                value={weight}
-                onChangeText={setWeight}
+                bg="$color3"
+                color="$color11"
                 fontFamily="$body"
-              />
-              <Text fontFamily="$body" color="$color9">lbs</Text>
-            </XStack>
-          </YStack>
-
-          <Separator />
-
-          {/* RPE Slider */}
-          <YStack gap="$2">
-            <XStack items="center" justify="space-between">
-              <Supporting fontWeight="600" color="$color11">
-                RPE
-              </Supporting>
-              <Text fontSize={18} fontFamily="$body" fontWeight="700" color="$primaryText" style={numeric}>
-                {rpe}/10
-              </Text>
-            </XStack>
-            <Slider
-              value={[rpe]}
-              onValueChange={(val) => setRpe(val[0])}
-              min={1}
-              max={10}
-              step={1}
-            >
-              <Slider.Track bg="$color4" height={6} rounded={3}>
-                <Slider.TrackActive bg="$primary" />
-              </Slider.Track>
-              <Slider.Thumb
-                index={0}
-                size={24}
+                fontWeight="600"
+                onPress={handleSkip}
+              >
+                Skip Set
+              </Button>
+              <Button
+                flex={1}
+                size="$4"
                 bg="$primary"
-                borderWidth={2}
-                borderColor="white"
-                circular
-                elevate
-              />
-            </Slider>
-            <XStack justify="space-between">
-              <Caption color="$color9">Easy</Caption>
-              <Caption color="$color9">Max effort</Caption>
+                color="white"
+                icon={Check}
+                fontFamily="$body"
+                fontWeight="600"
+                onPress={handleSave}
+              >
+                Save
+              </Button>
             </XStack>
           </YStack>
-
-          {/* Action Buttons */}
-          <XStack gap="$3" pt="$2">
-            <Button
-              flex={1}
-              size="$4"
-              bg="$color3"
-              color="$color11"
-              fontFamily="$body"
-              fontWeight="600"
-              onPress={handleSkip}
-            >
-              Skip Set
-            </Button>
-            <Button
-              flex={1}
-              size="$4"
-              bg="$primary"
-              color="white"
-              icon={Check}
-              fontFamily="$body"
-              fontWeight="600"
-              onPress={handleSave}
-            >
-              Save
-            </Button>
-          </XStack>
-        </YStack>
         </ScrollView>
       </Sheet.Frame>
     </Sheet>

@@ -3,7 +3,22 @@
 // ~frame 78–82 so single-play previews land upright, and stays inside the
 // 470-unit safe circle on every frame.
 
-import { INK, OUTLINE, arc, ballShade, bezier, buildSport, circle, curve, ellipse, line, paint, poly, rect, solid } from '../art.mjs'
+import {
+  INK,
+  OUTLINE,
+  arc,
+  ballShade,
+  bezier,
+  buildSport,
+  circle,
+  curve,
+  ellipse,
+  line,
+  paint,
+  poly,
+  rect,
+  solid,
+} from '../art.mjs'
 import { EASE, group, stroke, transform } from '../lottie.mjs'
 import { posTrack, scaleTrack, track } from '../motion.mjs'
 
@@ -16,7 +31,16 @@ const strap = (nm, shapes, color, width) => [
 // ── running shoes: sleek modern athletic silhouettes with running strides ───
 
 // The shoe's art, toe pointing right, centred near the origin.
-function shoeGroups({ upper, heelColor, accent, stripe2, sole, lugs = false, spikes = false, silhouette = false }) {
+function shoeGroups({
+  upper,
+  heelColor,
+  accent,
+  stripe2,
+  sole,
+  lugs = false,
+  spikes = false,
+  silhouette = false,
+}) {
   // Sleek low-cut modern running shoe profile (no bulbous heel bump):
   // sculpted heel counter, clean ankle cutout, angled tongue, tapered toe box.
   const upperShape = curve([
@@ -60,18 +84,63 @@ function shoeGroups({ upper, heelColor, accent, stripe2, sole, lugs = false, spi
 
   const groups = [
     line('upper outline', [upperShape], INK, { width: OUTLINE }),
-    line('laces', [
-      [-10, -24, 4, -16],
-      [2, -18, 16, -10],
-      [14, -12, 28, -4],
-    ].map(([a, b, c, d]) => poly([[a, b], [c, d]], false)), '#FAFAF2', { width: 4 }),
-    ...(stripe2 ? [paint('stripe2', [poly([[-38, 16], [-6, -8], [4, -6], [-24, 18]])], stripe2)] : []),
-    paint('stripe', [poly([[-22, 18], [14, -6], [26, -4], [-6, 19]])], accent),
-    paint('heel counter', [curve([
-      [-86, 20, 0, 0, -4, -14],
-      [-78, -26, -2, 10, 10, 2],
-      [-52, 20, -14, -16, 0, 0],
-    ])], heelColor),
+    line(
+      'laces',
+      [
+        [-10, -24, 4, -16],
+        [2, -18, 16, -10],
+        [14, -12, 28, -4],
+      ].map(([a, b, c, d]) =>
+        poly(
+          [
+            [a, b],
+            [c, d],
+          ],
+          false
+        )
+      ),
+      '#FAFAF2',
+      { width: 4 }
+    ),
+    ...(stripe2
+      ? [
+          paint(
+            'stripe2',
+            [
+              poly([
+                [-38, 16],
+                [-6, -8],
+                [4, -6],
+                [-24, 18],
+              ]),
+            ],
+            stripe2
+          ),
+        ]
+      : []),
+    paint(
+      'stripe',
+      [
+        poly([
+          [-22, 18],
+          [14, -6],
+          [26, -4],
+          [-6, 19],
+        ]),
+      ],
+      accent
+    ),
+    paint(
+      'heel counter',
+      [
+        curve([
+          [-86, 20, 0, 0, -4, -14],
+          [-78, -26, -2, 10, 10, 2],
+          [-52, 20, -14, -16, 0, 0],
+        ]),
+      ],
+      heelColor
+    ),
     paint('upper', [upperShape], upper),
     solid('midsole', [midsole], '#F8FAFC'),
     solid('outsole', [outsole], sole),
@@ -79,8 +148,21 @@ function shoeGroups({ upper, heelColor, accent, stripe2, sole, lugs = false, spi
   if (lugs) {
     // Angled trail cleats hugging the contoured outsole.
     const trailLugs = [
-      [-68, 41], [-48, 41], [-28, 41], [-8, 41], [14, 40], [36, 38], [58, 35],
-    ].map(([x, y]) => poly([[x - 6, y], [x + 6, y], [x + 2, y + 9], [x - 5, y + 9]]))
+      [-68, 41],
+      [-48, 41],
+      [-28, 41],
+      [-8, 41],
+      [14, 40],
+      [36, 38],
+      [58, 35],
+    ].map(([x, y]) =>
+      poly([
+        [x - 6, y],
+        [x + 6, y],
+        [x + 2, y + 9],
+        [x - 5, y + 9],
+      ])
+    )
     groups.push(solid('lugs', trailLugs, '#64748B'))
   }
   if (spikes) {
@@ -92,12 +174,18 @@ function shoeGroups({ upper, heelColor, accent, stripe2, sole, lugs = false, spi
       [10, 41, 20, 0, 0, 0],
     ])
     const pins = [
-      [24, 39], [42, 37], [60, 35], [75, 32],
-    ].map(([x, y]) => poly([[x - 3.5, y], [x + 3.5, y], [x + 2, y + 13]]))
-    groups.push(
-      solid('spike plate', [plate], accent),
-      solid('spikes', pins, '#E2E8F0'),
+      [24, 39],
+      [42, 37],
+      [60, 35],
+      [75, 32],
+    ].map(([x, y]) =>
+      poly([
+        [x - 3.5, y],
+        [x + 3.5, y],
+        [x + 2, y + 13],
+      ])
     )
+    groups.push(solid('spike plate', [plate], accent), solid('spikes', pins, '#E2E8F0'))
   }
   return groups
 }
@@ -177,8 +265,38 @@ function shoe(nm, colors) {
       })
 
   const streakShapes = spikes
-    ? [poly([[-44, 58], [-4, 58]], false), poly([[14, 58], [46, 58]], false)]
-    : [poly([[-48, 59], [-20, 59]], false), poly([[4, 59], [30, 59]], false)]
+    ? [
+        poly(
+          [
+            [-44, 58],
+            [-4, 58],
+          ],
+          false
+        ),
+        poly(
+          [
+            [14, 58],
+            [46, 58],
+          ],
+          false
+        ),
+      ]
+    : [
+        poly(
+          [
+            [-48, 59],
+            [-20, 59],
+          ],
+          false
+        ),
+        poly(
+          [
+            [4, 59],
+            [30, 59],
+          ],
+          false
+        ),
+      ]
 
   const groundStreaks = {
     nm: 'ground',
@@ -212,21 +330,30 @@ function shoe(nm, colors) {
     nm,
     family: 'still',
     bottom: 54,
-    layers: [
-      { nm: 'shoe', ks: strideKs, groups },
-      groundStreaks,
-    ],
+    layers: [{ nm: 'shoe', ks: strideKs, groups }, groundStreaks],
   })
 }
 
 export const crossCountry = () =>
-  shoe('cross-country', { upper: '#16A34A', heelColor: '#15803D', accent: '#FACC15', sole: '#475569', lugs: true })
+  shoe('cross-country', {
+    upper: '#16A34A',
+    heelColor: '#15803D',
+    accent: '#FACC15',
+    sole: '#475569',
+    lugs: true,
+  })
 
 // Track (Distance)'s spike, reused by Track (Sprints/Jumps) so the two read as a pair.
-const SPIKE = { upper: '#2563EB', heelColor: '#1D4ED8', accent: '#F97316', stripe2: '#F8FAFC', sole: '#64748B', spikes: true }
+const SPIKE = {
+  upper: '#2563EB',
+  heelColor: '#1D4ED8',
+  accent: '#F97316',
+  stripe2: '#F8FAFC',
+  sole: '#64748B',
+  spikes: true,
+}
 
-export const trackDistance = () =>
-  shoe('track-distance', SPIKE)
+export const trackDistance = () => shoe('track-distance', SPIKE)
 
 // ── track sprints/jumps: a spike shoe clears the hurdle toward us and lands ─
 
@@ -265,13 +392,16 @@ export const trackSprints = () => {
         { t: 40, v: 12, ease: EASE.settle },
         { t: 48, v: 0 },
       ]),
-      s: scaleTrack([
-        { t: 6, v: [28, 28], ease: EASE.inOut },
-        { t: TOP, v: [40, 40], ease: EASE.inOut },
-        { t: 42, v: [56, 56], ease: EASE.settle },
-        { t: 46, v: [60, 52], ease: EASE.settle },
-        { t: 52, v: [56, 56] },
-      ], [28, 28]),
+      s: scaleTrack(
+        [
+          { t: 6, v: [28, 28], ease: EASE.inOut },
+          { t: TOP, v: [40, 40], ease: EASE.inOut },
+          { t: 42, v: [56, 56], ease: EASE.settle },
+          { t: 46, v: [60, 52], ease: EASE.settle },
+          { t: 52, v: [56, 56] },
+        ],
+        [28, 28]
+      ),
     }),
   }
   const spike = (nm, behind) => ({
@@ -307,10 +437,13 @@ export const trackSprints = () => {
         nm: 'dust',
         ks: transform({
           p: [10, 66, 0],
-          s: scaleTrack([
-            { t: 42, v: [30, 30], ease: EASE.settle },
-            { t: 58, v: [130, 90] },
-          ], [30, 30]),
+          s: scaleTrack(
+            [
+              { t: 42, v: [30, 30], ease: EASE.settle },
+              { t: 58, v: [130, 90] },
+            ],
+            [30, 30]
+          ),
           o: track([
             { t: 42, v: 0, ease: EASE.linear },
             { t: 45, v: 85, ease: EASE.inOut },
@@ -372,7 +505,27 @@ export const gymnastics = () =>
           ...strap('rings', [circle(-46, 46, 28), circle(46, 46, 28)], '#D99B58', 10),
           solid('buckles', [rect(-46, 12, 14, 11, 2), rect(46, 12, 14, 11, 2)], '#CBD5E1'),
           solid('mounts', [circle(-46, -84, 7), circle(46, -84, 7)], '#CBD5E1'),
-          ...strap('straps', [poly([[-46, -82], [-46, 12]], false), poly([[46, -82], [46, 12]], false)], '#EFE8DA', 7),
+          ...strap(
+            'straps',
+            [
+              poly(
+                [
+                  [-46, -82],
+                  [-46, 12],
+                ],
+                false
+              ),
+              poly(
+                [
+                  [46, -82],
+                  [46, 12],
+                ],
+                false
+              ),
+            ],
+            '#EFE8DA',
+            7
+          ),
         ],
       },
     ],
@@ -385,14 +538,24 @@ export const cheerleading = () => {
     circle(0, -4, 58 + grow),
     ...Array.from({ length: 11 }, (_, k) => {
       const a = (k * 360) / 11 - 90
-      return circle(60 * Math.cos((a * Math.PI) / 180), -4 + 60 * Math.sin((a * Math.PI) / 180), r + grow)
+      return circle(
+        60 * Math.cos((a * Math.PI) / 180),
+        -4 + 60 * Math.sin((a * Math.PI) / 180),
+        r + grow
+      )
     }),
   ]
   const strands = Array.from({ length: 22 }, (_, k) => {
     const a = ((k * 360) / 22) * (Math.PI / 180)
     const inner = 18 + (k % 3) * 8
     const outer = 64 + (k % 2) * 10
-    return poly([[inner * Math.cos(a), -4 + inner * Math.sin(a)], [outer * Math.cos(a), -4 + outer * Math.sin(a)]], false)
+    return poly(
+      [
+        [inner * Math.cos(a), -4 + inner * Math.sin(a)],
+        [outer * Math.cos(a), -4 + outer * Math.sin(a)],
+      ],
+      false
+    )
   })
   return buildSport({
     nm: 'cheerleading',
@@ -480,8 +643,30 @@ export const diving = () =>
           ]),
         }),
         groups: [
-          paint('tip stripe', [poly([[56, -33], [80, -39], [83, -24], [59, -18]])], '#EF4444'),
-          solid('board', [poly([[-84, 2], [82, -39], [85, -24], [-80, 17]])], '#F8FAFC'),
+          paint(
+            'tip stripe',
+            [
+              poly([
+                [56, -33],
+                [80, -39],
+                [83, -24],
+                [59, -18],
+              ]),
+            ],
+            '#EF4444'
+          ),
+          solid(
+            'board',
+            [
+              poly([
+                [-84, 2],
+                [82, -39],
+                [85, -24],
+                [-80, 17],
+              ]),
+            ],
+            '#F8FAFC'
+          ),
         ],
       },
       {
@@ -489,7 +674,18 @@ export const diving = () =>
         groups: [
           solid('fulcrum', [circle(-24, 10, 11)], '#2563EB'),
           solid('fulcrum post', [rect(-24, 34, 12, 34, 2)], '#94A3B8'),
-          solid('stand', [poly([[-78, 12], [-58, 12], [-48, 54], [-84, 54]])], '#94A3B8'),
+          solid(
+            'stand',
+            [
+              poly([
+                [-78, 12],
+                [-58, 12],
+                [-48, 54],
+                [-84, 54],
+              ]),
+            ],
+            '#94A3B8'
+          ),
           solid('base', [rect(-52, 56, 70, 12, 4)], '#CBD5E1'),
         ],
       },
@@ -514,17 +710,37 @@ export const diving = () =>
           }),
         }),
         groups: [
-          ...strap('wave top', [curve([
-            [-2, 54, 0, 0, 14, -12],
-            [28, 54, -12, -12, 12, 12],
-            [58, 54, -12, 12, 12, -12],
-            [86, 54, -10, -12, 0, 0],
-          ], false)], '#38BDF8', 7),
-          ...strap('wave bottom', [curve([
-            [10, 74, 0, 0, 14, -10],
-            [42, 74, -12, -10, 12, 10],
-            [74, 74, -12, 10, 0, 0],
-          ], false)], '#60A5FA', 6),
+          ...strap(
+            'wave top',
+            [
+              curve(
+                [
+                  [-2, 54, 0, 0, 14, -12],
+                  [28, 54, -12, -12, 12, 12],
+                  [58, 54, -12, 12, 12, -12],
+                  [86, 54, -10, -12, 0, 0],
+                ],
+                false
+              ),
+            ],
+            '#38BDF8',
+            7
+          ),
+          ...strap(
+            'wave bottom',
+            [
+              curve(
+                [
+                  [10, 74, 0, 0, 14, -10],
+                  [42, 74, -12, -10, 12, 10],
+                  [74, 74, -12, 10, 0, 0],
+                ],
+                false
+              ),
+            ],
+            '#60A5FA',
+            6
+          ),
         ],
       },
     ],
@@ -590,25 +806,88 @@ export const wrestling = () => {
         }),
         groups: [
           line('singlet outline', [body], INK, { width: OUTLINE }),
-          line('neck trim', [curve([
-            [-26, -74, 0, 0, 0, 25],
-            [0, -34, -21, 0, 21, 0],
-            [26, -74, 0, 25, 0, 0],
-          ], false)], '#F8FAFC', { width: 5 }),
-          line('leg trim', [
-            poly([[-54, 67], [-18, 67]], false),
-            poly([[18, 67], [54, 67]], false),
-          ], '#F8FAFC', { width: 4.5 }),
-          paint('side white', [
-            poly([[-52, -16], [-41, -16], [-44, 64], [-55, 64]]),
-            poly([[41, -16], [52, -16], [55, 64], [44, 64]]),
-          ], '#F8FAFC'),
-          paint('chest chevron', [
-            poly([[-44, -4], [0, 18], [44, -4], [44, 10], [0, 32], [-44, 10]]),
-          ], '#1E3A8A'),
-          paint('chevron accent', [
-            poly([[-44, -10], [0, 12], [44, -10], [44, -4], [0, 18], [-44, -4]]),
-          ], '#F8FAFC'),
+          line(
+            'neck trim',
+            [
+              curve(
+                [
+                  [-26, -74, 0, 0, 0, 25],
+                  [0, -34, -21, 0, 21, 0],
+                  [26, -74, 0, 25, 0, 0],
+                ],
+                false
+              ),
+            ],
+            '#F8FAFC',
+            { width: 5 }
+          ),
+          line(
+            'leg trim',
+            [
+              poly(
+                [
+                  [-54, 67],
+                  [-18, 67],
+                ],
+                false
+              ),
+              poly(
+                [
+                  [18, 67],
+                  [54, 67],
+                ],
+                false
+              ),
+            ],
+            '#F8FAFC',
+            { width: 4.5 }
+          ),
+          paint(
+            'side white',
+            [
+              poly([
+                [-52, -16],
+                [-41, -16],
+                [-44, 64],
+                [-55, 64],
+              ]),
+              poly([
+                [41, -16],
+                [52, -16],
+                [55, 64],
+                [44, 64],
+              ]),
+            ],
+            '#F8FAFC'
+          ),
+          paint(
+            'chest chevron',
+            [
+              poly([
+                [-44, -4],
+                [0, 18],
+                [44, -4],
+                [44, 10],
+                [0, 32],
+                [-44, 10],
+              ]),
+            ],
+            '#1E3A8A'
+          ),
+          paint(
+            'chevron accent',
+            [
+              poly([
+                [-44, -10],
+                [0, 12],
+                [44, -10],
+                [44, -4],
+                [0, 18],
+                [-44, -4],
+              ]),
+            ],
+            '#F8FAFC'
+          ),
           paint('singlet', [body], '#DC2626'),
         ],
       },
@@ -627,7 +906,20 @@ export const martialArts = () =>
         nm: 'knot',
         parent: 'gi',
         groups: [
-          line('knot fold', [poly([[-10, 10], [10, 10]], false)], '#64748B', { width: 3 }),
+          line(
+            'knot fold',
+            [
+              poly(
+                [
+                  [-10, 10],
+                  [10, 10],
+                ],
+                false
+              ),
+            ],
+            '#64748B',
+            { width: 3 }
+          ),
           solid('knot', [rect(0, 12, 32, 28, 6)], '#26282C'),
         ],
       },
@@ -647,8 +939,30 @@ export const martialArts = () =>
           ]),
         }),
         groups: [
-          paint('tip bar', [poly([[-40, 56], [-24, 61], [-28, 71], [-44, 66]])], '#EF4444'),
-          solid('tail', [poly([[-10, 22], [8, 24], [-22, 78], [-44, 70]])], '#26282C'),
+          paint(
+            'tip bar',
+            [
+              poly([
+                [-40, 56],
+                [-24, 61],
+                [-28, 71],
+                [-44, 66],
+              ]),
+            ],
+            '#EF4444'
+          ),
+          solid(
+            'tail',
+            [
+              poly([
+                [-10, 22],
+                [8, 24],
+                [-22, 78],
+                [-44, 70],
+              ]),
+            ],
+            '#26282C'
+          ),
         ],
       },
       {
@@ -667,7 +981,18 @@ export const martialArts = () =>
           ]),
         }),
         groups: [
-          solid('tail', [poly([[-8, 24], [10, 22], [44, 70], [22, 78]])], '#26282C'),
+          solid(
+            'tail',
+            [
+              poly([
+                [-8, 24],
+                [10, 22],
+                [44, 70],
+                [22, 78],
+              ]),
+            ],
+            '#26282C'
+          ),
         ],
       },
       {
@@ -700,12 +1025,61 @@ export const martialArts = () =>
           ]),
         }),
         groups: [
-          line('belt stitching', [poly([[-74, 12], [74, 12]], false)], '#64748B', { width: 2.5, dash: [5, 4] }),
+          line(
+            'belt stitching',
+            [
+              poly(
+                [
+                  [-74, 12],
+                  [74, 12],
+                ],
+                false
+              ),
+            ],
+            '#64748B',
+            { width: 2.5, dash: [5, 4] }
+          ),
           solid('belt', [rect(0, 12, 156, 22, 4)], '#26282C'),
-          line('lapel', [poly([[-28, -74], [8, 2]], false), poly([[28, -74], [-4, -18]], false)], '#94A3B8', { width: 5 }),
-          solid('gi', [poly([
-            [-34, -78], [0, -56], [34, -78], [76, -54], [64, -14], [56, -18], [58, 56], [-58, 56], [-56, -18], [-64, -14], [-76, -54],
-          ])], '#F8FAFC'),
+          line(
+            'lapel',
+            [
+              poly(
+                [
+                  [-28, -74],
+                  [8, 2],
+                ],
+                false
+              ),
+              poly(
+                [
+                  [28, -74],
+                  [-4, -18],
+                ],
+                false
+              ),
+            ],
+            '#94A3B8',
+            { width: 5 }
+          ),
+          solid(
+            'gi',
+            [
+              poly([
+                [-34, -78],
+                [0, -56],
+                [34, -78],
+                [76, -54],
+                [64, -14],
+                [56, -18],
+                [58, 56],
+                [-58, 56],
+                [-56, -18],
+                [-64, -14],
+                [-76, -54],
+              ]),
+            ],
+            '#F8FAFC'
+          ),
         ],
       },
     ],
@@ -741,17 +1115,51 @@ export const swimming = () =>
           ]),
         }),
         groups: [
-          paint('gloss', [
-            poly([[-56, -34], [-34, -38], [-28, -28], [-50, -24]]),
-            poly([[28, -34], [50, -38], [56, -28], [34, -24]]),
-          ], '#FFFFFF', { opacity: 80 }),
+          paint(
+            'gloss',
+            [
+              poly([
+                [-56, -34],
+                [-34, -38],
+                [-28, -28],
+                [-50, -24],
+              ]),
+              poly([
+                [28, -34],
+                [50, -38],
+                [56, -28],
+                [34, -24],
+              ]),
+            ],
+            '#FFFFFF',
+            { opacity: 80 }
+          ),
           paint('lenses', [rect(-42, -22, 52, 34, 14), rect(42, -22, 52, 34, 14)], '#0EA5E9'),
           solid('gaskets', [rect(-42, -22, 66, 48, 18), rect(42, -22, 66, 48, 18)], '#F8FAFC'),
           ...strap('bridge', [arc(0, -14, 13, 205, 335)], '#CBD5E1', 7),
-          ...strap('side straps', [
-            curve([[-74, -22, 0, 0, -14, -4], [-88, -32, 0, 10, 4, -10], [-74, -44, -10, 0, 0, 0]], false),
-            curve([[74, -22, 0, 0, 14, -4], [88, -32, 0, 10, -4, -10], [74, -44, 10, 0, 0, 0]], false),
-          ], '#94A3B8', 7),
+          ...strap(
+            'side straps',
+            [
+              curve(
+                [
+                  [-74, -22, 0, 0, -14, -4],
+                  [-88, -32, 0, 10, 4, -10],
+                  [-74, -44, -10, 0, 0, 0],
+                ],
+                false
+              ),
+              curve(
+                [
+                  [74, -22, 0, 0, 14, -4],
+                  [88, -32, 0, 10, -4, -10],
+                  [74, -44, 10, 0, 0, 0],
+                ],
+                false
+              ),
+            ],
+            '#94A3B8',
+            7
+          ),
         ],
       },
       {
@@ -773,13 +1181,23 @@ export const swimming = () =>
           }),
         }),
         groups: [
-          ...strap('wave top', [curve([
-            [-76, 36, 0, 0, 18, -14],
-            [-38, 36, -16, -14, 16, 14],
-            [0, 36, -16, 14, 16, -14],
-            [38, 36, -16, -14, 16, 14],
-            [76, 36, -18, 14, 0, 0],
-          ], false)], '#38BDF8', 7),
+          ...strap(
+            'wave top',
+            [
+              curve(
+                [
+                  [-76, 36, 0, 0, 18, -14],
+                  [-38, 36, -16, -14, 16, 14],
+                  [0, 36, -16, 14, 16, -14],
+                  [38, 36, -16, -14, 16, 14],
+                  [76, 36, -18, 14, 0, 0],
+                ],
+                false
+              ),
+            ],
+            '#38BDF8',
+            7
+          ),
         ],
       },
       {
@@ -801,12 +1219,22 @@ export const swimming = () =>
           }),
         }),
         groups: [
-          ...strap('wave bottom', [curve([
-            [-60, 60, 0, 0, 18, -12],
-            [-20, 60, -16, -12, 16, 12],
-            [20, 60, -16, 12, 16, -12],
-            [60, 60, -18, -12, 0, 0],
-          ], false)], '#0284C7', 6.5),
+          ...strap(
+            'wave bottom',
+            [
+              curve(
+                [
+                  [-60, 60, 0, 0, 18, -12],
+                  [-20, 60, -16, -12, 16, 12],
+                  [20, 60, -16, 12, 16, -12],
+                  [60, 60, -18, -12, 0, 0],
+                ],
+                false
+              ),
+            ],
+            '#0284C7',
+            6.5
+          ),
         ],
       },
     ],
@@ -845,14 +1273,36 @@ export const iceHockey = () => {
         groups: [
           line('rim highlight', [ellipse(42, 50, 42, 10)], '#CBD5E1', { width: 2.5 }),
           solid('top', [ellipse(42, 50, 50, 15)], '#64748B'),
-          line('grip', [27, 36, 45, 54].map((x) => poly([[x, 57], [x, 66]], false)), '#94A3B8', { width: 2.5 }),
-          solid('side', [bezier([17, 50], [
-            { c1: [17, 50], c2: [17, 65], to: [17, 65] },
-            { c1: [17, 71], c2: [29, 75], to: [42, 75] },
-            { c1: [55, 75], c2: [67, 71], to: [67, 65] },
-            { c1: [67, 65], c2: [67, 50], to: [67, 50] },
-            { c1: [67, 50], c2: [17, 50], to: [17, 50] },
-          ])], '#475569'),
+          line(
+            'grip',
+            [27, 36, 45, 54].map((x) =>
+              poly(
+                [
+                  [x, 57],
+                  [x, 66],
+                ],
+                false
+              )
+            ),
+            '#94A3B8',
+            { width: 2.5 }
+          ),
+          solid(
+            'side',
+            [
+              bezier(
+                [17, 50],
+                [
+                  { c1: [17, 50], c2: [17, 65], to: [17, 65] },
+                  { c1: [17, 71], c2: [29, 75], to: [42, 75] },
+                  { c1: [55, 75], c2: [67, 71], to: [67, 65] },
+                  { c1: [67, 65], c2: [67, 50], to: [67, 50] },
+                  { c1: [67, 50], c2: [17, 50], to: [17, 50] },
+                ]
+              ),
+            ],
+            '#475569'
+          ),
         ],
       },
       {
@@ -880,15 +1330,82 @@ export const iceHockey = () => {
         }),
         groups: [
           line('stick outline', [stickShape], INK, { width: OUTLINE }),
-          line('blade wraps', [
-            poly([[-4, 52], [-2, 69]], false),
-            poly([[8, 52], [10, 68]], false),
-            poly([[18, 52], [19, 67]], false),
-          ], '#64748B', { width: 3 }),
-          paint('blade tape', [poly([[-12, 50], [26, 50], [26, 68], [-16, 70]])], '#F8FAFC'),
-          paint('shaft red', [poly([[-44, -8], [-29, -14], [-21, 8], [-36, 14]])], '#EF4444'),
-          paint('shaft blue', [poly([[-36, 14], [-21, 8], [-15, 24], [-30, 30]])], '#2563EB'),
-          paint('top grip', [poly([[-70, -68], [-55, -74], [-46, -46], [-61, -40]])], '#38BDF8'),
+          line(
+            'blade wraps',
+            [
+              poly(
+                [
+                  [-4, 52],
+                  [-2, 69],
+                ],
+                false
+              ),
+              poly(
+                [
+                  [8, 52],
+                  [10, 68],
+                ],
+                false
+              ),
+              poly(
+                [
+                  [18, 52],
+                  [19, 67],
+                ],
+                false
+              ),
+            ],
+            '#64748B',
+            { width: 3 }
+          ),
+          paint(
+            'blade tape',
+            [
+              poly([
+                [-12, 50],
+                [26, 50],
+                [26, 68],
+                [-16, 70],
+              ]),
+            ],
+            '#F8FAFC'
+          ),
+          paint(
+            'shaft red',
+            [
+              poly([
+                [-44, -8],
+                [-29, -14],
+                [-21, 8],
+                [-36, 14],
+              ]),
+            ],
+            '#EF4444'
+          ),
+          paint(
+            'shaft blue',
+            [
+              poly([
+                [-36, 14],
+                [-21, 8],
+                [-15, 24],
+                [-30, 30],
+              ]),
+            ],
+            '#2563EB'
+          ),
+          paint(
+            'top grip',
+            [
+              poly([
+                [-70, -68],
+                [-55, -74],
+                [-46, -46],
+                [-61, -40],
+              ]),
+            ],
+            '#38BDF8'
+          ),
           paint('stick body', [stickShape], '#E2E8F0'),
         ],
       },
@@ -974,11 +1491,33 @@ export const generalFitness = () => {
           ]),
         }),
         groups: [
-          line('knurling', [-16, -6, 6, 16].map((x) => poly([[x, -7], [x, 7]], false)), '#64748B', { width: 2.5, rotation: rot }),
-          solid('outer plates', [rect(-75, 0, 18, 62, 6), rect(75, 0, 18, 62, 6)], '#475569', { rotation: rot }),
-          paint('plate bevel', [rect(-58, -12, 18, 36, 4), rect(50, -12, 18, 36, 4)], '#94A3B8', { opacity: 55, rotation: rot }),
-          solid('main plates', [rect(-54, 0, 28, 86, 8), rect(54, 0, 28, 86, 8)], '#64748B', { rotation: rot }),
-          solid('collars', [rect(-37, 0, 11, 46, 3), rect(37, 0, 11, 46, 3)], '#3B82F6', { rotation: rot }),
+          line(
+            'knurling',
+            [-16, -6, 6, 16].map((x) =>
+              poly(
+                [
+                  [x, -7],
+                  [x, 7],
+                ],
+                false
+              )
+            ),
+            '#64748B',
+            { width: 2.5, rotation: rot }
+          ),
+          solid('outer plates', [rect(-75, 0, 18, 62, 6), rect(75, 0, 18, 62, 6)], '#475569', {
+            rotation: rot,
+          }),
+          paint('plate bevel', [rect(-58, -12, 18, 36, 4), rect(50, -12, 18, 36, 4)], '#94A3B8', {
+            opacity: 55,
+            rotation: rot,
+          }),
+          solid('main plates', [rect(-54, 0, 28, 86, 8), rect(54, 0, 28, 86, 8)], '#64748B', {
+            rotation: rot,
+          }),
+          solid('collars', [rect(-37, 0, 11, 46, 3), rect(37, 0, 11, 46, 3)], '#3B82F6', {
+            rotation: rot,
+          }),
           solid('handle', [rect(0, 0, 74, 18, 4)], '#CBD5E1', { rotation: rot }),
         ],
       },
@@ -999,11 +1538,41 @@ export const lacrosse = () => {
     [-36, -54, 4, 18, 0, -20],
   ])
   const mesh = [
-    poly([[-22, -68], [16, -24]], false),
-    poly([[22, -68], [-16, -24]], false),
-    poly([[-30, -52], [20, -48]], false),
-    poly([[-24, -36], [24, -36]], false),
-    poly([[0, -76], [0, -12]], false),
+    poly(
+      [
+        [-22, -68],
+        [16, -24],
+      ],
+      false
+    ),
+    poly(
+      [
+        [22, -68],
+        [-16, -24],
+      ],
+      false
+    ),
+    poly(
+      [
+        [-30, -52],
+        [20, -48],
+      ],
+      false
+    ),
+    poly(
+      [
+        [-24, -36],
+        [24, -36],
+      ],
+      false
+    ),
+    poly(
+      [
+        [0, -76],
+        [0, -12],
+      ],
+      false
+    ),
   ]
   return buildSport({
     nm: 'lacrosse',
@@ -1033,7 +1602,11 @@ export const lacrosse = () => {
           }),
         }),
         groups: [
-          paint('ball gloss', [ellipse(0, 0, 12, 7)], '#FFFFFF', { opacity: 65, offset: [-52, -42], rotation: -35 }),
+          paint('ball gloss', [ellipse(0, 0, 12, 7)], '#FFFFFF', {
+            opacity: 65,
+            offset: [-52, -42],
+            rotation: -35,
+          }),
           solid('ball', [circle(-44, -34, 24)], '#FACC15'),
         ],
       },
@@ -1056,7 +1629,11 @@ export const lacrosse = () => {
           solid('grip', [rect(0, 56, 14, 44, 3)], '#2563EB', { offset: shift, rotation: rot }),
           solid('shaft', [rect(0, 20, 12, 56, 2)], '#CBD5E1', { offset: shift, rotation: rot }),
           line('head', [head], '#F8FAFC', { width: 8, offset: shift, rotation: rot }),
-          line('head outline', [head], INK, { width: 8 + OUTLINE * 2, offset: shift, rotation: rot }),
+          line('head outline', [head], INK, {
+            width: 8 + OUTLINE * 2,
+            offset: shift,
+            rotation: rot,
+          }),
           line('mesh', mesh, '#CBD5E1', { width: 2.5, offset: shift, rotation: rot }),
           paint('pocket', [head], '#1E293B', { opacity: 50, offset: shift, rotation: rot }),
         ],
@@ -1082,7 +1659,11 @@ export const fieldHockey = () => {
     [-26, 44, -6, 14, -4, -12],
   ])
   const dimples = [
-    [-7, -6], [6, -7], [0, 2], [-8, 7], [7, 7],
+    [-7, -6],
+    [6, -7],
+    [0, 2],
+    [-8, 7],
+    [7, 7],
   ].map(([dx, dy]) => circle(dx, dy, 2.6))
   return buildSport({
     nm: 'field-hockey',
@@ -1135,14 +1716,70 @@ export const fieldHockey = () => {
         }),
         groups: [
           line('stick outline', [stickShape], INK, { width: OUTLINE }),
-          line('grip bands', [
-            poly([[-60, -56], [-44, -62]], false),
-            poly([[-54, -40], [-38, -46]], false),
-            poly([[-48, -24], [-32, -30]], false),
-          ], '#065F46', { width: 3.5 }),
-          paint('grip', [poly([[-64, -68], [-48, -74], [-30, -18], [-46, -12]])], '#10B981'),
-          paint('bow stripe', [poly([[-32, 24], [-14, 18], [-8, 36], [-26, 42]])], '#0284C7'),
-          paint('toe accent', [poly([[4, 48], [28, 38], [28, 70], [4, 70]])], '#F59E0B'),
+          line(
+            'grip bands',
+            [
+              poly(
+                [
+                  [-60, -56],
+                  [-44, -62],
+                ],
+                false
+              ),
+              poly(
+                [
+                  [-54, -40],
+                  [-38, -46],
+                ],
+                false
+              ),
+              poly(
+                [
+                  [-48, -24],
+                  [-32, -30],
+                ],
+                false
+              ),
+            ],
+            '#065F46',
+            { width: 3.5 }
+          ),
+          paint(
+            'grip',
+            [
+              poly([
+                [-64, -68],
+                [-48, -74],
+                [-30, -18],
+                [-46, -12],
+              ]),
+            ],
+            '#10B981'
+          ),
+          paint(
+            'bow stripe',
+            [
+              poly([
+                [-32, 24],
+                [-14, 18],
+                [-8, 36],
+                [-26, 42],
+              ]),
+            ],
+            '#0284C7'
+          ),
+          paint(
+            'toe accent',
+            [
+              poly([
+                [4, 48],
+                [28, 38],
+                [28, 70],
+                [4, 70],
+              ]),
+            ],
+            '#F59E0B'
+          ),
           paint('stick body', [stickShape], '#F8FAFC'),
         ],
       },
@@ -1162,8 +1799,24 @@ export const racquetball = () => {
     [ox - 42, -30, 0, 24, 0, -28],
   ])
   const strings = [
-    ...[-26, -13, 0, 13, 26].map((dx) => poly([[ox + dx, -70 + Math.abs(dx) * 0.48], [ox + dx, 14 - Math.abs(dx) * 0.45]], false)),
-    ...[-54, -38, -22, -6].map((y) => poly([[ox - 36 + Math.abs(y + 30) * 0.35, y], [ox + 36 - Math.abs(y + 30) * 0.35, y]], false)),
+    ...[-26, -13, 0, 13, 26].map((dx) =>
+      poly(
+        [
+          [ox + dx, -70 + Math.abs(dx) * 0.48],
+          [ox + dx, 14 - Math.abs(dx) * 0.45],
+        ],
+        false
+      )
+    ),
+    ...[-54, -38, -22, -6].map((y) =>
+      poly(
+        [
+          [ox - 36 + Math.abs(y + 30) * 0.35, y],
+          [ox + 36 - Math.abs(y + 30) * 0.35, y],
+        ],
+        false
+      )
+    ),
   ]
   return buildSport({
     nm: 'racquetball',
@@ -1198,7 +1851,11 @@ export const racquetball = () => {
           ]),
         }),
         groups: [
-          paint('ball gloss', [ellipse(0, 0, 13, 8)], '#FFFFFF', { opacity: 60, offset: [-8, -10], rotation: -35 }),
+          paint('ball gloss', [ellipse(0, 0, 13, 8)], '#FFFFFF', {
+            opacity: 60,
+            offset: [-8, -10],
+            rotation: -35,
+          }),
           solid('ball', [circle(0, 0, 26)], '#2563EB'),
         ],
       },
@@ -1270,10 +1927,13 @@ export const golf = () => {
               { t: 70, v: 22 },
             ],
           }),
-          r: track([
-            { t: 26, v: 0, ease: EASE.settle },
-            { t: 58, v: -360 },
-          ], { end: -360 }),
+          r: track(
+            [
+              { t: 26, v: 0, ease: EASE.settle },
+              { t: 58, v: -360 },
+            ],
+            { end: -360 }
+          ),
         }),
         groups: [
           group('outline', [circle(0, 0, 28), stroke(INK, OUTLINE)]),
@@ -1285,7 +1945,21 @@ export const golf = () => {
       {
         nm: 'tee',
         groups: [
-          solid('tee', [poly([[22, 50], [50, 50], [40, 58], [39, 76], [36, 82], [33, 76], [32, 58]])], '#E4572E'),
+          solid(
+            'tee',
+            [
+              poly([
+                [22, 50],
+                [50, 50],
+                [40, 58],
+                [39, 76],
+                [36, 82],
+                [33, 76],
+                [32, 58],
+              ]),
+            ],
+            '#E4572E'
+          ),
         ],
       },
       {
@@ -1304,16 +1978,88 @@ export const golf = () => {
         }),
         groups: [
           line('head outline', [clubHead], INK, { width: OUTLINE }),
-          line('grooves', [
-            poly([[-14, 61], [2, 61]], false),
-            poly([[-14, 67], [4, 67]], false),
-          ], '#64748B', { width: 2.5 }),
-          paint('face', [poly([[-18, 56], [8, 57], [8, 72], [-20, 72]])], '#F8FAFC'),
+          line(
+            'grooves',
+            [
+              poly(
+                [
+                  [-14, 61],
+                  [2, 61],
+                ],
+                false
+              ),
+              poly(
+                [
+                  [-14, 67],
+                  [4, 67],
+                ],
+                false
+              ),
+            ],
+            '#64748B',
+            { width: 2.5 }
+          ),
+          paint(
+            'face',
+            [
+              poly([
+                [-18, 56],
+                [8, 57],
+                [8, 72],
+                [-20, 72],
+              ]),
+            ],
+            '#F8FAFC'
+          ),
           paint('head', [clubHead], '#CBD5E1'),
-          solid('ferrule', [poly([[-38, 32], [-26, 30], [-23, 48], [-35, 50]])], '#2563EB'),
-          solid('shaft', [poly([[-63, -76], [-53, -78], [-26, 34], [-36, 36]])], '#E2E8F0'),
-          solid('grip', [poly([[-64, -76], [-52, -78], [-45, -42], [-57, -40]])], '#DC2626'),
-          paint('grip cap', [poly([[-64, -76], [-52, -78], [-50, -68], [-62, -66]])], '#F8FAFC'),
+          solid(
+            'ferrule',
+            [
+              poly([
+                [-38, 32],
+                [-26, 30],
+                [-23, 48],
+                [-35, 50],
+              ]),
+            ],
+            '#2563EB'
+          ),
+          solid(
+            'shaft',
+            [
+              poly([
+                [-63, -76],
+                [-53, -78],
+                [-26, 34],
+                [-36, 36],
+              ]),
+            ],
+            '#E2E8F0'
+          ),
+          solid(
+            'grip',
+            [
+              poly([
+                [-64, -76],
+                [-52, -78],
+                [-45, -42],
+                [-57, -40],
+              ]),
+            ],
+            '#DC2626'
+          ),
+          paint(
+            'grip cap',
+            [
+              poly([
+                [-64, -76],
+                [-52, -78],
+                [-50, -68],
+                [-62, -66],
+              ]),
+            ],
+            '#F8FAFC'
+          ),
         ],
       },
     ],
@@ -1351,16 +2097,52 @@ export const cricket = () => {
               { t: 70, v: 36 },
             ],
           }),
-          r: track([
-            { t: 26, v: 0, ease: EASE.settle },
-            { t: 62, v: -360 },
-          ], { end: -360 }),
+          r: track(
+            [
+              { t: 26, v: 0, ease: EASE.settle },
+              { t: 62, v: -360 },
+            ],
+            { end: -360 }
+          ),
         }),
         groups: [
           group('outline', [circle(0, 0, 24), stroke(INK, OUTLINE)]),
           ballShade(24),
-          line('stitches', [poly([[-22, -4], [22, -4]], false), poly([[-22, 4], [22, 4]], false)], '#F2E6C8', { width: 3.5, dash: [2.5, 4] }),
-          line('seam', [poly([[-23, 0], [23, 0]], false)], '#F2E6C8', { width: 2.5 }),
+          line(
+            'stitches',
+            [
+              poly(
+                [
+                  [-22, -4],
+                  [22, -4],
+                ],
+                false
+              ),
+              poly(
+                [
+                  [-22, 4],
+                  [22, 4],
+                ],
+                false
+              ),
+            ],
+            '#F2E6C8',
+            { width: 3.5, dash: [2.5, 4] }
+          ),
+          line(
+            'seam',
+            [
+              poly(
+                [
+                  [-23, 0],
+                  [23, 0],
+                ],
+                false
+              ),
+            ],
+            '#F2E6C8',
+            { width: 2.5 }
+          ),
           paint('body', [circle(0, 0, 24)], '#A8232B'),
         ],
       },
@@ -1379,11 +2161,37 @@ export const cricket = () => {
           ]),
         }),
         groups: [
-          line('ridge', [poly([[0, -24], [0, 74]], false)], '#C89E5D', { width: 4, offset: shift, rotation: rot }),
+          line(
+            'ridge',
+            [
+              poly(
+                [
+                  [0, -24],
+                  [0, 74],
+                ],
+                false
+              ),
+            ],
+            '#C89E5D',
+            { width: 4, offset: shift, rotation: rot }
+          ),
           paint('sticker', [rect(0, 14, 34, 18, 2)], '#1E3A8A', { offset: shift, rotation: rot }),
           solid('blade', [rect(0, 26, 38, 108, 7)], '#E9C992', { offset: shift, rotation: rot }),
           solid('handle', [rect(0, -54, 14, 54, 4)], '#1E3A8A', { offset: shift, rotation: rot }),
-          line('grip', [-68, -56, -44].map((y) => poly([[-7, y], [7, y]], false)), '#EF4444', { width: 3.5, offset: shift, rotation: rot }),
+          line(
+            'grip',
+            [-68, -56, -44].map((y) =>
+              poly(
+                [
+                  [-7, y],
+                  [7, y],
+                ],
+                false
+              )
+            ),
+            '#EF4444',
+            { width: 3.5, offset: shift, rotation: rot }
+          ),
         ],
       },
     ],
@@ -1395,9 +2203,27 @@ export const cricket = () => {
 export const ultimateFrisbee = () => {
   const rot = -22
   const trails = [
-    poly([[-86, 12], [-54, 0]], false),
-    poly([[-88, 34], [-48, 18]], false),
-    poly([[-74, 52], [-42, 39]], false),
+    poly(
+      [
+        [-86, 12],
+        [-54, 0],
+      ],
+      false
+    ),
+    poly(
+      [
+        [-88, 34],
+        [-48, 18],
+      ],
+      false
+    ),
+    poly(
+      [
+        [-74, 52],
+        [-42, 39],
+      ],
+      false
+    ),
   ]
   return buildSport({
     nm: 'ultimate-frisbee',
@@ -1408,20 +2234,21 @@ export const ultimateFrisbee = () => {
         nm: 'spin markings',
         parent: 'disc plane',
         ks: transform({
-          r: track([
-            { t: 8, v: 0, ease: EASE.settle },
-            { t: 72, v: -720 },
-          ], { end: -720 }),
+          r: track(
+            [
+              { t: 8, v: 0, ease: EASE.settle },
+              { t: 72, v: -720 },
+            ],
+            { end: -720 }
+          ),
         }),
         groups: [
-          line('spin arcs', [
-            arc(0, 0, 58, 15, 115),
-            arc(0, 0, 58, 195, 295),
-          ], '#FFFFFF', { width: 6 }),
-          line('inner arcs', [
-            arc(0, 0, 32, 65, 155),
-            arc(0, 0, 32, 245, 335),
-          ], '#FEF3C7', { width: 4 }),
+          line('spin arcs', [arc(0, 0, 58, 15, 115), arc(0, 0, 58, 195, 295)], '#FFFFFF', {
+            width: 6,
+          }),
+          line('inner arcs', [arc(0, 0, 32, 65, 155), arc(0, 0, 32, 245, 335)], '#FEF3C7', {
+            width: 4,
+          }),
         ],
       },
       {
@@ -1456,13 +2283,16 @@ export const ultimateFrisbee = () => {
               { t: 72, v: 0 },
             ],
           }),
-          o: track([
-            { t: 8, v: 100, ease: EASE.inOut },
-            { t: 26, v: 55, ease: EASE.inOut },
-            { t: 44, v: 100, ease: EASE.inOut },
-            { t: 60, v: 65, ease: EASE.inOut },
-            { t: 74, v: 100 },
-          ], { rest: 100 }),
+          o: track(
+            [
+              { t: 8, v: 100, ease: EASE.inOut },
+              { t: 26, v: 55, ease: EASE.inOut },
+              { t: 44, v: 100, ease: EASE.inOut },
+              { t: 60, v: 65, ease: EASE.inOut },
+              { t: 74, v: 100 },
+            ],
+            { rest: 100 }
+          ),
         }),
         groups: [
           line('wind trails', trails, '#F8FAFC', { width: 4.5 }),

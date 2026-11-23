@@ -56,7 +56,15 @@ export const SignOutButton = () => {
     })
     const onUserScroll = () => follow.noteUserScroll()
     const onKeyScroll = (event: KeyboardEvent) => {
-      if (event.key === 'ArrowUp' || event.key === 'ArrowDown' || event.key === 'PageUp' || event.key === 'PageDown' || event.key === ' ' || event.key === 'Home' || event.key === 'End') {
+      if (
+        event.key === 'ArrowUp' ||
+        event.key === 'ArrowDown' ||
+        event.key === 'PageUp' ||
+        event.key === 'PageDown' ||
+        event.key === ' ' ||
+        event.key === 'Home' ||
+        event.key === 'End'
+      ) {
         onUserScroll()
       }
     }

@@ -51,10 +51,7 @@ describe('TrainingSciencePage', () => {
   it('opens with the intro line, without a second title under the header', () => {
     mockUseQuery.mockReturnValue({ gppCategoryId: 2 })
 
-    const { getByText } = render(
-      <TrainingSciencePage />,
-      { wrapper: AllTheProviders }
-    )
+    const { getByText } = render(<TrainingSciencePage />, { wrapper: AllTheProviders })
 
     expect(getByText(/built on sports science principles/i)).toBeTruthy()
   })
@@ -62,10 +59,7 @@ describe('TrainingSciencePage', () => {
   it('renders all main section titles', () => {
     mockUseQuery.mockReturnValue({ gppCategoryId: 2 })
 
-    const { getByText } = render(
-      <TrainingSciencePage />,
-      { wrapper: AllTheProviders }
-    )
+    const { getByText } = render(<TrainingSciencePage />, { wrapper: AllTheProviders })
 
     expect(getByText('The three phases')).toBeTruthy()
     expect(getByText('Understanding your numbers')).toBeTruthy()
@@ -77,10 +71,7 @@ describe('TrainingSciencePage', () => {
   it('renders the three phases content (defaultExpanded)', () => {
     mockUseQuery.mockReturnValue({ gppCategoryId: 2 })
 
-    const { getByText } = render(
-      <TrainingSciencePage />,
-      { wrapper: AllTheProviders }
-    )
+    const { getByText } = render(<TrainingSciencePage />, { wrapper: AllTheProviders })
 
     // The Three Phases section is defaultExpanded
     expect(getByText('GPP: General Physical Preparedness')).toBeTruthy()
@@ -90,10 +81,7 @@ describe('TrainingSciencePage', () => {
 
   it('never uses the retired phase expansions', () => {
     mockUseQuery.mockReturnValue({ gppCategoryId: 2 })
-    const { queryByText } = render(
-      <TrainingSciencePage />,
-      { wrapper: AllTheProviders }
-    )
+    const { queryByText } = render(<TrainingSciencePage />, { wrapper: AllTheProviders })
     expect(queryByText(/Sports Physical Preparedness/)).toBeNull()
     expect(queryByText(/Sports Specific Preparation/)).toBeNull()
     expect(queryByText(/General Physical Preparation\b/)).toBeNull()
@@ -102,10 +90,9 @@ describe('TrainingSciencePage', () => {
   it('shows each phase as load, reps or focus, and tempo instead of one dense line', () => {
     mockUseQuery.mockReturnValue({ gppCategoryId: 2 })
 
-    const { getByText, getAllByText, queryByText } = render(
-      <TrainingSciencePage />,
-      { wrapper: AllTheProviders }
-    )
+    const { getByText, getAllByText, queryByText } = render(<TrainingSciencePage />, {
+      wrapper: AllTheProviders,
+    })
 
     expect(getByText('60–75%')).toBeTruthy()
     expect(getByText('75–85%')).toBeTruthy()
@@ -118,10 +105,7 @@ describe('TrainingSciencePage', () => {
   it('renders sport category section when program state exists', () => {
     mockUseQuery.mockReturnValue({ gppCategoryId: 2 })
 
-    const { getByText } = render(
-      <TrainingSciencePage />,
-      { wrapper: AllTheProviders }
-    )
+    const { getByText } = render(<TrainingSciencePage />, { wrapper: AllTheProviders })
 
     expect(getByText('Your sport category')).toBeTruthy()
   })
@@ -129,10 +113,7 @@ describe('TrainingSciencePage', () => {
   it('does not render sport category section when no program state', () => {
     mockUseQuery.mockReturnValue(null)
 
-    const { queryByText } = render(
-      <TrainingSciencePage />,
-      { wrapper: AllTheProviders }
-    )
+    const { queryByText } = render(<TrainingSciencePage />, { wrapper: AllTheProviders })
 
     expect(queryByText('Your sport category')).toBeNull()
   })
@@ -150,10 +131,7 @@ describe('TrainingSciencePage Category Personalization', () => {
     categories.forEach((categoryId) => {
       mockUseQuery.mockReturnValue({ gppCategoryId: categoryId })
 
-      const { getByText, unmount } = render(
-        <TrainingSciencePage />,
-        { wrapper: AllTheProviders }
-      )
+      const { getByText, unmount } = render(<TrainingSciencePage />, { wrapper: AllTheProviders })
 
       // The section header should always be visible
       expect(getByText('Your sport category')).toBeTruthy()
@@ -165,10 +143,7 @@ describe('TrainingSciencePage Category Personalization', () => {
   it('hides sport category section when category is undefined', () => {
     mockUseQuery.mockReturnValue({ gppCategoryId: undefined })
 
-    const { queryByText } = render(
-      <TrainingSciencePage />,
-      { wrapper: AllTheProviders }
-    )
+    const { queryByText } = render(<TrainingSciencePage />, { wrapper: AllTheProviders })
 
     expect(queryByText('Your sport category')).toBeNull()
   })

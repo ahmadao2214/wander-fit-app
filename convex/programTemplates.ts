@@ -1,5 +1,5 @@
-import { query, internalMutation } from "./_generated/server";
-import { v } from "convex/values";
+import { query, internalMutation } from './_generated/server'
+import { v } from 'convex/values'
 import {
   INTENSITY_CONFIG,
   BODYWEIGHT_INTENSITY_CONFIG,
@@ -16,41 +16,37 @@ import {
   getBodyweightVariant,
   formatTempo,
   normalizeAgeGroup,
-} from "./intensityScaling";
+} from './intensityScaling'
 
 /**
  * Program Templates - The Logic Engine
- * 
+ *
  * Templates define the exact workout prescription for each combination of:
  * - GPP Category (1-4)
  * - Phase (GPP, SPP, SSP)
  * - Skill Level (Novice, Moderate, Advanced)
  * - Week (1-4)
  * - Day (1-7, though rest days have no template)
- * 
+ *
  * HYBRID MODEL: Athletes can VIEW all templates in unlocked phases,
  * but can only INPUT data on their scheduled workout of the day.
- * 
+ *
  * Max possible: 4 × 3 × 3 × 4 × 7 = 1008 (but rest days reduce this)
  * Practical estimate: ~432 templates (assuming 3 workout days per week)
  */
 
 // Shared validators
-const phaseValidator = v.union(
-  v.literal("GPP"),
-  v.literal("SPP"),
-  v.literal("SSP")
-);
+const phaseValidator = v.union(v.literal('GPP'), v.literal('SPP'), v.literal('SSP'))
 
 const skillLevelValidator = v.union(
-  v.literal("Novice"),
-  v.literal("Moderate"),
-  v.literal("Advanced")
-);
+  v.literal('Novice'),
+  v.literal('Moderate'),
+  v.literal('Advanced')
+)
 
 // Exercise prescription validator
 const exercisePrescriptionValidator = v.object({
-  exerciseId: v.id("exercises"),
+  exerciseId: v.id('exercises'),
   sets: v.number(),
   reps: v.string(), // "10-12", "5", "AMRAP", "30s"
   tempo: v.optional(v.string()), // "3010", "X010"
@@ -58,7 +54,7 @@ const exercisePrescriptionValidator = v.object({
   notes: v.optional(v.string()),
   orderIndex: v.number(),
   superset: v.optional(v.string()), // "A", "B"
-});
+})
 
 // ─────────────────────────────────────────────────────────────────────────────
 // QUERIES
@@ -78,30 +74,26 @@ export const getWorkout = query({
   },
   handler: async (ctx, args) => {
     const template = await ctx.db
-      .query("program_templates")
-      .withIndex("by_assignment", (q) =>
+      .query('program_templates')
+      .withIndex('by_assignment', (q) =>
         q
-          .eq("gppCategoryId", args.gppCategoryId)
-          .eq("phase", args.phase)
-          .eq("skillLevel", args.skillLevel)
-          .eq("week", args.week)
-          .eq("day", args.day)
+          .eq('gppCategoryId', args.gppCategoryId)
+          .eq('phase', args.phase)
+          .eq('skillLevel', args.skillLevel)
+          .eq('week', args.week)
+          .eq('day', args.day)
       )
-      .first();
+      .first()
 
     if (!template) {
-      return null;
+      return null
     }
 
     // Fetch exercise details for each prescription
-    const exerciseIds = template.exercises.map((e) => e.exerciseId);
-    const exercises = await Promise.all(
-      exerciseIds.map((id) => ctx.db.get(id))
-    );
+    const exerciseIds = template.exercises.map((e) => e.exerciseId)
+    const exercises = await Promise.all(exerciseIds.map((id) => ctx.db.get(id)))
 
-    const exerciseMap = new Map(
-      exercises.filter(Boolean).map((ex) => [ex!._id, ex!])
-    );
+    const exerciseMap = new Map(exercises.filter(Boolean).map((ex) => [ex!._id, ex!]))
 
     // Return template with exercise details inline
     return {
@@ -110,37 +102,33 @@ export const getWorkout = query({
         ...prescription,
         exercise: exerciseMap.get(prescription.exerciseId),
       })),
-    };
+    }
   },
-});
+})
 
 /**
  * Get template by ID
  */
 export const getById = query({
-  args: { templateId: v.id("program_templates") },
+  args: { templateId: v.id('program_templates') },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.templateId);
+    return await ctx.db.get(args.templateId)
   },
-});
+})
 
 /**
  * Get template by ID with exercise details
  */
 export const getByIdWithExercises = query({
-  args: { templateId: v.id("program_templates") },
+  args: { templateId: v.id('program_templates') },
   handler: async (ctx, args) => {
-    const template = await ctx.db.get(args.templateId);
-    if (!template) return null;
+    const template = await ctx.db.get(args.templateId)
+    if (!template) return null
 
-    const exerciseIds = template.exercises.map((e) => e.exerciseId);
-    const exercises = await Promise.all(
-      exerciseIds.map((id) => ctx.db.get(id))
-    );
+    const exerciseIds = template.exercises.map((e) => e.exerciseId)
+    const exercises = await Promise.all(exerciseIds.map((id) => ctx.db.get(id)))
 
-    const exerciseMap = new Map(
-      exercises.filter(Boolean).map((ex) => [ex!._id, ex!])
-    );
+    const exerciseMap = new Map(exercises.filter(Boolean).map((ex) => [ex!._id, ex!]))
 
     return {
       ...template,
@@ -148,13 +136,13 @@ export const getByIdWithExercises = query({
         ...prescription,
         exercise: exerciseMap.get(prescription.exerciseId),
       })),
-    };
+    }
   },
-});
+})
 
 /**
  * Get all templates for a week (week overview)
- * 
+ *
  * HYBRID MODEL: Athletes can browse this to see upcoming workouts
  * in their training block, but can only input on scheduled day.
  */
@@ -167,23 +155,23 @@ export const getWeekOverview = query({
   },
   handler: async (ctx, args) => {
     const templates = await ctx.db
-      .query("program_templates")
-      .withIndex("by_assignment", (q) =>
+      .query('program_templates')
+      .withIndex('by_assignment', (q) =>
         q
-          .eq("gppCategoryId", args.gppCategoryId)
-          .eq("phase", args.phase)
-          .eq("skillLevel", args.skillLevel)
-          .eq("week", args.week)
+          .eq('gppCategoryId', args.gppCategoryId)
+          .eq('phase', args.phase)
+          .eq('skillLevel', args.skillLevel)
+          .eq('week', args.week)
       )
-      .collect();
+      .collect()
 
-    return templates.sort((a, b) => a.day - b.day);
+    return templates.sort((a, b) => a.day - b.day)
   },
-});
+})
 
 /**
  * Get all templates for a phase (phase overview)
- * 
+ *
  * HYBRID MODEL: Athletes can browse entire phase to plan ahead.
  * Only unlocked phases are accessible (GPP always, then SPP, then SSP).
  */
@@ -195,30 +183,30 @@ export const getPhaseOverview = query({
   },
   handler: async (ctx, args) => {
     const filtered = await ctx.db
-      .query("program_templates")
-      .withIndex("by_assignment", (q) =>
+      .query('program_templates')
+      .withIndex('by_assignment', (q) =>
         q
-          .eq("gppCategoryId", args.gppCategoryId)
-          .eq("phase", args.phase)
-          .eq("skillLevel", args.skillLevel)
+          .eq('gppCategoryId', args.gppCategoryId)
+          .eq('phase', args.phase)
+          .eq('skillLevel', args.skillLevel)
       )
-      .collect();
+      .collect()
 
-    const byWeek = new Map<number, typeof filtered>();
+    const byWeek = new Map<number, typeof filtered>()
     filtered.forEach((t) => {
-      const week = byWeek.get(t.week) || [];
-      week.push(t);
-      byWeek.set(t.week, week);
-    });
+      const week = byWeek.get(t.week) || []
+      week.push(t)
+      byWeek.set(t.week, week)
+    })
 
     return Array.from(byWeek.entries())
       .sort(([a], [b]) => a - b)
       .map(([week, workouts]) => ({
         week,
         workouts: workouts.sort((a, b) => a.day - b.day),
-      }));
+      }))
   },
-});
+})
 
 /**
  * Check if a template exists for given coordinates
@@ -234,20 +222,20 @@ export const exists = query({
   },
   handler: async (ctx, args) => {
     const template = await ctx.db
-      .query("program_templates")
-      .withIndex("by_assignment", (q) =>
+      .query('program_templates')
+      .withIndex('by_assignment', (q) =>
         q
-          .eq("gppCategoryId", args.gppCategoryId)
-          .eq("phase", args.phase)
-          .eq("skillLevel", args.skillLevel)
-          .eq("week", args.week)
-          .eq("day", args.day)
+          .eq('gppCategoryId', args.gppCategoryId)
+          .eq('phase', args.phase)
+          .eq('skillLevel', args.skillLevel)
+          .eq('week', args.week)
+          .eq('day', args.day)
       )
-      .first();
+      .first()
 
-    return template !== null;
+    return template !== null
   },
-});
+})
 
 /**
  * Check whether program templates are seeded across all 4 GPP categories,
@@ -259,16 +247,16 @@ export const seedStatus = query({
   handler: async (ctx) => {
     for (const categoryId of [1, 2, 3, 4]) {
       const template = await ctx.db
-        .query("program_templates")
-        .withIndex("by_category_phase", (q) => q.eq("gppCategoryId", categoryId))
-        .first();
+        .query('program_templates')
+        .withIndex('by_category_phase', (q) => q.eq('gppCategoryId', categoryId))
+        .first()
       if (!template) {
-        return { hasTemplates: false };
+        return { hasTemplates: false }
       }
     }
-    return { hasTemplates: true };
+    return { hasTemplates: true }
   },
-});
+})
 
 /**
  * Get template count
@@ -276,10 +264,10 @@ export const seedStatus = query({
 export const getCount = query({
   args: {},
   handler: async (ctx) => {
-    const templates = await ctx.db.query("program_templates").collect();
-    return templates.length;
+    const templates = await ctx.db.query('program_templates').collect()
+    return templates.length
   },
-});
+})
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MUTATIONS (For seeding templates)
@@ -303,26 +291,26 @@ export const create = internalMutation({
   handler: async (ctx, args) => {
     // Check if template already exists for this coordinate
     const existing = await ctx.db
-      .query("program_templates")
-      .withIndex("by_assignment", (q) =>
+      .query('program_templates')
+      .withIndex('by_assignment', (q) =>
         q
-          .eq("gppCategoryId", args.gppCategoryId)
-          .eq("phase", args.phase)
-          .eq("skillLevel", args.skillLevel)
-          .eq("week", args.week)
-          .eq("day", args.day)
+          .eq('gppCategoryId', args.gppCategoryId)
+          .eq('phase', args.phase)
+          .eq('skillLevel', args.skillLevel)
+          .eq('week', args.week)
+          .eq('day', args.day)
       )
-      .first();
+      .first()
 
     if (existing) {
       throw new Error(
         `Template already exists for Category ${args.gppCategoryId}, ${args.phase}, ${args.skillLevel}, Week ${args.week}, Day ${args.day}`
-      );
+      )
     }
 
-    return await ctx.db.insert("program_templates", args);
+    return await ctx.db.insert('program_templates', args)
   },
-});
+})
 
 /**
  * Upsert a program template (for seeding - creates or updates)
@@ -341,130 +329,122 @@ export const upsert = internalMutation({
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
-      .query("program_templates")
-      .withIndex("by_assignment", (q) =>
+      .query('program_templates')
+      .withIndex('by_assignment', (q) =>
         q
-          .eq("gppCategoryId", args.gppCategoryId)
-          .eq("phase", args.phase)
-          .eq("skillLevel", args.skillLevel)
-          .eq("week", args.week)
-          .eq("day", args.day)
+          .eq('gppCategoryId', args.gppCategoryId)
+          .eq('phase', args.phase)
+          .eq('skillLevel', args.skillLevel)
+          .eq('week', args.week)
+          .eq('day', args.day)
       )
-      .first();
+      .first()
 
     if (existing) {
-      await ctx.db.patch(existing._id, args);
-      return { id: existing._id, action: "updated" as const };
+      await ctx.db.patch(existing._id, args)
+      return { id: existing._id, action: 'updated' as const }
     }
 
-    const id = await ctx.db.insert("program_templates", args);
-    return { id, action: "created" as const };
+    const id = await ctx.db.insert('program_templates', args)
+    return { id, action: 'created' as const }
   },
-});
+})
 
 /**
  * Delete a template (for cleanup during development)
  */
 export const remove = internalMutation({
-  args: { templateId: v.id("program_templates") },
+  args: { templateId: v.id('program_templates') },
   handler: async (ctx, args) => {
-    await ctx.db.delete(args.templateId);
-    return { success: true };
+    await ctx.db.delete(args.templateId)
+    return { success: true }
   },
-});
+})
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INTENSITY SCALING QUERIES
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Intensity validator for queries
-const intensityValidator = v.union(
-  v.literal("Low"),
-  v.literal("Moderate"),
-  v.literal("High")
-);
+const intensityValidator = v.union(v.literal('Low'), v.literal('Moderate'), v.literal('High'))
 
 /**
  * Get workout template with intensity scaling applied
- * 
+ *
  * This query fetches a template and applies intensity scaling to all exercises.
  * For weighted exercises, it uses the athlete's 1RM (if known) to calculate target weight.
  * For bodyweight exercises, it scales reps/duration and may substitute with easier/harder variants.
  */
 export const getWorkoutWithIntensity = query({
   args: {
-    templateId: v.id("program_templates"),
+    templateId: v.id('program_templates'),
     intensity: intensityValidator,
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    
+    const identity = await ctx.auth.getUserIdentity()
+
     // Get the template
-    const template = await ctx.db.get(args.templateId);
+    const template = await ctx.db.get(args.templateId)
     if (!template) {
-      return null;
+      return null
     }
 
     // Fetch exercise details
-    const exerciseIds = template.exercises.map((e) => e.exerciseId);
-    const exercises = await Promise.all(
-      exerciseIds.map((id) => ctx.db.get(id))
-    );
+    const exerciseIds = template.exercises.map((e) => e.exerciseId)
+    const exercises = await Promise.all(exerciseIds.map((id) => ctx.db.get(id)))
 
-    const exerciseMap = new Map(
-      exercises.filter(Boolean).map((ex) => [ex!._id.toString(), ex!])
-    );
+    const exerciseMap = new Map(exercises.filter(Boolean).map((ex) => [ex!._id.toString(), ex!]))
 
     // Get user's 1RM records if authenticated
-    let userMaxMap: Record<string, number> = {};
+    let userMaxMap: Record<string, number> = {}
     if (identity) {
       const user = await ctx.db
-        .query("users")
-        .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
-        .first();
+        .query('users')
+        .withIndex('by_clerk', (q) => q.eq('clerkId', identity.subject))
+        .first()
 
       if (user) {
         const userMaxes = await ctx.db
-          .query("user_maxes")
-          .withIndex("by_user", (q) => q.eq("userId", user._id))
-          .collect();
+          .query('user_maxes')
+          .withIndex('by_user', (q) => q.eq('userId', user._id))
+          .collect()
 
         for (const max of userMaxes) {
-          userMaxMap[max.exerciseId.toString()] = max.oneRepMax;
+          userMaxMap[max.exerciseId.toString()] = max.oneRepMax
         }
       }
     }
 
     // Get intensity configuration from shared module (single source of truth)
-    const config = INTENSITY_CONFIG[args.intensity];
-    const bwConfig = BODYWEIGHT_INTENSITY_CONFIG[args.intensity];
-    const avgPercent = (config.oneRepMaxPercent.min + config.oneRepMaxPercent.max) / 2;
+    const config = INTENSITY_CONFIG[args.intensity]
+    const bwConfig = BODYWEIGHT_INTENSITY_CONFIG[args.intensity]
+    const avgPercent = (config.oneRepMaxPercent.min + config.oneRepMaxPercent.max) / 2
 
     // Apply intensity scaling to each exercise
     const scaledExercises = template.exercises.map((prescription) => {
-      const exercise = exerciseMap.get(prescription.exerciseId.toString());
-      const oneRepMax = userMaxMap[prescription.exerciseId.toString()];
-      const isBW = isBodyweightExercise(exercise?.equipment);
+      const exercise = exerciseMap.get(prescription.exerciseId.toString())
+      const oneRepMax = userMaxMap[prescription.exerciseId.toString()]
+      const isBW = isBodyweightExercise(exercise?.equipment)
 
       // Parse original reps to number for weighted exercises
-      const repsMatch = prescription.reps.match(/^(\d+)/);
-      const baseReps = repsMatch ? parseInt(repsMatch[1]) : 8;
+      const repsMatch = prescription.reps.match(/^(\d+)/)
+      const baseReps = repsMatch ? parseInt(repsMatch[1]) : 8
 
       if (isBW) {
         // Bodyweight exercise scaling
-        const scaledReps = scaleRepsOrDuration(prescription.reps, bwConfig.repsMultiplier);
-        
+        const scaledReps = scaleRepsOrDuration(prescription.reps, bwConfig.repsMultiplier)
+
         // Determine variant based on intensity
-        let exerciseSlug = exercise?.slug || "";
-        let isSubstituted = false;
+        let exerciseSlug = exercise?.slug || ''
+        let isSubstituted = false
 
         if (exercise?.progressions) {
-          if (args.intensity === "Low" && exercise.progressions.easier) {
-            exerciseSlug = exercise.progressions.easier;
-            isSubstituted = true;
-          } else if (args.intensity === "High" && exercise.progressions.harder) {
-            exerciseSlug = exercise.progressions.harder;
-            isSubstituted = true;
+          if (args.intensity === 'Low' && exercise.progressions.easier) {
+            exerciseSlug = exercise.progressions.easier
+            isSubstituted = true
+          } else if (args.intensity === 'High' && exercise.progressions.harder) {
+            exerciseSlug = exercise.progressions.harder
+            isSubstituted = true
           }
         }
 
@@ -474,18 +454,24 @@ export const getWorkoutWithIntensity = query({
           // Scaled values
           scaledSets: prescription.sets,
           scaledReps: scaledReps,
-          scaledRestSeconds: Math.max(15, Math.round(prescription.restSeconds * config.restMultiplier)),
+          scaledRestSeconds: Math.max(
+            15,
+            Math.round(prescription.restSeconds * config.restMultiplier)
+          ),
           // Intensity metadata
           isBodyweight: true,
           isSubstituted,
           substitutedExerciseSlug: isSubstituted ? exerciseSlug : undefined,
           rpeTarget: config.rpeTarget,
-        };
+        }
       } else {
         // Weighted exercise scaling
-        const scaledSets = Math.max(1, Math.round(prescription.sets * config.setsMultiplier));
-        const scaledReps = Math.max(1, Math.round(baseReps * config.repsMultiplier));
-        const scaledRest = Math.max(15, Math.round(prescription.restSeconds * config.restMultiplier));
+        const scaledSets = Math.max(1, Math.round(prescription.sets * config.setsMultiplier))
+        const scaledReps = Math.max(1, Math.round(baseReps * config.repsMultiplier))
+        const scaledRest = Math.max(
+          15,
+          Math.round(prescription.restSeconds * config.restMultiplier)
+        )
 
         return {
           ...prescription,
@@ -502,9 +488,9 @@ export const getWorkoutWithIntensity = query({
           isSubstituted: false,
           rpeTarget: config.rpeTarget,
           hasOneRepMax: !!oneRepMax,
-        };
+        }
       }
-    });
+    })
 
     return {
       ...template,
@@ -514,9 +500,9 @@ export const getWorkoutWithIntensity = query({
         percentOf1RM: Math.round(avgPercent * 100),
         rpeTarget: config.rpeTarget,
       },
-    };
+    }
   },
-});
+})
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CATEGORY-SPECIFIC INTENSITY SCALING
@@ -538,82 +524,78 @@ export const getWorkoutWithIntensity = query({
  */
 export const getWorkoutWithScaling = query({
   args: {
-    templateId: v.id("program_templates"),
+    templateId: v.id('program_templates'),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
+    const identity = await ctx.auth.getUserIdentity()
     if (!identity) {
-      return null;
+      return null
     }
 
     // Get the user
     const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk", (q) => q.eq("clerkId", identity.subject))
-      .first();
+      .query('users')
+      .withIndex('by_clerk', (q) => q.eq('clerkId', identity.subject))
+      .first()
 
     if (!user) {
-      return null;
+      return null
     }
 
     // Get the template
-    const template = await ctx.db.get(args.templateId);
+    const template = await ctx.db.get(args.templateId)
     if (!template) {
-      return null;
+      return null
     }
 
     // Get user's program for category and age group
     const userProgram = await ctx.db
-      .query("user_programs")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .first();
+      .query('user_programs')
+      .withIndex('by_user', (q) => q.eq('userId', user._id))
+      .first()
 
     if (!userProgram) {
-      return null;
+      return null
     }
 
     // Get the latest intake for years of experience
     const intake = await ctx.db
-      .query("intake_responses")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .order("desc")
-      .first();
+      .query('intake_responses')
+      .withIndex('by_user', (q) => q.eq('userId', user._id))
+      .order('desc')
+      .first()
 
     // Extract scaling parameters
-    const categoryId = userProgram.gppCategoryId as CategoryId;
-    const phase = template.phase as Phase;
-    const ageGroup = normalizeAgeGroup(userProgram.ageGroup);
-    const yearsOfExperience = intake?.yearsOfExperience ?? 0;
-    const experienceBucket = getExperienceBucket(yearsOfExperience);
+    const categoryId = userProgram.gppCategoryId as CategoryId
+    const phase = template.phase as Phase
+    const ageGroup = normalizeAgeGroup(userProgram.ageGroup)
+    const yearsOfExperience = intake?.yearsOfExperience ?? 0
+    const experienceBucket = getExperienceBucket(yearsOfExperience)
 
     // Fetch exercise details
-    const exerciseIds = template.exercises.map((e) => e.exerciseId);
-    const exercises = await Promise.all(
-      exerciseIds.map((id) => ctx.db.get(id))
-    );
+    const exerciseIds = template.exercises.map((e) => e.exerciseId)
+    const exercises = await Promise.all(exerciseIds.map((id) => ctx.db.get(id)))
 
-    const exerciseMap = new Map(
-      exercises.filter(Boolean).map((ex) => [ex!._id.toString(), ex!])
-    );
+    const exerciseMap = new Map(exercises.filter(Boolean).map((ex) => [ex!._id.toString(), ex!]))
 
     // Get user's 1RM records for weight calculations
     const userMaxes = await ctx.db
-      .query("user_maxes")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
+      .query('user_maxes')
+      .withIndex('by_user', (q) => q.eq('userId', user._id))
+      .collect()
 
-    const userMaxMap: Record<string, number> = {};
+    const userMaxMap: Record<string, number> = {}
     for (const max of userMaxes) {
-      userMaxMap[max.exerciseId.toString()] = max.oneRepMax;
+      userMaxMap[max.exerciseId.toString()] = max.oneRepMax
     }
 
     // Apply category-specific scaling to each exercise
     const scaledExercises = template.exercises.map((prescription) => {
-      const exercise = exerciseMap.get(prescription.exerciseId.toString());
-      const oneRepMax = userMaxMap[prescription.exerciseId.toString()];
+      const exercise = exerciseMap.get(prescription.exerciseId.toString())
+      const oneRepMax = userMaxMap[prescription.exerciseId.toString()]
 
       // Detect exercise focus
-      const exerciseFocus = getExerciseFocus(exercise?.tags, exercise?.equipment);
+      const exerciseFocus = getExerciseFocus(exercise?.tags, exercise?.equipment)
 
       // Get category-specific parameters
       const params = getCategoryExerciseParameters(
@@ -624,19 +606,19 @@ export const getWorkoutWithScaling = query({
         exerciseFocus,
         exercise?.tags,
         exercise?.equipment
-      );
+      )
 
       // Calculate average 1RM% for weight recommendation
-      const avgPercent = (params.oneRepMaxPercent.min + params.oneRepMaxPercent.max) / 2;
+      const avgPercent = (params.oneRepMaxPercent.min + params.oneRepMaxPercent.max) / 2
 
-      if (exerciseFocus === "bodyweight") {
+      if (exerciseFocus === 'bodyweight') {
         // Bodyweight exercise - get variant based on phase + experience
         const variantResult = getBodyweightVariant(
-          exercise?.slug || "",
+          exercise?.slug || '',
           phase,
           experienceBucket,
           exercise?.progressions
-        );
+        )
 
         return {
           ...prescription,
@@ -655,7 +637,7 @@ export const getWorkoutWithScaling = query({
           targetWeight: undefined,
           percentOf1RM: undefined,
           hasOneRepMax: false,
-        };
+        }
       } else {
         // Weighted exercise (strength or power)
         return {
@@ -675,17 +657,17 @@ export const getWorkoutWithScaling = query({
           tempo: formatTempo(params.tempo),
           hasOneRepMax: !!oneRepMax,
           exerciseFocus, // Expose whether this is strength or power
-        };
+        }
       }
-    });
+    })
 
     // Category name mapping for display
     const categoryNames: Record<number, string> = {
-      1: "Endurance",
-      2: "Power",
-      3: "Rotational",
-      4: "Strength",
-    };
+      1: 'Endurance',
+      2: 'Power',
+      3: 'Rotational',
+      4: 'Strength',
+    }
 
     return {
       ...template,
@@ -701,8 +683,8 @@ export const getWorkoutWithScaling = query({
       // User-friendly scaling info for display
       scalingInfo: {
         ageGroup,
-        categoryName: categoryNames[categoryId] || "General",
+        categoryName: categoryNames[categoryId] || 'General',
       },
-    };
+    }
   },
-});
+})

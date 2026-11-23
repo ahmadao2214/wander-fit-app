@@ -58,7 +58,10 @@ export interface CalendarMonthViewProps {
   /** Current drag source slot */
   dragSourceSlot?: { phase: Phase; week: number; day: number } | null
   /** Callback to register drop zones (date-based) */
-  onDropZoneLayout?: (dateISO: string, layout: { x: number; y: number; width: number; height: number }) => void
+  onDropZoneLayout?: (
+    dateISO: string,
+    layout: { x: number; y: number; width: number; height: number }
+  ) => void
   /** Callback to unregister drop zones on unmount */
   onDropZoneUnregister?: (dateISO: string) => void
   /** Program start date (ISO format) - limits navigation */
@@ -107,7 +110,9 @@ export function CalendarMonthView({
 
   // Calculate navigation bounds
   const programStart = programStartDate ? parseDateISO(programStartDate) : null
-  const programEnd = programEndDate ? addDays(parseDateISO(programEndDate), LAST_WEEK_BUFFER_DAYS) : null
+  const programEnd = programEndDate
+    ? addDays(parseDateISO(programEndDate), LAST_WEEK_BUFFER_DAYS)
+    : null
 
   // Check if current month is at navigation bounds
   const isFirstMonth = programStart
@@ -146,36 +151,38 @@ export function CalendarMonthView({
   const panX = useRef(new Animated.Value(0)).current
 
   // Create pan responder with bound checks (recreated when bounds change)
-  const panResponder = useMemo(() =>
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dx) > 10 && Math.abs(gestureState.dy) < 30
-      },
-      onPanResponderMove: (_, gestureState) => {
-        // Limit swipe if at bounds
-        if (isFirstMonth && gestureState.dx > 0) {
-          // At first month, limit right swipe (to go back)
-          panX.setValue(gestureState.dx * 0.3)
-        } else if (isLastMonth && gestureState.dx < 0) {
-          // At last month, limit left swipe (to go forward)
-          panX.setValue(gestureState.dx * 0.3)
-        } else {
-          panX.setValue(gestureState.dx)
-        }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dx > SWIPE_THRESHOLD && !isFirstMonth) {
-          handlePreviousMonth()
-        } else if (gestureState.dx < -SWIPE_THRESHOLD && !isLastMonth) {
-          handleNextMonth()
-        }
-        Animated.spring(panX, {
-          toValue: 0,
-          useNativeDriver: true,
-        }).start()
-      },
-    }),
-  [isFirstMonth, isLastMonth, handlePreviousMonth, handleNextMonth, panX])
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gestureState) => {
+          return Math.abs(gestureState.dx) > 10 && Math.abs(gestureState.dy) < 30
+        },
+        onPanResponderMove: (_, gestureState) => {
+          // Limit swipe if at bounds
+          if (isFirstMonth && gestureState.dx > 0) {
+            // At first month, limit right swipe (to go back)
+            panX.setValue(gestureState.dx * 0.3)
+          } else if (isLastMonth && gestureState.dx < 0) {
+            // At last month, limit left swipe (to go forward)
+            panX.setValue(gestureState.dx * 0.3)
+          } else {
+            panX.setValue(gestureState.dx)
+          }
+        },
+        onPanResponderRelease: (_, gestureState) => {
+          if (gestureState.dx > SWIPE_THRESHOLD && !isFirstMonth) {
+            handlePreviousMonth()
+          } else if (gestureState.dx < -SWIPE_THRESHOLD && !isLastMonth) {
+            handleNextMonth()
+          }
+          Animated.spring(panX, {
+            toValue: 0,
+            useNativeDriver: true,
+          }).start()
+        },
+      }),
+    [isFirstMonth, isLastMonth, handlePreviousMonth, handleNextMonth, panX]
+  )
 
   return (
     <YStack flex={1} gap="$2">
@@ -185,24 +192,13 @@ export function CalendarMonthView({
         {isFirstMonth ? (
           <YStack width={32} height={32} />
         ) : (
-          <Button
-            size="$2"
-            circular
-            chromeless
-            icon={ChevronLeft}
-            onPress={handlePreviousMonth}
-          />
+          <Button size="$2" circular chromeless icon={ChevronLeft} onPress={handlePreviousMonth} />
         )}
 
         <XStack items="center" gap="$2">
           <Body fontWeight="600">{formatMonthYear(currentMonth)}</Body>
           {!isCurrentMonthVisible && isTodayInProgram && (
-            <Button
-              size="$2"
-              chromeless
-              onPress={handleGoToToday}
-              color="$primaryText"
-            >
+            <Button size="$2" chromeless onPress={handleGoToToday} color="$primaryText">
               Today
             </Button>
           )}
@@ -212,16 +208,9 @@ export function CalendarMonthView({
         {isLastMonth ? (
           <YStack width={32} height={32} />
         ) : (
-          <Button
-            size="$2"
-            circular
-            chromeless
-            icon={ChevronRight}
-            onPress={handleNextMonth}
-          />
+          <Button size="$2" circular chromeless icon={ChevronRight} onPress={handleNextMonth} />
         )}
       </XStack>
-
 
       {/* Day names header */}
       <XStack px="$2">
@@ -247,9 +236,10 @@ export function CalendarMonthView({
               if (isDragActive && dragSourceSlot) {
                 for (const [dateKey, dayData] of Object.entries(calendarData)) {
                   const workout = dayData.workouts.find(
-                    w => w.phase === dragSourceSlot.phase &&
-                         w.week === dragSourceSlot.week &&
-                         w.day === dragSourceSlot.day
+                    (w) =>
+                      w.phase === dragSourceSlot.phase &&
+                      w.week === dragSourceSlot.week &&
+                      w.day === dragSourceSlot.day
                   )
                   if (workout) {
                     sourceEffectiveDate = parseDateISO(dateKey)
@@ -264,23 +254,24 @@ export function CalendarMonthView({
                     const dateISO = formatDateISO(date)
                     const dayData = calendarData[dateISO]
                     const isMonthDate = date.getMonth() === currentMonthNum
-                    const workouts = dayData?.workouts.map((w) => ({
-                      templateId: w.templateId,
-                      name: w.name,
-                      phase: w.phase,
-                      week: w.week,
-                      day: w.day,
-                      exerciseCount: w.exerciseCount,
-                      estimatedDurationMinutes: w.estimatedDurationMinutes,
-                      isCompleted: w.isCompleted,
-                      isToday: w.isToday,
-                      isInProgress: w.isInProgress,
-                      gppCategoryId,
-                      // Add slot info for drag-drop
-                      slotPhase: w.phase,
-                      slotWeek: w.week,
-                      slotDay: w.day,
-                    })) ?? []
+                    const workouts =
+                      dayData?.workouts.map((w) => ({
+                        templateId: w.templateId,
+                        name: w.name,
+                        phase: w.phase,
+                        week: w.week,
+                        day: w.day,
+                        exerciseCount: w.exerciseCount,
+                        estimatedDurationMinutes: w.estimatedDurationMinutes,
+                        isCompleted: w.isCompleted,
+                        isToday: w.isToday,
+                        isInProgress: w.isInProgress,
+                        gppCategoryId,
+                        // Add slot info for drag-drop
+                        slotPhase: w.phase,
+                        slotWeek: w.week,
+                        slotDay: w.day,
+                      })) ?? []
 
                     // Check if hovering over this cell
                     const isDropTarget = dragTargetDate === dateISO && dragSourceSlot !== null

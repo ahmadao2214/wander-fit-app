@@ -7,9 +7,9 @@ import { computeAuthState } from '../lib/authState'
 
 /**
  * useAuth Hook
- * 
+ *
  * Provides authentication state for the WanderFit app.
- * 
+ *
  * Everyone is an athlete. Accounts created before the trainer screens were
  * removed may still carry role "trainer"; for them needsIntake stays false
  * (the root index checks intakeCompletedAt). A new athlete's account and
@@ -23,17 +23,17 @@ import { computeAuthState } from '../lib/authState'
  */
 export function useAuth() {
   const { isAuthenticated: isClerkAuthenticated, isLoading: isClerkLoading } = useConvexAuth()
-  
+
   // Defensive: useUser() can return undefined during re-mounts on mobile
   const clerkUserResult = useUser()
   const clerkUser = clerkUserResult?.user
-  
+
   // getCurrentUser reads the caller from the Convex auth token, so wait until
   // Convex has the token. Querying earlier returns null, which would read as
   // "needs setup" and flash the sign-up screen for an existing user.
   const convexUser = useQuery(
     api.users.getCurrentUser,
-    clerkUser && isClerkAuthenticated ? { clerkId: clerkUser.id } : "skip"
+    clerkUser && isClerkAuthenticated ? { clerkId: clerkUser.id } : 'skip'
   ) as User | undefined | null
 
   // Debug logging (only on significant state changes)
@@ -42,11 +42,13 @@ export function useAuth() {
       isClerkLoading,
       isClerkAuthenticated,
       clerkUserId: clerkUser?.id,
-      convexUser: convexUser ? { 
-        id: convexUser._id, 
-        role: convexUser.role,
-        intakeCompletedAt: convexUser.intakeCompletedAt 
-      } : convexUser
+      convexUser: convexUser
+        ? {
+            id: convexUser._id,
+            role: convexUser.role,
+            intakeCompletedAt: convexUser.intakeCompletedAt,
+          }
+        : convexUser,
     })
   }
 

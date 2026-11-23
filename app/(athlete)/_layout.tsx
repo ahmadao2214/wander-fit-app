@@ -7,15 +7,15 @@ import { tabTints } from '../../tamagui.config'
 
 /**
  * Athlete Tab Layout
- * 
+ *
  * The main navigation for authenticated athletes who have completed intake.
- * 
+ *
  * Tabs:
  * - Today: Scheduled workout + quick start
  * - Program: Training program browser with drag-to-reorder (GPP/SPP/SSP)
  * - History: Completed workouts log
  * - Profile: Athlete info + stats (Settings is a separate route)
- * 
+ *
  * Note: Workout detail screens are handled by a separate Stack navigator
  * in app/(athlete)/workout/_layout.tsx following Expo Router's recommended
  * pattern for stacks inside tabs.

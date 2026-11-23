@@ -38,7 +38,7 @@ describe('App Settings', () => {
     process.env.EXPO_PUBLIC_CONVEX_URL = 'https://accomplished-tapir-54.convex.cloud'
     const { getByTestId, getByText } = render(<AthleteSettingsScreen />, { wrapper })
     expect(getByTestId('mcp-address').props.children).toBe(
-      'https://accomplished-tapir-54.convex.site/mcp',
+      'https://accomplished-tapir-54.convex.site/mcp'
     )
     expect(getByText(/add a custom connector/)).toBeTruthy()
     expect(getByText(/waits for you to accept/)).toBeTruthy()
@@ -53,7 +53,9 @@ describe('App Settings', () => {
 
   it('opens the share sheet with the address on native', async () => {
     process.env.EXPO_PUBLIC_CONVEX_URL = 'https://accomplished-tapir-54.convex.cloud'
-    const share = jest.spyOn(Share, 'share').mockResolvedValue({ action: 'sharedAction', activityType: undefined })
+    const share = jest
+      .spyOn(Share, 'share')
+      .mockResolvedValue({ action: 'sharedAction', activityType: undefined })
     const { getByLabelText } = render(<AthleteSettingsScreen />, { wrapper })
     await act(async () => {
       fireEvent.press(getByLabelText('Share connector address'))
@@ -76,7 +78,9 @@ describe('App Settings', () => {
     })
     try {
       jest.useFakeTimers()
-      const { getByLabelText, getByTestId, getByText } = render(<AthleteSettingsScreen />, { wrapper })
+      const { getByLabelText, getByTestId, getByText } = render(<AthleteSettingsScreen />, {
+        wrapper,
+      })
       await act(async () => {
         fireEvent.press(getByLabelText('Copy connector address'))
       })

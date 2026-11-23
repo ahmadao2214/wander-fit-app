@@ -17,35 +17,29 @@ describe('ScienceSection', () => {
   }
 
   it('renders the title as written (the type role sets the case)', () => {
-    const { getByText } = render(
-      <ScienceSection {...defaultProps} />,
-      { wrapper: AllTheProviders }
-    )
+    const { getByText } = render(<ScienceSection {...defaultProps} />, { wrapper: AllTheProviders })
     expect(getByText('Test Section')).toBeTruthy()
   })
 
   it('renders collapsed by default', () => {
-    const { queryByText } = render(
-      <ScienceSection {...defaultProps} />,
-      { wrapper: AllTheProviders }
-    )
+    const { queryByText } = render(<ScienceSection {...defaultProps} />, {
+      wrapper: AllTheProviders,
+    })
     // Content should not be visible when collapsed
     expect(queryByText('Test content')).toBeNull()
   })
 
   it('renders expanded when defaultExpanded is true', () => {
-    const { getByText } = render(
-      <ScienceSection {...defaultProps} defaultExpanded />,
-      { wrapper: AllTheProviders }
-    )
+    const { getByText } = render(<ScienceSection {...defaultProps} defaultExpanded />, {
+      wrapper: AllTheProviders,
+    })
     expect(getByText('Test content')).toBeTruthy()
   })
 
   it('expands when header is pressed', () => {
-    const { getByText, queryByText } = render(
-      <ScienceSection {...defaultProps} />,
-      { wrapper: AllTheProviders }
-    )
+    const { getByText, queryByText } = render(<ScienceSection {...defaultProps} />, {
+      wrapper: AllTheProviders,
+    })
 
     // Initially collapsed
     expect(queryByText('Test content')).toBeNull()
@@ -75,11 +69,7 @@ describe('ScienceSection', () => {
 
   it('renders with custom icon colors', () => {
     const { getByText } = render(
-      <ScienceSection
-        {...defaultProps}
-        iconColor="$accent"
-        iconBgColor="$catPowerLight"
-      />,
+      <ScienceSection {...defaultProps} iconColor="$accent" iconBgColor="$catPowerLight" />,
       { wrapper: AllTheProviders }
     )
     // Component should render without errors with custom colors

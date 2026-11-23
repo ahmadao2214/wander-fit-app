@@ -25,26 +25,19 @@ describe('RadioButton', () => {
   })
 
   it('renders with label', () => {
-    const { getByText } = render(
-      <RadioButton {...defaultProps} />,
-      { wrapper: AllTheProviders }
-    )
+    const { getByText } = render(<RadioButton {...defaultProps} />, { wrapper: AllTheProviders })
     expect(getByText('Test Label')).toBeTruthy()
   })
 
   it('renders with description', () => {
-    const { getByText } = render(
-      <RadioButton {...defaultProps} description="Test description" />,
-      { wrapper: AllTheProviders }
-    )
+    const { getByText } = render(<RadioButton {...defaultProps} description="Test description" />, {
+      wrapper: AllTheProviders,
+    })
     expect(getByText('Test description')).toBeTruthy()
   })
 
   it('calls onPress when pressed', () => {
-    const { getByText } = render(
-      <RadioButton {...defaultProps} />,
-      { wrapper: AllTheProviders }
-    )
+    const { getByText } = render(<RadioButton {...defaultProps} />, { wrapper: AllTheProviders })
 
     const button = getByText('Test Label').parent?.parent?.parent
     if (button) {
@@ -54,30 +47,27 @@ describe('RadioButton', () => {
   })
 
   it('renders checked state', () => {
-    const { getByText } = render(
-      <RadioButton {...defaultProps} checked={true} />,
-      { wrapper: AllTheProviders }
-    )
+    const { getByText } = render(<RadioButton {...defaultProps} checked={true} />, {
+      wrapper: AllTheProviders,
+    })
 
     // Component should render without errors when checked
     expect(getByText('Test Label')).toBeTruthy()
   })
 
   it('renders unchecked state', () => {
-    const { getByText } = render(
-      <RadioButton {...defaultProps} checked={false} />,
-      { wrapper: AllTheProviders }
-    )
+    const { getByText } = render(<RadioButton {...defaultProps} checked={false} />, {
+      wrapper: AllTheProviders,
+    })
 
     // Component should render without errors when unchecked
     expect(getByText('Test Label')).toBeTruthy()
   })
 
   it('renders without description when not provided', () => {
-    const { getByText, queryByText } = render(
-      <RadioButton {...defaultProps} />,
-      { wrapper: AllTheProviders }
-    )
+    const { getByText, queryByText } = render(<RadioButton {...defaultProps} />, {
+      wrapper: AllTheProviders,
+    })
 
     expect(getByText('Test Label')).toBeTruthy()
     expect(queryByText('Test description')).toBeNull()

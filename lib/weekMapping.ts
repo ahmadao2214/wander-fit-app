@@ -19,4 +19,4 @@ export {
   MIN_WEEKS_PER_PHASE,
   MAX_WEEKS_PER_PHASE,
   NUMBER_OF_PHASES,
-} from "../convex/weekMapping";
+} from '../convex/weekMapping'

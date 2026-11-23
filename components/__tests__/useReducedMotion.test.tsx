@@ -1,6 +1,10 @@
 import { AccessibilityInfo } from 'react-native'
 import { act, renderHook, waitFor } from '@testing-library/react-native'
-import { primeReducedMotion, resetReducedMotionCache, useReducedMotion } from '../../hooks/useReducedMotion'
+import {
+  primeReducedMotion,
+  resetReducedMotionCache,
+  useReducedMotion,
+} from '../../hooks/useReducedMotion'
 
 let listener: ((value: boolean) => void) | undefined
 /** Listeners still subscribed (removed ones drop out, like the real API). */
@@ -8,7 +12,10 @@ const live = new Set<(value: boolean) => void>()
 const emit = (value: boolean) => live.forEach((cb) => cb(value))
 function mockSetting(value: boolean) {
   jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(value)
-  jest.spyOn(AccessibilityInfo, 'addEventListener').mockImplementation(((_event: string, cb: (value: boolean) => void) => {
+  jest.spyOn(AccessibilityInfo, 'addEventListener').mockImplementation(((
+    _event: string,
+    cb: (value: boolean) => void
+  ) => {
     listener = cb
     live.add(cb)
     return { remove: () => live.delete(cb) }
@@ -67,8 +74,12 @@ describe('useReducedMotion', () => {
   })
 
   it('treats a platform that cannot answer as motion allowed', async () => {
-    jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockRejectedValue(new Error('unsupported'))
-    jest.spyOn(AccessibilityInfo, 'addEventListener').mockReturnValue({ remove: jest.fn() } as never)
+    jest
+      .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+      .mockRejectedValue(new Error('unsupported'))
+    jest
+      .spyOn(AccessibilityInfo, 'addEventListener')
+      .mockReturnValue({ remove: jest.fn() } as never)
     const { result } = renderHook(() => useReducedMotion())
     await waitFor(() => expect(result.current).toBe(false))
   })

@@ -25,7 +25,13 @@ export const NIGHT = {
 export function mixHex(color: string, base: string, amount: number): string {
   const parse = (hex: string) => {
     const h = hex.replace('#', '')
-    const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h
+    const full =
+      h.length === 3
+        ? h
+            .split('')
+            .map((c) => c + c)
+            .join('')
+        : h
     return [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16))
   }
   const a = parse(color)
@@ -110,8 +116,12 @@ export const POPULAR_SPORTS: readonly string[] = [
 ]
 
 /** Popular in its fixed order, then everything else alphabetically. */
-export function splitSports<T extends { name: string }>(sports: readonly T[]): { popular: T[]; rest: T[] } {
-  const popular = POPULAR_SPORTS.map((n) => sports.find((s) => s.name === n)).filter((s): s is T => !!s)
+export function splitSports<T extends { name: string }>(
+  sports: readonly T[]
+): { popular: T[]; rest: T[] } {
+  const popular = POPULAR_SPORTS.map((n) => sports.find((s) => s.name === n)).filter(
+    (s): s is T => !!s
+  )
   const rest = sports
     .filter((s) => !POPULAR_SPORTS.includes(s.name))
     .sort((a, b) => a.name.localeCompare(b.name))
@@ -119,7 +129,12 @@ export function splitSports<T extends { name: string }>(sports: readonly T[]): {
 }
 
 /** Sport icons that drift behind the promise: one per category plus General Fitness. */
-export const DRIFT_SPORTS: readonly { name: string; top: number; delay: number; seconds: number }[] = [
+export const DRIFT_SPORTS: readonly {
+  name: string
+  top: number
+  delay: number
+  seconds: number
+}[] = [
   { name: 'Basketball', top: 120, delay: 0, seconds: 25 },
   { name: 'Soccer', top: 330, delay: 9, seconds: 27 },
   { name: 'Golf', top: 520, delay: 17, seconds: 24 },
@@ -148,7 +163,15 @@ export function movementFamily(sportName: string | undefined): MovementFamily | 
 /** Monday first, as athletes plan their week. Index 0 = Sunday. */
 export const WEEK_ORDER: readonly number[] = [1, 2, 3, 4, 5, 6, 0]
 export const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
-export const DAY_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const
+export const DAY_FULL = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+] as const
 
 /** "3 sessions a week" and "Mon / Wed / Fri". */
 export function daysSummary(days: readonly number[]): { count: string; list: string } {
@@ -198,11 +221,21 @@ export const STORY_PHASES: readonly StoryPhase[] = [
 ]
 
 /** The colors the phase bar uses on game night: one hue deepening GPP → SSP. */
-export const NIGHT_PHASE_FILL: Record<Phase, string> = { GPP: '#3B82F6', SPP: '#1D4ED8', SSP: '#1E3A8A' }
+export const NIGHT_PHASE_FILL: Record<Phase, string> = {
+  GPP: '#3B82F6',
+  SPP: '#1D4ED8',
+  SSP: '#1E3A8A',
+}
 
 /** The caption under the phase bar. One holds while the bar draws; taps change it. */
-export function phaseCaption(phase: Phase, sportName: string, category: StoryCategory, noSeason: boolean): string {
-  if (phase === 'GPP') return 'General fitness and how you move: strength, mobility and conditioning.'
+export function phaseCaption(
+  phase: Phase,
+  sportName: string,
+  category: StoryCategory,
+  noSeason: boolean
+): string {
+  if (phase === 'GPP')
+    return 'General fitness and how you move: strength, mobility and conditioning.'
   if (phase === 'SPP') return `Training shifts to ${category.focus} for ${sportName.toLowerCase()}.`
   return `Less volume, the same speed and power, and recovery timed so you're fresh for ${
     noSeason ? 'the season' : 'your first game'
@@ -210,7 +243,11 @@ export function phaseCaption(phase: Phase, sportName: string, category: StoryCat
 }
 
 /** "First game Sun, Feb 7 · 12 weeks", or the no-season plan. */
-export function countdownLine(seasonStart: string | null, weeks: number, programWeeks: number): string {
+export function countdownLine(
+  seasonStart: string | null,
+  weeks: number,
+  programWeeks: number
+): string {
   if (seasonStart === null) return `No set season · ${programWeeks}-week plan`
   return `First game ${formatSeasonDate(seasonStart)} · ${weeks} ${weeks === 1 ? 'week' : 'weeks'}`
 }
@@ -264,7 +301,13 @@ export function weekStrip(
     if (i < 0) return { dow, short: DAY_SHORT[dow], programDay: null, tag: null, template: null }
     const programDay = ((i - start + order.length) % order.length) + 1
     const template = byDay[programDay - 1] ?? null
-    return { dow, short: DAY_SHORT[dow], programDay, tag: template ? workoutTag(template.name) : null, template }
+    return {
+      dow,
+      short: DAY_SHORT[dow],
+      programDay,
+      tag: template ? workoutTag(template.name) : null,
+      template,
+    }
   })
 }
 
@@ -275,7 +318,10 @@ export function weekDayLine(day: WeekStripDay, trainingDays: readonly number[], 
   const when = day.programDay === 1 ? dayLabel(firstTrainingDate(trainingDays, now), now) : full
   const parts = [`Day ${day.programDay}`, when]
   if (day.template) {
-    parts.push(workoutShortName(day.template.name), `About ${day.template.estimatedDurationMinutes} min`)
+    parts.push(
+      workoutShortName(day.template.name),
+      `About ${day.template.estimatedDurationMinutes} min`
+    )
   }
   return parts.join(' · ')
 }
@@ -285,9 +331,23 @@ export function weekDayLine(day: WeekStripDay, trainingDays: readonly number[], 
 /** How long the category holds before the plan (a tap skips it). */
 export const CATEGORY_HOLD_MS = 3000
 /** Category beats, from the reveal's start. */
-export const CATEGORY_BEATS = { tiles: 80, tileGap: 60, lit: 520, lead: 820, name: 960, line: 1220 } as const
+export const CATEGORY_BEATS = {
+  tiles: 80,
+  tileGap: 60,
+  lit: 520,
+  lead: 820,
+  name: 960,
+  line: 1220,
+} as const
 /** Plan beats, from the plan's start. */
-export const PLAN_BEATS = { icon: 0, phases: 700, phaseGap: 520, week: 2300, total: 2650, save: 2900 } as const
+export const PLAN_BEATS = {
+  icon: 0,
+  phases: 700,
+  phaseGap: 520,
+  week: 2300,
+  total: 2650,
+  save: 2900,
+} as const
 /** The lit tile opens into the band over this long; plan beats wait for it. */
 export const HANDOFF_MS = 520
 export const HANDOFF_PLAN_DELAY_MS = 550

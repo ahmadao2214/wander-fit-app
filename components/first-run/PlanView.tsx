@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { Pressable, ScrollView, Text as RNText, View, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated'
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated'
 import LottieView from 'lottie-react-native'
 import {
   HANDOFF_MS,
@@ -65,7 +70,8 @@ export function wrapLines(text: string, size: number, maxWidth: number): string[
   const lines: string[] = []
   for (const word of text.split(' ')) {
     const last = lines[lines.length - 1]
-    if (last !== undefined && displayWidthEm(`${last} ${word}`) * size * 1.04 <= maxWidth) lines[lines.length - 1] = `${last} ${word}`
+    if (last !== undefined && displayWidthEm(`${last} ${word}`) * size * 1.04 <= maxWidth)
+      lines[lines.length - 1] = `${last} ${word}`
     else lines.push(word)
   }
   return lines
@@ -81,7 +87,8 @@ export function bandTitleSize(sportName: string, maxWidth = 230): number {
   const title = `${sportName} PLAN`.toUpperCase()
   for (let size = BAND_TITLE_MAX; size > 16; size--) {
     const lines = wrapLines(title, size, maxWidth)
-    if (lines.length <= 2 && lines.every((l) => displayWidthEm(l) * size * 1.04 <= maxWidth)) return size
+    if (lines.length <= 2 && lines.every((l) => displayWidthEm(l) * size * 1.04 <= maxWidth))
+      return size
   }
   return 16
 }
@@ -99,7 +106,10 @@ export interface Rect {
  */
 export function weekTagSize(week: readonly { tag: string | null }[], screenWidth: number): number {
   const cell = (Math.min(screenWidth, 560) - 48 - 6 * 4) / 7 - 6
-  const widest = Math.max(displayWidthEm('LOWER'), ...week.map((d) => (d.tag ? displayWidthEm(d.tag) : 0)))
+  const widest = Math.max(
+    displayWidthEm('LOWER'),
+    ...week.map((d) => (d.tag ? displayWidthEm(d.tag) : 0))
+  )
   return Math.floor(Math.min(19, cell / (widest * 1.06)))
 }
 
@@ -120,7 +130,10 @@ const BLEED_ICONS = new Set(['basketball', 'soccer', 'volleyball', 'baseball', '
  * any other icon (goggles, a racket, a barbell) sits whole inside the band,
  * since half of it reads as a blob.
  */
-export function bandIconFrame(sportName: string, insetTop: number): { size: number; right: number; top: number } {
+export function bandIconFrame(
+  sportName: string,
+  insetTop: number
+): { size: number; right: number; top: number } {
   if (BLEED_ICONS.has(getSportSlug(sportName))) return { size: 190, right: -46, top: insetTop }
   // Ends above the countdown's row (see the band's title box).
   return { size: 128, right: 16, top: insetTop + 20 }
@@ -136,7 +149,16 @@ function BandIcon({ name, play, size }: { name: string; play: boolean; size: num
     return () => clearTimeout(t)
   }, [play])
   if (!source) return null
-  return <LottieView ref={ref} source={source} autoPlay={false} loop={false} speed={1.8} style={{ width: size, height: size }} />
+  return (
+    <LottieView
+      ref={ref}
+      source={source}
+      autoPlay={false}
+      loop={false}
+      speed={1.8}
+      style={{ width: size, height: size }}
+    />
+  )
 }
 
 /**
@@ -239,16 +261,29 @@ export function PlanView({
       {/* The band. Inside a clip that opens from the lit tile. */}
       <View style={{ height: H }}>
         <Animated.View style={[{ position: 'absolute', overflow: 'hidden' }, clipStyle]}>
-          <Animated.View style={[{ width: W, height: H, backgroundColor: category.color }, innerStyle]}>
+          <Animated.View
+            style={[{ width: W, height: H, backgroundColor: category.color }, innerStyle]}
+          >
             <View
               pointerEvents="none"
-              style={{ position: 'absolute', right: icon.right, top: icon.top, width: icon.size, height: icon.size }}
+              style={{
+                position: 'absolute',
+                right: icon.right,
+                top: icon.top,
+                width: icon.size,
+                height: icon.size,
+              }}
               accessibilityElementsHidden
               importantForAccessibility="no-hide-descendants"
             >
               <BandIcon name={sportName} play={animate} size={icon.size} />
             </View>
-            <Animated.View style={[{ paddingTop: insets.top + BAND_STACK.top, paddingHorizontal: 24 }, textStyle]}>
+            <Animated.View
+              style={[
+                { paddingTop: insets.top + BAND_STACK.top, paddingHorizontal: 24 },
+                textStyle,
+              ]}
+            >
               <Pressable
                 onPress={onCategory}
                 accessibilityRole="button"
@@ -263,7 +298,15 @@ export function PlanView({
                   paddingHorizontal: 12,
                 }}
               >
-                <RNText style={{ fontFamily: BODY_BOLD, fontSize: BAND_STACK.smallText, letterSpacing: 1.6, color: '#FFFFFF' }} maxFontSizeMultiplier={BAND_TEXT_SCALE}>
+                <RNText
+                  style={{
+                    fontFamily: BODY_BOLD,
+                    fontSize: BAND_STACK.smallText,
+                    letterSpacing: 1.6,
+                    color: '#FFFFFF',
+                  }}
+                  maxFontSizeMultiplier={BAND_TEXT_SCALE}
+                >
                   {`${category.name.toUpperCase()} ›`}
                 </RNText>
               </Pressable>
@@ -290,7 +333,14 @@ export function PlanView({
               </View>
               {/* One line, shrinking to fit, so it never wraps out of the band. */}
               <RNText
-                style={{ fontFamily: BODY_BOLD, fontSize: BAND_STACK.smallText, letterSpacing: 1.4, color: '#FFFFFF', opacity: 0.9, marginTop: BAND_STACK.countdownGap }}
+                style={{
+                  fontFamily: BODY_BOLD,
+                  fontSize: BAND_STACK.smallText,
+                  letterSpacing: 1.4,
+                  color: '#FFFFFF',
+                  opacity: 0.9,
+                  marginTop: BAND_STACK.countdownGap,
+                }}
                 numberOfLines={1}
                 adjustsFontSizeToFit
                 maxFontSizeMultiplier={BAND_TEXT_SCALE}
@@ -324,7 +374,11 @@ export function PlanView({
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingBottom: insets.bottom + 16 }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingHorizontal: 24,
+          paddingBottom: insets.bottom + 16,
+        }}
         showsVerticalScrollIndicator={false}
       >
         <View style={{ marginTop: 16 }}>
@@ -342,7 +396,14 @@ export function PlanView({
         </View>
         <Beat at={delay + PLAN_BEATS.phases} play={animate}>
           <RNText
-            style={{ fontFamily: BODY, fontSize: 14, lineHeight: 20, color: NIGHT.fg, minHeight: captionMinHeight(W), marginTop: 8 }}
+            style={{
+              fontFamily: BODY,
+              fontSize: 14,
+              lineHeight: 20,
+              color: NIGHT.fg,
+              minHeight: captionMinHeight(W),
+              marginTop: 8,
+            }}
             accessibilityLiveRegion="polite"
             testID="phase-caption"
           >
@@ -379,11 +440,24 @@ export function PlanView({
                     backgroundColor: on ? category.color : NIGHT.ink2,
                   }}
                 >
-                  <RNText style={{ fontFamily: BODY_BOLD, fontSize: 12, color: on ? '#FFFFFF' : NIGHT.fg2 }}>{d.short.slice(0, 1)}</RNText>
+                  <RNText
+                    style={{
+                      fontFamily: BODY_BOLD,
+                      fontSize: 12,
+                      color: on ? '#FFFFFF' : NIGHT.fg2,
+                    }}
+                  >
+                    {d.short.slice(0, 1)}
+                  </RNText>
                   <RNText
                     numberOfLines={1}
                     maxFontSizeMultiplier={1}
-                    style={{ fontFamily: DISPLAY, fontSize: tagSize, lineHeight: tagSize + 1, color: on ? '#FFFFFF' : d.tag ? NIGHT.fg : NIGHT.line }}
+                    style={{
+                      fontFamily: DISPLAY,
+                      fontSize: tagSize,
+                      lineHeight: tagSize + 1,
+                      color: on ? '#FFFFFF' : d.tag ? NIGHT.fg : NIGHT.line,
+                    }}
                   >
                     {d.tag ?? '—'}
                   </RNText>
@@ -391,7 +465,11 @@ export function PlanView({
               )
             })}
           </View>
-          <RNText style={{ fontFamily: BODY, fontSize: 14, color: NIGHT.fg2, marginTop: 8 }} testID="week-day-line" accessibilityLiveRegion="polite">
+          <RNText
+            style={{ fontFamily: BODY, fontSize: 14, color: NIGHT.fg2, marginTop: 8 }}
+            testID="week-day-line"
+            accessibilityLiveRegion="polite"
+          >
             {weekDayLine(day, trainingDays, now)}
           </RNText>
         </Beat>
@@ -403,17 +481,39 @@ export function PlanView({
             accessibilityLabel={`${sessionCount} sessions over ${programWeeks} weeks`}
             testID="reveal-sessions"
           >
-            <RNText style={{ fontFamily: DISPLAY, fontSize: 112, lineHeight: 96, paddingTop: 14, color: NIGHT.fg, fontVariant: ['tabular-nums'] }}>
+            <RNText
+              style={{
+                fontFamily: DISPLAY,
+                fontSize: 112,
+                lineHeight: 96,
+                paddingTop: 14,
+                color: NIGHT.fg,
+                fontVariant: ['tabular-nums'],
+              }}
+            >
               {String(sessionCount)}
             </RNText>
-            <RNText style={{ fontFamily: DISPLAY, fontSize: 26, lineHeight: 26, color: NIGHT.fg2, paddingBottom: 8, letterSpacing: 1 }}>
+            <RNText
+              style={{
+                fontFamily: DISPLAY,
+                fontSize: 26,
+                lineHeight: 26,
+                color: NIGHT.fg2,
+                paddingBottom: 8,
+                letterSpacing: 1,
+              }}
+            >
               {`SESSIONS\nOVER ${programWeeks} WEEKS`}
             </RNText>
           </View>
         </Beat>
 
         {/* Save holds the bottom; the plan reads top to bottom with no gap in it. */}
-        <Beat at={delay + PLAN_BEATS.save} play={animate} style={{ marginTop: 'auto', paddingTop: 24 }}>
+        <Beat
+          at={delay + PLAN_BEATS.save}
+          play={animate}
+          style={{ marginTop: 'auto', paddingTop: 24 }}
+        >
           {saveBlocked ? (
             <RNText
               style={{ fontFamily: BODY, fontSize: 14, color: NIGHT.fg2, marginBottom: 8 }}
@@ -423,14 +523,21 @@ export function PlanView({
               {saveBlocked}
             </RNText>
           ) : null}
-          <NightButton label="Save my plan" onPress={onSave} disabled={!!saveBlocked} testID="first-run-save" />
+          <NightButton
+            label="Save my plan"
+            onPress={onSave}
+            disabled={!!saveBlocked}
+            testID="first-run-save"
+          />
           <Pressable
             onPress={onChangeAnswers}
             accessibilityRole="button"
             testID="reveal-change-answers"
             style={{ alignSelf: 'center', paddingVertical: 12, paddingHorizontal: 12 }}
           >
-            <RNText style={{ fontFamily: BODY_BOLD, fontSize: 14, color: NIGHT.link }}>Change my answers</RNText>
+            <RNText style={{ fontFamily: BODY_BOLD, fontSize: 14, color: NIGHT.link }}>
+              Change my answers
+            </RNText>
           </Pressable>
         </Beat>
       </ScrollView>

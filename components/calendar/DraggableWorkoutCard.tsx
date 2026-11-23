@@ -7,11 +7,7 @@ import Animated, {
   runOnJS,
   useReducedMotion,
 } from 'react-native-reanimated'
-import {
-  Gesture,
-  GestureDetector,
-  GestureHandlerRootView,
-} from 'react-native-gesture-handler'
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler'
 import { CalendarWorkoutCard, CalendarWorkoutCardProps } from './CalendarWorkoutCard'
 import { selectionFeedback } from '../../lib/haptics'
 
@@ -71,9 +67,12 @@ export function DraggableWorkoutCard({
     onDragStart?.(slotKey)
   }, [onDragStart, slotKey])
 
-  const onDragMoveJS = useCallback((x: number, y: number) => {
-    onDragMove?.(slotKey, x, y)
-  }, [onDragMove, slotKey])
+  const onDragMoveJS = useCallback(
+    (x: number, y: number) => {
+      onDragMove?.(slotKey, x, y)
+    },
+    [onDragMove, slotKey]
+  )
 
   const onDragEndJS = useCallback(() => {
     onDragEnd?.(slotKey)
@@ -124,23 +123,13 @@ export function DraggableWorkoutCard({
 
   // Web doesn't support gesture handler the same way
   if (Platform.OS === 'web') {
-    return (
-      <CalendarWorkoutCard
-        {...cardProps}
-        isLocked={isLocked}
-        isCompleted={isCompleted}
-      />
-    )
+    return <CalendarWorkoutCard {...cardProps} isLocked={isLocked} isCompleted={isCompleted} />
   }
 
   return (
     <GestureDetector gesture={composedGesture}>
       <Animated.View style={[styles.container, animatedStyle, dropTargetStyle]}>
-        <CalendarWorkoutCard
-          {...cardProps}
-          isLocked={isLocked}
-          isCompleted={isCompleted}
-        />
+        <CalendarWorkoutCard {...cardProps} isLocked={isLocked} isCompleted={isCompleted} />
       </Animated.View>
     </GestureDetector>
   )

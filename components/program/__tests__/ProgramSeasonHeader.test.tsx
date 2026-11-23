@@ -4,7 +4,12 @@ import { TamaguiProvider } from 'tamagui'
 import config from '../../../tamagui.config'
 
 const STATE = { phase: 'GPP', week: 1, day: 1, weeksPerPhase: 4, sportName: 'Basketball' }
-const NEXT = { _id: 'tpl1', name: 'Lower Body A - Foundation', day: 1, estimatedDurationMinutes: 28 }
+const NEXT = {
+  _id: 'tpl1',
+  name: 'Lower Body A - Foundation',
+  day: 1,
+  estimatedDurationMinutes: 28,
+}
 let mockNext: unknown = NEXT
 let mockSession: unknown = null
 jest.mock('convex/react', () => ({
@@ -25,9 +30,18 @@ jest.mock('react-native-reanimated', () => jest.requireActual('../../../jest/rea
 jest.mock('../../../hooks/useReducedMotion', () => ({ useReducedMotion: () => true }))
 
 // eslint-disable-next-line import/first
-import { ProgramSeasonHeader, isUpNext, seasonPosition, upNextLabel, welcomeTitleHeight, youAreHere } from '../ProgramSeasonHeader'
+import {
+  ProgramSeasonHeader,
+  isUpNext,
+  seasonPosition,
+  upNextLabel,
+  welcomeTitleHeight,
+  youAreHere,
+} from '../ProgramSeasonHeader'
 
-const wrapper = ({ children }: { children: React.ReactNode }) => <TamaguiProvider config={config}>{children}</TamaguiProvider>
+const wrapper = ({ children }: { children: React.ReactNode }) => (
+  <TamaguiProvider config={config}>{children}</TamaguiProvider>
+)
 
 beforeEach(() => {
   mockNext = NEXT

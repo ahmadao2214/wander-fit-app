@@ -3,7 +3,13 @@ import { Pressable, Text as RNText, View } from 'react-native'
 import { Redirect, useRouter, type Href } from 'expo-router'
 import { useQuery } from 'convex/react'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import Animated, { Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
+import Animated, {
+  Easing,
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated'
 import { Spinner } from 'tamagui'
 import { api } from '../../convex/_generated/api'
 import { CategoryStory } from '../../components/first-run/CategoryStory'
@@ -15,9 +21,22 @@ import { useIntakeSport } from '../../components/first-run/useIntakeSport'
 import { useReachStep } from '../../components/first-run/useReachStep'
 import { useFirstRunDraft } from '../../hooks/useFirstRunDraft'
 import { analytics } from '../../lib/analytics'
-import { dayLabel, firstTrainingDate, isComplete, revealProgram, weeksUntilSeason, type FirstRunAnswers } from '../../lib/firstRun'
+import {
+  dayLabel,
+  firstTrainingDate,
+  isComplete,
+  revealProgram,
+  weeksUntilSeason,
+  type FirstRunAnswers,
+} from '../../lib/firstRun'
 import { STEP_ROUTES } from '../../lib/firstRunRoutes'
-import { CATEGORY_HOLD_MS, HANDOFF_PLAN_DELAY_MS, NIGHT, countdownLine, weekStrip } from '../../lib/firstRunStory'
+import {
+  CATEGORY_HOLD_MS,
+  HANDOFF_PLAN_DELAY_MS,
+  NIGHT,
+  countdownLine,
+  weekStrip,
+} from '../../lib/firstRunStory'
 
 /** Where to send an athlete who reaches the reveal with a gap in the answers. */
 export function firstUnanswered(answers: FirstRunAnswers): Href {
@@ -37,7 +56,17 @@ interface PlanRun {
 }
 
 /** The two-segment bar at the top. Each segment has a 44pt tap area. */
-function StoryBar({ part, hold, onCategory, onPlan }: { part: RevealPart; hold: boolean; onCategory: () => void; onPlan: () => void }) {
+function StoryBar({
+  part,
+  hold,
+  onCategory,
+  onPlan,
+}: {
+  part: RevealPart
+  hold: boolean
+  onCategory: () => void
+  onPlan: () => void
+}) {
   const insets = useSafeAreaInsets()
   const k = useSharedValue(hold ? 0 : 1)
   useEffect(() => {
@@ -50,19 +79,51 @@ function StoryBar({ part, hold, onCategory, onPlan }: { part: RevealPart; hold: 
   const first = useAnimatedStyle(() => ({ transform: [{ scaleX: k.value }] }))
   const onPlanPart = part !== 'category'
   const seg = (label: string, onPress: () => void, filled: ReactNode, testID: string) => (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} testID={testID} style={{ flex: 1, height: 44, justifyContent: 'center' }}>
-      <View style={{ height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.28)', overflow: 'hidden' }}>{filled}</View>
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      testID={testID}
+      style={{ flex: 1, height: 44, justifyContent: 'center' }}
+    >
+      <View
+        style={{
+          height: 3,
+          borderRadius: 2,
+          backgroundColor: 'rgba(255,255,255,0.28)',
+          overflow: 'hidden',
+        }}
+      >
+        {filled}
+      </View>
     </Pressable>
   )
   return (
-    <View style={{ position: 'absolute', top: Math.max(0, insets.top - 14), left: 24, right: 24, flexDirection: 'row', gap: 4, zIndex: 30 }}>
+    <View
+      style={{
+        position: 'absolute',
+        top: Math.max(0, insets.top - 14),
+        left: 24,
+        right: 24,
+        flexDirection: 'row',
+        gap: 4,
+        zIndex: 30,
+      }}
+    >
       {seg(
         'Category',
         onCategory,
-        <Animated.View style={[{ flex: 1, backgroundColor: '#FFFFFF', transformOrigin: 'left' }, first]} />,
+        <Animated.View
+          style={[{ flex: 1, backgroundColor: '#FFFFFF', transformOrigin: 'left' }, first]}
+        />,
         'story-category'
       )}
-      {seg('Plan', onPlan, onPlanPart ? <View style={{ flex: 1, backgroundColor: '#FFFFFF' }} /> : null, 'story-plan')}
+      {seg(
+        'Plan',
+        onPlan,
+        onPlanPart ? <View style={{ flex: 1, backgroundColor: '#FFFFFF' }} /> : null,
+        'story-plan'
+      )}
     </View>
   )
 }
@@ -93,7 +154,14 @@ export default function FirstRunReveal() {
   const program = answers && isComplete(answers) ? revealProgram(answers, now) : null
   const templates = useQuery(
     api.programTemplates.getWeekOverview,
-    sport && program ? { gppCategoryId: sport.gppCategoryId, phase: 'GPP', skillLevel: program.skillLevel, week: 1 } : 'skip'
+    sport && program
+      ? {
+          gppCategoryId: sport.gppCategoryId,
+          phase: 'GPP',
+          skillLevel: program.skillLevel,
+          week: 1,
+        }
+      : 'skip'
   )
   const ready = !!(program && sport && category && templates !== undefined && motion.known)
 
@@ -115,7 +183,9 @@ export default function FirstRunReveal() {
     if (!tile || !page) return start(null)
     // The handoff: measure the lit tile, then open it into the band.
     page.measureInWindow((px, py) => {
-      tile.measureInWindow((x, y, width, height) => start(width > 0 ? { x: x - px, y: y - py, width, height } : null))
+      tile.measureInWindow((x, y, width, height) =>
+        start(width > 0 ? { x: x - px, y: y - py, width, height } : null)
+      )
     })
   }
   const toCategory = () => {
@@ -144,7 +214,16 @@ export default function FirstRunReveal() {
 
   if (!ready || !program || !sport || !category || !answers || !isComplete(answers)) {
     return (
-      <View style={{ flex: 1, backgroundColor: NIGHT.ink, alignItems: 'center', justifyContent: 'center', gap: 12 }} testID="reveal-loading">
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: NIGHT.ink,
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 12,
+        }}
+        testID="reveal-loading"
+      >
         <Spinner size="large" color="$primaryText" />
         <RNText style={{ fontFamily: BODY, color: NIGHT.fg2 }}>Building your plan…</RNText>
       </View>
@@ -174,8 +253,14 @@ export default function FirstRunReveal() {
       }}
       // Without the week's workouts there's nothing to save yet; the query
       // is live, so Save turns on when they arrive.
-      saveBlocked={templates && templates.length > 0 ? null : "Your first workouts aren't ready yet. Try again in a moment."}
-      onChangeAnswers={() => (router.canGoBack() ? router.back() : router.replace(STEP_ROUTES.about as Href))}
+      saveBlocked={
+        templates && templates.length > 0
+          ? null
+          : "Your first workouts aren't ready yet. Try again in a moment."
+      }
+      onChangeAnswers={() =>
+        router.canGoBack() ? router.back() : router.replace(STEP_ROUTES.about as Href)
+      }
     />
   )
 
@@ -187,7 +272,12 @@ export default function FirstRunReveal() {
           accessibilityRole="button"
           accessibilityLabel={revisit ? 'Go back to your plan' : 'See your plan'}
           testID="reveal-category-page"
-          style={{ flex: 1, paddingTop: insets.top + 40, paddingHorizontal: 24, paddingBottom: insets.bottom + 16 }}
+          style={{
+            flex: 1,
+            paddingTop: insets.top + 40,
+            paddingHorizontal: 24,
+            paddingBottom: insets.bottom + 16,
+          }}
         >
           <CategoryStory
             sportName={sport.name}
@@ -202,13 +292,26 @@ export default function FirstRunReveal() {
 
       {/* One plan instance from the handoff on, so its beats never restart. */}
       {planRun && story !== 'category' ? (
-        <View key={planRun.key} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} pointerEvents="box-none">
+        <View
+          key={planRun.key}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+          pointerEvents="box-none"
+        >
           {plan(planRun.from, planRun.animate)}
         </View>
       ) : null}
 
-      <StoryBar part={story} hold={holding && motion.moving} onCategory={() => story === 'plan' && toCategory()} onPlan={toPlan} />
-      <SavePlanSheet open={saving} onOpenChange={setSaving} nextLabel={dayLabel(firstTrainingDate(trainingDays, now), now)} />
+      <StoryBar
+        part={story}
+        hold={holding && motion.moving}
+        onCategory={() => story === 'plan' && toCategory()}
+        onPlan={toPlan}
+      />
+      <SavePlanSheet
+        open={saving}
+        onOpenChange={setSaving}
+        nextLabel={dayLabel(firstTrainingDate(trainingDays, now), now)}
+      />
     </View>
   )
 }

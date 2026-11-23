@@ -14,7 +14,7 @@
  * - app/(athlete)/workout/execute/[id].tsx
  */
 
-import { parseReps } from "../workout";
+import { parseReps } from '../workout'
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SET TRACKER - REPS COMPLETED ON QUICK TAP
@@ -30,21 +30,18 @@ import { parseReps } from "../workout";
  */
 
 interface SetData {
-  repsCompleted?: number;
-  durationSeconds?: number;
-  weight?: number;
-  rpe?: number;
-  completed: boolean;
-  skipped: boolean;
+  repsCompleted?: number
+  durationSeconds?: number
+  weight?: number
+  rpe?: number
+  completed: boolean
+  skipped: boolean
 }
 
 /**
  * Simulates the quick-tap completion logic from SetTracker.handlePress
  */
-function simulateQuickTapComplete(
-  currentSet: SetData,
-  prescribedReps: string
-): SetData {
+function simulateQuickTapComplete(currentSet: SetData, prescribedReps: string): SetData {
   if (!currentSet.completed && !currentSet.skipped) {
     // Quick complete with prescribed reps value
     return {
@@ -52,116 +49,116 @@ function simulateQuickTapComplete(
       repsCompleted: parseReps(prescribedReps),
       completed: true,
       skipped: false,
-    };
+    }
   } else if (currentSet.completed) {
     // Toggle off if already completed
     return {
       ...currentSet,
       completed: false,
       skipped: false,
-    };
+    }
   } else if (currentSet.skipped) {
     // If skipped, toggle to not skipped
     return {
       ...currentSet,
       completed: false,
       skipped: false,
-    };
+    }
   }
-  return currentSet;
+  return currentSet
 }
 
-describe("SetTracker Quick-Tap Completion", () => {
-  describe("repsCompleted value", () => {
-    it("stores repsCompleted when quick-completing an incomplete set", () => {
+describe('SetTracker Quick-Tap Completion', () => {
+  describe('repsCompleted value', () => {
+    it('stores repsCompleted when quick-completing an incomplete set', () => {
       const incompleteSet: SetData = {
         completed: false,
         skipped: false,
-      };
+      }
 
-      const result = simulateQuickTapComplete(incompleteSet, "10");
+      const result = simulateQuickTapComplete(incompleteSet, '10')
 
-      expect(result.completed).toBe(true);
-      expect(result.repsCompleted).toBe(10);
-    });
+      expect(result.completed).toBe(true)
+      expect(result.repsCompleted).toBe(10)
+    })
 
     it("parses reps from range format (e.g., '8-12')", () => {
       const incompleteSet: SetData = {
         completed: false,
         skipped: false,
-      };
+      }
 
-      const result = simulateQuickTapComplete(incompleteSet, "8-12");
+      const result = simulateQuickTapComplete(incompleteSet, '8-12')
 
-      expect(result.repsCompleted).toBe(8); // parseReps takes first number
-    });
+      expect(result.repsCompleted).toBe(8) // parseReps takes first number
+    })
 
     it("parses reps from 'x reps' format", () => {
       const incompleteSet: SetData = {
         completed: false,
         skipped: false,
-      };
+      }
 
-      const result = simulateQuickTapComplete(incompleteSet, "12 reps");
+      const result = simulateQuickTapComplete(incompleteSet, '12 reps')
 
-      expect(result.repsCompleted).toBe(12);
-    });
+      expect(result.repsCompleted).toBe(12)
+    })
 
-    it("defaults to 10 for non-numeric reps", () => {
+    it('defaults to 10 for non-numeric reps', () => {
       const incompleteSet: SetData = {
         completed: false,
         skipped: false,
-      };
+      }
 
-      const result = simulateQuickTapComplete(incompleteSet, "AMRAP");
+      const result = simulateQuickTapComplete(incompleteSet, 'AMRAP')
 
-      expect(result.repsCompleted).toBe(10); // parseReps default
-    });
+      expect(result.repsCompleted).toBe(10) // parseReps default
+    })
 
-    it("preserves existing weight and rpe when quick-completing", () => {
+    it('preserves existing weight and rpe when quick-completing', () => {
       const setWithWeight: SetData = {
         completed: false,
         skipped: false,
         weight: 135,
         rpe: 7,
-      };
+      }
 
-      const result = simulateQuickTapComplete(setWithWeight, "10");
+      const result = simulateQuickTapComplete(setWithWeight, '10')
 
-      expect(result.completed).toBe(true);
-      expect(result.repsCompleted).toBe(10);
-      expect(result.weight).toBe(135);
-      expect(result.rpe).toBe(7);
-    });
-  });
+      expect(result.completed).toBe(true)
+      expect(result.repsCompleted).toBe(10)
+      expect(result.weight).toBe(135)
+      expect(result.rpe).toBe(7)
+    })
+  })
 
-  describe("toggle behavior", () => {
-    it("toggles off a completed set (no repsCompleted change)", () => {
+  describe('toggle behavior', () => {
+    it('toggles off a completed set (no repsCompleted change)', () => {
       const completedSet: SetData = {
         completed: true,
         skipped: false,
         repsCompleted: 10,
-      };
+      }
 
-      const result = simulateQuickTapComplete(completedSet, "10");
+      const result = simulateQuickTapComplete(completedSet, '10')
 
-      expect(result.completed).toBe(false);
-      expect(result.skipped).toBe(false);
-    });
+      expect(result.completed).toBe(false)
+      expect(result.skipped).toBe(false)
+    })
 
-    it("toggles off a skipped set", () => {
+    it('toggles off a skipped set', () => {
       const skippedSet: SetData = {
         completed: false,
         skipped: true,
-      };
+      }
 
-      const result = simulateQuickTapComplete(skippedSet, "10");
+      const result = simulateQuickTapComplete(skippedSet, '10')
 
-      expect(result.completed).toBe(false);
-      expect(result.skipped).toBe(false);
-    });
-  });
-});
+      expect(result.completed).toBe(false)
+      expect(result.skipped).toBe(false)
+    })
+  })
+})
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TODAY'S WORKOUT - COMPLETED FOCUS BEHAVIOR
@@ -181,10 +178,10 @@ describe("SetTracker Quick-Tap Completion", () => {
  */
 
 interface FocusWorkoutContext {
-  todayFocusTemplateId: string | null;
-  completedTemplateIds: Set<string>;
-  weekWorkouts: Array<{ id: string; day: number }>;
-  inProgressTemplateId: string | null;
+  todayFocusTemplateId: string | null
+  completedTemplateIds: Set<string>
+  weekWorkouts: Array<{ id: string; day: number }>
+  inProgressTemplateId: string | null
 }
 
 /**
@@ -198,95 +195,95 @@ interface FocusWorkoutContext {
 function getTodayWorkoutId(ctx: FocusWorkoutContext): string | null {
   // Priority 1: In-progress session
   if (ctx.inProgressTemplateId) {
-    return ctx.inProgressTemplateId;
+    return ctx.inProgressTemplateId
   }
 
   // Priority 2: If there's an explicit focus override, return it
   // (even if completed - this is the key behavior change)
   if (ctx.todayFocusTemplateId) {
-    return ctx.todayFocusTemplateId;
+    return ctx.todayFocusTemplateId
   }
 
   // Priority 3: First incomplete workout in current week
-  const sortedWorkouts = [...ctx.weekWorkouts].sort((a, b) => a.day - b.day);
-  const firstIncomplete = sortedWorkouts.find(w => !ctx.completedTemplateIds.has(w.id));
+  const sortedWorkouts = [...ctx.weekWorkouts].sort((a, b) => a.day - b.day)
+  const firstIncomplete = sortedWorkouts.find((w) => !ctx.completedTemplateIds.has(w.id))
   if (firstIncomplete) {
-    return firstIncomplete.id;
+    return firstIncomplete.id
   }
 
   // All completed - return null
-  return null;
+  return null
 }
 
 describe("Today's Workout Focus Behavior", () => {
   const weekWorkouts = [
-    { id: "lower-body", day: 1 },
-    { id: "upper-body", day: 2 },
-    { id: "power-conditioning", day: 3 },
-  ];
+    { id: 'lower-body', day: 1 },
+    { id: 'upper-body', day: 2 },
+    { id: 'power-conditioning', day: 3 },
+  ]
 
-  describe("completed focus workflow", () => {
-    it("returns focused workout even when completed", () => {
+  describe('completed focus workflow', () => {
+    it('returns focused workout even when completed', () => {
       // User selected power-conditioning as today's workout and completed it
       const result = getTodayWorkoutId({
-        todayFocusTemplateId: "power-conditioning",
-        completedTemplateIds: new Set(["power-conditioning"]),
+        todayFocusTemplateId: 'power-conditioning',
+        completedTemplateIds: new Set(['power-conditioning']),
         weekWorkouts,
         inProgressTemplateId: null,
-      });
+      })
 
       // Should still show power-conditioning (not fall back to lower-body)
-      expect(result).toBe("power-conditioning");
-    });
+      expect(result).toBe('power-conditioning')
+    })
 
-    it("returns focused workout when not completed", () => {
+    it('returns focused workout when not completed', () => {
       const result = getTodayWorkoutId({
-        todayFocusTemplateId: "power-conditioning",
+        todayFocusTemplateId: 'power-conditioning',
         completedTemplateIds: new Set(),
         weekWorkouts,
         inProgressTemplateId: null,
-      });
+      })
 
-      expect(result).toBe("power-conditioning");
-    });
+      expect(result).toBe('power-conditioning')
+    })
 
-    it("in-progress takes priority over completed focus", () => {
+    it('in-progress takes priority over completed focus', () => {
       // Focus is set to completed workout, but another is in-progress
       const result = getTodayWorkoutId({
-        todayFocusTemplateId: "power-conditioning",
-        completedTemplateIds: new Set(["power-conditioning"]),
+        todayFocusTemplateId: 'power-conditioning',
+        completedTemplateIds: new Set(['power-conditioning']),
         weekWorkouts,
-        inProgressTemplateId: "upper-body",
-      });
+        inProgressTemplateId: 'upper-body',
+      })
 
-      expect(result).toBe("upper-body");
-    });
-  });
+      expect(result).toBe('upper-body')
+    })
+  })
 
-  describe("no focus set", () => {
-    it("returns first incomplete when no focus set", () => {
+  describe('no focus set', () => {
+    it('returns first incomplete when no focus set', () => {
       const result = getTodayWorkoutId({
         todayFocusTemplateId: null,
-        completedTemplateIds: new Set(["lower-body"]),
+        completedTemplateIds: new Set(['lower-body']),
         weekWorkouts,
         inProgressTemplateId: null,
-      });
+      })
 
-      expect(result).toBe("upper-body");
-    });
+      expect(result).toBe('upper-body')
+    })
 
-    it("returns null when all completed and no focus", () => {
+    it('returns null when all completed and no focus', () => {
       const result = getTodayWorkoutId({
         todayFocusTemplateId: null,
-        completedTemplateIds: new Set(["lower-body", "upper-body", "power-conditioning"]),
+        completedTemplateIds: new Set(['lower-body', 'upper-body', 'power-conditioning']),
         weekWorkouts,
         inProgressTemplateId: null,
-      });
+      })
 
-      expect(result).toBeNull();
-    });
-  });
-});
+      expect(result).toBeNull()
+    })
+  })
+})
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SESSION AUTO-SAVE PREVENTION
@@ -306,9 +303,9 @@ describe("Today's Workout Focus Behavior", () => {
  */
 
 interface AutoSaveContext {
-  sessionEnded: boolean;
-  sessionId: string | null;
-  hasExerciseCompletions: boolean;
+  sessionEnded: boolean
+  sessionId: string | null
+  hasExerciseCompletions: boolean
 }
 
 /**
@@ -316,55 +313,55 @@ interface AutoSaveContext {
  */
 function shouldAutoSave(ctx: AutoSaveContext): boolean {
   // Don't save if session has already ended
-  if (ctx.sessionEnded) return false;
+  if (ctx.sessionEnded) return false
 
   // Don't save if no session or no completions
-  if (!ctx.sessionId || !ctx.hasExerciseCompletions) return false;
+  if (!ctx.sessionId || !ctx.hasExerciseCompletions) return false
 
-  return true;
+  return true
 }
 
-describe("Session Auto-Save Prevention", () => {
-  it("allows auto-save when session is active", () => {
+describe('Session Auto-Save Prevention', () => {
+  it('allows auto-save when session is active', () => {
     const result = shouldAutoSave({
       sessionEnded: false,
-      sessionId: "session-123",
+      sessionId: 'session-123',
       hasExerciseCompletions: true,
-    });
+    })
 
-    expect(result).toBe(true);
-  });
+    expect(result).toBe(true)
+  })
 
-  it("prevents auto-save when session has ended", () => {
+  it('prevents auto-save when session has ended', () => {
     const result = shouldAutoSave({
       sessionEnded: true,
-      sessionId: "session-123",
+      sessionId: 'session-123',
       hasExerciseCompletions: true,
-    });
+    })
 
-    expect(result).toBe(false);
-  });
+    expect(result).toBe(false)
+  })
 
-  it("prevents auto-save when no session ID", () => {
+  it('prevents auto-save when no session ID', () => {
     const result = shouldAutoSave({
       sessionEnded: false,
       sessionId: null,
       hasExerciseCompletions: true,
-    });
+    })
 
-    expect(result).toBe(false);
-  });
+    expect(result).toBe(false)
+  })
 
-  it("prevents auto-save when no exercise completions", () => {
+  it('prevents auto-save when no exercise completions', () => {
     const result = shouldAutoSave({
       sessionEnded: false,
-      sessionId: "session-123",
+      sessionId: 'session-123',
       hasExerciseCompletions: false,
-    });
+    })
 
-    expect(result).toBe(false);
-  });
-});
+    expect(result).toBe(false)
+  })
+})
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PERFORMANCE REVIEW ITEM - DISPLAY LOGIC
@@ -380,51 +377,51 @@ describe("Session Auto-Save Prevention", () => {
  */
 
 interface SetPerformance {
-  setNumber: number;
-  repsCompleted?: number;
-  weight?: number;
-  rpe?: number;
-  completed: boolean;
-  skipped: boolean;
+  setNumber: number
+  repsCompleted?: number
+  weight?: number
+  rpe?: number
+  completed: boolean
+  skipped: boolean
 }
 
 function formatSetDisplay(set: SetPerformance): string {
   if (set.skipped) {
-    return "Skipped";
+    return 'Skipped'
   }
 
   if (set.completed) {
     if (set.repsCompleted) {
-      return `${set.repsCompleted} reps`;
+      return `${set.repsCompleted} reps`
     }
-    return "Completed";
+    return 'Completed'
   }
 
-  return "Incomplete";
+  return 'Incomplete'
 }
 
-describe("PerformanceReviewItem Display", () => {
-  describe("completed sets", () => {
-    it("shows reps when repsCompleted is available", () => {
+describe('PerformanceReviewItem Display', () => {
+  describe('completed sets', () => {
+    it('shows reps when repsCompleted is available', () => {
       const set: SetPerformance = {
         setNumber: 1,
         repsCompleted: 10,
         completed: true,
         skipped: false,
-      };
+      }
 
-      expect(formatSetDisplay(set)).toBe("10 reps");
-    });
+      expect(formatSetDisplay(set)).toBe('10 reps')
+    })
 
     it("shows 'Completed' when repsCompleted is missing (legacy data)", () => {
       const set: SetPerformance = {
         setNumber: 1,
         completed: true,
         skipped: false,
-      };
+      }
 
-      expect(formatSetDisplay(set)).toBe("Completed");
-    });
+      expect(formatSetDisplay(set)).toBe('Completed')
+    })
 
     it("shows 'Completed' when repsCompleted is 0", () => {
       const set: SetPerformance = {
@@ -432,23 +429,23 @@ describe("PerformanceReviewItem Display", () => {
         repsCompleted: 0,
         completed: true,
         skipped: false,
-      };
+      }
 
       // 0 is falsy, so should show "Completed"
-      expect(formatSetDisplay(set)).toBe("Completed");
-    });
-  });
+      expect(formatSetDisplay(set)).toBe('Completed')
+    })
+  })
 
-  describe("skipped sets", () => {
+  describe('skipped sets', () => {
     it("shows 'Skipped' for skipped sets", () => {
       const set: SetPerformance = {
         setNumber: 1,
         completed: false,
         skipped: true,
-      };
+      }
 
-      expect(formatSetDisplay(set)).toBe("Skipped");
-    });
+      expect(formatSetDisplay(set)).toBe('Skipped')
+    })
 
     it("shows 'Skipped' even if repsCompleted was set", () => {
       const set: SetPerformance = {
@@ -456,24 +453,24 @@ describe("PerformanceReviewItem Display", () => {
         repsCompleted: 10,
         completed: false,
         skipped: true,
-      };
+      }
 
-      expect(formatSetDisplay(set)).toBe("Skipped");
-    });
-  });
+      expect(formatSetDisplay(set)).toBe('Skipped')
+    })
+  })
 
-  describe("incomplete sets", () => {
+  describe('incomplete sets', () => {
     it("shows 'Incomplete' for non-completed, non-skipped sets", () => {
       const set: SetPerformance = {
         setNumber: 1,
         completed: false,
         skipped: false,
-      };
+      }
 
-      expect(formatSetDisplay(set)).toBe("Incomplete");
-    });
-  });
-});
+      expect(formatSetDisplay(set)).toBe('Incomplete')
+    })
+  })
+})
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // AUTO-ADVANCE TIMER LOGIC
@@ -486,8 +483,8 @@ describe("PerformanceReviewItem Display", () => {
  */
 
 interface ExerciseCompletion {
-  sets: SetData[];
-  completed: boolean;
+  sets: SetData[]
+  completed: boolean
 }
 
 function shouldTriggerAutoAdvance(
@@ -496,16 +493,16 @@ function shouldTriggerAutoAdvance(
   totalExercises: number
 ): boolean {
   // Check if all sets are completed or skipped
-  const allSetsCompleted = exercise.sets.every(s => s.completed || s.skipped);
+  const allSetsCompleted = exercise.sets.every((s) => s.completed || s.skipped)
 
   // Only auto-advance if not on last exercise
-  const isNotLastExercise = currentIndex < totalExercises - 1;
+  const isNotLastExercise = currentIndex < totalExercises - 1
 
-  return allSetsCompleted && isNotLastExercise;
+  return allSetsCompleted && isNotLastExercise
 }
 
-describe("Auto-Advance Timer Logic", () => {
-  it("triggers auto-advance when all sets completed and not last exercise", () => {
+describe('Auto-Advance Timer Logic', () => {
+  it('triggers auto-advance when all sets completed and not last exercise', () => {
     const exercise: ExerciseCompletion = {
       sets: [
         { completed: true, skipped: false },
@@ -513,26 +510,26 @@ describe("Auto-Advance Timer Logic", () => {
         { completed: true, skipped: false },
       ],
       completed: true,
-    };
+    }
 
-    const result = shouldTriggerAutoAdvance(exercise, 0, 3);
-    expect(result).toBe(true);
-  });
+    const result = shouldTriggerAutoAdvance(exercise, 0, 3)
+    expect(result).toBe(true)
+  })
 
-  it("triggers auto-advance when all sets skipped", () => {
+  it('triggers auto-advance when all sets skipped', () => {
     const exercise: ExerciseCompletion = {
       sets: [
         { completed: false, skipped: true },
         { completed: false, skipped: true },
       ],
       completed: true,
-    };
+    }
 
-    const result = shouldTriggerAutoAdvance(exercise, 0, 3);
-    expect(result).toBe(true);
-  });
+    const result = shouldTriggerAutoAdvance(exercise, 0, 3)
+    expect(result).toBe(true)
+  })
 
-  it("triggers auto-advance with mixed completed and skipped", () => {
+  it('triggers auto-advance with mixed completed and skipped', () => {
     const exercise: ExerciseCompletion = {
       sets: [
         { completed: true, skipped: false },
@@ -540,26 +537,26 @@ describe("Auto-Advance Timer Logic", () => {
         { completed: true, skipped: false },
       ],
       completed: true,
-    };
+    }
 
-    const result = shouldTriggerAutoAdvance(exercise, 0, 3);
-    expect(result).toBe(true);
-  });
+    const result = shouldTriggerAutoAdvance(exercise, 0, 3)
+    expect(result).toBe(true)
+  })
 
-  it("does not trigger when on last exercise", () => {
+  it('does not trigger when on last exercise', () => {
     const exercise: ExerciseCompletion = {
       sets: [
         { completed: true, skipped: false },
         { completed: true, skipped: false },
       ],
       completed: true,
-    };
+    }
 
-    const result = shouldTriggerAutoAdvance(exercise, 2, 3); // Last exercise
-    expect(result).toBe(false);
-  });
+    const result = shouldTriggerAutoAdvance(exercise, 2, 3) // Last exercise
+    expect(result).toBe(false)
+  })
 
-  it("does not trigger when sets are incomplete", () => {
+  it('does not trigger when sets are incomplete', () => {
     const exercise: ExerciseCompletion = {
       sets: [
         { completed: true, skipped: false },
@@ -567,12 +564,12 @@ describe("Auto-Advance Timer Logic", () => {
         { completed: true, skipped: false },
       ],
       completed: false,
-    };
+    }
 
-    const result = shouldTriggerAutoAdvance(exercise, 0, 3);
-    expect(result).toBe(false);
-  });
-});
+    const result = shouldTriggerAutoAdvance(exercise, 0, 3)
+    expect(result).toBe(false)
+  })
+})
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // EXERCISE ACCORDION - DRAG HANDLE VISIBILITY
@@ -585,60 +582,60 @@ describe("Auto-Advance Timer Logic", () => {
  */
 
 interface AccordionProps {
-  drag?: () => void;
-  isCompleted: boolean;
-  viewMode: "review" | "preview";
+  drag?: () => void
+  isCompleted: boolean
+  viewMode: 'review' | 'preview'
 }
 
 function shouldShowDragHandle(props: AccordionProps): boolean {
   // Only show drag handle when drag function is provided
-  return props.drag !== undefined;
+  return props.drag !== undefined
 }
 
 function shouldRenderDragPlaceholder(props: AccordionProps): boolean {
   // Never render placeholder - removed in fix
-  return false;
+  return false
 }
 
-describe("Exercise Accordion Drag Handle", () => {
-  it("shows drag handle when drag function provided", () => {
+describe('Exercise Accordion Drag Handle', () => {
+  it('shows drag handle when drag function provided', () => {
     const props: AccordionProps = {
       drag: () => {},
       isCompleted: false,
-      viewMode: "preview",
-    };
+      viewMode: 'preview',
+    }
 
-    expect(shouldShowDragHandle(props)).toBe(true);
-  });
+    expect(shouldShowDragHandle(props)).toBe(true)
+  })
 
-  it("hides drag handle when no drag function (review mode)", () => {
+  it('hides drag handle when no drag function (review mode)', () => {
     const props: AccordionProps = {
       drag: undefined,
       isCompleted: true,
-      viewMode: "review",
-    };
+      viewMode: 'review',
+    }
 
-    expect(shouldShowDragHandle(props)).toBe(false);
-  });
+    expect(shouldShowDragHandle(props)).toBe(false)
+  })
 
-  it("never renders drag placeholder", () => {
+  it('never renders drag placeholder', () => {
     // Fix removed the placeholder that was causing alignment issues
     const propsWithDrag: AccordionProps = {
       drag: () => {},
       isCompleted: false,
-      viewMode: "preview",
-    };
+      viewMode: 'preview',
+    }
 
     const propsWithoutDrag: AccordionProps = {
       drag: undefined,
       isCompleted: true,
-      viewMode: "review",
-    };
+      viewMode: 'review',
+    }
 
-    expect(shouldRenderDragPlaceholder(propsWithDrag)).toBe(false);
-    expect(shouldRenderDragPlaceholder(propsWithoutDrag)).toBe(false);
-  });
-});
+    expect(shouldRenderDragPlaceholder(propsWithDrag)).toBe(false)
+    expect(shouldRenderDragPlaceholder(propsWithoutDrag)).toBe(false)
+  })
+})
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // KEYBOARD AVOIDING VIEW - INPUT VISIBILITY
@@ -651,35 +648,35 @@ describe("Exercise Accordion Drag Handle", () => {
  * - Web: No keyboard avoiding needed
  */
 
-type Platform = "ios" | "android" | "web";
+type Platform = 'ios' | 'android' | 'web'
 
-function getKeyboardAvoidingBehavior(platform: Platform): "padding" | "height" | undefined {
-  return platform === "ios" ? "padding" : undefined;
+function getKeyboardAvoidingBehavior(platform: Platform): 'padding' | 'height' | undefined {
+  return platform === 'ios' ? 'padding' : undefined
 }
 
 function shouldEnableKeyboardAvoiding(platform: Platform): boolean {
-  return platform === "ios";
+  return platform === 'ios'
 }
 
-describe("Keyboard Avoiding View", () => {
-  it("uses padding behavior on iOS", () => {
-    expect(getKeyboardAvoidingBehavior("ios")).toBe("padding");
-  });
+describe('Keyboard Avoiding View', () => {
+  it('uses padding behavior on iOS', () => {
+    expect(getKeyboardAvoidingBehavior('ios')).toBe('padding')
+  })
 
-  it("uses undefined behavior on Android", () => {
-    expect(getKeyboardAvoidingBehavior("android")).toBeUndefined();
-  });
+  it('uses undefined behavior on Android', () => {
+    expect(getKeyboardAvoidingBehavior('android')).toBeUndefined()
+  })
 
-  it("uses undefined behavior on Web", () => {
-    expect(getKeyboardAvoidingBehavior("web")).toBeUndefined();
-  });
+  it('uses undefined behavior on Web', () => {
+    expect(getKeyboardAvoidingBehavior('web')).toBeUndefined()
+  })
 
-  it("enables keyboard avoiding on iOS only", () => {
-    expect(shouldEnableKeyboardAvoiding("ios")).toBe(true);
-    expect(shouldEnableKeyboardAvoiding("android")).toBe(false);
-    expect(shouldEnableKeyboardAvoiding("web")).toBe(false);
-  });
-});
+  it('enables keyboard avoiding on iOS only', () => {
+    expect(shouldEnableKeyboardAvoiding('ios')).toBe(true)
+    expect(shouldEnableKeyboardAvoiding('android')).toBe(false)
+    expect(shouldEnableKeyboardAvoiding('web')).toBe(false)
+  })
+})
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SHEET SNAP POINTS - KEYBOARD VISIBILITY
@@ -691,20 +688,20 @@ describe("Keyboard Avoiding View", () => {
  */
 
 function getSheetSnapPoints(isKeyboardVisible: boolean): number[] {
-  return isKeyboardVisible ? [85] : [55];
+  return isKeyboardVisible ? [85] : [55]
 }
 
-describe("Sheet Snap Points", () => {
-  it("uses higher snap point when keyboard is visible", () => {
-    const snapPoints = getSheetSnapPoints(true);
-    expect(snapPoints).toEqual([85]);
-  });
+describe('Sheet Snap Points', () => {
+  it('uses higher snap point when keyboard is visible', () => {
+    const snapPoints = getSheetSnapPoints(true)
+    expect(snapPoints).toEqual([85])
+  })
 
-  it("uses normal snap point when keyboard is hidden", () => {
-    const snapPoints = getSheetSnapPoints(false);
-    expect(snapPoints).toEqual([55]);
-  });
-});
+  it('uses normal snap point when keyboard is hidden', () => {
+    const snapPoints = getSheetSnapPoints(false)
+    expect(snapPoints).toEqual([55])
+  })
+})
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // COMPLETE SESSION - FOCUS NOT CLEARED
@@ -721,12 +718,12 @@ describe("Sheet Snap Points", () => {
  */
 
 interface CompleteSessionContext {
-  sessionTemplateId: string;
-  todayFocusTemplateId: string | null;
+  sessionTemplateId: string
+  todayFocusTemplateId: string | null
 }
 
 interface CompleteSessionResult {
-  shouldClearFocus: boolean;
+  shouldClearFocus: boolean
 }
 
 /**
@@ -734,7 +731,7 @@ interface CompleteSessionResult {
  */
 function shouldClearFocusOld(ctx: CompleteSessionContext): boolean {
   // OLD: Clear if the completed workout matches the focus
-  return ctx.todayFocusTemplateId === ctx.sessionTemplateId;
+  return ctx.todayFocusTemplateId === ctx.sessionTemplateId
 }
 
 /**
@@ -744,59 +741,59 @@ function shouldClearFocusNew(_ctx: CompleteSessionContext): boolean {
   // NEW: Never clear focus on complete
   // Focus will be cleared when user selects a different workout
   // or when a new day starts
-  return false;
+  return false
 }
 
-describe("Complete Session Focus Behavior", () => {
-  describe("old (broken) behavior", () => {
-    it("would clear focus when completing focused workout", () => {
+describe('Complete Session Focus Behavior', () => {
+  describe('old (broken) behavior', () => {
+    it('would clear focus when completing focused workout', () => {
       const result = shouldClearFocusOld({
-        sessionTemplateId: "power-conditioning",
-        todayFocusTemplateId: "power-conditioning",
-      });
+        sessionTemplateId: 'power-conditioning',
+        todayFocusTemplateId: 'power-conditioning',
+      })
 
-      expect(result).toBe(true); // This was wrong!
-    });
+      expect(result).toBe(true) // This was wrong!
+    })
 
-    it("would not clear focus when completing different workout", () => {
+    it('would not clear focus when completing different workout', () => {
       const result = shouldClearFocusOld({
-        sessionTemplateId: "lower-body",
-        todayFocusTemplateId: "power-conditioning",
-      });
+        sessionTemplateId: 'lower-body',
+        todayFocusTemplateId: 'power-conditioning',
+      })
 
-      expect(result).toBe(false);
-    });
-  });
+      expect(result).toBe(false)
+    })
+  })
 
-  describe("new (fixed) behavior", () => {
-    it("never clears focus when completing focused workout", () => {
+  describe('new (fixed) behavior', () => {
+    it('never clears focus when completing focused workout', () => {
       const result = shouldClearFocusNew({
-        sessionTemplateId: "power-conditioning",
-        todayFocusTemplateId: "power-conditioning",
-      });
+        sessionTemplateId: 'power-conditioning',
+        todayFocusTemplateId: 'power-conditioning',
+      })
 
-      expect(result).toBe(false); // This is correct!
-    });
+      expect(result).toBe(false) // This is correct!
+    })
 
-    it("never clears focus when completing any workout", () => {
+    it('never clears focus when completing any workout', () => {
       const result = shouldClearFocusNew({
-        sessionTemplateId: "lower-body",
-        todayFocusTemplateId: "power-conditioning",
-      });
+        sessionTemplateId: 'lower-body',
+        todayFocusTemplateId: 'power-conditioning',
+      })
 
-      expect(result).toBe(false);
-    });
+      expect(result).toBe(false)
+    })
 
-    it("handles null focus gracefully", () => {
+    it('handles null focus gracefully', () => {
       const result = shouldClearFocusNew({
-        sessionTemplateId: "lower-body",
+        sessionTemplateId: 'lower-body',
         todayFocusTemplateId: null,
-      });
+      })
 
-      expect(result).toBe(false);
-    });
-  });
-});
+      expect(result).toBe(false)
+    })
+  })
+})
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // AUTO-SAVE RACE CONDITION PREVENTION
@@ -815,126 +812,123 @@ describe("Complete Session Focus Behavior", () => {
  */
 
 interface DebouncedSaveContext {
-  sessionEndedRef: boolean;
-  sessionId: string | null;
-  hasExerciseCompletions: boolean;
-  pendingTimeout: boolean;
+  sessionEndedRef: boolean
+  sessionId: string | null
+  hasExerciseCompletions: boolean
+  pendingTimeout: boolean
 }
 
 /**
  * Simulates the full debounced save check flow (before + inside timeout)
  */
 function simulateDebouncedSave(ctx: DebouncedSaveContext): {
-  shouldSchedule: boolean;
-  shouldExecute: boolean;
+  shouldSchedule: boolean
+  shouldExecute: boolean
 } {
   // Check BEFORE scheduling (first guard - line 354)
-  const shouldSchedule = !ctx.sessionEndedRef;
+  const shouldSchedule = !ctx.sessionEndedRef
 
   // Check INSIDE timeout callback (second guard - line 360)
   // This is checked even if we bypass the first guard somehow
-  const shouldExecute =
-    !ctx.sessionEndedRef &&
-    !!ctx.sessionId &&
-    ctx.hasExerciseCompletions;
+  const shouldExecute = !ctx.sessionEndedRef && !!ctx.sessionId && ctx.hasExerciseCompletions
 
-  return { shouldSchedule, shouldExecute };
+  return { shouldSchedule, shouldExecute }
 }
 
-describe("Auto-Save Race Condition Prevention", () => {
-  describe("before scheduling check", () => {
-    it("prevents scheduling when session has ended", () => {
+describe('Auto-Save Race Condition Prevention', () => {
+  describe('before scheduling check', () => {
+    it('prevents scheduling when session has ended', () => {
       const result = simulateDebouncedSave({
         sessionEndedRef: true,
-        sessionId: "session-123",
+        sessionId: 'session-123',
         hasExerciseCompletions: true,
         pendingTimeout: false,
-      });
+      })
 
-      expect(result.shouldSchedule).toBe(false);
-    });
+      expect(result.shouldSchedule).toBe(false)
+    })
 
-    it("allows scheduling when session is active", () => {
+    it('allows scheduling when session is active', () => {
       const result = simulateDebouncedSave({
         sessionEndedRef: false,
-        sessionId: "session-123",
+        sessionId: 'session-123',
         hasExerciseCompletions: true,
         pendingTimeout: false,
-      });
+      })
 
-      expect(result.shouldSchedule).toBe(true);
-    });
-  });
+      expect(result.shouldSchedule).toBe(true)
+    })
+  })
 
-  describe("inside timeout check", () => {
-    it("prevents execution when session ended after scheduling", () => {
+  describe('inside timeout check', () => {
+    it('prevents execution when session ended after scheduling', () => {
       // Simulates: timeout was scheduled, then session ended before it fired
       const result = simulateDebouncedSave({
         sessionEndedRef: true,
-        sessionId: "session-123",
+        sessionId: 'session-123',
         hasExerciseCompletions: true,
         pendingTimeout: true,
-      });
+      })
 
-      expect(result.shouldExecute).toBe(false);
-    });
+      expect(result.shouldExecute).toBe(false)
+    })
 
-    it("prevents execution when no session ID", () => {
+    it('prevents execution when no session ID', () => {
       const result = simulateDebouncedSave({
         sessionEndedRef: false,
         sessionId: null,
         hasExerciseCompletions: true,
         pendingTimeout: true,
-      });
+      })
 
-      expect(result.shouldExecute).toBe(false);
-    });
+      expect(result.shouldExecute).toBe(false)
+    })
 
-    it("prevents execution when no exercise completions", () => {
+    it('prevents execution when no exercise completions', () => {
       const result = simulateDebouncedSave({
         sessionEndedRef: false,
-        sessionId: "session-123",
+        sessionId: 'session-123',
         hasExerciseCompletions: false,
         pendingTimeout: true,
-      });
+      })
 
-      expect(result.shouldExecute).toBe(false);
-    });
+      expect(result.shouldExecute).toBe(false)
+    })
 
-    it("allows execution when all conditions are met", () => {
+    it('allows execution when all conditions are met', () => {
       const result = simulateDebouncedSave({
         sessionEndedRef: false,
-        sessionId: "session-123",
+        sessionId: 'session-123',
         hasExerciseCompletions: true,
         pendingTimeout: true,
-      });
+      })
 
-      expect(result.shouldExecute).toBe(true);
-    });
-  });
+      expect(result.shouldExecute).toBe(true)
+    })
+  })
 
-  describe("error handling", () => {
+  describe('error handling', () => {
     // These tests verify the error message filtering logic
     function shouldSuppressError(errorMessage: string): boolean {
-      return errorMessage.includes("completed or abandoned");
+      return errorMessage.includes('completed or abandoned')
     }
 
     it("suppresses 'completed or abandoned' error", () => {
-      const error = "Error: Cannot update a completed or abandoned session";
-      expect(shouldSuppressError(error)).toBe(true);
-    });
+      const error = 'Error: Cannot update a completed or abandoned session'
+      expect(shouldSuppressError(error)).toBe(true)
+    })
 
-    it("does not suppress other errors", () => {
-      const error = "Error: Network request failed";
-      expect(shouldSuppressError(error)).toBe(false);
-    });
+    it('does not suppress other errors', () => {
+      const error = 'Error: Network request failed'
+      expect(shouldSuppressError(error)).toBe(false)
+    })
 
-    it("suppresses error with different prefixes", () => {
-      const error = "ConvexError: Cannot update a completed or abandoned session";
-      expect(shouldSuppressError(error)).toBe(true);
-    });
-  });
-});
+    it('suppresses error with different prefixes', () => {
+      const error = 'ConvexError: Cannot update a completed or abandoned session'
+      expect(shouldSuppressError(error)).toBe(true)
+    })
+  })
+})
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // EFFECT TRIGGER CHECK
@@ -946,49 +940,57 @@ describe("Auto-Save Race Condition Prevention", () => {
  */
 
 interface EffectContext {
-  sessionEndedRef: boolean;
-  isInitialized: boolean;
-  hasExerciseCompletions: boolean;
+  sessionEndedRef: boolean
+  isInitialized: boolean
+  hasExerciseCompletions: boolean
 }
 
 function shouldTriggerDebouncedSaveEffect(ctx: EffectContext): boolean {
   // From the useEffect at line 383
-  if (ctx.sessionEndedRef) return false;
-  if (!ctx.isInitialized) return false;
-  if (!ctx.hasExerciseCompletions) return false;
-  return true;
+  if (ctx.sessionEndedRef) return false
+  if (!ctx.isInitialized) return false
+  if (!ctx.hasExerciseCompletions) return false
+  return true
 }
 
-describe("Debounced Save Effect Trigger", () => {
-  it("does not trigger when session has ended", () => {
-    expect(shouldTriggerDebouncedSaveEffect({
-      sessionEndedRef: true,
-      isInitialized: true,
-      hasExerciseCompletions: true,
-    })).toBe(false);
-  });
+describe('Debounced Save Effect Trigger', () => {
+  it('does not trigger when session has ended', () => {
+    expect(
+      shouldTriggerDebouncedSaveEffect({
+        sessionEndedRef: true,
+        isInitialized: true,
+        hasExerciseCompletions: true,
+      })
+    ).toBe(false)
+  })
 
-  it("does not trigger when not initialized", () => {
-    expect(shouldTriggerDebouncedSaveEffect({
-      sessionEndedRef: false,
-      isInitialized: false,
-      hasExerciseCompletions: true,
-    })).toBe(false);
-  });
+  it('does not trigger when not initialized', () => {
+    expect(
+      shouldTriggerDebouncedSaveEffect({
+        sessionEndedRef: false,
+        isInitialized: false,
+        hasExerciseCompletions: true,
+      })
+    ).toBe(false)
+  })
 
-  it("does not trigger when no exercise completions", () => {
-    expect(shouldTriggerDebouncedSaveEffect({
-      sessionEndedRef: false,
-      isInitialized: true,
-      hasExerciseCompletions: false,
-    })).toBe(false);
-  });
+  it('does not trigger when no exercise completions', () => {
+    expect(
+      shouldTriggerDebouncedSaveEffect({
+        sessionEndedRef: false,
+        isInitialized: true,
+        hasExerciseCompletions: false,
+      })
+    ).toBe(false)
+  })
 
-  it("triggers when all conditions are met", () => {
-    expect(shouldTriggerDebouncedSaveEffect({
-      sessionEndedRef: false,
-      isInitialized: true,
-      hasExerciseCompletions: true,
-    })).toBe(true);
-  });
-});
+  it('triggers when all conditions are met', () => {
+    expect(
+      shouldTriggerDebouncedSaveEffect({
+        sessionEndedRef: false,
+        isInitialized: true,
+        hasExerciseCompletions: true,
+      })
+    ).toBe(true)
+  })
+})

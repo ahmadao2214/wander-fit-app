@@ -53,7 +53,7 @@ interface SetTrackerProps {
 
 /**
  * SetTracker - Horizontal set completion pills
- * 
+ *
  * - Tap to quick-complete (uses prescribed values)
  * - Long-press to edit (opens SetEditSheet)
  * - Uses intensity color when provided
@@ -126,11 +126,11 @@ export function SetTracker({
   // Calculate previous performance summary
   const previousSummary = useMemo(() => {
     if (!previousSets || previousSets.length === 0) return null
-    const completedPrevious = previousSets.filter(s => s.completed && !s.skipped)
+    const completedPrevious = previousSets.filter((s) => s.completed && !s.skipped)
     if (completedPrevious.length === 0) return null
 
-    const maxWeight = Math.max(...completedPrevious.map(s => s.weight || 0))
-    const maxReps = Math.max(...completedPrevious.map(s => s.repsCompleted || 0))
+    const maxWeight = Math.max(...completedPrevious.map((s) => s.weight || 0))
+    const maxReps = Math.max(...completedPrevious.map((s) => s.repsCompleted || 0))
 
     return {
       sets: completedPrevious.length,
@@ -143,9 +143,11 @@ export function SetTracker({
     <>
       <YStack gap="$3">
         <XStack items="center" gap="$2">
-          <Supporting fontWeight="600" color="$color10">Sets</Supporting>
+          <Supporting fontWeight="600" color="$color10">
+            Sets
+          </Supporting>
           <Supporting testID="sets-logged" color="$color10" style={numeric}>
-            {sets.filter(s => s.completed).length}/{prescribedSets}
+            {sets.filter((s) => s.completed).length}/{prescribedSets}
           </Supporting>
           {previousSummary && (
             <Caption color="$color9" ml="auto">
@@ -169,10 +171,18 @@ export function SetTracker({
             const isSkipped = set.skipped
             const isNext = index === activeIndex
             const repsSize = isNext ? 24 : 18
-            const stateLabel = isCompleted ? 'done' : isSkipped ? 'skipped' : isNext ? 'next, tap when done' : 'to do'
+            const stateLabel = isCompleted
+              ? 'done'
+              : isSkipped
+                ? 'skipped'
+                : isNext
+                  ? 'next, tap when done'
+                  : 'to do'
             // A logged set announces what was logged; others announce the prescription
             const loggedWeight = set.weight != null && set.weight > 0 ? ` at ${set.weight} lb` : ''
-            const valueLabel = isCompleted ? `${set.repsCompleted ?? displayReps}${loggedWeight}` : displayReps
+            const valueLabel = isCompleted
+              ? `${set.repsCompleted ?? displayReps}${loggedWeight}`
+              : displayReps
 
             return (
               <TouchableOpacity
@@ -192,7 +202,15 @@ export function SetTracker({
                   py={isNext ? '$3.5' : '$3'}
                   minH={isNext ? 84 : 72}
                   justify="center"
-                  bg={isNext ? phase.tint : isCompleted ? '$color3' : isSkipped ? '$color4' : '$background'}
+                  bg={
+                    isNext
+                      ? phase.tint
+                      : isCompleted
+                        ? '$color3'
+                        : isSkipped
+                          ? '$color4'
+                          : '$background'
+                  }
                   borderColor={isNext ? phase.fill : '$borderColor'}
                   borderWidth={isNext ? 2 : 1}
                   rounded="$4"
@@ -208,7 +226,14 @@ export function SetTracker({
                         <XStack items="center" gap="$1">
                           <Check size={18} color={phase.text} strokeWidth={3} />
                           {set.repsCompleted != null && (
-                            <Text fontSize={18} lineHeight={24} color="$color12" fontFamily="$body" fontWeight="700" style={numeric}>
+                            <Text
+                              fontSize={18}
+                              lineHeight={24}
+                              color="$color12"
+                              fontFamily="$body"
+                              fontWeight="700"
+                              style={numeric}
+                            >
                               {set.repsCompleted}
                             </Text>
                           )}
@@ -236,7 +261,8 @@ export function SetTracker({
                       <Text
                         fontSize={repsSize}
                         color={isNext ? '$color12' : '$color11'}
-                        fontFamily="$body" fontWeight={isNext ? '700' : '600'}
+                        fontFamily="$body"
+                        fontWeight={isNext ? '700' : '600'}
                         numberOfLines={1}
                         adjustsFontSizeToFit
                         minimumFontScale={MIN_FONT_SIZE / repsSize}

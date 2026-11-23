@@ -3,7 +3,13 @@ import { Pressable, Text as RNText, View, useWindowDimensions } from 'react-nati
 import { useFocusEffect, useRouter } from 'expo-router'
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import { IntakeFrame } from '../../components/first-run/IntakeFrame'
-import { BODY_BOLD, DISPLAY, Headline, SportShape, headlineSize } from '../../components/first-run/Night'
+import {
+  BODY_BOLD,
+  DISPLAY,
+  Headline,
+  SportShape,
+  headlineSize,
+} from '../../components/first-run/Night'
 import { PAGE_EASE } from '../../components/first-run/intakeMotion'
 import { useIntakeMotion } from '../../components/first-run/useIntakeMotion'
 import { useIntakeSport } from '../../components/first-run/useIntakeSport'
@@ -22,7 +28,17 @@ export function firstQuestion(answers: { ageGroup?: string; years?: string }): Q
 }
 
 /** A value on the card. A new answer stamps in: it lands from a little larger. */
-function Stamp({ value, moving, align, testID }: { value: string; moving: boolean; align: 'left' | 'right'; testID: string }) {
+function Stamp({
+  value,
+  moving,
+  align,
+  testID,
+}: {
+  value: string
+  moving: boolean
+  align: 'left' | 'right'
+  testID: string
+}) {
   const k = useSharedValue(1)
   const last = useRef(value)
   useEffect(() => {
@@ -32,17 +48,36 @@ function Stamp({ value, moving, align, testID }: { value: string; moving: boolea
     k.value = 0
     k.value = withTiming(1, { duration: 260, easing: PAGE_EASE })
   }, [value, moving, k])
-  const style = useAnimatedStyle(() => ({ opacity: k.value, transform: [{ scale: 1.35 - 0.35 * k.value }] }))
+  const style = useAnimatedStyle(() => ({
+    opacity: k.value,
+    transform: [{ scale: 1.35 - 0.35 * k.value }],
+  }))
   return (
     <Animated.View style={[{ minWidth: 60 }, style]}>
-      <RNText style={{ fontFamily: DISPLAY, fontSize: 24, lineHeight: 26, color: NIGHT.ink, textAlign: align }} testID={testID}>
+      <RNText
+        style={{
+          fontFamily: DISPLAY,
+          fontSize: 24,
+          lineHeight: 26,
+          color: NIGHT.ink,
+          textAlign: align,
+        }}
+        testID={testID}
+      >
         {value}
       </RNText>
     </Animated.View>
   )
 }
 
-function Choice({ label, detail, selected, color, onPress, testID }: {
+function Choice({
+  label,
+  detail,
+  selected,
+  color,
+  onPress,
+  testID,
+}: {
   label: string
   detail?: string
   selected: boolean
@@ -75,9 +110,22 @@ function Choice({ label, detail, selected, color, onPress, testID }: {
           backgroundColor: selected ? NIGHT.fg : NIGHT.ink2,
         }}
       >
-        <RNText style={{ fontFamily: DISPLAY, fontSize: 36, lineHeight: 38, color: selected ? NIGHT.ink : NIGHT.fg }}>{label}</RNText>
+        <RNText
+          style={{
+            fontFamily: DISPLAY,
+            fontSize: 36,
+            lineHeight: 38,
+            color: selected ? NIGHT.ink : NIGHT.fg,
+          }}
+        >
+          {label}
+        </RNText>
         {detail ? (
-          <RNText style={{ fontFamily: BODY_BOLD, fontSize: 13, color: selected ? '#44506A' : NIGHT.fg2 }}>{detail}</RNText>
+          <RNText
+            style={{ fontFamily: BODY_BOLD, fontSize: 13, color: selected ? '#44506A' : NIGHT.fg2 }}
+          >
+            {detail}
+          </RNText>
         ) : null}
       </View>
     </Pressable>
@@ -138,29 +186,62 @@ export default function FirstRunAbout() {
     slide.value = 0
     slide.value = withTiming(1, { duration: 280, easing: PAGE_EASE })
   }, [shown, motion.moving, slide])
-  const slideStyle = useAnimatedStyle(() => ({ opacity: slide.value, transform: [{ translateX: 24 * (1 - slide.value) }] }))
+  const slideStyle = useAnimatedStyle(() => ({
+    opacity: slide.value,
+    transform: [{ translateX: 24 * (1 - slide.value) }],
+  }))
 
   const age = AGE_GROUP_CHOICES.find((c) => c.value === ageGroup)
   const level = years ? skillLevelLabel(years) : undefined
 
   return (
-    <IntakeFrame step="about" ground={ground} moving={motion.moving} backdrop={sport ? { name: sport.name } : null}>
+    <IntakeFrame
+      step="about"
+      ground={ground}
+      moving={motion.moving}
+      backdrop={sport ? { name: sport.name } : null}
+    >
       <Headline size={headlineSize(54, width)} moving={motion.moving}>
         About you
       </Headline>
 
       <View
-        style={{ width: 200, height: 240, alignSelf: 'center', marginTop: 16, borderRadius: 16, backgroundColor: NIGHT.fg, padding: 12 }}
+        style={{
+          width: 200,
+          height: 240,
+          alignSelf: 'center',
+          marginTop: 16,
+          borderRadius: 16,
+          backgroundColor: NIGHT.fg,
+          padding: 12,
+        }}
         accessible
         accessibilityLabel={`Player card. Age group ${age?.range ?? 'not answered'}. Experience ${level ?? 'not answered'}.`}
         testID="player-card"
       >
-        <View style={{ flex: 1, borderRadius: 8, backgroundColor: color, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}>
+        <View
+          style={{
+            flex: 1,
+            borderRadius: 8,
+            backgroundColor: color,
+            overflow: 'hidden',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
           {sport ? <SportShape name={sport.name} size={150} /> : null}
         </View>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
-          <RNText style={{ fontFamily: BODY_BOLD, fontSize: 12, letterSpacing: 1, color: '#55617A' }}>AGE GROUP</RNText>
-          <RNText style={{ fontFamily: BODY_BOLD, fontSize: 12, letterSpacing: 1, color: '#55617A' }}>EXPERIENCE</RNText>
+          <RNText
+            style={{ fontFamily: BODY_BOLD, fontSize: 12, letterSpacing: 1, color: '#55617A' }}
+          >
+            AGE GROUP
+          </RNText>
+          <RNText
+            style={{ fontFamily: BODY_BOLD, fontSize: 12, letterSpacing: 1, color: '#55617A' }}
+          >
+            EXPERIENCE
+          </RNText>
         </View>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 }}>
           <Stamp value={age?.range ?? '—'} moving={motion.moving} align="left" testID="card-age" />
@@ -171,14 +252,24 @@ export default function FirstRunAbout() {
       <View style={{ flex: 1, minHeight: 16 }} />
 
       <RNText
-        style={{ fontFamily: DISPLAY, fontSize: 24, letterSpacing: 1, color: NIGHT.fg2, marginBottom: 8 }}
+        style={{
+          fontFamily: DISPLAY,
+          fontSize: 24,
+          letterSpacing: 1,
+          color: NIGHT.fg2,
+          marginBottom: 8,
+        }}
         accessibilityRole="header"
         nativeID="about-question"
         testID="about-question"
       >
         {shown === 'age' ? 'AGE GROUP' : 'YEARS TRAINING FOR YOUR SPORT'}
       </RNText>
-      <Animated.View style={[{ gap: 8 }, slideStyle]} accessibilityRole="radiogroup" accessibilityLabelledBy="about-question">
+      <Animated.View
+        style={[{ gap: 8 }, slideStyle]}
+        accessibilityRole="radiogroup"
+        accessibilityLabelledBy="about-question"
+      >
         {shown === 'age'
           ? AGE_GROUP_CHOICES.map((c) => (
               <Choice

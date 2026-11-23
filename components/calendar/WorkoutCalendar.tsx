@@ -98,15 +98,15 @@ export function WorkoutCalendar({
   }, [])
 
   // Register drop zones when day cells report their layout (now date-based)
-  const handleDropZoneLayout = useCallback((
-    dateISO: string,
-    layout: { x: number; y: number; width: number; height: number }
-  ) => {
-    dropZonesRef.current.set(dateISO, {
-      dateISO,
-      layout,
-    })
-  }, [])
+  const handleDropZoneLayout = useCallback(
+    (dateISO: string, layout: { x: number; y: number; width: number; height: number }) => {
+      dropZonesRef.current.set(dateISO, {
+        dateISO,
+        layout,
+      })
+    },
+    []
+  )
 
   // Unregister drop zone when day cell unmounts (prevents stale zones)
   const handleDropZoneUnregister = useCallback((dateISO: string) => {
@@ -136,31 +136,29 @@ export function WorkoutCalendar({
   }, [])
 
   // Handle moving workout to a new date
-  const handleMoveToDate = useCallback(async (
-    sourcePhase: Phase,
-    sourceWeek: number,
-    sourceDay: number,
-    targetDateISO: string
-  ) => {
-    if (isMoving) return
+  const handleMoveToDate = useCallback(
+    async (sourcePhase: Phase, sourceWeek: number, sourceDay: number, targetDateISO: string) => {
+      if (isMoving) return
 
-    try {
-      setIsMoving(true)
-      await moveWorkoutToDate({
-        ...localDayArgs(),
-        sourcePhase,
-        sourceWeek,
-        sourceDay,
-        targetDateISO,
-      })
-    } catch (error) {
-      console.error('Failed to move workout:', error)
-      // Could show a toast/alert here
-    } finally {
-      setIsMoving(false)
-      setDragSource(null)
-    }
-  }, [moveWorkoutToDate, isMoving])
+      try {
+        setIsMoving(true)
+        await moveWorkoutToDate({
+          ...localDayArgs(),
+          sourcePhase,
+          sourceWeek,
+          sourceDay,
+          targetDateISO,
+        })
+      } catch (error) {
+        console.error('Failed to move workout:', error)
+        // Could show a toast/alert here
+      } finally {
+        setIsMoving(false)
+        setDragSource(null)
+      }
+    },
+    [moveWorkoutToDate, isMoving]
+  )
 
   const handleDragEnd = useCallback(async () => {
     const source = dragSource
@@ -173,12 +171,7 @@ export function WorkoutCalendar({
 
     // If we have both source and target date, move the workout
     if (source && targetDate) {
-      await handleMoveToDate(
-        source.phase,
-        source.week,
-        source.day,
-        targetDate
-      )
+      await handleMoveToDate(source.phase, source.week, source.day, targetDate)
     }
   }, [dragSource, dragTargetDate, handleMoveToDate])
 
@@ -240,11 +233,7 @@ export function WorkoutCalendar({
     <YStack flex={1} gap="$4">
       {/* View mode toggle - segmented control style */}
       <XStack justify="center">
-        <XStack
-          bg="$color3"
-          rounded="$4"
-          p="$1"
-        >
+        <XStack bg="$color3" rounded="$4" p="$1">
           <Button
             size="$2"
             bg={viewMode === 'week' ? '$primary' : 'transparent'}

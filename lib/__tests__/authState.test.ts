@@ -4,265 +4,260 @@ import {
   isAthlete,
   hasCompletedIntake,
   type AuthInputState,
-} from "../authState";
+} from '../authState'
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TEST HELPERS
 // ═══════════════════════════════════════════════════════════════════════════════
 
 interface MockConvexUser {
-  _id: string;
-  role?: string;
-  intakeCompletedAt?: number;
+  _id: string
+  role?: string
+  intakeCompletedAt?: number
 }
 
-const createMockConvexUser = (
-  overrides: Partial<MockConvexUser> = {}
-): MockConvexUser => ({
-  _id: "user-123",
-  role: "client",
+const createMockConvexUser = (overrides: Partial<MockConvexUser> = {}): MockConvexUser => ({
+  _id: 'user-123',
+  role: 'client',
   ...overrides,
-});
+})
 
-const createInput = (
-  overrides: Partial<AuthInputState> = {}
-): AuthInputState => ({
+const createInput = (overrides: Partial<AuthInputState> = {}): AuthInputState => ({
   isClerkLoading: false,
   clerkUser: null,
   convexUser: undefined,
   ...overrides,
-});
+})
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // COMPUTE AUTH STATE TESTS - LOADING STATES
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe("computeAuthState - Loading States", () => {
-  it("returns isLoading: true when Clerk is loading", () => {
-    const input = createInput({ isClerkLoading: true });
-    const result = computeAuthState(input);
+describe('computeAuthState - Loading States', () => {
+  it('returns isLoading: true when Clerk is loading', () => {
+    const input = createInput({ isClerkLoading: true })
+    const result = computeAuthState(input)
 
-    expect(result.isLoading).toBe(true);
-    expect(result.isAuthenticated).toBe(false);
-  });
+    expect(result.isLoading).toBe(true)
+    expect(result.isAuthenticated).toBe(false)
+  })
 
-  it("returns isLoading: true when Clerk user exists but Convex user is undefined", () => {
+  it('returns isLoading: true when Clerk user exists but Convex user is undefined', () => {
     const input = createInput({
       isClerkLoading: false,
-      clerkUser: { id: "clerk-123" },
+      clerkUser: { id: 'clerk-123' },
       convexUser: undefined, // Still loading
-    });
-    const result = computeAuthState(input);
+    })
+    const result = computeAuthState(input)
 
-    expect(result.isLoading).toBe(true);
-  });
+    expect(result.isLoading).toBe(true)
+  })
 
-  it("returns isLoading: false when fully resolved (no user)", () => {
+  it('returns isLoading: false when fully resolved (no user)', () => {
     const input = createInput({
       isClerkLoading: false,
       clerkUser: null,
       convexUser: undefined,
-    });
-    const result = computeAuthState(input);
+    })
+    const result = computeAuthState(input)
 
-    expect(result.isLoading).toBe(false);
-  });
+    expect(result.isLoading).toBe(false)
+  })
 
-  it("returns isLoading: false when fully resolved (with user)", () => {
+  it('returns isLoading: false when fully resolved (with user)', () => {
     const input = createInput({
       isClerkLoading: false,
-      clerkUser: { id: "clerk-123" },
+      clerkUser: { id: 'clerk-123' },
       convexUser: createMockConvexUser({ intakeCompletedAt: Date.now() }),
-    });
-    const result = computeAuthState(input);
+    })
+    const result = computeAuthState(input)
 
-    expect(result.isLoading).toBe(false);
-  });
-});
+    expect(result.isLoading).toBe(false)
+  })
+})
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // COMPUTE AUTH STATE TESTS - AUTHENTICATION STATES
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe("computeAuthState - Authentication States", () => {
-  it("returns isAuthenticated: false when no Clerk user", () => {
+describe('computeAuthState - Authentication States', () => {
+  it('returns isAuthenticated: false when no Clerk user', () => {
     const input = createInput({
       isClerkLoading: false,
       clerkUser: null,
       convexUser: undefined,
-    });
-    const result = computeAuthState(input);
+    })
+    const result = computeAuthState(input)
 
-    expect(result.isAuthenticated).toBe(false);
-    expect(result.user).toBeNull();
-  });
+    expect(result.isAuthenticated).toBe(false)
+    expect(result.user).toBeNull()
+  })
 
-  it("returns isAuthenticated: true, needsSetup: true when Clerk user but no Convex user", () => {
+  it('returns isAuthenticated: true, needsSetup: true when Clerk user but no Convex user', () => {
     const input = createInput({
       isClerkLoading: false,
-      clerkUser: { id: "clerk-123" },
+      clerkUser: { id: 'clerk-123' },
       convexUser: null, // Convex user not found
-    });
-    const result = computeAuthState(input);
+    })
+    const result = computeAuthState(input)
 
-    expect(result.isAuthenticated).toBe(true);
-    expect(result.needsSetup).toBe(true);
-    expect(result.user).toBeNull();
-  });
+    expect(result.isAuthenticated).toBe(true)
+    expect(result.needsSetup).toBe(true)
+    expect(result.user).toBeNull()
+  })
 
-  it("returns isAuthenticated: true when both Clerk and Convex users exist", () => {
-    const convexUser = createMockConvexUser({ intakeCompletedAt: Date.now() });
+  it('returns isAuthenticated: true when both Clerk and Convex users exist', () => {
+    const convexUser = createMockConvexUser({ intakeCompletedAt: Date.now() })
     const input = createInput({
       isClerkLoading: false,
-      clerkUser: { id: "clerk-123" },
+      clerkUser: { id: 'clerk-123' },
       convexUser,
-    });
-    const result = computeAuthState(input);
+    })
+    const result = computeAuthState(input)
 
-    expect(result.isAuthenticated).toBe(true);
-    expect(result.needsSetup).toBe(false);
-    expect(result.user).toEqual(convexUser);
-  });
-});
+    expect(result.isAuthenticated).toBe(true)
+    expect(result.needsSetup).toBe(false)
+    expect(result.user).toEqual(convexUser)
+  })
+})
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // COMPUTE AUTH STATE TESTS - INTAKE STATE
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe("computeAuthState - Intake State", () => {
-  it("returns needsIntake: true for client role without intakeCompletedAt", () => {
+describe('computeAuthState - Intake State', () => {
+  it('returns needsIntake: true for client role without intakeCompletedAt', () => {
     const input = createInput({
       isClerkLoading: false,
-      clerkUser: { id: "clerk-123" },
+      clerkUser: { id: 'clerk-123' },
       convexUser: createMockConvexUser({
-        role: "client",
+        role: 'client',
         intakeCompletedAt: undefined,
       }),
-    });
-    const result = computeAuthState(input);
+    })
+    const result = computeAuthState(input)
 
-    expect(result.needsIntake).toBe(true);
-  });
+    expect(result.needsIntake).toBe(true)
+  })
 
-  it("returns needsIntake: false for client role with intakeCompletedAt", () => {
+  it('returns needsIntake: false for client role with intakeCompletedAt', () => {
     const input = createInput({
       isClerkLoading: false,
-      clerkUser: { id: "clerk-123" },
+      clerkUser: { id: 'clerk-123' },
       convexUser: createMockConvexUser({
-        role: "client",
+        role: 'client',
         intakeCompletedAt: Date.now(),
       }),
-    });
-    const result = computeAuthState(input);
+    })
+    const result = computeAuthState(input)
 
-    expect(result.needsIntake).toBe(false);
-  });
+    expect(result.needsIntake).toBe(false)
+  })
 
-  it("returns needsIntake: false for trainer role", () => {
+  it('returns needsIntake: false for trainer role', () => {
     const input = createInput({
       isClerkLoading: false,
-      clerkUser: { id: "clerk-123" },
+      clerkUser: { id: 'clerk-123' },
       convexUser: createMockConvexUser({
-        role: "trainer",
+        role: 'trainer',
         intakeCompletedAt: undefined,
       }),
-    });
-    const result = computeAuthState(input);
+    })
+    const result = computeAuthState(input)
 
-    expect(result.needsIntake).toBe(false);
-  });
-});
+    expect(result.needsIntake).toBe(false)
+  })
+})
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // COMPUTE AUTH STATE TESTS - ROLE
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe("computeAuthState - Role", () => {
+describe('computeAuthState - Role', () => {
   it("returns role 'client' for client users", () => {
     const input = createInput({
       isClerkLoading: false,
-      clerkUser: { id: "clerk-123" },
-      convexUser: createMockConvexUser({ role: "client" }),
-    });
-    const result = computeAuthState(input);
+      clerkUser: { id: 'clerk-123' },
+      convexUser: createMockConvexUser({ role: 'client' }),
+    })
+    const result = computeAuthState(input)
 
-    expect(result.role).toBe("client");
-  });
+    expect(result.role).toBe('client')
+  })
 
   it("returns role 'trainer' for trainer users", () => {
     const input = createInput({
       isClerkLoading: false,
-      clerkUser: { id: "clerk-123" },
-      convexUser: createMockConvexUser({ role: "trainer" }),
-    });
-    const result = computeAuthState(input);
+      clerkUser: { id: 'clerk-123' },
+      convexUser: createMockConvexUser({ role: 'trainer' }),
+    })
+    const result = computeAuthState(input)
 
-    expect(result.role).toBe("trainer");
-  });
+    expect(result.role).toBe('trainer')
+  })
 
   it("defaults role to 'client' when not specified", () => {
     const input = createInput({
       isClerkLoading: false,
-      clerkUser: { id: "clerk-123" },
+      clerkUser: { id: 'clerk-123' },
       convexUser: createMockConvexUser({ role: undefined }),
-    });
-    const result = computeAuthState(input);
+    })
+    const result = computeAuthState(input)
 
-    expect(result.role).toBe("client");
-  });
-});
+    expect(result.role).toBe('client')
+  })
+})
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // HELPER FUNCTION TESTS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe("isTrainer", () => {
+describe('isTrainer', () => {
   it("returns true for 'trainer' role", () => {
-    expect(isTrainer("trainer")).toBe(true);
-  });
+    expect(isTrainer('trainer')).toBe(true)
+  })
 
   it("returns false for 'client' role", () => {
-    expect(isTrainer("client")).toBe(false);
-  });
+    expect(isTrainer('client')).toBe(false)
+  })
 
-  it("returns false for null role", () => {
-    expect(isTrainer(null)).toBe(false);
-  });
+  it('returns false for null role', () => {
+    expect(isTrainer(null)).toBe(false)
+  })
 
-  it("returns false for other roles", () => {
-    expect(isTrainer("admin")).toBe(false);
-  });
-});
+  it('returns false for other roles', () => {
+    expect(isTrainer('admin')).toBe(false)
+  })
+})
 
-describe("isAthlete", () => {
+describe('isAthlete', () => {
   it("returns true for 'client' role", () => {
-    expect(isAthlete("client")).toBe(true);
-  });
+    expect(isAthlete('client')).toBe(true)
+  })
 
   it("returns false for 'trainer' role", () => {
-    expect(isAthlete("trainer")).toBe(false);
-  });
+    expect(isAthlete('trainer')).toBe(false)
+  })
 
-  it("returns false for null role", () => {
-    expect(isAthlete(null)).toBe(false);
-  });
-});
+  it('returns false for null role', () => {
+    expect(isAthlete(null)).toBe(false)
+  })
+})
 
-describe("hasCompletedIntake", () => {
-  it("returns true when intakeCompletedAt is set", () => {
-    expect(hasCompletedIntake({ intakeCompletedAt: Date.now() })).toBe(true);
-  });
+describe('hasCompletedIntake', () => {
+  it('returns true when intakeCompletedAt is set', () => {
+    expect(hasCompletedIntake({ intakeCompletedAt: Date.now() })).toBe(true)
+  })
 
-  it("returns false when intakeCompletedAt is undefined", () => {
-    expect(hasCompletedIntake({ intakeCompletedAt: undefined })).toBe(false);
-  });
+  it('returns false when intakeCompletedAt is undefined', () => {
+    expect(hasCompletedIntake({ intakeCompletedAt: undefined })).toBe(false)
+  })
 
-  it("returns false when intakeCompletedAt is 0", () => {
-    expect(hasCompletedIntake({ intakeCompletedAt: 0 })).toBe(false);
-  });
+  it('returns false when intakeCompletedAt is 0', () => {
+    expect(hasCompletedIntake({ intakeCompletedAt: 0 })).toBe(false)
+  })
 
-  it("returns false for null user", () => {
-    expect(hasCompletedIntake(null)).toBe(false);
-  });
-});
-
+  it('returns false for null user', () => {
+    expect(hasCompletedIntake(null)).toBe(false)
+  })
+})

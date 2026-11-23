@@ -10,7 +10,8 @@ import * as Haptics from 'expo-haptics'
 // eslint-disable-next-line import/first
 import { selectionFeedback } from '../../lib/haptics'
 
-const setOS = (os: typeof Platform.OS) => Object.defineProperty(Platform, 'OS', { value: os, configurable: true })
+const setOS = (os: typeof Platform.OS) =>
+  Object.defineProperty(Platform, 'OS', { value: os, configurable: true })
 const original = Platform.OS
 
 afterEach(() => {

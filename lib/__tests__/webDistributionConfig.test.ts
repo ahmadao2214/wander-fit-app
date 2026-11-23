@@ -48,9 +48,9 @@ describe('web distribution and Cloudflare Pages SPA configuration', () => {
 
   it('declares only existing routes in the root Stack layout (no stale route warnings)', () => {
     const rootLayout = readUtf8('app/_layout.tsx')
-    const screenNames = Array.from(rootLayout.matchAll(/<Stack\.Screen[\s\S]*?\bname=["']([^"']+)["']/g)).map(
-      (match) => match[1]
-    )
+    const screenNames = Array.from(
+      rootLayout.matchAll(/<Stack\.Screen[\s\S]*?\bname=["']([^"']+)["']/g)
+    ).map((match) => match[1])
     expect(screenNames.length).toBeGreaterThan(0)
 
     const missing = screenNames.filter((name) => {

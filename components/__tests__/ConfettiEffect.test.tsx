@@ -26,9 +26,7 @@ describe('ConfettiEffect', () => {
 
   it('accepts onComplete callback prop', () => {
     const mockOnComplete = jest.fn()
-    const { toJSON } = render(
-      <ConfettiEffect trigger={true} onComplete={mockOnComplete} />
-    )
+    const { toJSON } = render(<ConfettiEffect trigger={true} onComplete={mockOnComplete} />)
     expect(toJSON()).not.toBeNull()
   })
 })

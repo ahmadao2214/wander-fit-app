@@ -21,9 +21,16 @@ export const APPLE_SIGN_IN_ENABLED = process.env.EXPO_PUBLIC_APPLE_SIGN_IN === '
 type Step = 'choose' | 'email' | 'code' | 'saving'
 
 const ssoRedirect = () =>
-  Platform.OS === 'web' ? AuthSession.makeRedirectUri() : AuthSession.makeRedirectUri({ scheme: 'myapp', path: 'oauth' })
+  Platform.OS === 'web'
+    ? AuthSession.makeRedirectUri()
+    : AuthSession.makeRedirectUri({ scheme: 'myapp', path: 'oauth' })
 
-function PrimaryButton({ children, onPress, disabled, testID }: {
+function PrimaryButton({
+  children,
+  onPress,
+  disabled,
+  testID,
+}: {
   children: string
   onPress: () => void
   disabled?: boolean
@@ -51,7 +58,13 @@ function PrimaryButton({ children, onPress, disabled, testID }: {
 function ErrorText({ children, testID }: { children?: string; testID?: string }) {
   if (!children) return null
   return (
-    <Text fontFamily="$body" fontSize={14} color="$red11" testID={testID} accessibilityLiveRegion="polite">
+    <Text
+      fontFamily="$body"
+      fontSize={14}
+      color="$red11"
+      testID={testID}
+      accessibilityLiveRegion="polite"
+    >
       {children}
     </Text>
   )
@@ -92,7 +105,12 @@ export function SavePlanSheet({
   const fields = useRef({ name: '', email: '', password: '' })
   const [sentTo, setSentTo] = useState('')
   const [code, setCode] = useState('')
-  const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string; general?: string }>({})
+  const [errors, setErrors] = useState<{
+    name?: string
+    email?: string
+    password?: string
+    general?: string
+  }>({})
   const [accountExists, setAccountExists] = useState(false)
   const [busy, setBusy] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -110,7 +128,10 @@ export function SavePlanSheet({
         age_group: draft?.answers.ageGroup,
       })
       // Land on the Program tab. Nothing starts by itself; Day 1 waits there.
-      router.replace({ pathname: '/(athlete)/program', params: programWelcomeParams(keptExistingProgram, nextLabel) })
+      router.replace({
+        pathname: '/(athlete)/program',
+        params: programWelcomeParams(keptExistingProgram, nextLabel),
+      })
       await clear()
     } catch (error) {
       console.error('Saving the plan failed:', error)
@@ -122,7 +143,10 @@ export function SavePlanSheet({
 
   const onSaveSignedIn = () =>
     void finish(
-      { email: fields.current.email.trim() || undefined, name: fields.current.name.trim() || undefined },
+      {
+        email: fields.current.email.trim() || undefined,
+        name: fields.current.name.trim() || undefined,
+      },
       'existing_session'
     )
 
@@ -174,7 +198,11 @@ export function SavePlanSheet({
       setStep('code')
     } catch (error) {
       const mapped = getSignUpFormErrors(error)
-      setErrors({ email: mapped.email, password: mapped.password, general: mapped.general || undefined })
+      setErrors({
+        email: mapped.email,
+        password: mapped.password,
+        general: mapped.general || undefined,
+      })
       setAccountExists(mapped.accountExists)
     } finally {
       setBusy(false)
@@ -193,7 +221,10 @@ export function SavePlanSheet({
         return
       }
       await setActive({ session: attempt.createdSessionId })
-      await finish({ email: fields.current.email.trim(), name: fields.current.name.trim() }, 'email')
+      await finish(
+        { email: fields.current.email.trim(), name: fields.current.name.trim() },
+        'email'
+      )
     } catch (error) {
       setErrors({ general: getVerificationErrorMessage(error) })
       setCode('')
@@ -251,11 +282,19 @@ export function SavePlanSheet({
         <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <YStack gap="$4" pt="$3" pb="$6">
             <YStack gap="$1.5">
-              <Text fontFamily="$body" fontSize={24} fontWeight="700" color="$color12" accessibilityRole="header">
+              <Text
+                fontFamily="$body"
+                fontSize={24}
+                fontWeight="700"
+                color="$color12"
+                accessibilityRole="header"
+              >
                 {step === 'code' ? 'Check your email' : 'Save your plan'}
               </Text>
               <Text fontFamily="$body" fontSize={16} color="$color11">
-                {step === 'code' ? `Enter the 6-digit code we sent to ${sentTo}.` : "So it's here tomorrow."}
+                {step === 'code'
+                  ? `Enter the 6-digit code we sent to ${sentTo}.`
+                  : "So it's here tomorrow."}
               </Text>
             </YStack>
 
@@ -272,7 +311,13 @@ export function SavePlanSheet({
 
             {step === 'choose' && clerkUser ? (
               <YStack gap="$2">
-                <Text fontFamily="$body" fontSize={15} color="$color11" numberOfLines={1} ellipsizeMode="middle">
+                <Text
+                  fontFamily="$body"
+                  fontSize={15}
+                  color="$color11"
+                  numberOfLines={1}
+                  ellipsizeMode="middle"
+                >
                   Signed in as {clerkUser.primaryEmailAddress?.emailAddress ?? 'your account'}
                 </Text>
                 <PrimaryButton onPress={onSaveSignedIn} testID="save-plan-signed-in">
@@ -388,8 +433,8 @@ export function SavePlanSheet({
                       accessibilityLabel="Password"
                       defaultValue={fields.current.password}
                       onChangeText={(text) => {
-                      fields.current.password = text
-                    }}
+                        fields.current.password = text
+                      }}
                       secureTextEntry={!showPassword}
                       autoComplete="new-password"
                       textContentType="newPassword"
@@ -413,7 +458,11 @@ export function SavePlanSheet({
                       accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
                       cursor="pointer"
                     >
-                      {showPassword ? <EyeOff size={20} color="$color10" /> : <Eye size={20} color="$color10" />}
+                      {showPassword ? (
+                        <EyeOff size={20} color="$color10" />
+                      ) : (
+                        <Eye size={20} color="$color10" />
+                      )}
                     </XStack>
                   </XStack>
                   <ErrorText>{errors.password}</ErrorText>
@@ -435,7 +484,11 @@ export function SavePlanSheet({
                   length={6}
                   firstInputId="save-plan-code"
                 />
-                <PrimaryButton onPress={() => void onVerify()} disabled={busy || code.length < 6} testID="save-plan-verify">
+                <PrimaryButton
+                  onPress={() => void onVerify()}
+                  disabled={busy || code.length < 6}
+                  testID="save-plan-verify"
+                >
                   {busy ? 'Saving…' : 'Verify and save'}
                 </PrimaryButton>
                 <Text

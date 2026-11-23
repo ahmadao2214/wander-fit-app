@@ -87,7 +87,10 @@ describe('revealProgram', () => {
     for (let weeks = 1; weeks <= 52; weeks++) {
       const shape = revealProgram({ ...complete, seasonStart: isoDaysFrom(NOW, weeks * 7) }, NOW)
       // completeIntake: totalProgramWeeks = weeksUntilSeason, weeksPerPhase = calculateWeeksPerPhase(it)
-      if (shape.totalProgramWeeks !== weeks || shape.weeksPerPhase !== calculateWeeksPerPhase(weeks)) {
+      if (
+        shape.totalProgramWeeks !== weeks ||
+        shape.weeksPerPhase !== calculateWeeksPerPhase(weeks)
+      ) {
         mismatches.push(`${weeks}: ${shape.totalProgramWeeks}/${shape.weeksPerPhase}`)
       }
     }
@@ -167,7 +170,8 @@ describe('intakeArgs', () => {
 describe('seasonStartForWeeks', () => {
   it('round-trips with weeksUntilSeason for every slider position', () => {
     const off: number[] = []
-    for (let w = 1; w <= 52; w++) if (weeksUntilSeason(seasonStartForWeeks(w, NOW), NOW) !== w) off.push(w)
+    for (let w = 1; w <= 52; w++)
+      if (weeksUntilSeason(seasonStartForWeeks(w, NOW), NOW) !== w) off.push(w)
     expect(off).toEqual([])
   })
 

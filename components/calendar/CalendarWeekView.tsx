@@ -2,7 +2,14 @@ import { useState, useRef, useCallback, useMemo } from 'react'
 import { YStack, XStack, Button, ScrollView } from 'tamagui'
 import { Body } from '../Typography'
 import { ChevronLeft, ChevronRight } from '@tamagui/lucide-icons'
-import { FlatList, Dimensions, NativeScrollEvent, NativeSyntheticEvent, View, type ViewInstance } from 'react-native'
+import {
+  FlatList,
+  Dimensions,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  View,
+  type ViewInstance,
+} from 'react-native'
 import { CalendarDayCell, WorkoutWithSlot } from './CalendarDayCell'
 import { CalendarWorkoutCardProps } from './CalendarWorkoutCard'
 import {
@@ -62,7 +69,10 @@ export interface CalendarWeekViewProps {
   /** Category ID for color coding (1-4) */
   gppCategoryId?: number
   /** Callback to register drop zones (date-based) */
-  onDropZoneLayout?: (dateISO: string, layout: { x: number; y: number; width: number; height: number }) => void
+  onDropZoneLayout?: (
+    dateISO: string,
+    layout: { x: number; y: number; width: number; height: number }
+  ) => void
   /** Callback to unregister drop zones on unmount */
   onDropZoneUnregister?: (dateISO: string) => void
   /** Program start date (ISO format) - limits navigation */
@@ -80,7 +90,10 @@ type Rect = { x: number; y: number; width: number; height: number }
  * out of view would otherwise sit under the header or tab bar and take a drop
  * meant for neither. Returns null when none of the row is visible.
  */
-export function clipToViewport(row: Rect, viewport: Pick<Rect, 'y' | 'height'> | null): Rect | null {
+export function clipToViewport(
+  row: Rect,
+  viewport: Pick<Rect, 'y' | 'height'> | null
+): Rect | null {
   if (!viewport) return row
   const top = Math.max(row.y, viewport.y)
   const bottom = Math.min(row.y + row.height, viewport.y + viewport.height)
@@ -116,7 +129,7 @@ function generateProgramWeeks(
  */
 function findWeekIndex(weeks: Date[], targetDate: Date): number {
   const targetWeekStart = startOfWeek(targetDate)
-  return weeks.findIndex(w => isSameDay(w, targetWeekStart))
+  return weeks.findIndex((w) => isSameDay(w, targetWeekStart))
 }
 
 /**
@@ -157,11 +170,14 @@ export function CalendarWeekView({
       viewportRef.current = { y, height }
     })
   }, [])
-  const handleDayLayout = useCallback((dateISO: string, layout: Rect) => {
-    const visible = clipToViewport(layout, viewportRef.current)
-    if (visible) onDropZoneLayout?.(dateISO, visible)
-    else onDropZoneUnregister?.(dateISO)
-  }, [onDropZoneLayout, onDropZoneUnregister])
+  const handleDayLayout = useCallback(
+    (dateISO: string, layout: Rect) => {
+      const visible = clipToViewport(layout, viewportRef.current)
+      if (visible) onDropZoneLayout?.(dateISO, visible)
+      else onDropZoneUnregister?.(dateISO)
+    },
+    [onDropZoneLayout, onDropZoneUnregister]
+  )
   const today = new Date()
 
   // Generate weeks within program bounds (memoized)
@@ -174,9 +190,9 @@ export function CalendarWeekView({
 
       // Filter to only weeks that have at least one workout
       // This prevents showing empty weeks at the end of the program
-      return allWeeks.filter(weekStart => {
+      return allWeeks.filter((weekStart) => {
         const weekDays = getWeekDays(weekStart)
-        return weekDays.some(d => {
+        return weekDays.some((d) => {
           const iso = formatDateISO(d)
           return calendarData[iso]?.workouts?.length > 0
         })
@@ -242,14 +258,17 @@ export function CalendarWeekView({
     }
   }, [weeks, onWeekChange])
 
-  const handleMomentumScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const offsetX = event.nativeEvent.contentOffset.x
-    const newIndex = Math.round(offsetX / SCREEN_WIDTH)
-    if (newIndex !== currentIndex && newIndex >= 0 && newIndex < weeks.length) {
-      setCurrentIndex(newIndex)
-      onWeekChange(weeks[newIndex])
-    }
-  }, [currentIndex, weeks, onWeekChange])
+  const handleMomentumScrollEnd = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const offsetX = event.nativeEvent.contentOffset.x
+      const newIndex = Math.round(offsetX / SCREEN_WIDTH)
+      if (newIndex !== currentIndex && newIndex >= 0 && newIndex < weeks.length) {
+        setCurrentIndex(newIndex)
+        onWeekChange(weeks[newIndex])
+      }
+    },
+    [currentIndex, weeks, onWeekChange]
+  )
 
   // How many days each workout appears on (twice when finished off-schedule)
   const daysShown = useMemo(() => {
@@ -260,117 +279,137 @@ export function CalendarWeekView({
     return counts
   }, [calendarData])
 
-  const renderWeek = useCallback(({ item: weekStart }: { item: Date }) => {
-    const days = getWeekDays(weekStart)
+  const renderWeek = useCallback(
+    ({ item: weekStart }: { item: Date }) => {
+      const days = getWeekDays(weekStart)
 
-    // Find the source workout's effective date when dragging
-    const isDragActive = isDragging
-    let sourceEffectiveDate: Date | null = null
+      // Find the source workout's effective date when dragging
+      const isDragActive = isDragging
+      let sourceEffectiveDate: Date | null = null
 
-    if (isDragActive && dragSourceSlot) {
-      // Find which date the source workout is currently on
-      for (const [dateKey, dayData] of Object.entries(calendarData)) {
-        const workout = dayData.workouts.find(
-          w => w.phase === dragSourceSlot.phase &&
-               w.week === dragSourceSlot.week &&
-               w.day === dragSourceSlot.day
-        )
-        if (workout) {
-          sourceEffectiveDate = parseDateISO(dateKey)
-          break
+      if (isDragActive && dragSourceSlot) {
+        // Find which date the source workout is currently on
+        for (const [dateKey, dayData] of Object.entries(calendarData)) {
+          const workout = dayData.workouts.find(
+            (w) =>
+              w.phase === dragSourceSlot.phase &&
+              w.week === dragSourceSlot.week &&
+              w.day === dragSourceSlot.day
+          )
+          if (workout) {
+            sourceEffectiveDate = parseDateISO(dateKey)
+            break
+          }
         }
       }
-    }
 
-    // Days a workout can move to: this week, from today on, and not a day
-    // whose scheduled workout is done (the server won't swap with it). A
-    // finished workout also shows as an extra card on the day it was done;
-    // that copy is the one dated on its completedOnDate while the same
-    // workout appears on another day, and it doesn't block the day.
-    const isPast = (d: Date) => d < today && !isSameDay(d, today)
-    const holdsDone = (d: Date) => {
-      const iso = formatDateISO(d)
-      return !!calendarData[iso]?.workouts.some(
-        (w) => w.isCompleted && !(w.completedOnDate === iso && (daysShown.get(w.templateId) ?? 0) > 1)
-      )
-    }
-    const openDays = days.filter((d) => !isPast(d) && !holdsDone(d))
+      // Days a workout can move to: this week, from today on, and not a day
+      // whose scheduled workout is done (the server won't swap with it). A
+      // finished workout also shows as an extra card on the day it was done;
+      // that copy is the one dated on its completedOnDate while the same
+      // workout appears on another day, and it doesn't block the day.
+      const isPast = (d: Date) => d < today && !isSameDay(d, today)
+      const holdsDone = (d: Date) => {
+        const iso = formatDateISO(d)
+        return !!calendarData[iso]?.workouts.some(
+          (w) =>
+            w.isCompleted && !(w.completedOnDate === iso && (daysShown.get(w.templateId) ?? 0) > 1)
+        )
+      }
+      const openDays = days.filter((d) => !isPast(d) && !holdsDone(d))
 
-    const renderDay = (date: Date) => {
-      const dateISO = formatDateISO(date)
-      const isDateToday = isSameDay(date, today)
-      const dayData = calendarData[dateISO]
-      const workouts: WorkoutWithSlot[] =
-        dayData?.workouts.map((w) => ({
-          templateId: w.templateId,
-          name: w.name,
-          phase: w.phase,
-          week: w.week,
-          day: w.day,
-          exerciseCount: w.exerciseCount,
-          estimatedDurationMinutes: w.estimatedDurationMinutes,
-          isCompleted: w.isCompleted,
-          isToday: w.isToday,
-          isInProgress: w.isInProgress,
-          isLocked: w.isLocked,
-          gppCategoryId,
-          slotPhase: w.phase,
-          slotWeek: w.week,
-          slotDay: w.day,
-        })) ?? []
+      const renderDay = (date: Date) => {
+        const dateISO = formatDateISO(date)
+        const isDateToday = isSameDay(date, today)
+        const dayData = calendarData[dateISO]
+        const workouts: WorkoutWithSlot[] =
+          dayData?.workouts.map((w) => ({
+            templateId: w.templateId,
+            name: w.name,
+            phase: w.phase,
+            week: w.week,
+            day: w.day,
+            exerciseCount: w.exerciseCount,
+            estimatedDurationMinutes: w.estimatedDurationMinutes,
+            isCompleted: w.isCompleted,
+            isToday: w.isToday,
+            isInProgress: w.isInProgress,
+            isLocked: w.isLocked,
+            gppCategoryId,
+            slotPhase: w.phase,
+            slotWeek: w.week,
+            slotDay: w.day,
+          })) ?? []
 
-      const isDropTarget = dragTargetDate === dateISO && dragSourceSlot !== null
+        const isDropTarget = dragTargetDate === dateISO && dragSourceSlot !== null
 
-      // Check if this date is a valid drop target:
-      // 1. Must be same week as source
-      // 2. Cannot be in the past (before today)
-      const isInPast = date < today && !isSameDay(date, today)
-      const isValidDropTarget = (sourceEffectiveDate
-        ? isSameWeek(date, sourceEffectiveDate) && !isInPast
-        : !isInPast) && !holdsDone(date)
+        // Check if this date is a valid drop target:
+        // 1. Must be same week as source
+        // 2. Cannot be in the past (before today)
+        const isInPast = date < today && !isSameDay(date, today)
+        const isValidDropTarget =
+          (sourceEffectiveDate ? isSameWeek(date, sourceEffectiveDate) && !isInPast : !isInPast) &&
+          !holdsDone(date)
 
+        return (
+          <CalendarDayCell
+            key={dateISO}
+            date={date}
+            dateISO={dateISO}
+            isToday={isDateToday}
+            workouts={workouts}
+            compact={false}
+            onWorkoutPress={onWorkoutPress}
+            onWorkoutLongPress={onWorkoutLongPress}
+            onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
+            onDragMove={onDragMove}
+            isDropTarget={isDropTarget}
+            isDragActive={isDragActive}
+            isValidDropTarget={isValidDropTarget}
+            gppCategoryId={gppCategoryId}
+            onDropZoneLayout={handleDayLayout}
+            onDropZoneUnregister={onDropZoneUnregister}
+            moveTargets={openDays
+              .filter((d) => !isSameDay(d, date))
+              .map((d) => ({ dateISO: formatDateISO(d), label: DAY_NAMES_FULL[d.getDay()] }))}
+            onMoveWorkout={onMoveWorkout}
+          />
+        )
+      }
+
+      // One day per row, Sunday to Saturday, so the week reads as one list
+      // (design audit F01). At large text sizes the list scrolls; it holds
+      // still while a workout is dragged so the drop zones stay put.
       return (
-        <CalendarDayCell
-          key={dateISO}
-          date={date}
-          dateISO={dateISO}
-          isToday={isDateToday}
-          workouts={workouts}
-          compact={false}
-          onWorkoutPress={onWorkoutPress}
-          onWorkoutLongPress={onWorkoutLongPress}
-          onDragStart={onDragStart}
-          onDragEnd={onDragEnd}
-          onDragMove={onDragMove}
-          isDropTarget={isDropTarget}
-          isDragActive={isDragActive}
-          isValidDropTarget={isValidDropTarget}
-          gppCategoryId={gppCategoryId}
-          onDropZoneLayout={handleDayLayout}
-          onDropZoneUnregister={onDropZoneUnregister}
-          moveTargets={openDays
-            .filter((d) => !isSameDay(d, date))
-            .map((d) => ({ dateISO: formatDateISO(d), label: DAY_NAMES_FULL[d.getDay()] }))}
-          onMoveWorkout={onMoveWorkout}
-        />
+        <ScrollView
+          width={SCREEN_WIDTH}
+          flex={1}
+          scrollEnabled={!isDragActive}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ px: '$3', pb: '$4' }}
+        >
+          <YStack gap="$1">{days.map(renderDay)}</YStack>
+        </ScrollView>
       )
-    }
-
-    // One day per row, Sunday to Saturday, so the week reads as one list
-    // (design audit F01). At large text sizes the list scrolls; it holds
-    // still while a workout is dragged so the drop zones stay put.
-    return (
-      <ScrollView
-        width={SCREEN_WIDTH}
-        flex={1}
-        scrollEnabled={!isDragActive}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ px: "$3", pb: "$4" }}
-      >
-        <YStack gap="$1">{days.map(renderDay)}</YStack>
-      </ScrollView>
-    )
-  }, [calendarData, onWorkoutPress, onWorkoutLongPress, onDragStart, onDragEnd, onDragMove, dragTargetDate, dragSourceSlot, isDragging, gppCategoryId, handleDayLayout, onDropZoneUnregister, onMoveWorkout, daysShown])
+    },
+    [
+      calendarData,
+      onWorkoutPress,
+      onWorkoutLongPress,
+      onDragStart,
+      onDragEnd,
+      onDragMove,
+      dragTargetDate,
+      dragSourceSlot,
+      isDragging,
+      gppCategoryId,
+      handleDayLayout,
+      onDropZoneUnregister,
+      onMoveWorkout,
+      daysShown,
+    ]
+  )
 
   const keyExtractor = useCallback((item: Date) => formatDateISO(item), [])
 
@@ -395,14 +434,11 @@ export function CalendarWeekView({
         )}
 
         <XStack flex={1} minW={0} items="center" justify="center" gap="$2" flexWrap="wrap">
-          <Body fontWeight="600" text="center" shrink={1}>{formatWeekRange(displayedWeek)}</Body>
+          <Body fontWeight="600" text="center" shrink={1}>
+            {formatWeekRange(displayedWeek)}
+          </Body>
           {!isCurrentWeekVisible && isTodayInProgram && (
-            <Button
-              size="$2"
-              chromeless
-              onPress={handleGoToToday}
-              color="$primaryText"
-            >
+            <Button size="$2" chromeless onPress={handleGoToToday} color="$primaryText">
               Today
             </Button>
           )}
@@ -424,7 +460,6 @@ export function CalendarWeekView({
           />
         )}
       </XStack>
-
 
       {/* Swipeable week view - scrolling disabled during drag to prevent gesture conflicts */}
       <View ref={listFrameRef} onLayout={handleListLayout} testID="week-pages" style={{ flex: 1 }}>

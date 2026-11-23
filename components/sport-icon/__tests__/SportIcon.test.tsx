@@ -25,7 +25,10 @@ const Providers = ({ children }: { children: React.ReactNode }) => (
 let reduceMotionListener: ((value: boolean) => void) | undefined
 function mockReduceMotion(value: boolean) {
   jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(value)
-  jest.spyOn(AccessibilityInfo, 'addEventListener').mockImplementation(((_event: string, listener: (value: boolean) => void) => {
+  jest.spyOn(AccessibilityInfo, 'addEventListener').mockImplementation(((
+    _event: string,
+    listener: (value: boolean) => void
+  ) => {
     reduceMotionListener = listener
     return { remove: jest.fn() }
   }) as typeof AccessibilityInfo.addEventListener)
@@ -111,7 +114,9 @@ describe('SportIcon', () => {
 
     it('finishes a once play right away so the flow continues', async () => {
       const onFinish = jest.fn()
-      render(<SportIcon name="Pickleball" mode="once" onFinish={onFinish} />, { wrapper: Providers })
+      render(<SportIcon name="Pickleball" mode="once" onFinish={onFinish} />, {
+        wrapper: Providers,
+      })
       await waitFor(() => expect(onFinish).toHaveBeenCalledTimes(1))
     })
   })

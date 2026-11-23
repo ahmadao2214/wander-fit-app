@@ -1,14 +1,5 @@
 import { useState } from 'react'
-import {
-  YStack,
-  XStack,
-  Text,
-  Button,
-  Card,
-  ScrollView,
-  TextArea,
-  Spinner,
-} from 'tamagui'
+import { YStack, XStack, Text, Button, Card, ScrollView, TextArea, Spinner } from 'tamagui'
 import { useRouter } from 'expo-router'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
@@ -73,10 +64,7 @@ export default function SelfAssessmentScreen() {
   const [energy, setEnergy] = useState<EnergyLevel | null>(null)
   const [notes, setNotes] = useState('')
 
-  const reassessmentStatus = useQuery(
-    api.userPrograms.getReassessmentStatus,
-    user ? {} : 'skip'
-  )
+  const reassessmentStatus = useQuery(api.userPrograms.getReassessmentStatus, user ? {} : 'skip')
 
   if (reassessmentStatus === undefined) {
     return (
@@ -124,7 +112,9 @@ export default function SelfAssessmentScreen() {
                 circular
               />
               <YStack flex={1}>
-                <Title accessibilityRole="header">How did {reassessmentStatus?.pendingForPhase} go?</Title>
+                <Title accessibilityRole="header">
+                  How did {reassessmentStatus?.pendingForPhase} go?
+                </Title>
               </YStack>
             </XStack>
 
@@ -132,31 +122,34 @@ export default function SelfAssessmentScreen() {
             <YStack gap="$3">
               <Body fontWeight="600">How did this block feel?</Body>
               {DIFFICULTY_OPTIONS.map((option) => (
-                  <Card
-                    key={option.value}
-                    p="$4"
-                    bg={difficulty === option.value ? option.bgColor : '$surface'}
-                    borderWidth={2}
-                    borderColor={difficulty === option.value ? option.color : '$borderColor'}
-                    borderCurve="continuous"
-                    rounded="$4"
-                    pressStyle={{ scale: 0.98 }}
-                    onPress={() => setDifficulty(option.value)}
-                    accessible
-                    accessibilityRole="radio"
-                    accessibilityState={{ checked: difficulty === option.value }}
-                    accessibilityLabel={option.label}
-                    accessibilityHint={option.description}
-                  >
-                    <YStack gap="$1">
-                      <Body fontWeight="700" color={difficulty === option.value ? option.color : '$color12'}>
-                        {option.label}
-                      </Body>
-                      <Supporting color={difficulty === option.value ? option.color : '$color10'}>
-                        {option.description}
-                      </Supporting>
-                    </YStack>
-                  </Card>
+                <Card
+                  key={option.value}
+                  p="$4"
+                  bg={difficulty === option.value ? option.bgColor : '$surface'}
+                  borderWidth={2}
+                  borderColor={difficulty === option.value ? option.color : '$borderColor'}
+                  borderCurve="continuous"
+                  rounded="$4"
+                  pressStyle={{ scale: 0.98 }}
+                  onPress={() => setDifficulty(option.value)}
+                  accessible
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: difficulty === option.value }}
+                  accessibilityLabel={option.label}
+                  accessibilityHint={option.description}
+                >
+                  <YStack gap="$1">
+                    <Body
+                      fontWeight="700"
+                      color={difficulty === option.value ? option.color : '$color12'}
+                    >
+                      {option.label}
+                    </Body>
+                    <Supporting color={difficulty === option.value ? option.color : '$color10'}>
+                      {option.description}
+                    </Supporting>
+                  </YStack>
+                </Card>
               ))}
             </YStack>
 
@@ -176,9 +169,7 @@ export default function SelfAssessmentScreen() {
                     fontFamily="$body"
                     fontWeight="600"
                     rounded="$3"
-                    onPress={() =>
-                      setEnergy(energy === option.value ? null : option.value)
-                    }
+                    onPress={() => setEnergy(energy === option.value ? null : option.value)}
                   >
                     {option.label}
                   </Button>
@@ -213,7 +204,8 @@ export default function SelfAssessmentScreen() {
                       Skill level can go up
                     </Body>
                     <Supporting color="$brand8">
-                      {reassessmentStatus.currentSkillLevel} → {reassessmentStatus.nextSkillLevel} if you move on
+                      {reassessmentStatus.currentSkillLevel} → {reassessmentStatus.nextSkillLevel}{' '}
+                      if you move on
                     </Supporting>
                   </YStack>
                 </XStack>

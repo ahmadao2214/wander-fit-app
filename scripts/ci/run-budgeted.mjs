@@ -4,22 +4,22 @@
 //
 // Usage:
 //   node scripts/ci/run-budgeted.mjs --name "Typecheck" --max-seconds 60 -- bun run typecheck
-import { spawnSync } from "node:child_process"
-import path from "node:path"
-import { fileURLToPath } from "node:url"
+import { spawnSync } from 'node:child_process'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 export function parseBudgetArgs(argv) {
-  const sep = argv.indexOf("--")
+  const sep = argv.indexOf('--')
   if (sep === -1) throw new Error("Missing '--' separator before command.")
   const flags = argv.slice(0, sep)
   const command = argv.slice(sep + 1)
   if (!command.length) throw new Error("Missing command after '--'.")
-  let name = command.join(" ")
+  let name = command.join(' ')
   let maxSeconds = null
   for (let i = 0; i < flags.length; i++) {
-    if (flags[i] === "--name" && flags[i + 1]) {
+    if (flags[i] === '--name' && flags[i + 1]) {
       name = flags[++i]
-    } else if (flags[i] === "--max-seconds" && flags[i + 1]) {
+    } else if (flags[i] === '--max-seconds' && flags[i + 1]) {
       maxSeconds = Number(flags[++i])
     } else {
       throw new Error(`Unknown flag: ${flags[i]}`)
@@ -63,7 +63,7 @@ function main() {
   const { name, maxSeconds, command } = parseBudgetArgs(process.argv.slice(2))
   const started = Date.now()
   const result = spawnSync(command[0], command.slice(1), {
-    stdio: "inherit",
+    stdio: 'inherit',
     env: process.env,
   })
   const elapsedSeconds = (Date.now() - started) / 1000

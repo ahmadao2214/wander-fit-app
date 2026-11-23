@@ -58,7 +58,9 @@ describe('blockOutcome', () => {
 
 describe('blockDates', () => {
   it('shows the start and end days', () => {
-    expect(blockDates(new Date(2026, 9, 19).getTime(), new Date(2026, 10, 15).getTime())).toBe('Oct 19 – Nov 15')
+    expect(blockDates(new Date(2026, 9, 19).getTime(), new Date(2026, 10, 15).getTime())).toBe(
+      'Oct 19 – Nov 15'
+    )
   })
 })
 
@@ -84,6 +86,8 @@ describe('decisionCopy', () => {
 
   it('describes moving on, and a new cycle after SSP', () => {
     expect(decisionCopy('move_on', 'GPP', 'SPP', false).label).toBe('Move on to SPP')
-    expect(decisionCopy('move_on', 'SSP', 'GPP', true).detail).toBe('Start a new cycle at GPP, week 1.')
+    expect(decisionCopy('move_on', 'SSP', 'GPP', true).detail).toBe(
+      'Start a new cycle at GPP, week 1.'
+    )
   })
 })

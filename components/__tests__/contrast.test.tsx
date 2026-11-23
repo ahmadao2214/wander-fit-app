@@ -8,7 +8,8 @@ function token(name: string): string {
   if (entry === undefined) throw new Error(`No light-theme token ${name}`)
   return typeof entry === 'string' ? entry : entry.val
 }
-const ratio = (fg: string, bg: string) => contrastRatio(fg.startsWith('$') ? token(fg) : fg, token(bg))
+const ratio = (fg: string, bg: string) =>
+  contrastRatio(fg.startsWith('$') ? token(fg) : fg, token(bg))
 
 const NORMAL = 4.5
 const LARGE_OR_ICON = 3
@@ -29,7 +30,7 @@ describe('Light theme text pairs meet WCAG AA', () => {
   const normalText: [string, string, string][] = [
     ['$color10', '$background', 'secondary text and tracked labels'],
     ['$color10', '$surface', 'secondary text on cards'],
-    ['$color11', '$brand1', "Today card label and meta on its tint"],
+    ['$color11', '$brand1', 'Today card label and meta on its tint'],
     ['$green11', '$surface', '"Done" and completed status text'],
     ['$orange11', '$brand1', 'skill level on the Profile header'],
     ['$red11', '$red2', 'auth error message'],
