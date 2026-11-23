@@ -172,6 +172,36 @@ describe('select-tests', () => {
     })
     expect(maestroNotePlan.mode).toBe('related')
     expect(maestroNotePlan.targets).toContain('scripts/verify/flows.test.mjs')
+
+    // Tests that read files from disk, which --findRelatedTests can't trace.
+    const plan = (changedFiles) =>
+      planUnitTests({
+        eventName: 'pull_request',
+        changedFiles,
+        runtimeFiles,
+        convexTests,
+        exists: allExist,
+      })
+
+    const newRoute = plan(['app/(athlete)/newscreen.tsx'])
+    expect(newRoute.mode).toBe('related')
+    expect(newRoute.targets).toContain('lib/__tests__/analyticsRoutes.test.ts')
+
+    const signOutScroll = plan(['lib/signOutScroll.ts'])
+    expect(signOutScroll.mode).toBe('related')
+    expect(signOutScroll.targets).toContain('scripts/verify/flows.test.mjs')
+
+    for (const link of ['.cursor/skills/verify-wander-fit', '.agents/skills/verify-wander-fit']) {
+      const linkPlan = plan([link])
+      expect({ link, mode: linkPlan.mode }).toEqual({ link, mode: 'related' })
+      expect(linkPlan.targets).toContain('scripts/verify/feature-map.test.mjs')
+    }
+  })
+
+  it('does not fail the advisory E2E check when the run was cancelled', () => {
+    const advisory = checks.jobs['web-e2e']
+    expect(advisory.if).toContain('!cancelled()')
+    expect(advisory.if).not.toContain('always()')
   })
 
   it('adds all convex/__tests__ suites when convex/ or convex-imported lib/ files change', () => {
