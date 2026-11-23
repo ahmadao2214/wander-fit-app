@@ -259,14 +259,13 @@ describe('web E2E job', () => {
 
     const previewOnly =
       "${{ inputs.mode == 'preview' && secrets.CONVEX_PREVIEW_DEPLOY_KEY_E2E || '' }}"
-    const devDeployOnly = "${{ inputs.mode == 'dev' && secrets.CONVEX_DEPLOY_KEY_E2E || '' }}"
     const nonPreviewDev = "${{ inputs.mode != 'preview' && secrets.CONVEX_DEPLOY_KEY_E2E || '' }}"
 
     const deploy = buildJob.steps.find((step) => (step.run || '').endsWith('run.mjs deploy'))
     expect(deploy.id).toBe('backend')
     expect(deploy.env.VERIFY_BACKEND_MODE).toBe('${{ inputs.mode }}')
     expect(deploy.env.EXPO_PUBLIC_CONVEX_URL_E2E).toBe('${{ vars.EXPO_PUBLIC_CONVEX_URL_E2E }}')
-    expect(deploy.env.CONVEX_DEPLOY_KEY_E2E).toBe(devDeployOnly)
+    expect(deploy.env.CONVEX_DEPLOY_KEY_E2E).toBe(nonPreviewDev)
     expect(deploy.env.CONVEX_PREVIEW_DEPLOY_KEY_E2E).toBe(previewOnly)
     expect(deploy.env.CONVEX_PREVIEW_NAME_E2E).toBe('${{ inputs.preview_name }}')
 

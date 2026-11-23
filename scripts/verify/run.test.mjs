@@ -18,7 +18,11 @@ import {
   redactEvidence,
   restoreFiles,
   runSuite,
+  backendFingerprintPaths,
+  DIRTY_TREE,
+  fingerprintFromLsTree,
   settlePersona,
+  sharedBackendAction,
   snapshotFiles,
   needsInspect,
   webSuiteSteps,
@@ -791,3 +795,79 @@ function listenPort() {
     })
   })
 }
+
+describe('sharedBackendAction', () => {
+  it('reuses the backend when it already runs this convex/ tree', () => {
+    expect(sharedBackendAction({ deployedTree: 'a', headTree: 'a', mainTree: 'b' })).toBe('reuse')
+  })
+
+  it("catches up when main's deploy is still queued behind this run", () => {
+    expect(sharedBackendAction({ deployedTree: 'old', headTree: 'new', mainTree: 'new' })).toBe(
+      'catch-up'
+    )
+  })
+
+  it('catches up on the first run, before any tree was recorded', () => {
+    expect(sharedBackendAction({ deployedTree: '', headTree: 'a', mainTree: 'a' })).toBe('catch-up')
+  })
+
+  it("never pushes a PR's convex/ that is behind main's tip", () => {
+    expect(sharedBackendAction({ deployedTree: 'new', headTree: 'old', mainTree: 'new' })).toBe(
+      'reuse-stale'
+    )
+    expect(sharedBackendAction({ deployedTree: 'newer', headTree: 'old', mainTree: 'new' })).toBe(
+      'reuse-stale'
+    )
+  })
+
+  it("reuses when main's tree can't be read", () => {
+    expect(sharedBackendAction({ deployedTree: 'old', headTree: 'new', mainTree: '' })).toBe(
+      'reuse-stale'
+    )
+    expect(sharedBackendAction({ deployedTree: 'old', headTree: '', mainTree: 'old' })).toBe(
+      'reuse'
+    )
+  })
+})
+
+describe('backend fingerprint', () => {
+  it('covers convex/, config and dependency files, and the files Convex imports', () => {
+    expect(
+      backendFingerprintPaths(['convex/a.ts', 'lib/sessionTiming.ts', 'lib/sessionTiming.ts'])
+    ).toEqual(['bun.lock', 'convex', 'convex.json', 'lib/sessionTiming.ts', 'package.json'])
+  })
+
+  const listing = (...rows) => rows.map(([id, file]) => `100644 blob ${id}\t${file}`).join('\n')
+
+  it('changes when an imported file outside convex/ changes', () => {
+    const before = listing(['aaa', 'convex/a.ts'], ['bbb', 'lib/sessionTiming.ts'])
+    const after = listing(['aaa', 'convex/a.ts'], ['ccc', 'lib/sessionTiming.ts'])
+    expect(fingerprintFromLsTree(before)).not.toBe(fingerprintFromLsTree(after))
+    expect(fingerprintFromLsTree('')).toBe('')
+  })
+
+  it('declines catch-up when main adds a standalone Convex file the PR lacks', () => {
+    const pr = fingerprintFromLsTree(listing(['aaa', 'convex/a.ts']))
+    const main = fingerprintFromLsTree(listing(['aaa', 'convex/a.ts'], ['ddd', 'convex/new.ts']))
+    expect(pr).not.toBe(main)
+    expect(sharedBackendAction({ deployedTree: '', headTree: pr, mainTree: main })).toBe(
+      'reuse-stale'
+    )
+  })
+
+  it('ignores convex tests and the convex README, like the preview selector', () => {
+    const base = listing(['aaa', 'convex/a.ts'])
+    const withTests = listing(
+      ['aaa', 'convex/a.ts'],
+      ['eee', 'convex/__tests__/a.test.ts'],
+      ['fff', 'convex/README.md']
+    )
+    expect(fingerprintFromLsTree(withTests)).toBe(fingerprintFromLsTree(base))
+  })
+
+  it('a dirty deploy never matches a commit, so the next shared run catches up', () => {
+    expect(sharedBackendAction({ deployedTree: DIRTY_TREE, headTree: 'a', mainTree: 'a' })).toBe(
+      'catch-up'
+    )
+  })
+})

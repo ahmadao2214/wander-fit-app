@@ -56,15 +56,17 @@ jobs:
             bun-${{ runner.os }}-
       - run: bun install --frozen-lockfile
       # Secrets go only to the steps that need them, not to install scripts.
-      # Preview PRs get only the preview key; main gets only the dev key;
-      # shared PRs skip deploy completely (no Convex keys needed for deploy).
+      # Preview PRs get only the preview key. Main and shared PRs get the dev
+      # key: a shared PR uses it to read which convex/ tree is deployed, and
+      # deploys only when its convex/ is exactly main's tip (main's own deploy
+      # is still queued), never the PR's own Convex code (#137).
       - name: Deploy functions to wander-fit-e2e and seed
         id: backend
         env:
           VERIFY_BACKEND_MODE: ${{ inputs.mode }}
           EXPO_PUBLIC_CONVEX_URL_E2E: ${{ vars.EXPO_PUBLIC_CONVEX_URL_E2E }}
           CONVEX_PREVIEW_NAME_E2E: ${{ inputs.preview_name }}
-          CONVEX_DEPLOY_KEY_E2E: ${{ inputs.mode == 'dev' && secrets.CONVEX_DEPLOY_KEY_E2E || '' }}
+          CONVEX_DEPLOY_KEY_E2E: ${{ inputs.mode != 'preview' && secrets.CONVEX_DEPLOY_KEY_E2E || '' }}
           CONVEX_PREVIEW_DEPLOY_KEY_E2E: ${{ inputs.mode == 'preview' && secrets.CONVEX_PREVIEW_DEPLOY_KEY_E2E || '' }}
         run: node scripts/verify/run.mjs deploy
       - name: Export web bundle once
