@@ -4,11 +4,11 @@ import { Link, useRouter } from 'expo-router'
 import { Platform, ScrollView, KeyboardAvoidingView } from 'react-native'
 import { Text, Input, Button, YStack, XStack, styled, Card } from 'tamagui'
 import * as WebBrowser from 'expo-web-browser'
-import * as AuthSession from 'expo-auth-session'
 import { PublicOnlyRoute } from '../../components/AuthGuard'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { GoogleIcon } from '../../components/GoogleIcon'
+import { AppleSignInButton, GoogleSignInButton } from '../../components/SocialSignInButtons'
 import { FieldLabel } from '../../components/FieldLabel'
+import { oauthRedirectUrl } from '../../lib/oauthRedirect'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED COMPONENTS
@@ -70,45 +70,40 @@ export default function SignInPage() {
   const [error, setError] = React.useState('')
   const [isSigningIn, setIsSigningIn] = React.useState(false)
 
-  // Handle OAuth sign-in
-  const onOAuthPress = useCallback(async () => {
-    try {
-      const { createdSessionId, setActive, signIn, signUp } = await startSSOFlow({
-        strategy: 'oauth_google',
-        redirectUrl:
-          Platform.OS === 'web'
-            ? AuthSession.makeRedirectUri()
-            : Platform.OS === 'ios' || Platform.OS === 'android'
-              ? AuthSession.makeRedirectUri({
-                  scheme: 'myapp',
-                  path: 'oauth',
-                })
-              : undefined,
-      })
-
-      if (createdSessionId) {
-        setActive!({
-          session: createdSessionId,
-          navigate: async () => {
-            if (Platform.OS !== 'web') {
-              setTimeout(() => {
-                router.replace('/')
-              }, 500)
-            } else {
-              router.replace('/')
-            }
-          },
+  // Handle Apple or Google sign-in
+  const onOAuthPress = useCallback(
+    async (strategy: 'oauth_apple' | 'oauth_google') => {
+      try {
+        const { createdSessionId, setActive, signUp } = await startSSOFlow({
+          strategy,
+          redirectUrl: oauthRedirectUrl(),
         })
-      } else {
-        if (signUp) {
-          // A new Google account has no program yet: the First Run saves one.
-          router.replace('/')
+
+        if (createdSessionId) {
+          setActive!({
+            session: createdSessionId,
+            navigate: async () => {
+              if (Platform.OS !== 'web') {
+                setTimeout(() => {
+                  router.replace('/')
+                }, 500)
+              } else {
+                router.replace('/')
+              }
+            },
+          })
+        } else {
+          if (signUp) {
+            // A new Apple or Google account has no program yet: the First Run saves one.
+            router.replace('/')
+          }
         }
+      } catch (err) {
+        console.error('OAuth Error:', JSON.stringify(err, null, 2))
       }
-    } catch (err) {
-      console.error('OAuth Error:', JSON.stringify(err, null, 2))
-    }
-  }, [startSSOFlow, router])
+    },
+    [startSSOFlow, router]
+  )
 
   // Handle the submission of the sign-in form
   const onSignInPress = async () => {
@@ -153,9 +148,11 @@ export default function SignInPage() {
         } else if (errorCode === 'form_param_format_invalid') {
           setError('Please enter a valid email address.')
         } else if (errorCode === 'strategy_for_user_invalid') {
-          setError('This account was created with Google. Please use "Continue with Google".')
+          setError(
+            'This account was created with Apple or Google. Please use "Continue with Apple" or "Continue with Google".'
+          )
         } else if (errorCode === 'form_password_not_set') {
-          setError('No password set. Please use "Continue with Google".')
+          setError('No password set. Please use "Continue with Apple" or "Continue with Google".')
         } else {
           setError(errorMessage || `Error code: ${errorCode}`)
         }
@@ -224,22 +221,16 @@ export default function SignInPage() {
 
               {/* OAuth Section */}
               <YStack gap="$4" pt="$2">
-                <Button
-                  onPress={onOAuthPress}
-                  size="$5"
-                  bg="white"
-                  borderWidth={1}
-                  borderColor="#dadce0"
-                  fontFamily="$body"
-                  fontWeight="500"
-                  color="#3c4043"
-                  rounded="$3"
-                  hoverStyle={{ bg: '#f1f3f4', borderColor: '#c0c4c7' }}
-                  pressStyle={{ bg: '#e8eaed', scale: 0.98 }}
-                  icon={<GoogleIcon size={20} />}
-                >
-                  Continue with Google
-                </Button>
+                <YStack gap="$3">
+                  <AppleSignInButton
+                    onPress={() => void onOAuthPress('oauth_apple')}
+                    testID="sign-in-apple"
+                  />
+                  <GoogleSignInButton
+                    onPress={() => void onOAuthPress('oauth_google')}
+                    testID="sign-in-google"
+                  />
+                </YStack>
 
                 <XStack items="center" gap="$3">
                   <Divider />

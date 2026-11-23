@@ -121,8 +121,14 @@ url: ${VERIFY_URL}
     visible:
       id: save-plan-email
     timeout: 30000
+# Apple, Google and email sit together (Apple Guideline 4.8). The journey
+# signs up with email only; it never taps Apple or Google.
+- assertVisible:
+    id: save-plan-apple
 - assertVisible:
     id: save-plan-google
+- assertVisible:
+    id: save-plan-email
 - assertNotVisible: "Skip"
 - takeScreenshot: 08-save-plan
 - tapOn:
