@@ -4,6 +4,9 @@ Routine calls the team made without asking, one line each, newest first. Anythin
 
 Format: `YYYY-MM-DD · who · decision · why`.
 
+- 2026-11-23 · Builder 1 · PhaseTrack colour props are typed GetThemeValueForKey<'color'>, not ColorTokens (Profile refresh) · the header's fixed hex and rgba values aren't tokens; the type still takes tokens like $brand5.
+- 2026-11-23 · Builder 1 · phaseTrack also returns the spoken label, and the progress bar sets no min/max/now value (Profile refresh) · the label is pure logic and tested in lib; a value would make VoiceOver read the position twice.
+- 2026-11-23 · Builder 1 · A weeksPerPhase or totalProgramWeeks below 1 uses the fallback, and a fractional week rounds down (Profile refresh) · the track never divides by zero or shows "Week 2.5".
 - 2026-11-23 · Lead · Profile rows take the bare 18pt icon App settings shipped in #164, not the 32pt tile from the approved mockup (Profile refresh) · one row style across both screens, and #164's rows are a day old.
 - 2026-11-23 · Lead · Wrote the #170 and #171 PR descriptions myself · Neon's Antigravity quota was used up (resets in about 5 days), and the charter doesn't allow switching providers unasked.
 - 2026-11-23 · Lead · Left Astra's last finding on #170 open (a duplicate issue if 1,000 open issues fuzzy-match one flow's title) · the repo has about ten open issues; paging the whole tracker on every failure isn't worth it. Azhar's call after 3 rounds.
