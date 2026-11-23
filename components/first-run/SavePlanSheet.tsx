@@ -152,11 +152,19 @@ function AcceptanceCheckbox({
 /** The Health & Fitness Disclaimer, inside the sheet, with a way back. */
 function DisclaimerView({ onBack }: { onBack: () => void }) {
   return (
-    <YStack gap="$3" testID="save-plan-disclaimer">
-      {HEALTH_DISCLAIMER.map((line) => (
-        <Text key={line} fontFamily="$body" fontSize={15} lineHeight={22} color="$color12">
-          {line}
-        </Text>
+    <YStack gap="$4" testID="save-plan-disclaimer">
+      <Text fontFamily="$body" fontSize={15} lineHeight={22} fontWeight="600" color="$color12">
+        {HEALTH_DISCLAIMER.notice}
+      </Text>
+      {HEALTH_DISCLAIMER.sections.map((section, index) => (
+        <YStack key={section.heading} gap="$1">
+          <Text fontFamily="$body" fontSize={15} lineHeight={22} fontWeight="700" color="$color12">
+            {index + 1}. {section.heading}
+          </Text>
+          <Text fontFamily="$body" fontSize={15} lineHeight={22} color="$color11">
+            {section.body}
+          </Text>
+        </YStack>
       ))}
       <PrimaryButton onPress={onBack} testID="save-plan-disclaimer-back">
         Back
@@ -461,7 +469,7 @@ export function SavePlanSheet({
                 accessibilityRole="header"
               >
                 {disclaimerOpen
-                  ? 'Health & Fitness Disclaimer'
+                  ? HEALTH_DISCLAIMER.title
                   : step === 'code'
                     ? 'Check your email'
                     : 'Save your plan'}

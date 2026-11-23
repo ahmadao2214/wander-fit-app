@@ -44,7 +44,12 @@ describe('acceptanceText', () => {
 
 describe('copy', () => {
   it('uses the product words and makes no injury-prevention claim', () => {
-    const all = [acceptanceText('14-17'), acceptanceText('18-35'), ...HEALTH_DISCLAIMER].join(' ')
+    const all = [
+      acceptanceText('14-17'),
+      acceptanceText('18-35'),
+      HEALTH_DISCLAIMER.notice,
+      ...HEALTH_DISCLAIMER.sections.flatMap((section) => [section.heading, section.body]),
+    ].join(' ')
     expect(all).not.toMatch(/\b(user|client|onboarding|waitlist|block|stage)\b/i)
     expect(all).not.toMatch(/injury prevention|prevents? injur/i)
   })

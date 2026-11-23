@@ -462,7 +462,7 @@ describe('Save your plan, acceptance', () => {
     await press('save-plan-link-disclaimer')
     expect(screen.getByTestId('save-plan-disclaimer')).toBeTruthy()
     expect(
-      screen.getByText(/not medical advice, diagnosis, treatment, or physical therapy/)
+      screen.getByText(/does not provide medical advice, diagnosis, treatment, or physical therapy/)
     ).toBeTruthy()
     expect(screen.queryByTestId('save-plan-email')).toBeNull()
     await press('save-plan-disclaimer-back')
@@ -507,8 +507,13 @@ describe('Save your plan, acceptance', () => {
   })
 
   it('saves no plan to an existing account once the age gate has closed', async () => {
-    mockSignedIn = { id: 'user_1', primaryEmailAddress: { emailAddress: 'a@b.co' } }
-    mockClerk.user = mockSignedIn
+    mockSignedIn = { primaryEmailAddress: { emailAddress: 'a@b.co' } }
+    mockClerk.user = {
+      id: 'user_1',
+      primaryEmailAddress: { emailAddress: 'a@b.co' },
+      fullName: 'Sam',
+      firstName: 'Sam',
+    }
     mockConvexUser = { _id: 'u1' }
     await show()
     await press('save-plan-accept')

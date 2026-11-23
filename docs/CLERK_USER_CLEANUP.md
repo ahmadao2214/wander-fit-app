@@ -96,4 +96,8 @@ Orphaned rows are harmless to sign-ups, so there's no rush. When we do clean the
 
 3. Run it with `dryRun: true` for each orphan, review the counts, then with `dryRun: false`:
    `npx convex run admin:deleteOrphanedUser '{"clerkId":"user_...","dryRun":true}'`.
-4. Longer term: add a Clerk `user.deleted` webhook (Convex HTTP action) so rows are removed automatically.
+4. The Clerk `user.deleted` webhook (`POST /clerk-webhook` in `convex/http.ts`) now removes an athlete's rows automatically, through `internal.users.purgeAthleteRecords`. It refuses accounts that own trainer data, which stay a manual job.
+
+## Legacy invitations
+
+`clientInvitations` rows are matched by email, and `users.email` can be edited by the athlete. The purge deletes invitations only for the address Clerk verified, which it has when the athlete deletes their own account in the app. A deletion that arrives through the webhook carries no email, so that athlete's invitations stay. Remove them by hand once you have confirmed the address.

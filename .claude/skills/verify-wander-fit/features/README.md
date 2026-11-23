@@ -51,6 +51,7 @@ Web, one file per flow under `.maestro/web/` (`scripts/verify/feature-map.test.m
 - [App Settings](./app-settings.md): opening App Settings from Profile, the chat connector address and Claude steps, and Back.
 - [Workout loop](./workout-loop.md): starting today's workout, logging every set, finishing, and seeing it on History, checked with `persona inspect`.
 - [Settings telemetry](./settings-telemetry.md): turning anonymous usage analytics off in App Settings, the choice surviving a reopen, and turning it back on.
+- [Settings legal and account deletion](./settings-legal.md): the Support & Legal links, the in-app Health & Fitness Disclaimer, and both steps of Delete account without deleting.
 - [In-app feedback](./feedback.md): rating the app, reporting a bug and requesting a feature from Profile, each confirmed by its toast.
 
 Native only (iPhone 17 simulator and a local build; unreachable from the web harness):
