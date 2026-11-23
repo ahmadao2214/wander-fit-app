@@ -904,12 +904,14 @@ function scrubMarker(dir) {
   return path.join(dir, '.scrubbed')
 }
 
+// Folders whose upload is gated on a .scrubbed marker: each web flow's folder,
+// and the Android run's one folder (scripts/verify/android.mjs).
 function evidenceDirs() {
   if (!fs.existsSync(artifactsDir)) return []
-  return fs
-    .readdirSync(artifactsDir)
-    .map((name) => path.join(artifactsDir, name, 'web'))
-    .filter((dir) => fs.existsSync(dir))
+  return [
+    ...fs.readdirSync(artifactsDir).map((name) => path.join(artifactsDir, name, 'web')),
+    path.join(artifactsDir, 'android'),
+  ].filter((dir) => fs.existsSync(dir))
 }
 
 const binaryEvidence = /\.(png|jpe?g|gif|webp|mp4|webm|mov|zip)$/i
