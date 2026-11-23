@@ -1,7 +1,8 @@
 url: ${VERIFY_URL}
 ---
-# Profile → App Settings shows the chat connector address and the steps to
-# add it in Claude, then Back returns to Profile.
+# Profile leads with the athlete's name and program position, and offers max
+# entry. Profile → App Settings shows the chat connector address and the steps
+# to add it in Claude, then Back returns to Profile.
 - runFlow: ../subflows/_evidence-start.yaml
 - runFlow: ../subflows/_open-sign-in.yaml
 - runFlow: ../subflows/_sign-in.yaml
@@ -13,6 +14,28 @@ url: ${VERIFY_URL}
 - extendedWaitUntil:
     visible: "Training info"
     timeout: 30000
+# The header: the name as the page title, then the week and day.
+- assertVisible:
+    id: profile-name
+- assertVisible:
+    id: profile-week
+# A new persona has no maxes, so the card is one prompt that opens all three
+# lifts. Web reports the aria-label as id; native reports the testID. The
+# journey closes the sheet without saving: persona cleanup doesn't remove
+# user_maxes rows yet.
+- tapOn:
+    id: "max-add-all|Add your maxes"
+- extendedWaitUntil:
+    visible: "Set Your Maxes"
+    timeout: 15000
+- assertVisible:
+    id: max-input-back_squat
+- takeScreenshot: 00-max-sheet
+- tapOn:
+    id: "max-sheet-close|Close"
+- extendedWaitUntil:
+    notVisible: "Set Your Maxes"
+    timeout: 15000
 # The App settings row sits just above Sign Out, below the 625px viewport.
 # Profile scrolls inside the page, so follow the same #sign-out link the
 # sign-in journey uses to bring that end of the list into view.

@@ -39,6 +39,7 @@ jest.mock('../../convex/_generated/api', () => ({
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ back: jest.fn(), push: jest.fn(), replace: jest.fn() }),
+  useIsFocused: () => true,
 }))
 
 jest.mock('react-native-safe-area-context', () => ({
@@ -80,6 +81,16 @@ describe('Profile', () => {
     expect(queryByTestId('profile-progress')).toBeNull()
     expect(queryByText(/workouts done|on plan/)).toBeNull()
     expect(queryByText(/Exercises\s+Tried/)).toBeNull()
+  })
+
+  it('leads with the name and says where the program is, in words', () => {
+    mockProgress = summary(0, 0)
+    const { getByTestId, getByText } = render(<ProfilePage />, { wrapper: AllTheProviders })
+    expect(getByTestId('profile-name').props.children).toBe('Test Athlete')
+    expect(getByText('Novice · Basketball')).toBeTruthy()
+    expect(getByTestId('profile-week').props.children).toBe('Week 1 of 12 · Day 1')
+    // The email moved out of the header into the Training rows
+    expect(getByText('athlete@example.com')).toBeTruthy()
   })
 
   it('states the assessment baseline in words, not a 0 tile', () => {

@@ -21,6 +21,7 @@ Preconditions:
 
 - **Whole journey.** Run `node scripts/verify/run.mjs all app-settings`. It exits `0` with `- app-settings: passed`, and the persona is deleted.
 - **Sign in.** The journey runs `.maestro/subflows/_open-sign-in.yaml` and `.maestro/subflows/_sign-in.yaml` and waits for `id: today-workout-card`.
+- **Profile header and maxes.** After `Training info` it asserts `id: profile-name` and `id: profile-week`, taps `id: "max-add-all|Add your maxes"`, waits for `Set Your Maxes` and `id: max-input-back_squat` (`00-max-sheet`), then closes the sheet with `id: "max-sheet-close|Close"` without saving.
 - **Open Profile.** It taps `Profile`, waits for `Training info`, then opens `/profile#sign-out` so the rows near Sign Out are in view, and waits for `id: profile-app-settings` (`01-profile`).
 - **App Settings.** It taps `profile-app-settings` and asserts `App Settings`, `Connector address`, `id: mcp-address` and the custom-connector step (`02-app-settings`), then swipes up to assert the accept-it step and swipes back down to Back.
 - **Back.** It taps `id: "Back"` and waits for `profile-app-settings` again (`03-back-to-profile`).

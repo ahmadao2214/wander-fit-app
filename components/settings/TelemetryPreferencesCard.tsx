@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { Platform } from 'react-native'
-import { Card, Switch, XStack, YStack } from 'tamagui'
+import { Switch, YStack } from 'tamagui'
 import { useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api'
-import { Body, Supporting, SectionTitle } from '../Typography'
+import { Supporting } from '../Typography'
+import { SettingsGroup } from './SettingsGroup'
+import { SettingsRow } from './SettingsRow'
 import { analytics, type TelemetryPlatform } from '../../lib/analytics'
 import { canShowSessionReplayOptIn, type AthleteAgeGroup } from '../../lib/sessionReplayGate'
 
@@ -87,20 +89,17 @@ export function TelemetryPreferencesCard({
 
   return (
     <YStack gap="$3">
-      <SectionTitle>Privacy</SectionTitle>
-
-      <Card bg="$surface" rounded="$4" borderWidth={1} borderColor="$borderColor" overflow="hidden">
-        <YStack>
-          {/* Product analytics opt-out toggle */}
-          <XStack px="$4" py="$3.5" items="center" justify="space-between" gap="$3" minH={60}>
-            <YStack flex={1} gap="$1">
-              <Body fontWeight="600">Share anonymous usage analytics</Body>
-              <Supporting color="$color10" testID="analytics-opt-in-status">
-                {analyticsEnabled
-                  ? 'Helps us make workouts better. Never includes your name or email.'
-                  : "Off. Wander Fit doesn't send usage data from this account."}
-              </Supporting>
-            </YStack>
+      <SettingsGroup label="Privacy">
+        {/* Product analytics opt-out toggle */}
+        <SettingsRow
+          label="Share anonymous usage analytics"
+          supporting={
+            analyticsEnabled
+              ? 'Helps us make workouts better. Never includes your name or email.'
+              : "Off. Wander Fit doesn't send usage data from this account."
+          }
+          supportingTestID="analytics-opt-in-status"
+          trailing={
             <Switch
               size="$3"
               checked={analyticsEnabled}
@@ -112,43 +111,32 @@ export function TelemetryPreferencesCard({
             >
               <Switch.Thumb animation="quick" />
             </Switch>
-          </XStack>
+          }
+        />
 
-          {/* Double-gated adult Web session replay opt-in (strictly hidden for 14-17 and native) */}
-          {showReplayToggle ? (
-            <XStack
-              px="$4"
-              py="$3.5"
-              items="center"
-              justify="space-between"
-              gap="$3"
-              minH={60}
-              borderTopWidth={1}
-              borderColor="$borderColor"
-              opacity={analyticsOptOut ? 0.5 : 1}
-            >
-              <YStack flex={1} gap="$1">
-                <Body fontWeight="600">Help test with masked screen replays</Body>
-                <Supporting color="$color10">
-                  Records masked layout interactions on web to spot UI bugs. All text and inputs are
-                  masked, and Profile, Settings, and Intake are never recorded.
-                </Supporting>
-              </YStack>
-              <Switch
-                size="$3"
-                checked={!analyticsOptOut && sessionReplayOptIn}
-                disabled={saving || analyticsOptOut}
-                onCheckedChange={handleReplayToggle}
-                accessibilityLabel="Help test with masked screen replays"
-                testID="session-replay-opt-in-switch"
-                bg={!analyticsOptOut && sessionReplayOptIn ? '$primary' : '$color5'}
-              >
-                <Switch.Thumb animation="quick" />
-              </Switch>
-            </XStack>
-          ) : null}
-        </YStack>
-      </Card>
+        {/* Double-gated adult Web session replay opt-in (strictly hidden for 14-17 and native) */}
+        {showReplayToggle ? (
+          <YStack opacity={analyticsOptOut ? 0.5 : 1}>
+            <SettingsRow
+              label="Help test with masked screen replays"
+              supporting="Records masked layout interactions on web to spot UI bugs. All text and inputs are masked, and Profile, Settings, and Intake are never recorded."
+              trailing={
+                <Switch
+                  size="$3"
+                  checked={!analyticsOptOut && sessionReplayOptIn}
+                  disabled={saving || analyticsOptOut}
+                  onCheckedChange={handleReplayToggle}
+                  accessibilityLabel="Help test with masked screen replays"
+                  testID="session-replay-opt-in-switch"
+                  bg={!analyticsOptOut && sessionReplayOptIn ? '$primary' : '$color5'}
+                >
+                  <Switch.Thumb animation="quick" />
+                </Switch>
+              }
+            />
+          </YStack>
+        ) : null}
+      </SettingsGroup>
 
       {errorMessage ? (
         <Supporting color="$red11" testID="telemetry-preferences-error">
