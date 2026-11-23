@@ -35,6 +35,6 @@ The Beta On-Ramp form posts JSON to `<meta name="waitlist-endpoint">` in `index.
 ## Tests
 
 ```sh
-node --test landing/plan.test.mjs landing/qr.test.mjs
+bun run test -- landing/
 bun run test -- convex/__tests__/waitlist.test.ts
 ```

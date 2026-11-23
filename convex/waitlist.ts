@@ -241,3 +241,15 @@ export const checkRateLimit = internalMutation({
     }
   },
 })
+
+export const pruneExpiredRateLimits = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const cutoff = Date.now() - RATE_LIMIT_WINDOW_MS
+    const expired = await ctx.db
+      .query('waitlist_rate_limits')
+      .withIndex('by_window_start', (q) => q.lte('windowStart', cutoff))
+      .take(500)
+    for (const row of expired) await ctx.db.delete(row._id)
+  },
+})

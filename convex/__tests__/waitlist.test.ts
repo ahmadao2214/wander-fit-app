@@ -160,6 +160,15 @@ describe('waitlist.record', () => {
 })
 
 describe('waitlist.checkRateLimit', () => {
+  it('removes expired buckets and retains active ones', async () => {
+    const t = newTest()
+    await t.mutation(internal.waitlist.checkRateLimit, { key: 'expired', now: 1 })
+    await t.mutation(internal.waitlist.checkRateLimit, { key: 'active' })
+    await t.mutation(internal.waitlist.pruneExpiredRateLimits, {})
+    const rows = await t.run((ctx) => ctx.db.query('waitlist_rate_limits').collect())
+    expect(rows.map((row) => row.key)).toEqual(['active'])
+  })
+
   it('blocks after reaching the limit and resets once the window expires', async () => {
     const t = newTest()
     const start = 1_700_000_000_000

@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict'
-import test from 'node:test'
 import { encodeQr, renderQrSvg } from './qr.mjs'
 
 test('encodes short and long URLs into valid ISO/IEC 18004 matrices with finder & timing patterns', () => {

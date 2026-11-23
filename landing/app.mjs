@@ -419,6 +419,8 @@ $('again').addEventListener('click', () => {
   heroCtaWrap.hidden = true
   form.hidden = false
   form.reset()
+  for (const error of form.querySelectorAll('.err')) setErr(null, error, '')
+  for (const input of form.querySelectorAll('[aria-invalid]')) input.removeAttribute('aria-invalid')
   syncRole()
   positionRoleThumb({ animate: false })
   triggerPanelEnter(form)

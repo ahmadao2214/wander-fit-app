@@ -142,23 +142,17 @@ export function buildPlan(days, trainingDaysPerWeek = DEFAULT_TRAINING_DAYS.leng
   }
 }
 
-/**
- * Map each day offset `1..days-1` between today (0) and the selected date (`days`)
- * to `'gpp' | 'spp' | 'ssp'` across three even stretches.
- * Index 0 is `null` (today).
- */
+/** Phase colors for training days before the selected season date. */
 export function dayPhases(days) {
-  if (typeof days !== 'number' || !Number.isFinite(days) || days < 1) return []
-  const out = Array.from({ length: days }, () => null)
-  const span = days - 1
-  if (span <= 0) return out
-
-  const gppEnd = Math.ceil(span / 3)
-  const sppEnd = Math.ceil((span * 2) / 3)
-  for (let k = 1; k < days; k++) {
-    out[k] = k <= gppEnd ? 'gpp' : k <= sppEnd ? 'spp' : 'ssp'
+  const plan = buildPlan(days)
+  if (!plan || plan.isDefault) return []
+  const phases = [null]
+  for (const phase of plan.phases) {
+    for (let day = 0; day < phase.weeks * 7 && phases.length < days; day++) {
+      phases.push(phase.id)
+    }
   }
-  return out
+  return phases
 }
 
 /** Scheduled training days (Mon/Wed/Fri by default) for any active phase cell. */

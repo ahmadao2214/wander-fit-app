@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict'
-import test from 'node:test'
 import {
   buildPlan,
   calculateWeeksPerPhase,
@@ -105,4 +104,13 @@ test('isLiftDay marks Mon/Wed/Fri by default for any active phase', () => {
   assert.equal(isLiftDay('ssp', 5), true)
   assert.equal(isLiftDay('ssp', 2), false)
   assert.equal(isLiftDay(null, 1), false)
+})
+
+test('short and distant season dates keep the program phase boundaries', () => {
+  expect(dayPhases(5)).toEqual([null, 'gpp', 'gpp', 'gpp', 'gpp'])
+  const phases = dayPhases(364)
+  expect(phases[56]).toBe('gpp')
+  expect(phases[57]).toBe('spp')
+  expect(phases[113]).toBe('ssp')
+  expect(phases).toHaveLength(169)
 })
