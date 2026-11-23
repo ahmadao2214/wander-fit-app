@@ -430,7 +430,17 @@ for (const link of document.querySelectorAll('#already, [data-show-access]')) {
   })
 }
 
+let signupRevision = 0
+
+function setSubmitting(pending) {
+  const button = $('submit')
+  button.disabled = pending
+  button.textContent = pending ? 'Starting…' : 'Start 2-week free beta'
+}
+
 $('again').addEventListener('click', () => {
+  signupRevision++
+  setSubmitting(false)
   accessSection.hidden = true
   heroCtaWrap.hidden = true
   form.hidden = false
@@ -571,9 +581,8 @@ form.addEventListener('submit', async (e) => {
     website: $('website').value,
   }
 
-  const submitBtn = $('submit')
-  submitBtn.disabled = true
-  submitBtn.textContent = 'Starting…'
+  const revision = ++signupRevision
+  setSubmitting(true)
 
   try {
     if (endpoint) {
@@ -584,6 +593,7 @@ form.addEventListener('submit', async (e) => {
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
+        if (revision !== signupRevision) return
         setErr(
           null,
           $('form-err'),
@@ -592,14 +602,15 @@ form.addEventListener('submit', async (e) => {
         return
       }
     }
+    if (revision !== signupRevision) return
     unlocked = true
     writeUnlocked()
     showAccess({ focus: true, scroll: true })
   } catch {
+    if (revision !== signupRevision) return
     setErr(null, $('form-err'), 'Could not reach the server. Check your connection and try again.')
   } finally {
-    submitBtn.disabled = false
-    submitBtn.textContent = 'Start 2-week free beta'
+    if (revision === signupRevision) setSubmitting(false)
   }
 })
 
