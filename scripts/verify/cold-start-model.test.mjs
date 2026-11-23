@@ -24,19 +24,26 @@ describe.each(evidenceStates)('Maestro retry, evidence $files', ({ files, progre
           const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'retry-model-'))
           try {
             const trace = []
+            const firstAttemptFiles = [...files, 'commands.json']
             const status = runWithColdStartRetry(
               dir,
               () => {
                 trace.push('launch')
                 if (trace.length === 1) {
-                  for (const name of [...files, 'commands.json']) {
+                  for (const name of firstAttemptFiles) {
                     const file = path.join(dir, name)
                     fs.mkdirSync(path.dirname(file), { recursive: true })
-                    fs.writeFileSync(file, 'first')
+                    fs.writeFileSync(file, name)
                   }
                   return { status: firstStatus, elapsedMs }
                 }
-                trace.push(fs.readFileSync(path.join(dir, 'attempt-1/commands.json'), 'utf8'))
+                for (const name of firstAttemptFiles) {
+                  const previousArchive = name.startsWith('attempt-9/')
+                  const remaining = path.join(dir, name)
+                  const moved = path.join(dir, 'attempt-1', name)
+                  expect(fs.readFileSync(previousArchive ? remaining : moved, 'utf8')).toBe(name)
+                  expect(fs.existsSync(previousArchive ? moved : remaining)).toBe(false)
+                }
                 return { status: secondStatus, elapsedMs: 1 }
               },
               () => trace.push('retry')
@@ -47,7 +54,7 @@ describe.each(evidenceStates)('Maestro retry, evidence $files', ({ files, progre
               firstStatus,
               secondStatus,
               status: retry ? secondStatus : firstStatus,
-              trace: retry ? ['launch', 'retry', 'launch', 'first'] : ['launch'],
+              trace: retry ? ['launch', 'retry', 'launch'] : ['launch'],
             })
           } finally {
             fs.rmSync(dir, { recursive: true, force: true })
