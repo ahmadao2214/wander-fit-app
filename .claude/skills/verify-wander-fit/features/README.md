@@ -38,6 +38,8 @@ Each feature file starts with an H1 title and one paragraph describing the user-
 
 ## Features
 
+[Beta signup](./beta-signup.md) covers the standalone landing page under `.maestro/landing/`.
+
 Web, one file per flow under `.maestro/web/` (`scripts/verify/feature-map.test.mjs` fails when one is missing):
 
 - [Sign in](./sign-in.md): the signed-out welcome screen, signing in to Today, and signing out from Profile.

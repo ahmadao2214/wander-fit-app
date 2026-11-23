@@ -28,6 +28,7 @@ module.exports = {
         '<rootDir>/lib/__tests__/**/*.test.ts',
         '<rootDir>/hooks/__tests__/**/*.test.ts',
         '<rootDir>/scripts/**/*.test.mjs',
+        '<rootDir>/landing/**/*.test.mjs',
         '<rootDir>/babel/__tests__/**/*.test.mjs',
       ],
       moduleFileExtensions: ['ts', 'tsx', 'js', 'mjs', 'cjs', 'json'],
