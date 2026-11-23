@@ -4,7 +4,11 @@ import { TamaguiProvider } from 'tamagui'
 import config from '../../tamagui.config'
 import { createDraftStore, type DraftStorage } from '../../lib/firstRunDraft'
 
-const mockAuth = { isLoading: false, isAuthenticated: false, user: null as null | { intakeCompletedAt?: number } }
+const mockAuth = {
+  isLoading: false,
+  isAuthenticated: false,
+  user: null as null | { intakeCompletedAt?: number },
+}
 jest.mock('../../hooks/useAuth', () => ({ useAuth: () => mockAuth }))
 
 const memory = new Map<string, string>()
@@ -54,7 +58,10 @@ describe('root routing', () => {
   })
 
   it('reopens a draft on the step it reached', async () => {
-    await createDraftStore(storage, () => 1000).save({ answers: { sportId: 's1' }, lastStep: 'about' })
+    await createDraftStore(storage, () => 1000).save({
+      answers: { sportId: 's1' },
+      lastStep: 'about',
+    })
     await renderRoot()
     expect(screen.getByTestId('redirect').props.children).toBe('/(first-run)/about')
   })

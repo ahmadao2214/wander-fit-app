@@ -6,7 +6,6 @@ import { CheckCircle, Play, Lock } from '@tamagui/lucide-icons'
 import type { Phase } from '../../types'
 import { phaseTokens } from '../../lib/phase'
 
-
 /** At accessibility text sizes the week view stacks the date and lets names wrap fully. */
 export const STACK_FONT_SCALE = 1.5
 
@@ -91,7 +90,13 @@ export function CalendarWorkoutCard({
   // Phase is shown by color, so screen readers get it in words
   const exercisesLabel =
     exerciseCount > 0 ? `${exerciseCount} ${exerciseCount === 1 ? 'exercise' : 'exercises'}` : null
-  const accessibilityLabel = [`${phase} workout`, name, `about ${estimatedDurationMinutes} minutes`, exercisesLabel, stateLabel]
+  const accessibilityLabel = [
+    `${phase} workout`,
+    name,
+    `about ${estimatedDurationMinutes} minutes`,
+    exercisesLabel,
+    stateLabel,
+  ]
     .filter(Boolean)
     .join(', ')
 

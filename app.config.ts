@@ -6,8 +6,7 @@ const sentryUrl = process.env.SENTRY_URL?.trim() || 'https://sentry.io/'
 const hasUploadCredentials = Boolean(
   process.env.SENTRY_AUTH_TOKEN?.trim() && sentryOrg && sentryProject
 )
-const disableAutoUpload =
-  process.env.SENTRY_DISABLE_AUTO_UPLOAD === 'true' || !hasUploadCredentials
+const disableAutoUpload = process.env.SENTRY_DISABLE_AUTO_UPLOAD === 'true' || !hasUploadCredentials
 
 const sentryPluginOptions: Record<string, unknown> = {
   url: sentryUrl,

@@ -1,5 +1,5 @@
-import type { Doc, Id } from "./_generated/dataModel";
-import type { QueryCtx } from "./_generated/server";
+import type { Doc, Id } from './_generated/dataModel'
+import type { QueryCtx } from './_generated/server'
 import {
   countsAsDone,
   doneSlots,
@@ -8,59 +8,64 @@ import {
   slotKey,
   type LayoutOverride,
   type SlotRef,
-} from "./blockCompletion";
-import { DEFAULT_WEEKS_PER_PHASE } from "./weekMapping";
+} from './blockCompletion'
+import { DEFAULT_WEEKS_PER_PHASE } from './weekMapping'
 
 /**
  * What the athlete has done in their program, slot by slot. Today, the
  * calendar, the detail screen, swaps, moves and the chat connector all read
  * completion through this, so they agree on which workouts are done.
  */
-export async function loadProgramCompletion(ctx: QueryCtx, program: Doc<"user_programs">) {
+export async function loadProgramCompletion(ctx: QueryCtx, program: Doc<'user_programs'>) {
   const [templates, override, sessions] = await Promise.all([
     ctx.db
-      .query("program_templates")
-      .withIndex("by_category_skill", (q) =>
-        q.eq("gppCategoryId", program.gppCategoryId).eq("skillLevel", program.skillLevel)
+      .query('program_templates')
+      .withIndex('by_category_skill', (q) =>
+        q.eq('gppCategoryId', program.gppCategoryId).eq('skillLevel', program.skillLevel)
       )
       .collect(),
     ctx.db
-      .query("user_schedule_overrides")
-      .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
+      .query('user_schedule_overrides')
+      .withIndex('by_user_program', (q) => q.eq('userProgramId', program._id))
       .first(),
     ctx.db
-      .query("gpp_workout_sessions")
-      .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
-      .filter((q) => q.eq(q.field("status"), "completed"))
+      .query('gpp_workout_sessions')
+      .withIndex('by_user_program', (q) => q.eq('userProgramId', program._id))
+      .filter((q) => q.eq(q.field('status'), 'completed'))
       .collect(),
-  ]);
+  ])
 
   // An override whose workout was deleted falls back to the slot's default
   // workout, as Today does, so it must not hold the deleted one here either
-  const known = new Set(templates.map((t) => String(t._id)));
-  const unknownIds = [...new Set((override?.slotOverrides ?? []).map((o) => String(o.templateId)))].filter(
-    (id) => !known.has(id),
-  );
-  const missing = new Set<string>();
+  const known = new Set(templates.map((t) => String(t._id)))
+  const unknownIds = [
+    ...new Set((override?.slotOverrides ?? []).map((o) => String(o.templateId))),
+  ].filter((id) => !known.has(id))
+  const missing = new Set<string>()
   await Promise.all(
     unknownIds.map(async (id) => {
-      const doc = await ctx.db.get(id as Doc<"program_templates">["_id"]);
-      if (!doc) missing.add(id);
-    }),
-  );
-  const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE;
-  const layoutTemplates = templates.map((t) => ({ _id: t._id, phase: t.phase, week: t.week, day: t.day }));
+      const doc = await ctx.db.get(id as Doc<'program_templates'>['_id'])
+      if (!doc) missing.add(id)
+    })
+  )
+  const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE
+  const layoutTemplates = templates.map((t) => ({
+    _id: t._id,
+    phase: t.phase,
+    week: t.week,
+    day: t.day,
+  }))
   const layoutWith = (overrides: readonly LayoutOverride[]) =>
     programLayout(
       layoutTemplates,
       overrides.filter((o) => !missing.has(String(o.templateId))),
-      weeksPerPhase,
-    );
+      weeksPerPhase
+    )
 
-  const layout = layoutWith(override?.slotOverrides ?? []);
-  const layoutByKey = new Map(layout.map((slot) => [slotKey(slot), slot.templateId]));
-  const counted = sessions.filter((s) => countsAsDone(s, program));
-  const done = doneSlots(layout, counted);
+  const layout = layoutWith(override?.slotOverrides ?? [])
+  const layoutByKey = new Map(layout.map((slot) => [slotKey(slot), slot.templateId]))
+  const counted = sessions.filter((s) => countsAsDone(s, program))
+  const done = doneSlots(layout, counted)
 
   return {
     /** Completed sessions that count as progress (no Redos, this block only). */
@@ -68,7 +73,8 @@ export async function loadProgramCompletion(ctx: QueryCtx, program: Doc<"user_pr
     /** Every workout logged in this block, Redos included (for history). */
     logged: sessions.filter((s) => countsAsDone({ ...s, redo: undefined }, program)),
     /** The workout a slot holds, overrides applied. */
-    templateAt: (slot: SlotRef) => layoutByKey.get(slotKey(slot)) as Id<"program_templates"> | undefined,
+    templateAt: (slot: SlotRef) =>
+      layoutByKey.get(slotKey(slot)) as Id<'program_templates'> | undefined,
     /** The session that did this slot, if it is done. */
     sessionFor: (slot: SlotRef) => done.get(slotKey(slot)),
     isSlotDone: (slot: SlotRef) => done.has(slotKey(slot)),
@@ -81,14 +87,14 @@ export async function loadProgramCompletion(ctx: QueryCtx, program: Doc<"user_pr
      * different slot and reopen the one it did.
      */
     keepsDone: (overrides: readonly LayoutOverride[]) => {
-      const after = doneSlots(layoutWith(overrides), counted);
-      if (after.size !== done.size) return false;
+      const after = doneSlots(layoutWith(overrides), counted)
+      if (after.size !== done.size) return false
       for (const [key, session] of done) {
-        if (after.get(key) !== session) return false;
+        if (after.get(key) !== session) return false
       }
-      return true;
+      return true
     },
-  };
+  }
 }
 
-export type ProgramCompletion = Awaited<ReturnType<typeof loadProgramCompletion>>;
+export type ProgramCompletion = Awaited<ReturnType<typeof loadProgramCompletion>>

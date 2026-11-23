@@ -148,7 +148,10 @@ describe('createDraftStore', () => {
 
   it('does not write over stored answers when a read fails', async () => {
     const { storage, data } = memoryStorage()
-    await createDraftStore(storage, () => 1000).save({ answers: { sportId: 's1' }, lastStep: 'days' })
+    await createDraftStore(storage, () => 1000).save({
+      answers: { sportId: 's1' },
+      lastStep: 'days',
+    })
     const saved = data.get(DRAFT_KEY)
     const flaky: DraftStorage = {
       ...storage,
@@ -163,7 +166,10 @@ describe('createDraftStore', () => {
 
   it('reads again after a failed read instead of saving an empty draft over it', async () => {
     const { storage, data } = memoryStorage()
-    await createDraftStore(storage, () => 1000).save({ answers: { sportId: 's1' }, lastStep: 'days' })
+    await createDraftStore(storage, () => 1000).save({
+      answers: { sportId: 's1' },
+      lastStep: 'days',
+    })
     let failures = 1
     const flaky: DraftStorage = {
       ...storage,
@@ -233,15 +239,22 @@ describe('parseDraft', () => {
         },
       })
     )
-    expect(draft).toEqual({ answers: { sportId: 's1', years: '3+' }, lastStep: 'promise', firstLaunchAt: 1000 })
+    expect(draft).toEqual({
+      answers: { sportId: 's1', years: '3+' },
+      lastStep: 'promise',
+      firstLaunchAt: 1000,
+    })
   })
 
   it('keeps "No set season" and a real date', () => {
-    expect(parseDraft(JSON.stringify({ firstLaunchAt: 1, answers: { seasonStart: null } }))?.answers).toEqual({
+    expect(
+      parseDraft(JSON.stringify({ firstLaunchAt: 1, answers: { seasonStart: null } }))?.answers
+    ).toEqual({
       seasonStart: null,
     })
     expect(
-      parseDraft(JSON.stringify({ firstLaunchAt: 1, answers: { seasonStart: '2027-03-01' } }))?.answers
+      parseDraft(JSON.stringify({ firstLaunchAt: 1, answers: { seasonStart: '2027-03-01' } }))
+        ?.answers
     ).toEqual({ seasonStart: '2027-03-01' })
   })
 

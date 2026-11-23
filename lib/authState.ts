@@ -9,30 +9,30 @@
  * User data from Convex
  */
 interface ConvexUser {
-  _id: string;
-  role?: string;
-  intakeCompletedAt?: number;
+  _id: string
+  role?: string
+  intakeCompletedAt?: number
 }
 
 /**
  * Auth input state from Clerk and Convex
  */
 export interface AuthInputState<U extends ConvexUser = ConvexUser> {
-  isClerkLoading: boolean;
-  clerkUser: { id: string } | null | undefined;
-  convexUser: U | null | undefined;
+  isClerkLoading: boolean
+  clerkUser: { id: string } | null | undefined
+  convexUser: U | null | undefined
 }
 
 /**
  * Computed auth state
  */
 export interface ComputedAuthState<U extends ConvexUser = ConvexUser> {
-  isLoading: boolean;
-  isAuthenticated: boolean;
-  user: U | null;
-  role: string | null;
-  needsSetup: boolean;
-  needsIntake: boolean;
+  isLoading: boolean
+  isAuthenticated: boolean
+  user: U | null
+  role: string | null
+  needsSetup: boolean
+  needsIntake: boolean
 }
 
 /**
@@ -55,7 +55,7 @@ export interface ComputedAuthState<U extends ConvexUser = ConvexUser> {
 export function computeAuthState<U extends ConvexUser>(
   input: AuthInputState<U>
 ): ComputedAuthState<U> {
-  const { isClerkLoading, clerkUser, convexUser } = input;
+  const { isClerkLoading, clerkUser, convexUser } = input
 
   // If Clerk is still loading, we're loading
   if (isClerkLoading) {
@@ -66,7 +66,7 @@ export function computeAuthState<U extends ConvexUser>(
       role: null,
       needsSetup: false,
       needsIntake: false,
-    };
+    }
   }
 
   // If no Clerk user, definitely not authenticated
@@ -78,7 +78,7 @@ export function computeAuthState<U extends ConvexUser>(
       role: null,
       needsSetup: false,
       needsIntake: false,
-    };
+    }
   }
 
   // If we have a Clerk user but Convex user is still loading
@@ -90,7 +90,7 @@ export function computeAuthState<U extends ConvexUser>(
       role: null,
       needsSetup: false,
       needsIntake: false,
-    };
+    }
   }
 
   // If we have a Clerk user but no Convex user, needs setup
@@ -102,14 +102,14 @@ export function computeAuthState<U extends ConvexUser>(
       role: null,
       needsSetup: true,
       needsIntake: false,
-    };
+    }
   }
 
   // Determine role (default to 'client'/athlete)
-  const role = convexUser.role || "client";
+  const role = convexUser.role || 'client'
 
   // Check if intake is needed (only for athletes/clients)
-  const needsIntake = role === "client" && !convexUser.intakeCompletedAt;
+  const needsIntake = role === 'client' && !convexUser.intakeCompletedAt
 
   // If we have both Clerk user and Convex user, we're authenticated
   return {
@@ -119,29 +119,26 @@ export function computeAuthState<U extends ConvexUser>(
     role,
     needsSetup: false,
     needsIntake,
-  };
+  }
 }
 
 /**
  * Check if user is a trainer
  */
 export function isTrainer(role: string | null): boolean {
-  return role === "trainer";
+  return role === 'trainer'
 }
 
 /**
  * Check if user is an athlete (client)
  */
 export function isAthlete(role: string | null): boolean {
-  return role === "client";
+  return role === 'client'
 }
 
 /**
  * Check if user has completed intake
  */
-export function hasCompletedIntake(
-  user: { intakeCompletedAt?: number } | null
-): boolean {
-  return !!user?.intakeCompletedAt;
+export function hasCompletedIntake(user: { intakeCompletedAt?: number } | null): boolean {
+  return !!user?.intakeCompletedAt
 }
-

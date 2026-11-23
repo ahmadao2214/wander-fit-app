@@ -23,30 +23,30 @@ export {
   type BodyweightPrescription,
   type ExerciseProgressions,
   type ScaledBodyweightPrescription,
-  
+
   // Configuration constants
   INTENSITY_CONFIG,
   BODYWEIGHT_INTENSITY_CONFIG,
-  
+
   // Reps/duration parsing
   parseRepsString,
   formatScaledValue,
   scaleRepsOrDuration,
-  
+
   // Weighted exercise scaling
   applyIntensityToWeighted,
-  
+
   // Bodyweight exercise scaling
   applyIntensityToBodyweight,
-  
+
   // 1RM calculations
   calculateOneRepMax,
   calculateTargetWeight,
-  
+
   // Exercise type detection
   isBodyweightExercise,
-  
+
   // Utility functions
   getAvgOneRepMaxPercent,
   getRpeTarget,
-} from "../convex/intensityScaling";
+} from '../convex/intensityScaling'

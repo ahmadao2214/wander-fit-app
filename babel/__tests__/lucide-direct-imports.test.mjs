@@ -1,4 +1,3 @@
-
 const { transformSync } = require('@babel/core')
 const lucideDirectImports = require('../lucide-direct-imports.js')
 
@@ -49,7 +48,10 @@ describe('lucide-direct-imports', () => {
   it('points only at icon files that exist for both native and web', () => {
     const fs = require('node:fs')
     const path = require('node:path')
-    const dir = path.join(path.dirname(require.resolve('@tamagui/lucide-icons/package.json')), 'dist/esm/icons')
+    const dir = path.join(
+      path.dirname(require.resolve('@tamagui/lucide-icons/package.json')),
+      'dist/esm/icons'
+    )
     expect(fs.existsSync(path.join(dir, 'Dumbbell.native.js'))).toBe(true)
     expect(fs.existsSync(path.join(dir, 'Dumbbell.mjs'))).toBe(true)
   })

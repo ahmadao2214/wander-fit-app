@@ -6,7 +6,8 @@ import { MIN_FONT_SIZE, TYPE_SCALE } from '../typeScale'
 
 // Type roles from design audit F08: one small scale, sentence case, no text
 // under 12pt, and secondary text that still passes AA.
-const themes = (config as unknown as { themes: Record<string, Record<string, { val: string }>> }).themes
+const themes = (config as unknown as { themes: Record<string, Record<string, { val: string }>> })
+  .themes
 
 describe('type scale', () => {
   const roles = Object.entries(TYPE_SCALE)
@@ -31,7 +32,11 @@ describe('type scale', () => {
       const t = themes[mode]
       for (const text of ['color10', 'color11']) {
         for (const bg of ['background', 'surface']) {
-          expect({ text, bg, ok: contrastRatio(t[text].val, t[bg].val) >= 4.5 }).toEqual({ text, bg, ok: true })
+          expect({ text, bg, ok: contrastRatio(t[text].val, t[bg].val) >= 4.5 }).toEqual({
+            text,
+            bg,
+            ok: true,
+          })
         }
       }
     })
@@ -64,7 +69,8 @@ describe('athlete screens use the type roles', () => {
     const offenders: string[] = []
     for (const { file, source } of sources) {
       for (const match of source.matchAll(TINY)) {
-        if (match[1] === undefined || Number(match[1]) < MIN_FONT_SIZE) offenders.push(`${file}: ${match[0]}`)
+        if (match[1] === undefined || Number(match[1]) < MIN_FONT_SIZE)
+          offenders.push(`${file}: ${match[0]}`)
       }
     }
     expect(offenders).toEqual([])

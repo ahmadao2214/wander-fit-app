@@ -1,13 +1,7 @@
-import { internalMutation } from "../_generated/server";
-import { v } from "convex/values";
-import {
-  generateTemplate,
-  PHASES,
-  SKILL_LEVELS,
-  WEEKS,
-  DAYS,
-} from "../generateTemplates";
-import type { GppCategoryId } from "../generateTemplates";
+import { internalMutation } from '../_generated/server'
+import { v } from 'convex/values'
+import { generateTemplate, PHASES, SKILL_LEVELS, WEEKS, DAYS } from '../generateTemplates'
+import type { GppCategoryId } from '../generateTemplates'
 
 /**
  * Migration: Replace old seed templates with generateAllTemplates output.
@@ -31,9 +25,9 @@ export const migrateTemplates = internalMutation({
     categoryId: v.number(),
   },
   handler: async (ctx, args) => {
-    const categoryId = args.categoryId as GppCategoryId;
+    const categoryId = args.categoryId as GppCategoryId
     if (![1, 2, 3, 4].includes(categoryId)) {
-      throw new Error("Invalid category ID. Must be 1, 2, 3, or 4.");
+      throw new Error('Invalid category ID. Must be 1, 2, 3, or 4.')
     }
 
     const results = {
@@ -41,35 +35,31 @@ export const migrateTemplates = internalMutation({
       oldWithMissingSections: 0,
       newTemplatesCreated: 0,
       errors: [] as string[],
-    };
+    }
 
     // Build exercise slug → ID map
-    const allExercises = await ctx.db.query("exercises").collect();
-    const exerciseMap = new Map(allExercises.map((e) => [e.slug, e._id]));
+    const allExercises = await ctx.db.query('exercises').collect()
+    const exerciseMap = new Map(allExercises.map((e) => [e.slug, e._id]))
 
     // Query all existing templates for this category across all phases
     for (const phase of PHASES) {
       const existingTemplates = await ctx.db
-        .query("program_templates")
-        .withIndex("by_category_phase", (q) =>
-          q.eq("gppCategoryId", categoryId).eq("phase", phase)
-        )
-        .collect();
+        .query('program_templates')
+        .withIndex('by_category_phase', (q) => q.eq('gppCategoryId', categoryId).eq('phase', phase))
+        .collect()
 
       // Count old templates (exercises missing section field)
       for (const template of existingTemplates) {
-        const hasMissingSection = template.exercises.some(
-          (e) => e.section === undefined
-        );
+        const hasMissingSection = template.exercises.some((e) => e.section === undefined)
         if (hasMissingSection) {
-          results.oldWithMissingSections++;
+          results.oldWithMissingSections++
         }
       }
 
       // Delete all existing templates for this category+phase
       for (const template of existingTemplates) {
-        await ctx.db.delete(template._id);
-        results.oldTemplatesDeleted++;
+        await ctx.db.delete(template._id)
+        results.oldTemplatesDeleted++
       }
     }
 
@@ -79,19 +69,13 @@ export const migrateTemplates = internalMutation({
         for (const week of WEEKS) {
           for (const day of DAYS) {
             try {
-              const template = generateTemplate(
-                categoryId,
-                phase,
-                skillLevel,
-                week,
-                day
-              );
+              const template = generateTemplate(categoryId, phase, skillLevel, week, day)
 
               // Resolve exercise slugs to IDs
               const exercisesWithIds = template.exercises.map((ex) => {
-                const exerciseId = exerciseMap.get(ex.exerciseSlug);
+                const exerciseId = exerciseMap.get(ex.exerciseSlug)
                 if (!exerciseId) {
-                  throw new Error(`Exercise not found: ${ex.exerciseSlug}`);
+                  throw new Error(`Exercise not found: ${ex.exerciseSlug}`)
                 }
                 return {
                   exerciseId,
@@ -104,10 +88,10 @@ export const migrateTemplates = internalMutation({
                   superset: ex.superset,
                   section: ex.section,
                   warmupPhase: ex.warmupPhase,
-                };
-              });
+                }
+              })
 
-              await ctx.db.insert("program_templates", {
+              await ctx.db.insert('program_templates', {
                 gppCategoryId: template.gppCategoryId,
                 phase: template.phase,
                 skillLevel: template.skillLevel,
@@ -117,22 +101,22 @@ export const migrateTemplates = internalMutation({
                 description: template.description,
                 estimatedDurationMinutes: template.estimatedDurationMinutes,
                 exercises: exercisesWithIds,
-              });
+              })
 
-              results.newTemplatesCreated++;
+              results.newTemplatesCreated++
             } catch (error) {
               results.errors.push(
                 `Category ${categoryId}, ${phase}, ${skillLevel}, Week ${week}, Day ${day}: ${error}`
-              );
+              )
             }
           }
         }
       }
     }
 
-    return results;
+    return results
   },
-});
+})
 
 /**
  * Re-link completed workout sessions to new template IDs after migration.
@@ -156,73 +140,67 @@ export const relinkSessions = internalMutation({
       sessionsAlreadyValid: 0,
       sessionsFailed: 0,
       errors: [] as string[],
-    };
+    }
 
     // Get all workout sessions
-    const allSessions = await ctx.db
-      .query("gpp_workout_sessions")
-      .collect();
-    results.sessionsScanned = allSessions.length;
+    const allSessions = await ctx.db.query('gpp_workout_sessions').collect()
+    results.sessionsScanned = allSessions.length
 
     for (const session of allSessions) {
       // Check if current templateId still exists
-      const existingTemplate = await ctx.db.get(session.templateId);
+      const existingTemplate = await ctx.db.get(session.templateId)
       if (existingTemplate) {
-        results.sessionsAlreadyValid++;
-        continue;
+        results.sessionsAlreadyValid++
+        continue
       }
 
       // Template was deleted — try to find the new one using snapshot + program
-      const snapshot = session.templateSnapshot;
+      const snapshot = session.templateSnapshot
       if (!snapshot) {
-        results.sessionsFailed++;
-        results.errors.push(
-          `Session ${session._id}: no templateSnapshot, cannot relink`
-        );
-        continue;
+        results.sessionsFailed++
+        results.errors.push(`Session ${session._id}: no templateSnapshot, cannot relink`)
+        continue
       }
 
       // Get the user's program for category and skillLevel
-      const program = await ctx.db.get(session.userProgramId);
+      const program = await ctx.db.get(session.userProgramId)
       if (!program) {
-        results.sessionsFailed++;
-        results.errors.push(
-          `Session ${session._id}: program ${session.userProgramId} not found`
-        );
-        continue;
+        results.sessionsFailed++
+        results.errors.push(`Session ${session._id}: program ${session.userProgramId} not found`)
+        continue
       }
 
       // Look up the new template by assignment coordinates
       const newTemplate = await ctx.db
-        .query("program_templates")
-        .withIndex("by_assignment", (q) =>
+        .query('program_templates')
+        .withIndex('by_assignment', (q) =>
           q
-            .eq("gppCategoryId", program.gppCategoryId)
-            .eq("phase", snapshot.phase)
-            .eq("skillLevel", program.skillLevel)
-            .eq("week", snapshot.week)
-            .eq("day", snapshot.day)
+            .eq('gppCategoryId', program.gppCategoryId)
+            .eq('phase', snapshot.phase)
+            .eq('skillLevel', program.skillLevel)
+            .eq('week', snapshot.week)
+            .eq('day', snapshot.day)
         )
-        .first();
+        .first()
 
       if (!newTemplate) {
-        results.sessionsFailed++;
+        results.sessionsFailed++
         results.errors.push(
           `Session ${session._id}: no matching template for cat=${program.gppCategoryId} phase=${snapshot.phase} skill=${program.skillLevel} w=${snapshot.week} d=${snapshot.day}`
-        );
-        continue;
+        )
+        continue
       }
 
       // Update the session's templateId to the new template
       await ctx.db.patch(session._id, {
         templateId: newTemplate._id,
-      });
-      results.sessionsRelinked++;
+      })
+      results.sessionsRelinked++
     }
 
-    return results;
+    return results
   },
-});
+})
 
 /**
  * Clean up stale override references after template migration.
@@ -237,51 +215,49 @@ export const cleanupStaleOverrides = internalMutation({
       overridesScanned: 0,
       todayFocusCleared: 0,
       slotOverridesRemoved: 0,
-    };
+    }
 
-    const allOverrides = await ctx.db
-      .query("user_schedule_overrides")
-      .collect();
-    results.overridesScanned = allOverrides.length;
+    const allOverrides = await ctx.db.query('user_schedule_overrides').collect()
+    results.overridesScanned = allOverrides.length
 
     for (const override of allOverrides) {
-      let needsUpdate = false;
-      const patch: Record<string, unknown> = {};
+      let needsUpdate = false
+      const patch: Record<string, unknown> = {}
 
       // Check todayFocusTemplateId
       if (override.todayFocusTemplateId) {
-        const template = await ctx.db.get(override.todayFocusTemplateId);
+        const template = await ctx.db.get(override.todayFocusTemplateId)
         if (!template) {
-          patch.todayFocusTemplateId = undefined;
-          patch.todayFocusSetAt = undefined;
-          results.todayFocusCleared++;
-          needsUpdate = true;
+          patch.todayFocusTemplateId = undefined
+          patch.todayFocusSetAt = undefined
+          results.todayFocusCleared++
+          needsUpdate = true
         }
       }
 
       // Filter slotOverrides to remove entries pointing to deleted templates
       if (override.slotOverrides && override.slotOverrides.length > 0) {
-        const validSlotOverrides: NonNullable<typeof override.slotOverrides> = [];
+        const validSlotOverrides: NonNullable<typeof override.slotOverrides> = []
         for (const slot of override.slotOverrides) {
-          const template = await ctx.db.get(slot.templateId);
+          const template = await ctx.db.get(slot.templateId)
           if (template) {
-            validSlotOverrides.push(slot);
+            validSlotOverrides.push(slot)
           } else {
-            results.slotOverridesRemoved++;
-            needsUpdate = true;
+            results.slotOverridesRemoved++
+            needsUpdate = true
           }
         }
         if (needsUpdate) {
-          patch.slotOverrides = validSlotOverrides;
+          patch.slotOverrides = validSlotOverrides
         }
       }
 
       if (needsUpdate) {
-        patch.updatedAt = Date.now();
-        await ctx.db.patch(override._id, patch);
+        patch.updatedAt = Date.now()
+        await ctx.db.patch(override._id, patch)
       }
     }
 
-    return results;
+    return results
   },
-});
+})

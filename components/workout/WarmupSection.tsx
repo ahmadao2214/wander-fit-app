@@ -16,7 +16,7 @@ import type { Phase as TrainingPhase } from '../../types'
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export interface WarmupExercise {
-  exerciseId: Id<"exercises">
+  exerciseId: Id<'exercises'>
   name: string
   sets: number
   reps: string
@@ -37,7 +37,7 @@ interface WarmupSectionProps {
   totalDuration: number
   onComplete: (outcome?: WarmupOutcome) => void
   onBack?: () => void
-  mode: "preview" | "flow"
+  mode: 'preview' | 'flow'
   /** Training phase (GPP/SPP/SSP): colors the step badges */
   trainingPhase?: TrainingPhase
 }
@@ -47,23 +47,23 @@ interface WarmupSectionProps {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const PHASE_LABELS: Record<WarmupPhase, string> = {
-  foam_rolling: "Foam Rolling",
-  mobility: "Mobility",
-  core_isometric: "Core Isometric",
-  core_dynamic: "Core Dynamic",
-  walking_drills: "Walking Drills",
-  movement_prep: "Movement Prep",
-  power_primer: "Power Primer",
+  foam_rolling: 'Foam Rolling',
+  mobility: 'Mobility',
+  core_isometric: 'Core Isometric',
+  core_dynamic: 'Core Dynamic',
+  walking_drills: 'Walking Drills',
+  movement_prep: 'Movement Prep',
+  power_primer: 'Power Primer',
 }
 
 const PHASE_ORDER: WarmupPhase[] = [
-  "foam_rolling",
-  "mobility",
-  "core_isometric",
-  "core_dynamic",
-  "walking_drills",
-  "movement_prep",
-  "power_primer",
+  'foam_rolling',
+  'mobility',
+  'core_isometric',
+  'core_dynamic',
+  'walking_drills',
+  'movement_prep',
+  'power_primer',
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -107,7 +107,7 @@ function ExerciseRows({ exercises, indent }: { exercises: WarmupExercise[]; inde
 }
 
 function getPhaseDuration(phase: WarmupPhase): number {
-  const config = WARMUP_PHASES.find(p => p.phase === phase)
+  const config = WARMUP_PHASES.find((p) => p.phase === phase)
   return config?.durationMin ?? 0
 }
 
@@ -115,7 +115,14 @@ function getPhaseDuration(phase: WarmupPhase): number {
 // PHASE CARD (Flow mode — with toggle)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function PhaseCard({ phase, exercises, phaseIndex, isCompleted, onToggle, trainingPhase }: {
+function PhaseCard({
+  phase,
+  exercises,
+  phaseIndex,
+  isCompleted,
+  onToggle,
+  trainingPhase,
+}: {
   phase: WarmupPhase
   exercises: WarmupExercise[]
   phaseIndex: number
@@ -128,23 +135,20 @@ function PhaseCard({ phase, exercises, phaseIndex, isCompleted, onToggle, traini
   return (
     <Card
       borderWidth={1}
-      borderColor={isCompleted ? "$success" : "$borderColor"}
-      bg={isCompleted ? "$color2" : "$background"}
+      borderColor={isCompleted ? '$success' : '$borderColor'}
+      bg={isCompleted ? '$color2' : '$background'}
       rounded="$4"
       p="$3"
       gap="$2"
       opacity={isCompleted ? 0.6 : 1}
     >
-      <Pressable
-        onPress={onToggle}
-        testID={onToggle ? `phase-toggle-${phase}` : undefined}
-      >
+      <Pressable onPress={onToggle} testID={onToggle ? `phase-toggle-${phase}` : undefined}>
         <XStack items="center" gap="$2">
           <YStack
             width={28}
             height={28}
             rounded="$10"
-            bg={isCompleted ? "$green10" : colors.fill}
+            bg={isCompleted ? '$green10' : colors.fill}
             items="center"
             justify="center"
           >
@@ -158,9 +162,9 @@ function PhaseCard({ phase, exercises, phaseIndex, isCompleted, onToggle, traini
           </YStack>
           <Body
             fontWeight="600"
-            color={isCompleted ? "$color10" : "$color"}
+            color={isCompleted ? '$color10' : '$color'}
             flex={1}
-            textDecorationLine={isCompleted ? "line-through" : "none"}
+            textDecorationLine={isCompleted ? 'line-through' : 'none'}
           >
             {PHASE_LABELS[phase]}
           </Body>
@@ -168,7 +172,9 @@ function PhaseCard({ phase, exercises, phaseIndex, isCompleted, onToggle, traini
           {isCompleted ? (
             <XStack items="center" gap="$1">
               <Check size={14} color="$green10" />
-              <Caption color="$green11" fontWeight="600">Done</Caption>
+              <Caption color="$green11" fontWeight="600">
+                Done
+              </Caption>
             </XStack>
           ) : (
             <YStack
@@ -191,7 +197,13 @@ function PhaseCard({ phase, exercises, phaseIndex, isCompleted, onToggle, traini
 // FLOW MODE (Pre-execution full-screen)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function WarmupFlow({ exercises, totalDuration, onComplete, onBack, trainingPhase }: Omit<WarmupSectionProps, 'mode'>) {
+function WarmupFlow({
+  exercises,
+  totalDuration,
+  onComplete,
+  onBack,
+  trainingPhase,
+}: Omit<WarmupSectionProps, 'mode'>) {
   const insets = useSafeAreaInsets()
   const phaseGroups = groupByPhase(exercises)
   const activePhases = PHASE_ORDER.filter((p) => phaseGroups.has(p))
@@ -204,7 +216,7 @@ function WarmupFlow({ exercises, totalDuration, onComplete, onBack, trainingPhas
   const justToggledRef = useRef(false)
 
   const togglePhase = useCallback((phase: WarmupPhase) => {
-    setCompletedPhases(prev => {
+    setCompletedPhases((prev) => {
       const next = new Set(prev)
       if (next.has(phase)) {
         next.delete(phase)
@@ -221,7 +233,7 @@ function WarmupFlow({ exercises, totalDuration, onComplete, onBack, trainingPhas
     if (!justToggledRef.current) return
     justToggledRef.current = false
 
-    const nextUnchecked = activePhases.find(p => !completedPhases.has(p))
+    const nextUnchecked = activePhases.find((p) => !completedPhases.has(p))
     if (!nextUnchecked) return
     const y = phaseLayoutsRef.current.get(nextUnchecked)
     if (y == null) return
@@ -247,11 +259,7 @@ function WarmupFlow({ exercises, totalDuration, onComplete, onBack, trainingPhas
         <XStack items="center" gap="$3">
           {/* Back button (left) */}
           {onBack ? (
-            <Pressable
-              testID="warmup-back-button"
-              onPress={onBack}
-              hitSlop={8}
-            >
+            <Pressable testID="warmup-back-button" onPress={onBack} hitSlop={8}>
               <ChevronLeft size={28} color="$color" />
             </Pressable>
           ) : (
@@ -302,7 +310,15 @@ function WarmupFlow({ exercises, totalDuration, onComplete, onBack, trainingPhas
           </Caption>
         )}
         {ungrouped.length > 0 && (
-          <Card borderWidth={1} borderColor="$borderColor" bg="$background" rounded="$4" p="$3" gap="$2" mb="$3">
+          <Card
+            borderWidth={1}
+            borderColor="$borderColor"
+            bg="$background"
+            rounded="$4"
+            p="$3"
+            gap="$2"
+            mb="$3"
+          >
             <ExerciseRows exercises={ungrouped} />
           </Card>
         )}
@@ -328,12 +344,7 @@ function WarmupFlow({ exercises, totalDuration, onComplete, onBack, trainingPhas
 
       {/* Bottom bar — single button */}
       <View style={styles.bottomBar}>
-        <YStack
-          px="$4"
-          pb={insets.bottom + 16}
-          pt="$3"
-          bg="$background"
-        >
+        <YStack px="$4" pb={insets.bottom + 16} pt="$3" bg="$background">
           <Button
             size="$5"
             bg="$primary"
@@ -361,7 +372,11 @@ function WarmupFlow({ exercises, totalDuration, onComplete, onBack, trainingPhas
 // PREVIEW MODE (Detail screen collapsible — compact phase summary)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function WarmupPreview({ exercises, totalDuration, trainingPhase }: Pick<WarmupSectionProps, 'exercises' | 'totalDuration' | 'trainingPhase'>) {
+function WarmupPreview({
+  exercises,
+  totalDuration,
+  trainingPhase,
+}: Pick<WarmupSectionProps, 'exercises' | 'totalDuration' | 'trainingPhase'>) {
   const [expanded, setExpanded] = useState(false)
   const phaseGroups = groupByPhase(exercises)
   const activePhases = PHASE_ORDER.filter((p) => phaseGroups.has(p))
@@ -369,7 +384,14 @@ function WarmupPreview({ exercises, totalDuration, trainingPhase }: Pick<WarmupS
   const colors = phaseTokens(trainingPhase)
 
   return (
-    <Card borderColor="$borderColor" borderWidth={1} bg="$background" overflow="hidden" borderLeftColor={colors.fill} borderLeftWidth={4}>
+    <Card
+      borderColor="$borderColor"
+      borderWidth={1}
+      bg="$background"
+      overflow="hidden"
+      borderLeftColor={colors.fill}
+      borderLeftWidth={4}
+    >
       {/* Collapsible header */}
       <XStack
         items="center"
@@ -444,7 +466,7 @@ function WarmupPreview({ exercises, totalDuration, trainingPhase }: Pick<WarmupS
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export function WarmupSection(props: WarmupSectionProps) {
-  if (props.mode === "preview") {
+  if (props.mode === 'preview') {
     return <WarmupPreview {...props} />
   }
   return <WarmupFlow {...props} />

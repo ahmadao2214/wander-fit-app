@@ -11,8 +11,9 @@ const mockReset = jest.fn(() => callOrder.push('reset'))
 const mockTrackScreen = jest.fn((segs: readonly string[]) =>
   callOrder.push(`trackScreen:${segs.join('/')}`)
 )
-const mockSyncSessionReplay = jest.fn((gate: { analyticsOptOut: boolean; sessionReplayOptIn: boolean }) =>
-  callOrder.push(`syncReplay:${gate.analyticsOptOut}:${gate.sessionReplayOptIn}`)
+const mockSyncSessionReplay = jest.fn(
+  (gate: { analyticsOptOut: boolean; sessionReplayOptIn: boolean }) =>
+    callOrder.push(`syncReplay:${gate.analyticsOptOut}:${gate.sessionReplayOptIn}`)
 )
 const mockIsOptedOut = jest.fn(() => false)
 

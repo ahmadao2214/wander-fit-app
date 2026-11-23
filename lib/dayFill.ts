@@ -43,7 +43,10 @@ const still = (v: number): Key[] => [{ at: 0, v }]
 function plain(on: boolean, H: number): DayChoreography {
   return {
     duration: 200,
-    fill: [{ at: 0, v: on ? 0 : 1 }, { at: 200, v: on ? 1 : 0, easing: 'page' }],
+    fill: [
+      { at: 0, v: on ? 0 : 1 },
+      { at: 200, v: on ? 1 : 0, easing: 'page' },
+    ],
     ballY: still(-BALL),
     ballOpacity: still(0),
     ballRotate: still(0),
@@ -60,13 +63,20 @@ function roll(on: boolean, H: number): DayChoreography {
   const total = ms + 130
   return {
     duration: total,
-    fill: [{ at: 0, v: from }, { at: ms, v: to, easing: 'inOut' }],
+    fill: [
+      { at: 0, v: from },
+      { at: ms, v: to, easing: 'inOut' },
+    ],
     ballY: [
       { at: 0, v: ride(from) },
       { at: ms, v: ride(to), easing: 'inOut' },
       { at: total, v: ride(to) + (on ? -14 : 0), easing: 'inOut' },
     ],
-    ballOpacity: [{ at: 0, v: 1 }, { at: ms, v: 1 }, { at: total, v: 0 }],
+    ballOpacity: [
+      { at: 0, v: 1 },
+      { at: ms, v: 1 },
+      { at: total, v: 0 },
+    ],
     ballRotate: [
       { at: 0, v: 0 },
       { at: ms, v: on ? -540 : 540, easing: 'inOut' },
@@ -83,7 +93,14 @@ export const BOUNCE_CONTACTS = [0.22, 0.5, 0.76].map((t) => Math.round(t * BOUNC
 
 function bounce(on: boolean, H: number): DayChoreography {
   if (!on) {
-    return { ...plain(false, H), duration: 420, fill: [{ at: 0, v: 1 }, { at: 420, v: 0, easing: 'page' }] }
+    return {
+      ...plain(false, H),
+      duration: 420,
+      fill: [
+        { at: 0, v: 1 },
+        { at: 420, v: 0, easing: 'page' },
+      ],
+    }
   }
   const at = (t: number) => Math.round(t * BOUNCE_MS)
   const top = (k: number) => surfaceY(H, k) - BALL
@@ -100,7 +117,11 @@ function bounce(on: boolean, H: number): DayChoreography {
       { at: at(0.76), v: top(2 * third), easing: 'in' }, // contact 3
       { at: at(0.94), v: -BALL, easing: 'out' },
     ],
-    ballOpacity: [{ at: 0, v: 1 }, { at: at(0.94), v: 1 }, { at: BOUNCE_MS, v: 0 }],
+    ballOpacity: [
+      { at: 0, v: 1 },
+      { at: at(0.94), v: 1 },
+      { at: BOUNCE_MS, v: 0 },
+    ],
     fill: [
       { at: 0, v: 0 },
       { at: at(0.22), v: 0 },
@@ -121,16 +142,35 @@ function water(on: boolean, H: number): DayChoreography {
   const ms = on ? 900 : 520
   return {
     duration: on ? 1300 : ms,
-    fill: [{ at: 0, v: on ? 0 : 1 }, { at: ms, v: on ? 1 : 0, easing: 'page' }],
+    fill: [
+      { at: 0, v: on ? 0 : 1 },
+      { at: ms, v: on ? 1 : 0, easing: 'page' },
+    ],
     ballY: still(-BALL),
     ballOpacity: still(0),
     ballRotate: still(0),
-    wave: on ? [{ at: 0, v: 0 }, { at: 1040, v: 0.5, easing: 'out' }, { at: 1300, v: 0.6, easing: 'out' }] : still(0),
-    waveOpacity: on ? [{ at: 0, v: 1 }, { at: 1040, v: 1 }, { at: 1300, v: 0 }] : still(0),
+    wave: on
+      ? [
+          { at: 0, v: 0 },
+          { at: 1040, v: 0.5, easing: 'out' },
+          { at: 1300, v: 0.6, easing: 'out' },
+        ]
+      : still(0),
+    waveOpacity: on
+      ? [
+          { at: 0, v: 1 },
+          { at: 1040, v: 1 },
+          { at: 1300, v: 0 },
+        ]
+      : still(0),
   }
 }
 
-export function dayChoreography(family: MovementFamily | null, on: boolean, H: number): DayChoreography {
+export function dayChoreography(
+  family: MovementFamily | null,
+  on: boolean,
+  H: number
+): DayChoreography {
   if (family === 'roll') return roll(on, H)
   if (family === 'bounce') return bounce(on, H)
   if (family === 'water') return water(on, H)

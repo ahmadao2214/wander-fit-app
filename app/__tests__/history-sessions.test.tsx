@@ -50,7 +50,13 @@ const session = (overrides: Record<string, unknown>) => ({
   startedAt: new Date(2026, 10, 10, 9).getTime(),
   status: 'completed',
   templateName: 'Lower Body Foundation',
-  templateSnapshot: { name: 'Lower Body Foundation', phase: 'GPP', week: 1, day: 1, workoutDate: 0 },
+  templateSnapshot: {
+    name: 'Lower Body Foundation',
+    phase: 'GPP',
+    week: 1,
+    day: 1,
+    workoutDate: 0,
+  },
   ...overrides,
 })
 
@@ -63,7 +69,9 @@ describe('History tab', () => {
   it('reads GPP sessions, not the removed trainer-era sessions', () => {
     mockUseQuery.mockReturnValue([])
     render(<HistoryPage />, { wrapper: AllTheProviders })
-    expect(mockUseQuery.mock.calls.map((call) => call[0])).toEqual(['gppWorkoutSessions.getHistory'])
+    expect(mockUseQuery.mock.calls.map((call) => call[0])).toEqual([
+      'gppWorkoutSessions.getHistory',
+    ])
   })
 
   // Design audit F06: progress lives on History, as one truthful line
@@ -101,7 +109,9 @@ describe('History tab', () => {
   })
 
   it('falls back to the template name when a session has no snapshot', () => {
-    mockUseQuery.mockReturnValue([session({ templateSnapshot: undefined, templateName: 'Upper Push/Pull' })])
+    mockUseQuery.mockReturnValue([
+      session({ templateSnapshot: undefined, templateName: 'Upper Push/Pull' }),
+    ])
     const { getByText } = render(<HistoryPage />, { wrapper: AllTheProviders })
     expect(getByText('Upper Push/Pull')).toBeTruthy()
   })
@@ -109,7 +119,12 @@ describe('History tab', () => {
   it('marks an unfinished session in plain words and leaves completed ones unbadged', () => {
     mockUseQuery.mockReturnValue([
       session({ _id: 'done', status: 'completed' }),
-      session({ _id: 'quit', status: 'abandoned', templateSnapshot: undefined, templateName: 'Upper Push/Pull' }),
+      session({
+        _id: 'quit',
+        status: 'abandoned',
+        templateSnapshot: undefined,
+        templateName: 'Upper Push/Pull',
+      }),
     ])
     const { getAllByTestId, queryByText } = render(<HistoryPage />, { wrapper: AllTheProviders })
     expect(getAllByTestId('history-not-finished')).toHaveLength(1)

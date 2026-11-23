@@ -1,5 +1,12 @@
 import React from 'react'
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text as RNText, View } from 'react-native'
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text as RNText,
+  View,
+} from 'react-native'
 import { useRouter, type Href } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ChevronLeft } from '@tamagui/lucide-icons'
@@ -68,7 +75,17 @@ export function IntakeFrame({
   }
 
   const body = (
-    <View style={{ flexGrow: 1, paddingHorizontal: 24, width: '100%', maxWidth: 560, alignSelf: 'center' }}>{children}</View>
+    <View
+      style={{
+        flexGrow: 1,
+        paddingHorizontal: 24,
+        width: '100%',
+        maxWidth: 560,
+        alignSelf: 'center',
+      }}
+    >
+      {children}
+    </View>
   )
 
   return (
@@ -114,12 +131,23 @@ export function IntakeFrame({
                 {Array.from({ length: PROGRESS_TOTAL }, (_, i) => (
                   <View
                     key={i}
-                    style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: i < n ? NIGHT.fg : NIGHT.line }}
+                    style={{
+                      flex: 1,
+                      height: 4,
+                      borderRadius: 2,
+                      backgroundColor: i < n ? NIGHT.fg : NIGHT.line,
+                    }}
                   />
                 ))}
               </View>
               <RNText
-                style={{ fontFamily: DISPLAY, fontSize: 18, color: NIGHT.fg2, minWidth: 36, textAlign: 'right' }}
+                style={{
+                  fontFamily: DISPLAY,
+                  fontSize: 18,
+                  color: NIGHT.fg2,
+                  minWidth: 36,
+                  textAlign: 'right',
+                }}
                 accessible={false}
               >
                 {`${n}/${PROGRESS_TOTAL}`}
@@ -132,13 +160,25 @@ export function IntakeFrame({
           <ScrollView
             style={{ flex: 1 }}
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{ flexGrow: 1, paddingTop: 16, paddingBottom: primary || secondary ? 16 : insets.bottom + 16 }}
+            contentContainerStyle={{
+              flexGrow: 1,
+              paddingTop: 16,
+              paddingBottom: primary || secondary ? 16 : insets.bottom + 16,
+            }}
             showsVerticalScrollIndicator={false}
           >
             {body}
           </ScrollView>
         ) : (
-          <View style={{ flex: 1, paddingTop: 16, paddingBottom: primary || secondary ? 0 : insets.bottom + 16 }}>{body}</View>
+          <View
+            style={{
+              flex: 1,
+              paddingTop: 16,
+              paddingBottom: primary || secondary ? 0 : insets.bottom + 16,
+            }}
+          >
+            {body}
+          </View>
         )}
 
         {primary || secondary ? (

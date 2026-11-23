@@ -39,7 +39,9 @@ const warmupPlaceholder = {
 
 const sets = (logged: number, total: number) =>
   Array.from({ length: total }, (_, i) =>
-    i < logged ? { completed: true, skipped: false, repsCompleted: 10 } : { completed: false, skipped: false }
+    i < logged
+      ? { completed: true, skipped: false, repsCompleted: 10 }
+      : { completed: false, skipped: false }
   )
 
 let mockSession: any

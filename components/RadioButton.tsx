@@ -79,7 +79,7 @@ export function RadioButton({
   description,
   checked = false,
   icon: Icon,
-  onPress
+  onPress,
 }: RadioButtonProps) {
   return (
     <Pressable
@@ -94,10 +94,7 @@ export function RadioButton({
         />
 
         <IconContainer checked={checked}>
-          <Icon
-            size={28}
-            color={checked ? 'white' : '$primaryText'}
-          />
+          <Icon size={28} color={checked ? 'white' : '$primaryText'} />
         </IconContainer>
 
         <YStack gap="$1" items="center">

@@ -1,6 +1,9 @@
 {
   "steps": [
-    { "capture": "Today", "description": "The adapter relaunches the accepted E2E app with the durable athlete already signed in; account and workout data are preserved." },
+    {
+      "capture": "Today",
+      "description": "The adapter relaunches the accepted E2E app with the durable athlete already signed in; account and workout data are preserved."
+    },
     { "action": "tap", "label": "Program, tab, 2 of 6" },
     { "capture": "Program" },
     { "action": "tap", "label": "Lower Body Foundation" },

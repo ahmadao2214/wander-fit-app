@@ -7,7 +7,10 @@ describe('poseAt', () => {
     for (const cat of [1, 2, 3, 4] as const) {
       const f = ATHLETES[cat].frames
       expect([cat, ...poseAt(cat, 0)]).toEqual([cat, ...f[0].p])
-      expect([cat, ...poseAt(cat, 1).map((v) => Math.round(v * 1000) / 1000)]).toEqual([cat, ...f[f.length - 1].p])
+      expect([cat, ...poseAt(cat, 1).map((v) => Math.round(v * 1000) / 1000)]).toEqual([
+        cat,
+        ...f[f.length - 1].p,
+      ])
     }
   })
 
@@ -28,17 +31,23 @@ describe('poseAt', () => {
 describe('athleteShapes', () => {
   it('draws a bat for Rotation and a sled for Strength, and no tool for the others', () => {
     const tool = athleteColors(false, '#131C2E').tool
-    const tools = CATS.map((c) => athleteShapes(c, poseAt(c, 0), false, '#131C2E').filter((s) => s.color === tool).length)
+    const tools = CATS.map(
+      (c) => athleteShapes(c, poseAt(c, 0), false, '#131C2E').filter((s) => s.color === tool).length
+    )
     expect(tools).toEqual([0, 0, 1, 3])
   })
 
   it('keeps the same number of strokes through the whole move, so each stays one line', () => {
-    const counts = CATS.map((c) => [0, 0.3, 0.6, 1].map((k) => athleteShapes(c, poseAt(c, k), true, '#A855F7').length))
+    const counts = CATS.map((c) =>
+      [0, 0.3, 0.6, 1].map((k) => athleteShapes(c, poseAt(c, k), true, '#A855F7').length)
+    )
     expect(counts.every((n) => new Set(n).size === 1)).toBe(true)
   })
 
   it('draws the head as a round dot set apart from the shoulders', () => {
-    const head = athleteShapes(2, poseAt(2, 0), true, '#A855F7').find((s) => Math.hypot(s.x2 - s.x1, s.y2 - s.y1) < 0.1)
+    const head = athleteShapes(2, poseAt(2, 0), true, '#A855F7').find(
+      (s) => Math.hypot(s.x2 - s.x1, s.y2 - s.y1) < 0.1
+    )
     expect(head?.w).toBeCloseTo(14.4)
   })
 
@@ -47,7 +56,9 @@ describe('athleteShapes', () => {
     const flipped = Object.assign([...pose], { flip: true })
     const plain = athleteShapes(1, pose, true, '#14B8A6')
     const mirrored = athleteShapes(1, flipped, true, '#14B8A6')
-    expect(mirrored.map((s) => [s.x1, s.x2, s.y1])).toEqual(plain.map((s) => [100 - s.x1, 100 - s.x2, s.y1]))
+    expect(mirrored.map((s) => [s.x1, s.x2, s.y1])).toEqual(
+      plain.map((s) => [100 - s.x1, 100 - s.x2, s.y1])
+    )
   })
 
   // Tiles are never narrower than square, and the viewBox is drawn centered and
@@ -56,7 +67,11 @@ describe('athleteShapes', () => {
     const out = CATS.flatMap((c) =>
       [0, 0.25, 0.5, 0.75, 1].flatMap((k) =>
         athleteShapes(c, poseAt(c, k), true, '#3B82F6')
-          .filter((s) => [s.x1, s.x2].some((x) => x - s.w / 2 < -21 || x + s.w / 2 > 121) || [s.y1, s.y2].some((y) => y - s.w / 2 < -22 || y + s.w / 2 > 122))
+          .filter(
+            (s) =>
+              [s.x1, s.x2].some((x) => x - s.w / 2 < -21 || x + s.w / 2 > 121) ||
+              [s.y1, s.y2].some((y) => y - s.w / 2 < -22 || y + s.w / 2 > 122)
+          )
           .map(() => `${c}@${k}`)
       )
     )

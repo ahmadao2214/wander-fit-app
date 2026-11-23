@@ -9,7 +9,14 @@ import { useReachStep } from '../../components/first-run/useReachStep'
 import { useFirstRunDraft } from '../../hooks/useFirstRunDraft'
 import { analytics, FIRST_RUN_STEP_INDEX } from '../../lib/analytics'
 import { DEFAULT_TRAINING_DAYS, normalizeTrainingDays } from '../../lib/firstRun'
-import { DAY_FULL, DAY_SHORT, NIGHT, WEEK_ORDER, daysSummary, movementFamily } from '../../lib/firstRunStory'
+import {
+  DAY_FULL,
+  DAY_SHORT,
+  NIGHT,
+  WEEK_ORDER,
+  daysSummary,
+  movementFamily,
+} from '../../lib/firstRunStory'
 import { selectionFeedback } from '../../lib/haptics'
 
 /** Adds or removes a day, never leaving zero. */
@@ -96,10 +103,22 @@ export default function FirstRunDays() {
           <View style={{ height: 132 }} />
         )}
         <View style={{ alignItems: 'center' }} accessibilityLiveRegion="polite">
-          <RNText style={{ fontFamily: DISPLAY, fontSize: 26, lineHeight: 28, color: NIGHT.fg, letterSpacing: 1 }} testID="days-count">
+          <RNText
+            style={{
+              fontFamily: DISPLAY,
+              fontSize: 26,
+              lineHeight: 28,
+              color: NIGHT.fg,
+              letterSpacing: 1,
+            }}
+            testID="days-count"
+          >
             {summary.count.toUpperCase()}
           </RNText>
-          <RNText style={{ fontFamily: BODY_SEMI, fontSize: 14, color: NIGHT.fg2, marginTop: 6 }} testID="days-list">
+          <RNText
+            style={{ fontFamily: BODY_SEMI, fontSize: 14, color: NIGHT.fg2, marginTop: 6 }}
+            testID="days-list"
+          >
             {summary.list}
           </RNText>
         </View>

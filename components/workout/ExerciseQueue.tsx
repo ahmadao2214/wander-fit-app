@@ -1,17 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
-import {
-  YStack,
-  XStack,
-  Text,
-  Card,
-  Button,
-} from 'tamagui'
-import {
-  Check,
-  ChevronRight,
-  ChevronLeft,
-  GripVertical,
-} from '@tamagui/lucide-icons'
+import { YStack, XStack, Text, Card, Button } from 'tamagui'
+import { Check, ChevronRight, ChevronLeft, GripVertical } from '@tamagui/lucide-icons'
 import {
   TouchableOpacity,
   Platform,
@@ -97,7 +86,7 @@ export function ExerciseQueue({
   const slideAnim = useRef(new Animated.Value(DRAWER_WIDTH)).current
   const insets = useSafeAreaInsets()
 
-  const completedCount = exercises.filter(e => e.completed).length
+  const completedCount = exercises.filter((e) => e.completed).length
 
   // Haptic feedback helper
   const triggerHaptic = useCallback(() => {
@@ -155,7 +144,10 @@ export function ExerciseQueue({
       onMoveShouldSetPanResponder: () => true,
       onPanResponderRelease: (_, gestureState) => {
         // Open if swiped left or tapped
-        if (gestureState.dx < -30 || (Math.abs(gestureState.dx) < 10 && Math.abs(gestureState.dy) < 10)) {
+        if (
+          gestureState.dx < -30 ||
+          (Math.abs(gestureState.dx) < 10 && Math.abs(gestureState.dy) < 10)
+        ) {
           triggerHaptic()
           setOpen(true)
         }
@@ -164,115 +156,121 @@ export function ExerciseQueue({
   ).current
 
   // Handle drag end - update the order
-  const handleDragEnd = useCallback(({ data, from, to }: { data: Exercise[], from: number, to: number }) => {
-    if (from !== to) {
-      // Only allow reordering of upcoming exercises (after current)
-      if (from > currentIndex && to > currentIndex) {
-        triggerHaptic()
-        onReorder(from, to)
+  const handleDragEnd = useCallback(
+    ({ data, from, to }: { data: Exercise[]; from: number; to: number }) => {
+      if (from !== to) {
+        // Only allow reordering of upcoming exercises (after current)
+        if (from > currentIndex && to > currentIndex) {
+          triggerHaptic()
+          onReorder(from, to)
+        }
       }
-    }
-  }, [currentIndex, onReorder, triggerHaptic])
+    },
+    [currentIndex, onReorder, triggerHaptic]
+  )
 
   // Render individual exercise item
-  const renderItem = useCallback(({ item, drag, isActive, getIndex }: RenderItemParams<Exercise>) => {
-    const index = getIndex() ?? 0
-    const isCompleted = item.completed
-    const isCurrent = index === currentIndex
-    const isUpcoming = index > currentIndex && !isCompleted
-    const canDrag = isUpcoming
+  const renderItem = useCallback(
+    ({ item, drag, isActive, getIndex }: RenderItemParams<Exercise>) => {
+      const index = getIndex() ?? 0
+      const isCompleted = item.completed
+      const isCurrent = index === currentIndex
+      const isUpcoming = index > currentIndex && !isCompleted
+      const canDrag = isUpcoming
 
-    return (
-      <ScaleDecorator activeScale={1.03}>
-        <TouchableOpacity
-          onPress={() => {
-            triggerHaptic()
-            onExerciseSelect(index)
-            setOpen(false)
-          }}
-          activeOpacity={0.7}
-          disabled={isActive}
-        >
-          <Card
-            p="$3"
-            mb="$2"
-            bg={isActive ? '$color2' : isCurrent ? '$color2' : isCompleted ? '$color3' : '$surface'}
-            borderColor={isActive || isCurrent ? phase.fill : '$borderColor'}
-            borderWidth={isCurrent || isActive ? 2 : 1}
-            rounded="$4"
-            opacity={isCompleted && !isCurrent ? 0.7 : 1}
-            elevate={isActive}
+      return (
+        <ScaleDecorator activeScale={1.03}>
+          <TouchableOpacity
+            onPress={() => {
+              triggerHaptic()
+              onExerciseSelect(index)
+              setOpen(false)
+            }}
+            activeOpacity={0.7}
+            disabled={isActive}
           >
-            <XStack items="center" gap="$3">
-              {/* Drag Handle - only for upcoming exercises */}
-              {canDrag ? (
-                <Pressable
-                  onLongPress={drag}
-                  delayLongPress={100}
-                  disabled={isActive}
-                  style={styles.dragHandle}
-                >
-                  <GripVertical size={20} color="$color9" />
-                </Pressable>
-              ) : (
-                <YStack width={28} />
-              )}
-
-              {/* Status Indicator */}
-              <Card
-                width={28}
-                height={28}
-                rounded="$10"
-                bg={isCompleted ? '$green10' : isCurrent ? phase.fill : '$color4'}
-                items="center"
-                justify="center"
-              >
-                {isCompleted ? (
-                  <Check size={16} color="white" strokeWidth={3} />
-                ) : (
-                  <Caption fontWeight="700"
-                    color={isCurrent ? phase.onFill : '$color11'}
+            <Card
+              p="$3"
+              mb="$2"
+              bg={
+                isActive ? '$color2' : isCurrent ? '$color2' : isCompleted ? '$color3' : '$surface'
+              }
+              borderColor={isActive || isCurrent ? phase.fill : '$borderColor'}
+              borderWidth={isCurrent || isActive ? 2 : 1}
+              rounded="$4"
+              opacity={isCompleted && !isCurrent ? 0.7 : 1}
+              elevate={isActive}
+            >
+              <XStack items="center" gap="$3">
+                {/* Drag Handle - only for upcoming exercises */}
+                {canDrag ? (
+                  <Pressable
+                    onLongPress={drag}
+                    delayLongPress={100}
+                    disabled={isActive}
+                    style={styles.dragHandle}
                   >
-                    {index + 1}
-                  </Caption>
+                    <GripVertical size={20} color="$color9" />
+                  </Pressable>
+                ) : (
+                  <YStack width={28} />
                 )}
-              </Card>
 
-              {/* Exercise Info */}
-              <YStack flex={1} gap="$0.5">
-                <Body
-                  fontWeight={isCurrent ? '700' : '500'}
-                  color={isCompleted ? '$color10' : '$color12'}
-                  textDecorationLine={isCompleted ? 'line-through' : 'none'}
+                {/* Status Indicator */}
+                <Card
+                  width={28}
+                  height={28}
+                  rounded="$10"
+                  bg={isCompleted ? '$green10' : isCurrent ? phase.fill : '$color4'}
+                  items="center"
+                  justify="center"
                 >
-                  {item.name}
-                </Body>
-                <Caption
-                  color="$color10"
-                >
-                  {item.scaledSets ?? item.sets} × {item.scaledReps ?? item.reps}
-                </Caption>
-              </YStack>
-
-              {/* Current Badge or Navigation Arrow */}
-              {isCurrent ? (
-                <Card bg={phase.fill} px="$2" py="$1" rounded="$2">
-                  <Caption color={phase.onFill} fontWeight="700">
-                    Now
-                  </Caption>
+                  {isCompleted ? (
+                    <Check size={16} color="white" strokeWidth={3} />
+                  ) : (
+                    <Caption fontWeight="700" color={isCurrent ? phase.onFill : '$color11'}>
+                      {index + 1}
+                    </Caption>
+                  )}
                 </Card>
-              ) : !isCompleted && !canDrag ? (
-                <ChevronRight size={18} color="$color9" />
-              ) : null}
-            </XStack>
-          </Card>
-        </TouchableOpacity>
-      </ScaleDecorator>
-    )
-  }, [currentIndex, onExerciseSelect, triggerHaptic, phase])
 
-  const keyExtractor = useCallback((item: Exercise, index: number) =>
-    `${item.exerciseId}-${index}`, [])
+                {/* Exercise Info */}
+                <YStack flex={1} gap="$0.5">
+                  <Body
+                    fontWeight={isCurrent ? '700' : '500'}
+                    color={isCompleted ? '$color10' : '$color12'}
+                    textDecorationLine={isCompleted ? 'line-through' : 'none'}
+                  >
+                    {item.name}
+                  </Body>
+                  <Caption color="$color10">
+                    {item.scaledSets ?? item.sets} × {item.scaledReps ?? item.reps}
+                  </Caption>
+                </YStack>
+
+                {/* Current Badge or Navigation Arrow */}
+                {isCurrent ? (
+                  <Card bg={phase.fill} px="$2" py="$1" rounded="$2">
+                    <Caption color={phase.onFill} fontWeight="700">
+                      Now
+                    </Caption>
+                  </Card>
+                ) : !isCompleted && !canDrag ? (
+                  <ChevronRight size={18} color="$color9" />
+                ) : null}
+              </XStack>
+            </Card>
+          </TouchableOpacity>
+        </ScaleDecorator>
+      )
+    },
+    [currentIndex, onExerciseSelect, triggerHaptic, phase]
+  )
+
+  const keyExtractor = useCallback(
+    (item: Exercise, index: number) => `${item.exerciseId}-${index}`,
+    []
+  )
 
   return (
     <>
@@ -317,10 +315,7 @@ export function ExerciseQueue({
         statusBarTranslucent
       >
         {/* Backdrop */}
-        <Pressable
-          style={styles.backdrop}
-          onPress={() => setOpen(false)}
-        >
+        <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
           <Animated.View
             style={[
               styles.backdropInner,
@@ -355,9 +350,7 @@ export function ExerciseQueue({
                   <XStack items="center" justify="space-between" pb="$3">
                     <YStack gap="$0.5">
                       <SectionTitle fontWeight="700">Exercises</SectionTitle>
-                      <Supporting
-                        color="$color10"
-                      >
+                      <Supporting color="$color10">
                         {completedCount}/{exercises.length} done
                       </Supporting>
                     </YStack>
@@ -375,11 +368,7 @@ export function ExerciseQueue({
                   {/* Drag hint */}
                   <XStack items="center" gap="$2">
                     <GripVertical size={14} color="$color9" />
-                    <Caption
-                      color="$color9"
-                    >
-                      Hold to reorder upcoming
-                    </Caption>
+                    <Caption color="$color9">Hold to reorder upcoming</Caption>
                   </XStack>
                 </YStack>
               </View>

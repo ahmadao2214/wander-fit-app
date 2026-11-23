@@ -26,7 +26,11 @@ const LUCIDE_ICON_FILES = '@tamagui/lucide-icons/dist/esm/icons/'
 const resolveRequest = tamaguiConfig.resolver.resolveRequest
 tamaguiConfig.resolver.resolveRequest = (context, moduleName, platform) => {
   if (moduleName.startsWith(LUCIDE_ICON_FILES)) {
-    return context.resolveRequest({ ...context, unstable_enablePackageExports: false }, moduleName, platform)
+    return context.resolveRequest(
+      { ...context, unstable_enablePackageExports: false },
+      moduleName,
+      platform
+    )
   }
   return (resolveRequest ?? context.resolveRequest)(context, moduleName, platform)
 }

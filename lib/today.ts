@@ -51,7 +51,9 @@ export function countMainExercises(
   exercises: readonly { section?: string; notes?: string }[] | undefined
 ): number {
   if (!exercises) return 0
-  return exercises.filter((ex) => ex.section !== 'warmup' && !(!ex.section && ex.notes === 'Warmup')).length
+  return exercises.filter(
+    (ex) => ex.section !== 'warmup' && !(!ex.section && ex.notes === 'Warmup')
+  ).length
 }
 
 /** Milliseconds from `date` until the next local midnight. */

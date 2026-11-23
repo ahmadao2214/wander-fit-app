@@ -51,7 +51,9 @@ globalThis.ImageData ??= class ImageData {
 const realFetch = globalThis.fetch
 globalThis.fetch = async (url, opts) =>
   String(url).startsWith('file://')
-    ? new Response(readFileSync(fileURLToPath(String(url))), { headers: { 'Content-Type': 'application/wasm' } })
+    ? new Response(readFileSync(fileURLToPath(String(url))), {
+        headers: { 'Content-Type': 'application/wasm' },
+      })
     : realFetch(url, opts)
 globalThis.requestAnimationFrame ??= (cb) => setTimeout(() => cb(Date.now()), 16)
 globalThis.cancelAnimationFrame ??= (id) => clearTimeout(id)
@@ -67,8 +69,20 @@ async function renderAll(json) {
       last = { data: Uint8ClampedArray.from(img.data), width: img.width, height: img.height }
     },
   }
-  const canvas = { width: RENDER_SIZE, height: RENDER_SIZE, getContext: () => ctx, addEventListener() {}, removeEventListener() {}, style: {} }
-  const player = new DotLottie({ canvas, data: json, autoplay: false, renderConfig: { devicePixelRatio: 1, autoResize: false } })
+  const canvas = {
+    width: RENDER_SIZE,
+    height: RENDER_SIZE,
+    getContext: () => ctx,
+    addEventListener() {},
+    removeEventListener() {},
+    style: {},
+  }
+  const player = new DotLottie({
+    canvas,
+    data: json,
+    autoplay: false,
+    renderConfig: { devicePixelRatio: 1, autoResize: false },
+  })
   await new Promise((resolve, reject) => {
     player.addEventListener('load', resolve)
     player.addEventListener('loadError', (e) => reject(e.error ?? new Error('load error')))
@@ -97,7 +111,8 @@ function paintTile(sheet, W, img, tile, ox, oy, cell) {
       const dy = y + 0.5 - cell / 2
       let px = card
       if (dx * dx + dy * dy <= (cell / 2) ** 2) {
-        const si = (Math.floor((y / cell) * img.height) * img.width + Math.floor((x / cell) * img.width)) * 4
+        const si =
+          (Math.floor((y / cell) * img.height) * img.width + Math.floor((x / cell) * img.width)) * 4
         const a = img.data[si + 3] / 255
         px = circle.map((v, k) => Math.round(img.data[si + k] * a + v * (1 - a)))
       }
@@ -140,7 +155,10 @@ function contactSheet(frames, cell = 160, pad = 12) {
           const dy = y + 0.5 - cell / 2
           let px = card
           if (dx * dx + dy * dy <= (cell / 2) ** 2) {
-            const si = (Math.floor((y / cell) * img.height) * img.width + Math.floor((x / cell) * img.width)) * 4
+            const si =
+              (Math.floor((y / cell) * img.height) * img.width +
+                Math.floor((x / cell) * img.width)) *
+              4
             const a = img.data[si + 3] / 255
             px = circle.map((v, k) => Math.round(img.data[si + k] * a + v * (1 - a)))
           }
@@ -154,7 +172,11 @@ function contactSheet(frames, cell = 160, pad = 12) {
 
 // ── run ─────────────────────────────────────────────────────────────────────
 const wanted = process.argv.slice(2)
-const slugs = wanted.length ? wanted : readdirSync(assetsDir).filter((f) => f.endsWith('.json')).map((f) => f.slice(0, -5))
+const slugs = wanted.length
+  ? wanted
+  : readdirSync(assetsDir)
+      .filter((f) => f.endsWith('.json'))
+      .map((f) => f.slice(0, -5))
 mkdirSync(outDir, { recursive: true })
 
 let failures = 0
@@ -179,5 +201,7 @@ for (const slug of slugs) {
 }
 const galleryPath = path.join(outDir, 'gallery.png')
 writeFileSync(galleryPath, gallery(rendered))
-console.log(`gallery (${rendered.map((r) => r.slug).join(', ')}): ${path.relative(root, galleryPath)}`)
+console.log(
+  `gallery (${rendered.map((r) => r.slug).join(', ')}): ${path.relative(root, galleryPath)}`
+)
 process.exit(failures ? 1 : 0)

@@ -10,7 +10,14 @@ import { mcpAddress } from '../../lib/mcpAddress'
 import { useAuth } from '../../hooks/useAuth'
 import { ReplayExcludedSurface } from '../../components/ReplayExcludedSurface'
 import { TelemetryPreferencesCard } from '../../components/settings/TelemetryPreferencesCard'
-import { Body, Caption, Display, SectionTitle, Supporting, numeric } from '../../components/Typography'
+import {
+  Body,
+  Caption,
+  Display,
+  SectionTitle,
+  Supporting,
+  numeric,
+} from '../../components/Typography'
 import type { AthleteAgeGroup } from '../../lib/sessionReplayGate'
 
 const STEPS = [
@@ -29,9 +36,12 @@ function AddressAction({ address }: { address: string }) {
   const [copied, setCopied] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  useEffect(() => () => {
-    if (timer.current) clearTimeout(timer.current)
-  }, [])
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current)
+    },
+    []
+  )
 
   const onPress = async () => {
     try {
@@ -53,30 +63,30 @@ function AddressAction({ address }: { address: string }) {
 
   return (
     <>
-    <Button
-      size="$3"
-      minH={44}
-      minW={112}
-      self="flex-start"
-      bg="transparent"
-      borderWidth={1}
-      borderColor="$borderColor"
-      pressStyle={{ bg: '$color3' }}
-      icon={<Icon size={16} color="$color12" />}
-      onPress={onPress}
-      testID="mcp-address-action"
-      aria-label={isWeb ? 'Copy connector address' : 'Share connector address'}
-    >
-      <Body fontWeight="600" fontSize={15}>
-        {label}
-      </Body>
-    </Button>
-    {isWeb ? (
-      // Mounted before the copy so screen readers pick up the change
-      <Text role="status" testID="mcp-address-status" style={styles.srOnly}>
-        {copied ? 'Connector address copied' : ''}
-      </Text>
-    ) : null}
+      <Button
+        size="$3"
+        minH={44}
+        minW={112}
+        self="flex-start"
+        bg="transparent"
+        borderWidth={1}
+        borderColor="$borderColor"
+        pressStyle={{ bg: '$color3' }}
+        icon={<Icon size={16} color="$color12" />}
+        onPress={onPress}
+        testID="mcp-address-action"
+        aria-label={isWeb ? 'Copy connector address' : 'Share connector address'}
+      >
+        <Body fontWeight="600" fontSize={15}>
+          {label}
+        </Body>
+      </Button>
+      {isWeb ? (
+        // Mounted before the copy so screen readers pick up the change
+        <Text role="status" testID="mcp-address-status" style={styles.srOnly}>
+          {copied ? 'Connector address copied' : ''}
+        </Text>
+      ) : null}
     </>
   )
 }
@@ -86,103 +96,94 @@ export default function AthleteSettingsScreen() {
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const { user, hasCompletedIntake } = useAuth()
-  const programState = useQuery(
-    api.userPrograms.getCurrentProgramState,
-    user ? {} : 'skip'
-  )
+  const programState = useQuery(api.userPrograms.getCurrentProgramState, user ? {} : 'skip')
 
   return (
     <ReplayExcludedSurface>
       <YStack flex={1} bg="$background">
-      <ScrollView
-        flex={1}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ pb: insets.bottom + 32 }}
-      >
-        <YStack
-          width="100%"
-          maxW={640}
-          self="center"
-          px="$4"
-          pt={insets.top + 4}
-          gap="$6"
+        <ScrollView
+          flex={1}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ pb: insets.bottom + 32 }}
         >
-          <YStack gap="$1">
-            <Pressable
-              // Explicit route: on web, back() can leave the app or land on Today
-              onPress={() => router.navigate('/(athlete)/profile')}
-              accessibilityRole="button"
-              accessibilityLabel="Back"
-              hitSlop={4}
-              style={styles.backButton}
-            >
-              <ChevronLeft size={28} color="$color12" />
-            </Pressable>
-            <Display>App Settings</Display>
-          </YStack>
+          <YStack width="100%" maxW={640} self="center" px="$4" pt={insets.top + 4} gap="$6">
+            <YStack gap="$1">
+              <Pressable
+                // Explicit route: on web, back() can leave the app or land on Today
+                onPress={() => router.navigate('/(athlete)/profile')}
+                accessibilityRole="button"
+                accessibilityLabel="Back"
+                hitSlop={4}
+                style={styles.backButton}
+              >
+                <ChevronLeft size={28} color="$color12" />
+              </Pressable>
+              <Display>App Settings</Display>
+            </YStack>
 
-          {user ? (
-            <TelemetryPreferencesCard
-              analyticsOptOut={user.analyticsOptOut === true}
-              sessionReplayOptIn={user.sessionReplayOptIn === true}
-              hasCompletedIntake={hasCompletedIntake}
-              ageGroup={(programState?.ageGroup ?? undefined) as AthleteAgeGroup | undefined}
-            />
-          ) : null}
+            {user ? (
+              <TelemetryPreferencesCard
+                analyticsOptOut={user.analyticsOptOut === true}
+                sessionReplayOptIn={user.sessionReplayOptIn === true}
+                hasCompletedIntake={hasCompletedIntake}
+                ageGroup={(programState?.ageGroup ?? undefined) as AthleteAgeGroup | undefined}
+              />
+            ) : null}
 
-          <YStack gap="$3">
-            <SectionTitle>Use with Claude</SectionTitle>
-            <Supporting>
-              Claude can read your program and, after you accept, reorder today&apos;s exercises or swap two days. Logging sets stays in this app.
-            </Supporting>
-            <Card
-              bg="$surface"
-              rounded="$4"
-              borderWidth={1}
-              borderColor="$borderColor"
-              overflow="hidden"
-            >
-              <YStack p="$4" gap="$3">
-                <YStack gap="$1">
-                  <Caption>Connector address</Caption>
-                  {address ? (
-                    <Body fontWeight="600" selectable testID="mcp-address">
-                      {address}
-                    </Body>
-                  ) : (
-                    <Body color="$color11">This build has no connector address.</Body>
-                  )}
-                </YStack>
-                {address ? <AddressAction address={address} /> : null}
-              </YStack>
-              <Separator borderColor="$borderColor" />
-              <YStack p="$4" gap="$4">
-                {STEPS.map((step, index) => (
-                  <XStack key={step} gap="$3" items="flex-start">
-                    <YStack
-                      width={28}
-                      height={28}
-                      rounded={14}
-                      borderWidth={1.5}
-                      borderColor="$color8"
-                      items="center"
-                      justify="center"
-                      shrink={0}
-                    >
-                      <Body fontWeight="700" fontSize={14} lineHeight={20} {...numeric}>
-                        {index + 1}
+            <YStack gap="$3">
+              <SectionTitle>Use with Claude</SectionTitle>
+              <Supporting>
+                Claude can read your program and, after you accept, reorder today&apos;s exercises
+                or swap two days. Logging sets stays in this app.
+              </Supporting>
+              <Card
+                bg="$surface"
+                rounded="$4"
+                borderWidth={1}
+                borderColor="$borderColor"
+                overflow="hidden"
+              >
+                <YStack p="$4" gap="$3">
+                  <YStack gap="$1">
+                    <Caption>Connector address</Caption>
+                    {address ? (
+                      <Body fontWeight="600" selectable testID="mcp-address">
+                        {address}
                       </Body>
-                    </YStack>
-                    <Body flex={1} pt={2}>
-                      {step}
-                    </Body>
-                  </XStack>
-                ))}
-              </YStack>
-            </Card>
+                    ) : (
+                      <Body color="$color11">This build has no connector address.</Body>
+                    )}
+                  </YStack>
+                  {address ? <AddressAction address={address} /> : null}
+                </YStack>
+                <Separator borderColor="$borderColor" />
+                <YStack p="$4" gap="$4">
+                  {STEPS.map((step, index) => (
+                    <XStack key={step} gap="$3" items="flex-start">
+                      <YStack
+                        width={28}
+                        height={28}
+                        rounded={14}
+                        borderWidth={1.5}
+                        borderColor="$color8"
+                        items="center"
+                        justify="center"
+                        shrink={0}
+                      >
+                        <Body fontWeight="700" fontSize={14} lineHeight={20} {...numeric}>
+                          {index + 1}
+                        </Body>
+                      </YStack>
+                      <Body flex={1} pt={2}>
+                        {step}
+                      </Body>
+                    </XStack>
+                  ))}
+                </YStack>
+              </Card>
+            </YStack>
           </YStack>
-        </YStack>
-      </ScrollView>
+        </ScrollView>
       </YStack>
     </ReplayExcludedSurface>
   )

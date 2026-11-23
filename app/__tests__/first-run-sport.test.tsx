@@ -28,7 +28,9 @@ jest.mock('react-native-safe-area-context', () => ({
 }))
 jest.mock('lottie-react-native', () => {
   const { View } = jest.requireActual('react-native')
-  return ({ autoPlay }: { autoPlay?: boolean }) => <View testID={autoPlay ? 'sport-icon-playing' : 'sport-icon-still'} />
+  return ({ autoPlay }: { autoPlay?: boolean }) => (
+    <View testID={autoPlay ? 'sport-icon-playing' : 'sport-icon-still'} />
+  )
 })
 jest.mock('react-native-reanimated', () => jest.requireActual('../../jest/reanimatedMock'))
 let mockReduced: boolean | null = false

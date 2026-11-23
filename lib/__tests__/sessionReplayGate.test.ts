@@ -33,10 +33,18 @@ describe('sessionReplayGate', () => {
 
   it('blocks recording when env flag, auth, intake, opt-out, or opt-in gate fails', () => {
     expect(shouldRecordSessionReplay({ ...VALID_ADULT_WEB_STATE, envEnabled: false })).toBe(false)
-    expect(shouldRecordSessionReplay({ ...VALID_ADULT_WEB_STATE, isAuthenticated: false })).toBe(false)
-    expect(shouldRecordSessionReplay({ ...VALID_ADULT_WEB_STATE, hasCompletedIntake: false })).toBe(false)
-    expect(shouldRecordSessionReplay({ ...VALID_ADULT_WEB_STATE, analyticsOptOut: true })).toBe(false)
-    expect(shouldRecordSessionReplay({ ...VALID_ADULT_WEB_STATE, sessionReplayOptIn: false })).toBe(false)
+    expect(shouldRecordSessionReplay({ ...VALID_ADULT_WEB_STATE, isAuthenticated: false })).toBe(
+      false
+    )
+    expect(shouldRecordSessionReplay({ ...VALID_ADULT_WEB_STATE, hasCompletedIntake: false })).toBe(
+      false
+    )
+    expect(shouldRecordSessionReplay({ ...VALID_ADULT_WEB_STATE, analyticsOptOut: true })).toBe(
+      false
+    )
+    expect(shouldRecordSessionReplay({ ...VALID_ADULT_WEB_STATE, sessionReplayOptIn: false })).toBe(
+      false
+    )
   })
 
   it('auto-stops on excluded routes even when all adult opt-in flags are true', () => {

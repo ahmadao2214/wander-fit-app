@@ -18,11 +18,7 @@ export type FeedbackCategory =
   | 'app_experience'
   | 'other'
 
-export type FeedbackSource =
-  | 'profile'
-  | 'error_boundary'
-  | 'workout_detail'
-  | 'workout_execute'
+export type FeedbackSource = 'profile' | 'error_boundary' | 'workout_detail' | 'workout_execute'
 
 export type CanonicalAnalyticsEvent =
   | '$screen'
@@ -137,22 +133,8 @@ export const EVENT_PROPERTY_ALLOWLIST: Record<CanonicalAnalyticsEvent, ReadonlyS
     'sport_category_id',
     'age_group',
   ]),
-  workout_opened: new Set([
-    'phase',
-    'week',
-    'day',
-    'intensity',
-    'is_redo',
-    'has_custom_order',
-  ]),
-  workout_started: new Set([
-    'trigger',
-    'phase',
-    'week',
-    'day',
-    'intensity',
-    'resumed',
-  ]),
+  workout_opened: new Set(['phase', 'week', 'day', 'intensity', 'is_redo', 'has_custom_order']),
+  workout_started: new Set(['trigger', 'phase', 'week', 'day', 'intensity', 'resumed']),
   workout_completed: new Set([
     'phase',
     'week',
@@ -163,13 +145,7 @@ export const EVENT_PROPERTY_ALLOWLIST: Record<CanonicalAnalyticsEvent, ReadonlyS
     'sets_skipped',
     'triggers_reassessment',
   ]),
-  workout_paused: new Set([
-    'phase',
-    'week',
-    'day',
-    'elapsed_seconds',
-    'sets_completed',
-  ]),
+  workout_paused: new Set(['phase', 'week', 'day', 'elapsed_seconds', 'sets_completed']),
   workout_abandoned: new Set(['phase', 'week', 'day']),
   feedback_submitted: new Set(['kind', 'stars', 'severity', 'category', 'source']),
 }

@@ -12,17 +12,17 @@ interface AuthGuardProps {
 
 /**
  * AuthGuard - Handles authentication and intake flow routing
- * 
+ *
  * Everyone is an athlete:
  * - After auth, check if intake is completed
  * - If no intake → redirect to intake flow
  * - If intake complete → allow access to athlete dashboard
  */
-export function AuthGuard({ 
-  children, 
-  requireAuth = true, 
+export function AuthGuard({
+  children,
+  requireAuth = true,
   requireIntake = true,
-  fallbackRoute = '/'
+  fallbackRoute = '/',
 }: AuthGuardProps) {
   const { isAuthenticated, isLoading, user, needsSetup } = useAuth()
 

@@ -52,8 +52,8 @@ export function RootErrorFallback({ onRetry }: RootErrorFallbackProps) {
       <View style={[styles.card, { backgroundColor: surface, borderColor: border }]}>
         <Text style={[styles.heading, { color: titleColor }]}>Something went wrong</Text>
         <Text style={[styles.body, { color: bodyColor }]}>
-          We hit an unexpected snag. Your training progress is safe — try reloading to pick up
-          where you left off.
+          We hit an unexpected snag. Your training progress is safe — try reloading to pick up where
+          you left off.
         </Text>
         <Pressable
           accessibilityRole="button"

@@ -17,7 +17,10 @@ jest.mock('convex/react', () => ({
 }))
 
 jest.mock('../../convex/_generated/api', () => ({
-  api: { users: { createUser: 'users.createUser' }, invitations: { acceptInvitation: 'invitations.acceptInvitation' } },
+  api: {
+    users: { createUser: 'users.createUser' },
+    invitations: { acceptInvitation: 'invitations.acceptInvitation' },
+  },
 }))
 
 jest.mock('expo-router', () => ({
@@ -25,7 +28,11 @@ jest.mock('expo-router', () => ({
   Link: ({ children }: { children: React.ReactNode }) => children,
 }))
 
-jest.mock('expo-web-browser', () => ({ maybeCompleteAuthSession: jest.fn(), warmUpAsync: jest.fn(), coolDownAsync: jest.fn() }))
+jest.mock('expo-web-browser', () => ({
+  maybeCompleteAuthSession: jest.fn(),
+  warmUpAsync: jest.fn(),
+  coolDownAsync: jest.fn(),
+}))
 jest.mock('expo-auth-session', () => ({ makeRedirectUri: () => 'myapp://' }))
 
 jest.mock('react-native-safe-area-context', () => ({
@@ -65,5 +72,4 @@ describe('Auth field labels', () => {
     const screen = render(<SignInScreen />, { wrapper: AllTheProviders })
     expect(screen.getByTestId('sign-in-wordmark').props.accessibilityLabel).toBe('Wander Fit')
   })
-
 })

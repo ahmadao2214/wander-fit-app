@@ -25,13 +25,7 @@ export function ScienceSection({
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
 
   return (
-    <Card
-      bg="$surface"
-      rounded="$4"
-      borderWidth={1}
-      borderColor="$borderColor"
-      overflow="hidden"
-    >
+    <Card bg="$surface" rounded="$4" borderWidth={1} borderColor="$borderColor" overflow="hidden">
       <Pressable
         onPress={() => setIsExpanded(!isExpanded)}
         accessibilityRole="button"
@@ -42,7 +36,9 @@ export function ScienceSection({
           <YStack bg={iconBgColor as any} p="$2" rounded="$10">
             <Icon size={20} color={iconColor} />
           </YStack>
-          <SectionTitle flex={1} accessibilityRole={undefined}>{title}</SectionTitle>
+          <SectionTitle flex={1} accessibilityRole={undefined}>
+            {title}
+          </SectionTitle>
           {isExpanded ? (
             <ChevronUp size={20} color="$color9" />
           ) : (

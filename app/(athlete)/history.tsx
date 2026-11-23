@@ -4,13 +4,7 @@ import { useRouter } from 'expo-router'
 import { api } from 'convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { 
-  Calendar,
-  Clock,
-  CheckCircle,
-  XCircle,
-  Dumbbell,
-} from '@tamagui/lucide-icons'
+import { Calendar, Clock, CheckCircle, XCircle, Dumbbell } from '@tamagui/lucide-icons'
 import { Display, Body, Supporting, Caption, numeric } from '../../components/Typography'
 import { progressCaption } from '../../lib/today'
 import { localDayArgs } from '../../lib/weeksOnPlan'
@@ -22,7 +16,7 @@ import { useCurrentDate } from '../../hooks/useCurrentDate'
 
 /**
  * History Tab - Completed Workouts Log
- * 
+ *
  * Shows all completed workout sessions with:
  * - Date and duration
  * - Workout name and phase
@@ -34,17 +28,17 @@ export default function HistoryPage() {
   // The athlete's local day, so weeks on plan follow their calendar
   const today = useCurrentDate()
 
-  const sessions = useQuery(
-    api.gppWorkoutSessions.getHistory,
-    user ? {} : "skip"
-  )
+  const sessions = useQuery(api.gppWorkoutSessions.getHistory, user ? {} : 'skip')
   // How much has been done: History is where progress lives (design audit F06)
   const progress = useQuery(
     api.userPrograms.getProgressSummary,
-    user ? localDayArgs(today) : "skip"
+    user ? localDayArgs(today) : 'skip'
   )
   const progressLine = progress
-    ? progressCaption({ workoutsCompleted: progress.daysCompleted, weeksOnPlan: progress.weeksOnPlan })
+    ? progressCaption({
+        workoutsCompleted: progress.daysCompleted,
+        weeksOnPlan: progress.weeksOnPlan,
+      })
     : null
   // A session still in progress belongs on Today, not in the log
   const finishedSessions = sessions?.filter((session) => session.status !== 'in_progress')
@@ -76,11 +70,7 @@ export default function HistoryPage() {
 
   return (
     <YStack flex={1} bg="$background">
-      <ScrollView
-        flex={1}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ grow: 1 }}
-      >
+      <ScrollView flex={1} showsVerticalScrollIndicator={false} contentContainerStyle={{ grow: 1 }}>
         <YStack
           flex={1}
           gap="$5"
@@ -147,14 +137,17 @@ export default function HistoryPage() {
                         {session.totalDurationSeconds ? (
                           <XStack items="center" gap="$1">
                             <Clock size={13} color="$color10" />
-                            <Caption style={numeric}>{formatDuration(session.totalDurationSeconds)}</Caption>
+                            <Caption style={numeric}>
+                              {formatDuration(session.totalDurationSeconds)}
+                            </Caption>
                           </XStack>
                         ) : null}
                         {session.templateSnapshot?.phase && (
                           <XStack items="center" gap="$1">
                             <Dumbbell size={13} color="$color10" />
                             <Caption>
-                              {session.templateSnapshot.phase} W{session.templateSnapshot.week}D{session.templateSnapshot.day}
+                              {session.templateSnapshot.phase} W{session.templateSnapshot.week}D
+                              {session.templateSnapshot.day}
                             </Caption>
                           </XStack>
                         )}
@@ -164,7 +157,13 @@ export default function HistoryPage() {
                     {/* Completed is the normal case: the green check says it, no chip.
                         An unfinished session gets a plain-language chip. */}
                     {session.status !== 'completed' && (
-                      <Card bg="$orange2" px="$2" py="$1" rounded="$2" testID="history-not-finished">
+                      <Card
+                        bg="$orange2"
+                        px="$2"
+                        py="$1"
+                        rounded="$2"
+                        testID="history-not-finished"
+                      >
                         <Caption fontWeight="600" color="$orange11">
                           Not finished
                         </Caption>

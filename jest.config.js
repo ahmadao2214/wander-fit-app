@@ -14,7 +14,8 @@ const moduleNameMapper = {
   '^convex/_generated/(.*)$': '<rootDir>/convex/_generated/$1',
   // babel/lucide-direct-imports.js imports each icon's own file, which the package's "exports"
   // doesn't list; point Jest at the file directly.
-  '^@tamagui/lucide-icons/dist/esm/icons/(.*)$': '<rootDir>/node_modules/@tamagui/lucide-icons/dist/esm/icons/$1',
+  '^@tamagui/lucide-icons/dist/esm/icons/(.*)$':
+    '<rootDir>/node_modules/@tamagui/lucide-icons/dist/esm/icons/$1',
 }
 
 module.exports = {
@@ -63,8 +64,10 @@ module.exports = {
       ],
       moduleNameMapper: {
         ...moduleNameMapper,
-        '^react-native/react-private-interface$': '<rootDir>/node_modules/react-native/src/react-private-interface.js',
-        '^react-native/setup-env$': '<rootDir>/node_modules/@react-native/jest-preset/jest/mocks/InitializeCore.js',
+        '^react-native/react-private-interface$':
+          '<rootDir>/node_modules/react-native/src/react-private-interface.js',
+        '^react-native/setup-env$':
+          '<rootDir>/node_modules/@react-native/jest-preset/jest/mocks/InitializeCore.js',
       },
       transformIgnorePatterns: [
         'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|@sentry/.*|native-base|react-native-svg|tamagui|@tamagui/.*)',

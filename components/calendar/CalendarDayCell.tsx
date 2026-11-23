@@ -2,7 +2,12 @@ import { useCallback, useRef, useEffect, useMemo } from 'react'
 import { YStack, XStack, Stack, Text } from 'tamagui'
 import { Body, Caption, Supporting, numeric } from '../Typography'
 import { View, LayoutChangeEvent, useWindowDimensions, type ViewInstance } from 'react-native'
-import { CalendarWorkoutCard, CalendarWorkoutCardProps, STACK_FONT_SCALE, type MoveTarget } from './CalendarWorkoutCard'
+import {
+  CalendarWorkoutCard,
+  CalendarWorkoutCardProps,
+  STACK_FONT_SCALE,
+  type MoveTarget,
+} from './CalendarWorkoutCard'
 import { DraggableWorkoutCard } from './DraggableWorkoutCard'
 import type { Phase } from '../../types'
 import { phaseTokens } from '../../lib/phase'
@@ -11,10 +16,25 @@ import { DAY_NAMES, DAY_NAMES_FULL } from '../../lib/calendarUtils'
 // At accessibility text sizes the date goes above the cards, not beside them
 export { STACK_FONT_SCALE }
 
-const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+const MONTH_NAMES = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+]
 
-
-export interface WorkoutWithSlot extends Omit<CalendarWorkoutCardProps, 'onPress' | 'onLongPress' | 'compact'> {
+export interface WorkoutWithSlot extends Omit<
+  CalendarWorkoutCardProps,
+  'onPress' | 'onLongPress' | 'compact'
+> {
   /** Slot info for drag-drop */
   slotPhase?: Phase
   slotWeek?: number
@@ -43,7 +63,10 @@ export interface CalendarDayCellProps {
   /** Whether this cell is a valid drop target (same week as source) */
   isValidDropTarget?: boolean
   /** Register this cell as a drop zone (date-based) */
-  onDropZoneLayout?: (dateISO: string, layout: { x: number; y: number; width: number; height: number }) => void
+  onDropZoneLayout?: (
+    dateISO: string,
+    layout: { x: number; y: number; width: number; height: number }
+  ) => void
   /** Unregister this cell as a drop zone (cleanup on unmount) */
   onDropZoneUnregister?: (dateISO: string) => void
   /** Category ID for color coding (1-4) */
@@ -116,12 +139,21 @@ export function CalendarDayCell({
   }, [dateISO, onDropZoneUnregister])
 
   // Handle long press on workout card to initiate drag
-  const handleWorkoutLongPress = useCallback((workout: WorkoutWithSlot) => {
-    if (workout.slotPhase && workout.slotWeek && workout.slotDay && !workout.isLocked && !workout.isCompleted) {
-      onDragStart?.(workout.slotPhase, workout.slotWeek, workout.slotDay)
-    }
-    onWorkoutLongPress?.(workout.templateId)
-  }, [onDragStart, onWorkoutLongPress])
+  const handleWorkoutLongPress = useCallback(
+    (workout: WorkoutWithSlot) => {
+      if (
+        workout.slotPhase &&
+        workout.slotWeek &&
+        workout.slotDay &&
+        !workout.isLocked &&
+        !workout.isCompleted
+      ) {
+        onDragStart?.(workout.slotPhase, workout.slotWeek, workout.slotDay)
+      }
+      onWorkoutLongPress?.(workout.templateId)
+    },
+    [onDragStart, onWorkoutLongPress]
+  )
 
   // Determine background color for compact (month) view
   // Priority: Blue (hovering) > Green (valid target) > Red (invalid) > Today
@@ -175,10 +207,7 @@ export function CalendarDayCell({
         }}
       >
         {/* Day number */}
-        <YStack
-          items="center"
-          pb="$0.5"
-        >
+        <YStack items="center" pb="$0.5">
           <YStack
             width={22}
             height={22}
@@ -203,9 +232,10 @@ export function CalendarDayCell({
           <YStack gap={2}>
             {workouts.slice(0, 3).map((workout, idx) => {
               const phaseColor = phaseTokens(workout.phase).fill
-              const slotKey = workout.slotPhase && workout.slotWeek && workout.slotDay
-                ? `${workout.slotPhase}-${workout.slotWeek}-${workout.slotDay}`
-                : workout.templateId
+              const slotKey =
+                workout.slotPhase && workout.slotWeek && workout.slotDay
+                  ? `${workout.slotPhase}-${workout.slotWeek}-${workout.slotDay}`
+                  : workout.templateId
 
               return (
                 <DraggableWorkoutCard
@@ -248,7 +278,9 @@ export function CalendarDayCell({
   const hasWorkouts = workouts.length > 0
   const isHovered = isDropTarget && isValidDropTarget
   const dateLabel = `${DAY_NAMES_FULL[date.getDay()]}, ${MONTH_NAMES[date.getMonth()]} ${dayNumber}`
-  const dayA11yLabel = [dateLabel, isToday ? 'today' : null, hasWorkouts ? null : 'rest day'].filter(Boolean).join(', ')
+  const dayA11yLabel = [dateLabel, isToday ? 'today' : null, hasWorkouts ? null : 'rest day']
+    .filter(Boolean)
+    .join(', ')
   const stacked = fontScale >= STACK_FONT_SCALE
 
   return (
@@ -267,7 +299,13 @@ export function CalendarDayCell({
         // Only during a drag: dashed outline on days that can take the
         // workout, a solid one on the day under your finger, and dimmed days
         // that can't (another week, or already past)
-        borderColor={isHovered ? '$primary' : isDragActive && isValidDropTarget ? '$borderColorHover' : 'transparent'}
+        borderColor={
+          isHovered
+            ? '$primary'
+            : isDragActive && isValidDropTarget
+              ? '$borderColorHover'
+              : 'transparent'
+        }
         bg={isHovered ? '$color3' : 'transparent'}
         opacity={isDragActive && !isValidDropTarget ? 0.4 : 1}
       >
@@ -281,7 +319,10 @@ export function CalendarDayCell({
           </XStack>
         ) : (
           <YStack width={40} items="center" accessible accessibilityLabel={dayA11yLabel}>
-            <Caption color={isToday ? '$primaryText' : '$color10'} fontWeight={isToday ? '600' : '400'}>
+            <Caption
+              color={isToday ? '$primaryText' : '$color10'}
+              fontWeight={isToday ? '600' : '400'}
+            >
               {DAY_NAMES[date.getDay()]}
             </Caption>
             <YStack
@@ -302,9 +343,10 @@ export function CalendarDayCell({
         {hasWorkouts ? (
           <YStack flex={1} minW={0} gap="$2">
             {workouts.map((workout, idx) => {
-              const slotKey = workout.slotPhase && workout.slotWeek && workout.slotDay
-                ? `${workout.slotPhase}-${workout.slotWeek}-${workout.slotDay}`
-                : workout.templateId
+              const slotKey =
+                workout.slotPhase && workout.slotWeek && workout.slotDay
+                  ? `${workout.slotPhase}-${workout.slotWeek}-${workout.slotDay}`
+                  : workout.templateId
 
               return (
                 <DraggableWorkoutCard
@@ -333,7 +375,12 @@ export function CalendarDayCell({
             })}
           </YStack>
         ) : (
-          <Supporting flex={stacked ? undefined : 1} color="$color10" importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+          <Supporting
+            flex={stacked ? undefined : 1}
+            color="$color10"
+            importantForAccessibility="no-hide-descendants"
+            accessibilityElementsHidden
+          >
             Rest
           </Supporting>
         )}

@@ -19,7 +19,9 @@ jest.mock('expo-router', () => ({
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 44, bottom: 34, left: 0, right: 0 }),
 }))
-jest.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { _id: 'u1' }, isLoading: false }) }))
+jest.mock('../../hooks/useAuth', () => ({
+  useAuth: () => ({ user: { _id: 'u1' }, isLoading: false }),
+}))
 jest.mock('../../components/calendar', () => ({ WorkoutCalendar: () => null }))
 jest.mock('../../components/program/ProgramSeasonHeader', () => ({
   ProgramSeasonHeader: ({ welcome, next }: { welcome: boolean; next?: string }) => {
@@ -31,7 +33,9 @@ jest.mock('../../components/program/ProgramSeasonHeader', () => ({
 // eslint-disable-next-line import/first
 import ProgramPage from '../(athlete)/program'
 
-const wrapper = ({ children }: { children: React.ReactNode }) => <TamaguiProvider config={config}>{children}</TamaguiProvider>
+const wrapper = ({ children }: { children: React.ReactNode }) => (
+  <TamaguiProvider config={config}>{children}</TamaguiProvider>
+)
 
 beforeEach(() => {
   mockSetParams.mockClear()
@@ -45,7 +49,11 @@ describe('Program tab, first visit after saving', () => {
     expect(getByTestId('header').props.children).toBe('true|Tomorrow')
     expect(mockSetParams).not.toHaveBeenCalled()
     mockBlur?.()
-    expect(mockSetParams).toHaveBeenCalledWith({ welcome: undefined, kept: undefined, next: undefined })
+    expect(mockSetParams).toHaveBeenCalledWith({
+      welcome: undefined,
+      kept: undefined,
+      next: undefined,
+    })
   })
 
   it('leaves the params alone on an ordinary visit', () => {

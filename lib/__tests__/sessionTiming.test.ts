@@ -13,7 +13,9 @@ describe('activeSeconds', () => {
   })
 
   it('stops at the pause while the session is still paused', () => {
-    expect(activeSeconds({ startedAt: start, pausedAt: start + 5 * MIN }, start + 24 * 60 * MIN)).toBe(300)
+    expect(
+      activeSeconds({ startedAt: start, pausedAt: start + 5 * MIN }, start + 24 * 60 * MIN)
+    ).toBe(300)
   })
 
   it('never goes negative', () => {
@@ -23,11 +25,18 @@ describe('activeSeconds', () => {
 
 describe('pausedSecondsAfterResume', () => {
   it('adds the length of the pause that just ended', () => {
-    expect(pausedSecondsAfterResume({ startedAt: start, pausedAt: start + MIN, pausedSeconds: 30 }, start + 3 * MIN)).toBe(150)
+    expect(
+      pausedSecondsAfterResume(
+        { startedAt: start, pausedAt: start + MIN, pausedSeconds: 30 },
+        start + 3 * MIN
+      )
+    ).toBe(150)
   })
 
   it('keeps the total when the session is not paused', () => {
-    expect(pausedSecondsAfterResume({ startedAt: start, pausedSeconds: 30 }, start + 3 * MIN)).toBe(30)
+    expect(pausedSecondsAfterResume({ startedAt: start, pausedSeconds: 30 }, start + 3 * MIN)).toBe(
+      30
+    )
   })
 })
 
@@ -43,6 +52,8 @@ describe('pausedLabel', () => {
   })
 
   it('names the date for an older pause', () => {
-    expect(pausedLabel(new Date(2026, 10, 10, 12, 0, 0).getTime(), now)).toBe('Paused Tuesday, Nov 10')
+    expect(pausedLabel(new Date(2026, 10, 10, 12, 0, 0).getTime(), now)).toBe(
+      'Paused Tuesday, Nov 10'
+    )
   })
 })

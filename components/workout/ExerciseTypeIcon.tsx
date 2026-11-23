@@ -4,7 +4,7 @@ import { isCardioExercise } from '../../lib'
 
 /**
  * ExerciseTypeIcon - Simple icon based on exercise tags
- * 
+ *
  * Two-icon approach:
  * - Dumbbell: Default for all strength/resistance exercises
  * - Footprints: For cardio/movement exercises

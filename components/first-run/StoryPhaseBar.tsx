@@ -1,6 +1,11 @@
 import { useEffect } from 'react'
 import { Pressable, Text as RNText, View } from 'react-native'
-import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated'
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated'
 import { NIGHT_PHASE_FILL, STORY_PHASES } from '../../lib/firstRunStory'
 import type { Phase } from '../../types'
 import { BODY_BOLD, DISPLAY } from './Night'
@@ -13,7 +18,12 @@ export const PHASE_BAR_HEIGHT = 68
  * caption below says how long each phase runs, or "GPP · Wk 1–4" with ranges
  * on the Program tab.
  */
-export function phaseDetail(phase: Phase, index: number, weeksPerPhase: number, ranges: boolean): string {
+export function phaseDetail(
+  phase: Phase,
+  index: number,
+  weeksPerPhase: number,
+  ranges: boolean
+): string {
   if (!ranges) return phase
   const from = index * weeksPerPhase + 1
   const to = (index + 1) * weeksPerPhase
@@ -78,13 +88,29 @@ function Segment({
         style,
       ]}
     >
-      <RNText numberOfLines={2} style={{ fontFamily: DISPLAY, fontSize: 17, lineHeight: 17, color: '#FFFFFF', letterSpacing: 0.6 }}>
+      <RNText
+        numberOfLines={2}
+        style={{
+          fontFamily: DISPLAY,
+          fontSize: 17,
+          lineHeight: 17,
+          color: '#FFFFFF',
+          letterSpacing: 0.6,
+        }}
+      >
         {label}
       </RNText>
-      <RNText style={{ fontFamily: BODY_BOLD, fontSize: 12, color: '#FFFFFF', opacity: 0.9 }}>{detail}</RNText>
+      <RNText style={{ fontFamily: BODY_BOLD, fontSize: 12, color: '#FFFFFF', opacity: 0.9 }}>
+        {detail}
+      </RNText>
     </Animated.View>
   )
-  if (!onPress) return <View style={{ flex: 1 }} accessible accessibilityLabel={spoken}>{body}</View>
+  if (!onPress)
+    return (
+      <View style={{ flex: 1 }} accessible accessibilityLabel={spoken}>
+        {body}
+      </View>
+    )
   return (
     <Pressable
       onPress={onPress}

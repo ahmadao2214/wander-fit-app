@@ -137,9 +137,7 @@ describe('scripts/build-web.mjs helpers', () => {
     expect(
       extractBundleDebugId(`const fake = "//# debugId=${validUuid}";\nconsole.log(fake);\n`)
     ).toBeNull()
-    expect(
-      extractBundleDebugId(`const tpl = \`\n//# debugId=${validUuid}\n\`;\n`)
-    ).toBeNull()
+    expect(extractBundleDebugId(`const tpl = \`\n//# debugId=${validUuid}\n\`;\n`)).toBeNull()
     expect(
       extractBundleDebugId(`const fakeAssign = '_sentryDebugIds[x]="${validUuid}"';\n`)
     ).toBeNull()

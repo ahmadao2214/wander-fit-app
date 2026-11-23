@@ -16,7 +16,7 @@ jest.mock('react-native-safe-area-context', () => ({
 const mockExercises: WarmupExercise[] = [
   {
     exerciseId: 'ex1' as any,
-    name: 'World\'s Greatest Stretch',
+    name: "World's Greatest Stretch",
     sets: 1,
     reps: '8 each side',
     restSeconds: 0,
@@ -191,12 +191,7 @@ describe('WarmupSection', () => {
 
   it('handles empty exercise list', () => {
     const { getByText } = render(
-      <WarmupSection
-        exercises={[]}
-        totalDuration={0}
-        onComplete={mockOnComplete}
-        mode="flow"
-      />,
+      <WarmupSection exercises={[]} totalDuration={0} onComplete={mockOnComplete} mode="flow" />,
       { wrapper: AllTheProviders }
     )
     expect(getByText('Start Workout')).toBeTruthy()
@@ -347,7 +342,7 @@ describe('WarmupSection', () => {
 
     // Exercises for that phase should be hidden
     expect(queryByText("World's Greatest Stretch")).toBeNull()
-    expect(queryByText("Hip Circles")).toBeNull()
+    expect(queryByText('Hip Circles')).toBeNull()
   })
 
   it('"Start Workout" button shows progress count when phases are checked', () => {
@@ -588,7 +583,12 @@ describe('WarmupSection', () => {
 
   it('preview summarizes a phase-less warmup without zero counts', () => {
     const { getByText, queryByText } = render(
-      <WarmupSection exercises={legacyWarmup} totalDuration={0} onComplete={mockOnComplete} mode="preview" />,
+      <WarmupSection
+        exercises={legacyWarmup}
+        totalDuration={0}
+        onComplete={mockOnComplete}
+        mode="preview"
+      />,
       { wrapper: AllTheProviders }
     )
     expect(getByText('1 exercise')).toBeTruthy()
@@ -597,7 +597,12 @@ describe('WarmupSection', () => {
 
   it('preview lists phase-less exercises when expanded', () => {
     const { getByText } = render(
-      <WarmupSection exercises={legacyWarmup} totalDuration={0} onComplete={mockOnComplete} mode="preview" />,
+      <WarmupSection
+        exercises={legacyWarmup}
+        totalDuration={0}
+        onComplete={mockOnComplete}
+        mode="preview"
+      />,
       { wrapper: AllTheProviders }
     )
     fireEvent.press(getByText('Warmup'))
@@ -606,7 +611,12 @@ describe('WarmupSection', () => {
 
   it('flow shows phase-less exercises instead of an empty screen', () => {
     const { getByText } = render(
-      <WarmupSection exercises={legacyWarmup} totalDuration={0} onComplete={mockOnComplete} mode="flow" />,
+      <WarmupSection
+        exercises={legacyWarmup}
+        totalDuration={0}
+        onComplete={mockOnComplete}
+        mode="flow"
+      />,
       { wrapper: AllTheProviders }
     )
     expect(getByText('Cat-Cow')).toBeTruthy()

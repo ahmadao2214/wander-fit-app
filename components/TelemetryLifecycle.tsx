@@ -9,8 +9,7 @@ import { analytics, type TelemetryPlatform } from '../lib/analytics'
 import { normalizeRouteSegments } from '../lib/analyticsRoutes'
 import type { AthleteAgeGroup } from '../lib/sessionReplayGate'
 
-const useIsomorphicLayoutEffect =
-  typeof window !== 'undefined' ? useLayoutEffect : useEffect
+const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect
 
 function currentPlatform(): TelemetryPlatform {
   if (Platform.OS === 'ios' || Platform.OS === 'android') return Platform.OS
@@ -34,10 +33,7 @@ export function TelemetryLifecycle() {
   const segments = useSegments()
   const { user, isAuthenticated, isLoading, needsSetup, hasCompletedIntake } = useAuth()
 
-  const programState = useQuery(
-    api.userPrograms.getCurrentProgramState,
-    user ? {} : 'skip'
-  )
+  const programState = useQuery(api.userPrograms.getCurrentProgramState, user ? {} : 'skip')
 
   const wasSignedInRef = useRef(false)
   const lastOptOutRef = useRef(false)
@@ -45,8 +41,7 @@ export function TelemetryLifecycle() {
   // Hold SDK init and capture until auth + persisted opt-out resolve on cold launch (S3).
   // A signed-in athlete with no Convex user row yet (needsSetup) has no persisted
   // preference, so they capture anonymously; identify and replay stay gated on user._id (S19).
-  const authResolved =
-    !isLoading && (!isAuthenticated || Boolean(user?._id) || needsSetup)
+  const authResolved = !isLoading && (!isAuthenticated || Boolean(user?._id) || needsSetup)
   const routeSegments = segments as readonly string[]
   const normalizedRoute = normalizeRouteSegments(routeSegments)
   const ageGroup = (programState?.ageGroup ?? undefined) as AthleteAgeGroup | undefined

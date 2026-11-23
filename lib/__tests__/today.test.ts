@@ -1,4 +1,10 @@
-import { todayHeading, phaseWeekSegments, progressCaption, countMainExercises, msUntilNextMidnight } from '../today'
+import {
+  todayHeading,
+  phaseWeekSegments,
+  progressCaption,
+  countMainExercises,
+  msUntilNextMidnight,
+} from '../today'
 
 describe('todayHeading', () => {
   it('names the weekday, short month and day', () => {
@@ -34,7 +40,9 @@ describe('progressCaption', () => {
     expect(progressCaption({ workoutsCompleted: 1 })).toBe('1 workout done')
     expect(progressCaption({ workoutsCompleted: 3, weeksOnPlan: 0 })).toBe('3 workouts done')
     expect(progressCaption({ workoutsCompleted: 3, weeksOnPlan: 1 })).toBe('3 workouts done')
-    expect(progressCaption({ workoutsCompleted: 5, weeksOnPlan: 2 })).toBe('5 workouts done · 2 weeks on plan')
+    expect(progressCaption({ workoutsCompleted: 5, weeksOnPlan: 2 })).toBe(
+      '5 workouts done · 2 weeks on plan'
+    )
   })
 })
 

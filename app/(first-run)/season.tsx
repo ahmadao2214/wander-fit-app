@@ -3,13 +3,25 @@ import { Pressable, Text as RNText, View, useWindowDimensions } from 'react-nati
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { ChevronLeft, ChevronRight } from '@tamagui/lucide-icons'
 import { IntakeFrame } from '../../components/first-run/IntakeFrame'
-import { BODY, BODY_BOLD, BODY_SEMI, DISPLAY, Headline, headlineSize } from '../../components/first-run/Night'
+import {
+  BODY,
+  BODY_BOLD,
+  BODY_SEMI,
+  DISPLAY,
+  Headline,
+  headlineSize,
+} from '../../components/first-run/Night'
 import { useIntakeMotion } from '../../components/first-run/useIntakeMotion'
 import { useIntakeSport } from '../../components/first-run/useIntakeSport'
 import { useReachStep } from '../../components/first-run/useReachStep'
 import { useFirstRunDraft } from '../../hooks/useFirstRunDraft'
 import { analytics, FIRST_RUN_STEP_INDEX } from '../../lib/analytics'
-import { DEFAULT_SEASON_WEEKS, MAX_SEASON_WEEKS, seasonStartForWeeks, weeksUntilSeason } from '../../lib/firstRun'
+import {
+  DEFAULT_SEASON_WEEKS,
+  MAX_SEASON_WEEKS,
+  seasonStartForWeeks,
+  weeksUntilSeason,
+} from '../../lib/firstRun'
 import { NIGHT, monthGrid } from '../../lib/firstRunStory'
 import { selectionFeedback } from '../../lib/haptics'
 
@@ -23,8 +35,14 @@ function monthOf(iso: string): { y: number; m: number } {
 }
 
 /** Months the picker can show: this one through the last one inside `MAX_SEASON_WEEKS`. */
-export function monthBounds(now: Date): { first: { y: number; m: number }; last: { y: number; m: number } } {
-  return { first: { y: now.getFullYear(), m: now.getMonth() }, last: monthOf(seasonStartForWeeks(MAX_SEASON_WEEKS, now)) }
+export function monthBounds(now: Date): {
+  first: { y: number; m: number }
+  last: { y: number; m: number }
+} {
+  return {
+    first: { y: now.getFullYear(), m: now.getMonth() },
+    last: monthOf(seasonStartForWeeks(MAX_SEASON_WEEKS, now)),
+  }
 }
 
 /** Question 2: when the first game is, on a month calendar. It sets the length of each phase. */
@@ -60,7 +78,10 @@ export default function FirstRunSeason() {
   const canNext = month.y * 12 + month.m < bounds.last.y * 12 + bounds.last.m
   const latest = seasonStartForWeeks(MAX_SEASON_WEEKS, now)
   const cells = monthGrid(month.y, month.m, now)
-  const title = new Date(month.y, month.m, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  const title = new Date(month.y, month.m, 1).toLocaleDateString('en-US', {
+    month: 'long',
+    year: 'numeric',
+  })
 
   const pick = (iso: string) => {
     selectionFeedback()
@@ -100,31 +121,60 @@ export default function FirstRunSeason() {
       <View style={{ opacity: noSeason ? 0.35 : 1, marginTop: 12 }}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 12 }}>
           <RNText
-            style={{ fontFamily: DISPLAY, fontSize: 88, lineHeight: 80, paddingTop: 9, color: NIGHT.fg, fontVariant: ['tabular-nums'] }}
+            style={{
+              fontFamily: DISPLAY,
+              fontSize: 88,
+              lineHeight: 80,
+              paddingTop: 9,
+              color: NIGHT.fg,
+              fontVariant: ['tabular-nums'],
+            }}
             testID="season-weeks"
             accessibilityLabel={`${weeks} ${weeks === 1 ? 'week' : 'weeks'} away`}
             accessibilityLiveRegion="polite"
           >
             {weeks}
           </RNText>
-          <RNText style={{ fontFamily: DISPLAY, fontSize: 30, lineHeight: 30, color: NIGHT.fg2, paddingBottom: 12 }}>
+          <RNText
+            style={{
+              fontFamily: DISPLAY,
+              fontSize: 30,
+              lineHeight: 30,
+              color: NIGHT.fg2,
+              paddingBottom: 12,
+            }}
+          >
             {weeks === 1 ? 'WEEK\nAWAY' : 'WEEKS\nAWAY'}
           </RNText>
         </View>
 
-        <View style={{ marginTop: 8, padding: 8, borderRadius: 12, backgroundColor: NIGHT.ink2 }} testID="season-calendar">
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <View
+          style={{ marginTop: 8, padding: 8, borderRadius: 12, backgroundColor: NIGHT.ink2 }}
+          testID="season-calendar"
+        >
+          <View
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+          >
             <Pressable
               onPress={() => canPrev && shift(-1)}
               disabled={!canPrev}
               accessibilityRole="button"
               accessibilityLabel="Previous month"
               testID="season-prev-month"
-              style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', opacity: canPrev ? 1 : 0.3 }}
+              style={{
+                width: 44,
+                height: 44,
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: canPrev ? 1 : 0.3,
+              }}
             >
               <ChevronLeft size={22} color={NIGHT.fg} />
             </Pressable>
-            <RNText style={{ fontFamily: DISPLAY, fontSize: 26, color: NIGHT.fg, letterSpacing: 0.8 }} testID="season-month">
+            <RNText
+              style={{ fontFamily: DISPLAY, fontSize: 26, color: NIGHT.fg, letterSpacing: 0.8 }}
+              testID="season-month"
+            >
               {title.toUpperCase()}
             </RNText>
             <Pressable
@@ -133,7 +183,13 @@ export default function FirstRunSeason() {
               accessibilityRole="button"
               accessibilityLabel="Next month"
               testID="season-next-month"
-              style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', opacity: canNext ? 1 : 0.3 }}
+              style={{
+                width: 44,
+                height: 44,
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: canNext ? 1 : 0.3,
+              }}
             >
               <ChevronRight size={22} color={NIGHT.fg} />
             </Pressable>
@@ -142,7 +198,14 @@ export default function FirstRunSeason() {
             {WEEKDAYS.map((d, i) => (
               <RNText
                 key={i}
-                style={{ flex: 1, textAlign: 'center', fontFamily: BODY_BOLD, fontSize: 12, color: NIGHT.fg2, paddingVertical: 6 }}
+                style={{
+                  flex: 1,
+                  textAlign: 'center',
+                  fontFamily: BODY_BOLD,
+                  fontSize: 12,
+                  color: NIGHT.fg2,
+                  paddingVertical: 6,
+                }}
               >
                 {d}
               </RNText>
@@ -150,7 +213,8 @@ export default function FirstRunSeason() {
           </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
             {cells.map((c, i) => {
-              if (!c) return <View key={`e${i}`} style={{ width: `${100 / 7}%`, height: DAY_ROW }} />
+              if (!c)
+                return <View key={`e${i}`} style={{ width: `${100 / 7}%`, height: DAY_ROW }} />
               const disabled = c.disabled || c.iso > latest
               const on = !noSeason && c.iso === picked
               const label = new Date(month.y, month.m, c.day).toLocaleDateString('en-US', {
@@ -167,7 +231,12 @@ export default function FirstRunSeason() {
                   accessibilityState={{ selected: on, disabled }}
                   accessibilityLabel={label}
                   testID={`season-day-${c.iso}`}
-                  style={{ width: `${100 / 7}%`, height: DAY_ROW, alignItems: 'center', justifyContent: 'center' }}
+                  style={{
+                    width: `${100 / 7}%`,
+                    height: DAY_ROW,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
                 >
                   <View
                     style={{
@@ -219,8 +288,12 @@ export default function FirstRunSeason() {
         })}
       >
         <View>
-          <RNText style={{ fontFamily: BODY_SEMI, fontSize: 15, color: NIGHT.fg }}>No set season</RNText>
-          <RNText style={{ fontFamily: BODY, fontSize: 13, color: NIGHT.fg2, marginTop: 2 }}>We'll build a 12-week plan</RNText>
+          <RNText style={{ fontFamily: BODY_SEMI, fontSize: 15, color: NIGHT.fg }}>
+            No set season
+          </RNText>
+          <RNText style={{ fontFamily: BODY, fontSize: 13, color: NIGHT.fg2, marginTop: 2 }}>
+            We'll build a 12-week plan
+          </RNText>
         </View>
         <View
           style={{

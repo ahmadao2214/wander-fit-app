@@ -113,7 +113,10 @@ export function tilt(degrees = 8) {
 
 /** Hanging objects swing from their pivot and settle, on the same beats. */
 export function swing(degrees = 14) {
-  const keys = [{ t: 0, v: 0 }, { t: BEATS.restUntil, v: 0, ease: EASE.inOut }]
+  const keys = [
+    { t: 0, v: 0 },
+    { t: BEATS.restUntil, v: 0, ease: EASE.inOut },
+  ]
   const swings = [1, -0.7, 0.45, -0.25, 0.1]
   swings.forEach((share, index) => {
     keys.push({ t: BEATS.squashAt + 4 + index * 14, v: degrees * share, ease: EASE.inOut })
@@ -144,7 +147,7 @@ export function scaleTrack(keys, rest = [100, 100]) {
   const pad = (v) => [v[0], v[1], 100]
   return track(
     keys.map((k) => ({ ...k, v: pad(k.v) })),
-    { rest: pad(rest), end: pad(rest) },
+    { rest: pad(rest), end: pad(rest) }
   )
 }
 
@@ -173,7 +176,13 @@ export const REST_CENTER_Y = STAGE.groundY - STAGE.objectRadius
  * - `height` and `squash`: scale the hops and squash for heavier or rigid objects.
  * - `still`: no hop at all (for objects that animate their own parts).
  */
-export function rigTransform({ artRadius, bottom = artRadius, height = 1, squash = 1, still = false }) {
+export function rigTransform({
+  artRadius,
+  bottom = artRadius,
+  height = 1,
+  squash = 1,
+  still = false,
+}) {
   const scale = (STAGE.objectRadius / artRadius) * 100
   const groundY = REST_CENTER_Y + (bottom * scale) / 100
   if (still) {
