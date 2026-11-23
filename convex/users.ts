@@ -2,7 +2,7 @@ import { action, internalMutation, internalQuery, mutation, query } from './_gen
 import type { MutationCtx, QueryCtx } from './_generated/server'
 import { ConvexError, v } from 'convex/values'
 import { internal } from './_generated/api'
-import type { Doc, Id } from './_generated/dataModel'
+import type { Doc, Id, TableNames } from './_generated/dataModel'
 import { getCurrentUser as getCurrentUserDoc, requireCurrentUser } from './authHelpers'
 
 // Create a new user after Clerk authentication
@@ -213,47 +213,84 @@ export const accountDeletionBlocker = internalQuery({
   },
 })
 
-async function collectAthleteDocs(ctx: MutationCtx, user: Doc<'users'>) {
-  const byUser = await Promise.all(
-    ATHLETE_TABLES.map((table) =>
+/**
+ * Rows deleted per run of the purge. An athlete's history has no lifetime cap,
+ * so one mutation can't promise to read and delete all of it.
+ */
+export const PURGE_BATCH_SIZE = 200
+
+/**
+ * Up to `limit` of the athlete's rows. `verifiedEmail` is the address Clerk
+ * vouched for: invitations are matched on it, never on `users.email`, which
+ * the athlete can edit to anyone's address (`updateUser`).
+ */
+async function takeAthleteDocs(
+  ctx: MutationCtx,
+  user: Doc<'users'>,
+  verifiedEmail: string | undefined,
+  limit: number
+) {
+  const sources: Array<(n: number) => Promise<Array<{ _id: Id<TableNames> }>>> = [
+    ...ATHLETE_TABLES.map(
+      (table) => (n: number) =>
+        ctx.db
+          .query(table)
+          .withIndex('by_user', (q) => q.eq('userId', user._id))
+          .take(n)
+    ),
+    (n) =>
       ctx.db
-        .query(table)
-        .withIndex('by_user', (q) => q.eq('userId', user._id))
-        .collect()
+        .query('workouts')
+        .withIndex('by_client', (q) => q.eq('clientId', user._id))
+        .take(n),
+    (n) =>
+      ctx.db
+        .query('workoutSessions')
+        .withIndex('by_client', (q) => q.eq('clientId', user._id))
+        .take(n),
+    (n) =>
+      ctx.db
+        .query('trainerClientRelationships')
+        .withIndex('by_client', (q) => q.eq('clientId', user._id))
+        .take(n),
+  ]
+  if (verifiedEmail) {
+    sources.push((n) =>
+      ctx.db
+        .query('clientInvitations')
+        .withIndex('by_email', (q) => q.eq('email', verifiedEmail))
+        .take(n)
     )
-  )
-  const legacy = await Promise.all([
-    ctx.db
-      .query('workouts')
-      .withIndex('by_client', (q) => q.eq('clientId', user._id))
-      .collect(),
-    ctx.db
-      .query('workoutSessions')
-      .withIndex('by_client', (q) => q.eq('clientId', user._id))
-      .collect(),
-    ctx.db
-      .query('trainerClientRelationships')
-      .withIndex('by_client', (q) => q.eq('clientId', user._id))
-      .collect(),
-    ctx.db
-      .query('clientInvitations')
-      .withIndex('by_email', (q) => q.eq('email', user.email))
-      .collect(),
-  ])
-  return [...byUser.flat(), ...legacy.flat()]
+  }
+
+  const docs: Array<{ _id: Id<TableNames> }> = []
+  for (const take of sources) {
+    if (docs.length >= limit) break
+    docs.push(...(await take(limit - docs.length)))
+  }
+  return docs
 }
 
 /**
- * Deletes every Convex record of the athlete with this Clerk id, then the
- * users row. No users row means it already ran: returns alreadyGone.
+ * Deletes the Convex records of the athlete with this Clerk id, then the users
+ * row. It deletes PURGE_BATCH_SIZE rows per run and reschedules itself until
+ * none are left; the users row goes last, so a retry can always find the rest.
+ * No users row means it already ran: returns alreadyGone.
  * Refuses (throws) when the account owns legacy trainer data.
+ *
+ * Legacy invitations are deleted only for `verifiedEmail`. The `user.deleted`
+ * webhook carries no email, so that path leaves them (docs/CLERK_USER_CLEANUP.md).
  */
 export const purgeAthleteRecords = internalMutation({
-  args: { clerkId: v.string() },
+  args: { clerkId: v.string(), verifiedEmail: v.optional(v.string()) },
   handler: async (
     ctx,
-    { clerkId }
-  ): Promise<{ deleted: false; alreadyGone: true } | { deleted: true; dependentDocs: number }> => {
+    { clerkId, verifiedEmail }
+  ): Promise<
+    | { deleted: false; alreadyGone: true }
+    | { deleted: false; inProgress: true; dependentDocs: number }
+    | { deleted: true; dependentDocs: number }
+  > => {
     const user = await findUserByClerkId(ctx, clerkId)
     if (!user) return { deleted: false, alreadyGone: true }
 
@@ -261,8 +298,17 @@ export const purgeAthleteRecords = internalMutation({
       throw trainerDataError()
     }
 
-    const docs = await collectAthleteDocs(ctx, user)
+    const docs = await takeAthleteDocs(ctx, user, verifiedEmail, PURGE_BATCH_SIZE)
     for (const doc of docs) await ctx.db.delete(doc._id)
+
+    if (docs.length >= PURGE_BATCH_SIZE) {
+      await ctx.scheduler.runAfter(0, internal.users.purgeAthleteRecords, {
+        clerkId,
+        verifiedEmail,
+      })
+      return { deleted: false, inProgress: true, dependentDocs: docs.length }
+    }
+
     await ctx.db.delete(user._id)
 
     // Anonymous analytics are keyed by the users id. No-ops until PostHog is
@@ -307,7 +353,12 @@ export const deleteMyAccount = action({
       throw new Error('Could not delete your account. Try again.')
     }
 
-    await ctx.runMutation(internal.users.purgeAthleteRecords, { clerkId })
+    // A long history finishes in scheduled follow-up runs of the same purge.
+    await ctx.runMutation(internal.users.purgeAthleteRecords, {
+      clerkId,
+      // Only an address Clerk verified may pick which invitations go.
+      verifiedEmail: identity.emailVerified === true ? identity.email : undefined,
+    })
     return { deleted: true }
   },
 })

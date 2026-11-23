@@ -2,6 +2,7 @@ import { convexTest } from 'convex-test'
 import { ConvexError } from 'convex/values'
 import schema from '../schema'
 import { api, internal } from '../_generated/api'
+import { PURGE_BATCH_SIZE } from '../users'
 import type { Id, TableNames } from '../_generated/dataModel'
 import { convexModules } from '../../jest/convexModules'
 
@@ -271,11 +272,57 @@ describe('users.purgeAthleteRecords', () => {
 
     const result = await t.mutation(internal.users.purgeAthleteRecords, {
       clerkId: 'clerk_athlete',
+      verifiedEmail: 'athlete@example.com',
     })
 
     expect(result).toEqual({ deleted: true, dependentDocs: PURGED_TABLES.length })
     expect(await rowsFor(t, athlete, 'athlete@example.com')).toEqual(allZero)
     expect(await rowsFor(t, bystander, 'bystander@example.com')).toEqual(allOne)
+  })
+
+  it('leaves invitations alone without a verified email, even when users.email matches', async () => {
+    const { t, athlete, bystander } = await setup()
+    // The athlete points their editable profile email at someone else's address.
+    await t.run((ctx) => ctx.db.patch(athlete, { email: 'bystander@example.com' }))
+
+    await t.mutation(internal.users.purgeAthleteRecords, { clerkId: 'clerk_athlete' })
+
+    expect(await t.run((ctx) => ctx.db.get(athlete))).toBeNull()
+    const invitations = await t.run((ctx) => ctx.db.query('clientInvitations').collect())
+    expect(invitations.map((row) => row.email).sort()).toEqual([
+      'athlete@example.com',
+      'bystander@example.com',
+    ])
+    expect((await rowsFor(t, bystander, 'bystander@example.com')).users).toBe(1)
+  })
+
+  it('purges a long history in batches and deletes the users row last', async () => {
+    const { t, athlete } = await setup()
+    const extra = PURGE_BATCH_SIZE * 2 + 5
+    await t.run(async (ctx) => {
+      const exercise = await ctx.db.query('exercises').first()
+      for (let i = 0; i < extra; i++) {
+        await ctx.db.insert('user_maxes', {
+          userId: athlete,
+          exerciseId: exercise!._id,
+          oneRepMax: 100 + i,
+          source: 'user_input',
+          recordedAt: i,
+        })
+      }
+    })
+
+    const first = await t.mutation(internal.users.purgeAthleteRecords, {
+      clerkId: 'clerk_athlete',
+      verifiedEmail: 'athlete@example.com',
+    })
+    expect(first).toEqual({ deleted: false, inProgress: true, dependentDocs: PURGE_BATCH_SIZE })
+    // Still there, so the follow-up run (or a webhook retry) can find the rest.
+    expect(await t.run((ctx) => ctx.db.get(athlete))).not.toBeNull()
+
+    await t.finishAllScheduledFunctions(jest.runAllTimers)
+
+    expect(await rowsFor(t, athlete, 'athlete@example.com')).toEqual(allZero)
   })
 
   it('schedules the PostHog person deletion for the athlete', async () => {
@@ -312,6 +359,12 @@ describe('users.purgeAthleteRecords', () => {
 })
 
 describe('users.deleteMyAccount', () => {
+  const ATHLETE_IDENTITY = {
+    subject: 'clerk_athlete',
+    email: 'athlete@example.com',
+    emailVerified: true,
+  }
+
   const clerkOk = () =>
     jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 200 }))
 
@@ -328,7 +381,7 @@ describe('users.deleteMyAccount', () => {
     const fetchSpy = clerkOk()
 
     const result = await t
-      .withIdentity({ subject: 'clerk_athlete' })
+      .withIdentity(ATHLETE_IDENTITY)
       .action(api.users.deleteMyAccount, {})
 
     expect(result).toEqual({ deleted: true })
@@ -345,7 +398,7 @@ describe('users.deleteMyAccount', () => {
     jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 404 }))
 
     const result = await t
-      .withIdentity({ subject: 'clerk_athlete' })
+      .withIdentity(ATHLETE_IDENTITY)
       .action(api.users.deleteMyAccount, {})
 
     expect(result).toEqual({ deleted: true })
@@ -358,7 +411,7 @@ describe('users.deleteMyAccount', () => {
     jest.spyOn(console, 'error').mockImplementation(() => {})
 
     await expect(
-      t.withIdentity({ subject: 'clerk_athlete' }).action(api.users.deleteMyAccount, {})
+      t.withIdentity(ATHLETE_IDENTITY).action(api.users.deleteMyAccount, {})
     ).rejects.toThrow('Could not delete your account')
     expect(await rowsFor(t, athlete, 'athlete@example.com')).toEqual(allOne)
   })
@@ -370,7 +423,7 @@ describe('users.deleteMyAccount', () => {
     jest.spyOn(console, 'error').mockImplementation(() => {})
 
     await expect(
-      t.withIdentity({ subject: 'clerk_athlete' }).action(api.users.deleteMyAccount, {})
+      t.withIdentity(ATHLETE_IDENTITY).action(api.users.deleteMyAccount, {})
     ).rejects.toThrow('not available')
     expect(fetchSpy).not.toHaveBeenCalled()
     expect(await t.run((ctx) => ctx.db.get(athlete))).not.toBeNull()
@@ -399,7 +452,7 @@ describe('users.deleteMyAccount', () => {
     await t.mutation(internal.users.purgeAthleteRecords, { clerkId: 'clerk_athlete' })
 
     const result = await t
-      .withIdentity({ subject: 'clerk_athlete' })
+      .withIdentity(ATHLETE_IDENTITY)
       .action(api.users.deleteMyAccount, {})
     expect(result).toEqual({ deleted: true })
   })

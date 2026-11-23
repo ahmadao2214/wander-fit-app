@@ -83,9 +83,20 @@ url: ${VERIFY_URL}
 - tapOn:
     id: delete-account-back
 - extendedWaitUntil:
-    visible:
-      id: delete-account-cancel
+    visible: 'Delete your account?'
     timeout: 15000
+# The sheet scrolls inside itself; Keep my account starts below the 625px
+# web viewport, which the driver omits. Drag the sheet's content up to it.
+- repeat:
+    while:
+      notVisible:
+        id: delete-account-cancel
+    times: 4
+    commands:
+      - swipe:
+          start: '50%, 85%'
+          end: '50%, 45%'
+          duration: 400
 - tapOn:
     id: delete-account-cancel
 - extendedWaitUntil:
