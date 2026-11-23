@@ -16,7 +16,8 @@ export const ACCESS_CONFIG = {
       label: 'iOS Beta (TestFlight)',
       cta: 'Open TestFlight Invite',
       url: '', // e.g. 'https://testflight.apple.com/join/XXXXXXXX'
-      comingSoonNote: 'TestFlight invite link is being finalized. We will email it as soon as it is live.',
+      comingSoonNote:
+        'TestFlight invite link is being finalized. We will email it as soon as it is live.',
       steps: [
         'Install Apple TestFlight free from the App Store.',
         'Tap the WanderFit invite link (or scan the QR code on desktop).',
@@ -29,7 +30,8 @@ export const ACCESS_CONFIG = {
       label: 'Mobile Web (No Install)',
       cta: 'Open Web App',
       url: '', // e.g. 'https://app.wanderfit.app'
-      comingSoonNote: 'Hosted mobile web access is coming online shortly. We will email you the link.',
+      comingSoonNote:
+        'Hosted mobile web access is coming online shortly. We will email you the link.',
       steps: [
         'Open the WanderFit web link in Safari or Chrome on your phone.',
         'Answer your First Run questions to build your 3-phase program.',
@@ -42,7 +44,8 @@ export const ACCESS_CONFIG = {
       label: 'Android Beta',
       cta: 'Download Android Beta',
       url: '', // e.g. EAS preview link or Play Internal Testing link
-      comingSoonNote: 'Android preview is coming shortly. You are on the list and we will email your link.',
+      comingSoonNote:
+        'Android preview is coming shortly. You are on the list and we will email your link.',
       steps: [
         'Open the Android beta link on your phone.',
         'Follow the install prompt for the preview build.',
@@ -50,8 +53,10 @@ export const ACCESS_CONFIG = {
       ],
     },
   },
-};
+}
 
 export function isChannelLive(channel) {
-  return Boolean(channel && typeof channel.url === 'string' && /^https?:\/\//i.test(channel.url.trim()));
+  return Boolean(
+    channel && typeof channel.url === 'string' && /^https?:\/\//i.test(channel.url.trim())
+  )
 }

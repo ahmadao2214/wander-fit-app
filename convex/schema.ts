@@ -834,26 +834,18 @@ export default defineSchema({
    * One row per normalized email; repeat submissions update role, intent, and seasonDate.
    */
   waitlist_signups: defineTable({
-    role: v.union(
-      v.literal("athlete_14_17"),
-      v.literal("athlete_18_plus"),
-      v.literal("parent")
-    ),
+    role: v.union(v.literal('athlete_14_17'), v.literal('athlete_18_plus'), v.literal('parent')),
     email: v.string(),
     parentEmail: v.optional(v.string()), // optional, accepted only for athlete_14_17
     // Willingness-to-pay anchor: $35 Season Pass, $15/mo, or just trying the free beta
-    intent: v.union(
-      v.literal("season_pass"),
-      v.literal("monthly"),
-      v.literal("free_beta_only")
-    ),
+    intent: v.union(v.literal('season_pass'), v.literal('monthly'), v.literal('free_beta_only')),
     seasonDate: v.optional(v.string()), // YYYY-MM-DD from hero calendar, optional
     source: v.optional(v.string()), // ?ref= or utm_source on the landing URL (e.g. gym-flyer)
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_email", ["email"])
-    .index("by_created", ["createdAt"]),
+    .index('by_email', ['email'])
+    .index('by_created', ['createdAt']),
 
   /**
    * Fixed-window rate limiting buckets for public HTTP routes (POST /waitlist).
@@ -862,5 +854,5 @@ export default defineSchema({
     key: v.string(),
     windowStart: v.number(),
     count: v.number(),
-  }).index("by_key", ["key"]),
-});
+  }).index('by_key', ['key']),
+})

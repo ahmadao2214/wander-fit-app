@@ -10,18 +10,18 @@
  * unbuilt 4th taper phase.
  */
 
-export const NO_SEASON_PROGRAM_WEEKS = 12;
-export const DEFAULT_WEEKS_PER_PHASE = 4;
-export const MIN_WEEKS_PER_PHASE = 2;
-export const MAX_WEEKS_PER_PHASE = 8;
-export const MAX_SEASON_WEEKS = 52;
-export const NUMBER_OF_PHASES = 3;
+export const NO_SEASON_PROGRAM_WEEKS = 12
+export const DEFAULT_WEEKS_PER_PHASE = 4
+export const MIN_WEEKS_PER_PHASE = 2
+export const MAX_WEEKS_PER_PHASE = 8
+export const MAX_SEASON_WEEKS = 52
+export const NUMBER_OF_PHASES = 3
 
 /** Mon, Wed, Fri (0 = Sunday ... 6 = Saturday), matching `DEFAULT_TRAINING_DAYS`. */
-export const DEFAULT_TRAINING_DAYS = [1, 3, 5];
+export const DEFAULT_TRAINING_DAYS = [1, 3, 5]
 
 /** Visible calendar grid rows starting from Monday of the current week. */
-export const CALENDAR_WEEKS = 14;
+export const CALENDAR_WEEKS = 14
 
 /** Canonical phases from `GLOSSARY.md`. */
 export const PHASES = {
@@ -43,24 +43,25 @@ export const PHASES = {
     name: 'Sport-Specific Preparedness',
     summary: 'Sharpens you for the season itself.',
   },
-};
+}
 
-export const PHASE_ORDER = [PHASES.GPP, PHASES.SPP, PHASES.SSP];
+export const PHASE_ORDER = [PHASES.GPP, PHASES.SPP, PHASES.SSP]
 
 export function dateKey(date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
 /** Calendar-day difference from `today` to ISO `YYYY-MM-DD`, safe across DST transitions. */
 export function daysUntil(value, today = new Date()) {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
-  const [year, month, day] = value.split('-').map(Number);
-  const parsed = new Date(year, month - 1, day);
-  if (dateKey(parsed) !== value) return null;
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null
+  const [year, month, day] = value.split('-').map(Number)
+  const parsed = new Date(year, month - 1, day)
+  if (dateKey(parsed) !== value) return null
   return Math.round(
-    (Date.UTC(year, month - 1, day) - Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())) /
+    (Date.UTC(year, month - 1, day) -
+      Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())) /
       86400000
-  );
+  )
 }
 
 /**
@@ -68,8 +69,8 @@ export function daysUntil(value, today = new Date()) {
  * `1..MAX_SEASON_WEEKS` — mirrors `weeksUntilSeason` in `lib/firstRun.ts`.
  */
 export function weeksUntilSeason(days) {
-  if (typeof days !== 'number' || !Number.isFinite(days) || days < 1) return null;
-  return Math.max(1, Math.min(MAX_SEASON_WEEKS, Math.ceil(days / 7)));
+  if (typeof days !== 'number' || !Number.isFinite(days) || days < 1) return null
+  return Math.max(1, Math.min(MAX_SEASON_WEEKS, Math.ceil(days / 7)))
 }
 
 /**
@@ -77,8 +78,8 @@ export function weeksUntilSeason(days) {
  * `convex/weekMapping.ts` and `programShape` in `convex/programShape.ts`.
  */
 export function calculateWeeksPerPhase(totalWeeks, numberOfPhases = NUMBER_OF_PHASES) {
-  const calculated = Math.floor(totalWeeks / numberOfPhases);
-  return Math.max(MIN_WEEKS_PER_PHASE, Math.min(MAX_WEEKS_PER_PHASE, calculated));
+  const calculated = Math.floor(totalWeeks / numberOfPhases)
+  return Math.max(MIN_WEEKS_PER_PHASE, Math.min(MAX_WEEKS_PER_PHASE, calculated))
 }
 
 /**
@@ -86,19 +87,19 @@ export function calculateWeeksPerPhase(totalWeeks, numberOfPhases = NUMBER_OF_PH
  * phases first — exact match to `calculateWeeksPerPhaseArray` in `convex/weekMapping.ts`.
  */
 export function calculateWeeksPerPhaseArray(totalWeeks) {
-  const baseWeeks = Math.floor(totalWeeks / NUMBER_OF_PHASES);
-  const remainder = totalWeeks % NUMBER_OF_PHASES;
-  const clampedBase = Math.max(MIN_WEEKS_PER_PHASE, Math.min(MAX_WEEKS_PER_PHASE, baseWeeks));
+  const baseWeeks = Math.floor(totalWeeks / NUMBER_OF_PHASES)
+  const remainder = totalWeeks % NUMBER_OF_PHASES
+  const clampedBase = Math.max(MIN_WEEKS_PER_PHASE, Math.min(MAX_WEEKS_PER_PHASE, baseWeeks))
 
-  const sspWeeks = clampedBase + (remainder >= 1 ? 1 : 0);
-  const sppWeeks = clampedBase + (remainder >= 2 ? 1 : 0);
-  const gppWeeks = clampedBase;
+  const sspWeeks = clampedBase + (remainder >= 1 ? 1 : 0)
+  const sppWeeks = clampedBase + (remainder >= 2 ? 1 : 0)
+  const gppWeeks = clampedBase
 
   return [
     Math.min(MAX_WEEKS_PER_PHASE, gppWeeks),
     Math.min(MAX_WEEKS_PER_PHASE, sppWeeks),
     Math.min(MAX_WEEKS_PER_PHASE, sspWeeks),
-  ];
+  ]
 }
 
 /**
@@ -108,11 +109,11 @@ export function calculateWeeksPerPhaseArray(totalWeeks) {
  * 12-week default (`NO_SEASON_PROGRAM_WEEKS = 12`).
  */
 export function buildPlan(days, trainingDaysPerWeek = DEFAULT_TRAINING_DAYS.length) {
-  const perWeek = Math.max(1, Math.min(7, Math.floor(trainingDaysPerWeek)));
+  const perWeek = Math.max(1, Math.min(7, Math.floor(trainingDaysPerWeek)))
 
   if (days === null || days === undefined) {
-    const weeksPerPhase = calculateWeeksPerPhase(NO_SEASON_PROGRAM_WEEKS);
-    const programWeeks = weeksPerPhase * NUMBER_OF_PHASES;
+    const weeksPerPhase = calculateWeeksPerPhase(NO_SEASON_PROGRAM_WEEKS)
+    const programWeeks = weeksPerPhase * NUMBER_OF_PHASES
     return {
       isDefault: true,
       days: null,
@@ -120,15 +121,15 @@ export function buildPlan(days, trainingDaysPerWeek = DEFAULT_TRAINING_DAYS.leng
       weeksPerPhase,
       programWeeks,
       sessions: programWeeks * perWeek,
-      phases: PHASE_ORDER.map(phase => ({ ...phase, weeks: weeksPerPhase })),
-    };
+      phases: PHASE_ORDER.map((phase) => ({ ...phase, weeks: weeksPerPhase })),
+    }
   }
 
-  if (typeof days !== 'number' || !Number.isFinite(days) || days < 1) return null;
+  if (typeof days !== 'number' || !Number.isFinite(days) || days < 1) return null
 
-  const weeksUntil = weeksUntilSeason(days);
-  const weeksPerPhase = calculateWeeksPerPhase(weeksUntil);
-  const programWeeks = weeksPerPhase * NUMBER_OF_PHASES;
+  const weeksUntil = weeksUntilSeason(days)
+  const weeksPerPhase = calculateWeeksPerPhase(weeksUntil)
+  const programWeeks = weeksPerPhase * NUMBER_OF_PHASES
 
   return {
     isDefault: false,
@@ -137,8 +138,8 @@ export function buildPlan(days, trainingDaysPerWeek = DEFAULT_TRAINING_DAYS.leng
     weeksPerPhase,
     programWeeks,
     sessions: programWeeks * perWeek,
-    phases: PHASE_ORDER.map(phase => ({ ...phase, weeks: weeksPerPhase })),
-  };
+    phases: PHASE_ORDER.map((phase) => ({ ...phase, weeks: weeksPerPhase })),
+  }
 }
 
 /**
@@ -147,21 +148,21 @@ export function buildPlan(days, trainingDaysPerWeek = DEFAULT_TRAINING_DAYS.leng
  * Index 0 is `null` (today).
  */
 export function dayPhases(days) {
-  if (typeof days !== 'number' || !Number.isFinite(days) || days < 1) return [];
-  const out = new Array(days).fill(null);
-  const span = days - 1;
-  if (span <= 0) return out;
+  if (typeof days !== 'number' || !Number.isFinite(days) || days < 1) return []
+  const out = Array.from({ length: days }, () => null)
+  const span = days - 1
+  if (span <= 0) return out
 
-  const gppEnd = Math.ceil(span / 3);
-  const sppEnd = Math.ceil((span * 2) / 3);
+  const gppEnd = Math.ceil(span / 3)
+  const sppEnd = Math.ceil((span * 2) / 3)
   for (let k = 1; k < days; k++) {
-    out[k] = k <= gppEnd ? 'gpp' : k <= sppEnd ? 'spp' : 'ssp';
+    out[k] = k <= gppEnd ? 'gpp' : k <= sppEnd ? 'spp' : 'ssp'
   }
-  return out;
+  return out
 }
 
 /** Scheduled training days (Mon/Wed/Fri by default) for any active phase cell. */
 export function isLiftDay(phase, weekday, trainingDays = DEFAULT_TRAINING_DAYS) {
-  if (!phase) return false;
-  return trainingDays.includes(weekday);
+  if (!phase) return false
+  return trainingDays.includes(weekday)
 }
