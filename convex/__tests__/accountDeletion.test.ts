@@ -296,6 +296,23 @@ describe('users.purgeAthleteRecords', () => {
     expect((await rowsFor(t, bystander, 'bystander@example.com')).users).toBe(1)
   })
 
+  it('still deletes the invitations when the webhook purged the account first', async () => {
+    const { t, athlete } = await setup()
+    // The user.deleted webhook: no email, so the invitation stays.
+    await t.mutation(internal.users.purgeAthleteRecords, { clerkId: 'clerk_athlete' })
+    expect((await rowsFor(t, athlete, 'athlete@example.com')).clientInvitations).toBe(1)
+
+    // deleteMyAccount's purge arrives second, with the verified email.
+    const result = await t.mutation(internal.users.purgeAthleteRecords, {
+      clerkId: 'clerk_athlete',
+      verifiedEmail: 'athlete@example.com',
+    })
+    expect(result).toEqual({ deleted: false, alreadyGone: true })
+    expect(await rowsFor(t, athlete, 'athlete@example.com')).toEqual(allZero)
+    const left = await t.run((ctx) => ctx.db.query('clientInvitations').collect())
+    expect(left.map((row) => row.email)).toEqual(['bystander@example.com'])
+  })
+
   it('purges a long history in batches and deletes the users row last', async () => {
     const { t, athlete } = await setup()
     const extra = PURGE_BATCH_SIZE * 2 + 5
