@@ -1,12 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Pressable, Text as RNText, View, useWindowDimensions } from 'react-native'
+import {
+  Keyboard,
+  Pressable,
+  Text as RNText,
+  TextInput,
+  View,
+  useWindowDimensions,
+} from 'react-native'
 import { useFocusEffect, useRouter } from 'expo-router'
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import { IntakeFrame } from '../../components/first-run/IntakeFrame'
 import {
+  BODY,
   BODY_BOLD,
+  BODY_SEMI,
   DISPLAY,
   Headline,
+  Label,
   SportShape,
   headlineSize,
 } from '../../components/first-run/Night'
@@ -15,12 +25,73 @@ import { useIntakeMotion } from '../../components/first-run/useIntakeMotion'
 import { useIntakeSport } from '../../components/first-run/useIntakeSport'
 import { useReachStep } from '../../components/first-run/useReachStep'
 import { useFirstRunDraft } from '../../hooks/useFirstRunDraft'
+import { evaluateBirthDate } from '../../lib/ageGate'
+import { ageGateLock } from '../../lib/ageGateLockStorage'
 import { analytics, FIRST_RUN_STEP_INDEX } from '../../lib/analytics'
 import { AGE_GROUP_CHOICES, YEARS_CHOICES, skillLevelLabel } from '../../lib/firstRun'
 import { NIGHT } from '../../lib/firstRunStory'
 import { selectionFeedback } from '../../lib/haptics'
 
 type Question = 'age' | 'years'
+
+const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+] as const
+
+/** A month from the birth question's grid: "Jan" on screen, "January" read aloud. */
+function MonthChip({
+  name,
+  selected,
+  onPress,
+  testID,
+}: {
+  name: string
+  selected: boolean
+  onPress: () => void
+  testID: string
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityState={{ selected, checked: selected }}
+      accessibilityLabel={name}
+      testID={testID}
+      style={({ pressed }) => ({
+        flexGrow: 1,
+        flexBasis: '22%',
+        height: 48,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: selected ? NIGHT.fg : NIGHT.ink2,
+        transform: [{ scale: pressed ? 0.97 : 1 }],
+      })}
+    >
+      <RNText
+        style={{
+          fontFamily: DISPLAY,
+          fontSize: 22,
+          letterSpacing: 1,
+          color: selected ? NIGHT.ink : NIGHT.fg,
+        }}
+      >
+        {name.slice(0, 3).toUpperCase()}
+      </RNText>
+    </Pressable>
+  )
+}
 
 /** Which question shows first: age, unless it's answered and years isn't. */
 export function firstQuestion(answers: { ageGroup?: string; years?: string }): Question {
@@ -133,9 +204,12 @@ function Choice({
 }
 
 /**
- * Questions 4 and 5 on a player card: age group, then years training, one
- * labeled question at a time. Each answer stamps onto the card; the second
- * one leads straight into the reveal, with no Continue button.
+ * Questions 4 and 5 on a player card: birth month and year, then years
+ * training, one labeled question at a time. The birth date becomes an age
+ * group, and only the age group stamps onto the card and into the draft; the
+ * month and year never leave this screen's state. A birth date under the
+ * minimum age locks the step on the device and shows a calm dead end. The
+ * years answer leads straight into the reveal.
  */
 export default function FirstRunAbout() {
   const router = useRouter()
@@ -179,6 +253,50 @@ export default function FirstRunAbout() {
     timers.current.push(setTimeout(fn, ms))
   }
 
+  // The birth question's answers. Held here only, never saved or tracked.
+  const [birthMonth, setBirthMonth] = useState<number | null>(null)
+  const [birthYear, setBirthYear] = useState('')
+  const [yearError, setYearError] = useState(false)
+  // Once a birth date falls under the minimum age, this device's age step
+  // stays closed, whatever is entered later.
+  const [closed, setClosed] = useState(false)
+  useEffect(() => {
+    let live = true
+    void ageGateLock.isLocked().then((locked) => {
+      if (live && locked) setClosed(true)
+    })
+    return () => {
+      live = false
+    }
+  }, [])
+  const birthReady = birthMonth !== null && /^\d{4}$/.test(birthYear)
+
+  const onBirthContinue = async () => {
+    if (birthMonth === null || !birthReady) return
+    Keyboard.dismiss()
+    if (await ageGateLock.isLocked()) {
+      setClosed(true)
+      return
+    }
+    const result = evaluateBirthDate(birthMonth, Number(birthYear), new Date())
+    if (!result.eligible && result.reason === 'invalid_birth_date') {
+      setYearError(true)
+      return
+    }
+    setBirthMonth(null)
+    setBirthYear('')
+    if (!result.eligible) {
+      await ageGateLock.lock()
+      // Drop any age group from an earlier answer, so no step can go on.
+      void save({ ageGroup: undefined })
+      setClosed(true)
+      return
+    }
+    selectionFeedback()
+    void save({ ageGroup: result.ageGroup })
+    later(320, () => setQuestion('years'))
+  }
+
   // The choices slide over from the right when the question changes.
   const slide = useSharedValue(1)
   useEffect(() => {
@@ -194,12 +312,43 @@ export default function FirstRunAbout() {
   const age = AGE_GROUP_CHOICES.find((c) => c.value === ageGroup)
   const level = years ? skillLevelLabel(years) : undefined
 
+  if (closed) {
+    return (
+      <IntakeFrame step="about" ground={ground} moving={motion.moving} showTop={false}>
+        <View style={{ flex: 1, justifyContent: 'center' }} testID="age-gate-closed">
+          <RNText
+            style={{
+              fontFamily: BODY_SEMI,
+              fontSize: 20,
+              lineHeight: 28,
+              color: NIGHT.fg,
+              textAlign: 'center',
+            }}
+            accessibilityRole="header"
+          >
+            WanderFit isn't available for your age group yet.
+          </RNText>
+        </View>
+      </IntakeFrame>
+    )
+  }
+
   return (
     <IntakeFrame
       step="about"
       ground={ground}
       moving={motion.moving}
       backdrop={sport ? { name: sport.name } : null}
+      primary={
+        shown === 'age'
+          ? {
+              label: 'Continue',
+              onPress: () => void onBirthContinue(),
+              disabled: !birthReady,
+              testID: 'birth-continue',
+            }
+          : null
+      }
     >
       <Headline size={headlineSize(54, width)} moving={motion.moving}>
         About you
@@ -263,54 +412,101 @@ export default function FirstRunAbout() {
         nativeID="about-question"
         testID="about-question"
       >
-        {shown === 'age' ? 'AGE GROUP' : 'YEARS TRAINING FOR YOUR SPORT'}
+        {shown === 'age' ? 'When were you born?' : 'YEARS TRAINING FOR YOUR SPORT'}
       </RNText>
-      <Animated.View
-        style={[{ gap: 8 }, slideStyle]}
-        accessibilityRole="radiogroup"
-        accessibilityLabelledBy="about-question"
-      >
-        {shown === 'age'
-          ? AGE_GROUP_CHOICES.map((c) => (
-              <Choice
-                key={c.value}
-                label={c.label}
-                detail={c.range}
-                color={color}
-                selected={ageGroup === c.value}
-                testID={`age-${c.value}`}
+      {shown === 'age' ? (
+        <Animated.View style={[{ gap: 8 }, slideStyle]}>
+          <Label>Month</Label>
+          <View
+            style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}
+            accessibilityRole="radiogroup"
+            accessibilityLabel="Birth month"
+          >
+            {MONTHS.map((name, i) => (
+              <MonthChip
+                key={name}
+                name={name}
+                selected={birthMonth === i + 1}
+                testID={`birth-month-${i + 1}`}
                 onPress={() => {
                   selectionFeedback()
-                  void save({ ageGroup: c.value })
-                  later(320, () => setQuestion('years'))
-                }}
-              />
-            ))
-          : YEARS_CHOICES.map((c) => (
-              <Choice
-                key={c.value}
-                label={c.label}
-                color={color}
-                selected={years === c.value}
-                testID={`years-${c.value}`}
-                onPress={async () => {
-                  selectionFeedback()
-                  await save({ years: c.value })
-                  if (!ageGroup) {
-                    setQuestion('age')
-                    return
-                  }
-                  // A beat after the second answer, the reveal starts.
-                  analytics.trackFirstRunStepAdvanced({
-                    step: 'about',
-                    step_index: FIRST_RUN_STEP_INDEX.about,
-                    age_group: ageGroup,
-                  })
-                  later(650, () => router.push('/(first-run)/reveal'))
+                  setBirthMonth(i + 1)
                 }}
               />
             ))}
-      </Animated.View>
+          </View>
+          <Label style={{ marginTop: 8 }}>Year</Label>
+          <TextInput
+            value={birthYear}
+            onChangeText={(text) => {
+              setBirthYear(text.replace(/\D/g, '').slice(0, 4))
+              setYearError(false)
+            }}
+            keyboardType="number-pad"
+            inputMode="numeric"
+            maxLength={4}
+            placeholder="YYYY"
+            placeholderTextColor={NIGHT.fg2}
+            returnKeyType="done"
+            onSubmitEditing={() => void onBirthContinue()}
+            accessibilityLabel="Birth year"
+            nativeID="birth-year"
+            testID="birth-year"
+            style={{
+              height: 56,
+              borderRadius: 10,
+              paddingHorizontal: 16,
+              backgroundColor: NIGHT.ink2,
+              borderWidth: 1,
+              borderColor: yearError ? '#F87171' : NIGHT.line,
+              color: NIGHT.fg,
+              fontFamily: DISPLAY,
+              fontSize: 28,
+              letterSpacing: 2,
+            }}
+          />
+          {yearError ? (
+            <RNText
+              style={{ fontFamily: BODY, fontSize: 14, color: '#FCA5A5' }}
+              accessibilityLiveRegion="polite"
+              testID="birth-year-error"
+            >
+              Check the year.
+            </RNText>
+          ) : null}
+        </Animated.View>
+      ) : (
+        <Animated.View
+          style={[{ gap: 8 }, slideStyle]}
+          accessibilityRole="radiogroup"
+          accessibilityLabelledBy="about-question"
+        >
+          {YEARS_CHOICES.map((c) => (
+            <Choice
+              key={c.value}
+              label={c.label}
+              color={color}
+              selected={years === c.value}
+              testID={`years-${c.value}`}
+              onPress={async () => {
+                selectionFeedback()
+                await save({ years: c.value })
+                if (!ageGroup) {
+                  setQuestion('age')
+                  return
+                }
+                // A beat after the second answer, the reveal starts.
+                analytics.trackFirstRunStepAdvanced({
+                  step: 'about',
+                  step_index: FIRST_RUN_STEP_INDEX.about,
+                  age_group: ageGroup,
+                })
+                later(650, () => router.push('/(first-run)/reveal'))
+              }}
+            />
+          ))}
+        </Animated.View>
+      )}
     </IntakeFrame>
   )
 }

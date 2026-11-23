@@ -102,6 +102,27 @@ describe('TrainingSciencePage', () => {
     expect(queryByText(/Lighter loads/)).toBeNull()
   })
 
+  it('describes GPP as athletic durability and makes no injury-prevention claim', () => {
+    mockUseQuery.mockReturnValue({ gppCategoryId: 2 })
+    const { getByText, queryByText } = render(<TrainingSciencePage />, {
+      wrapper: AllTheProviders,
+    })
+    expect(
+      getByText(
+        'Movement quality, work capacity and athletic durability. This builds the engine everything else runs on.'
+      )
+    ).toBeTruthy()
+    expect(queryByText(/injury prevention|prevents? injur/i)).toBeNull()
+  })
+
+  it('ends with the not-medical-advice footnote', () => {
+    mockUseQuery.mockReturnValue({ gppCategoryId: 2 })
+    const { getByTestId } = render(<TrainingSciencePage />, { wrapper: AllTheProviders })
+    expect(getByTestId('training-science-footnote').props.children).toBe(
+      'WanderFit provides general athletic strength and conditioning guidance and is not medical advice or physical therapy.'
+    )
+  })
+
   it('renders sport category section when program state exists', () => {
     mockUseQuery.mockReturnValue({ gppCategoryId: 2 })
 

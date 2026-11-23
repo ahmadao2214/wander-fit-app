@@ -45,17 +45,24 @@ jest.mock('@clerk/clerk-expo', () => ({
   useClerk: () => mockClerk,
 }))
 jest.mock('expo-auth-session', () => ({ makeRedirectUri: () => 'myapp://oauth' }))
+const mockOpenBrowser = jest.fn(async (_url: string) => ({}))
+jest.mock('expo-web-browser', () => ({ openBrowserAsync: (url: string) => mockOpenBrowser(url) }))
 
 const mockCreateUser = jest.fn(async (_args: unknown) => 'u1')
+const mockRecordTerms = jest.fn(async (_args: unknown) => null)
 const mockCompleteIntake = jest.fn(async (_args: unknown) => ({ keptExistingProgram: false }))
 jest.mock('convex/react', () => ({
   useConvexAuth: () => ({ isAuthenticated: true, isLoading: false }),
   useMutation: (fn: unknown) => {
     const name = jest.requireActual('convex/server').getFunctionName(fn)
-    return name === 'users:createUser' ? mockCreateUser : mockCompleteIntake
+    if (name === 'users:createUser') return mockCreateUser
+    if (name === 'users:recordTermsAcceptance') return mockRecordTerms
+    return mockCompleteIntake
   },
 }))
-jest.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: null }) }))
+// The Convex users row, when the account already has one.
+let mockConvexUser: null | { _id: string } = null
+jest.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: mockConvexUser }) }))
 
 const mockReplace = jest.fn()
 const mockPush = jest.fn()
@@ -63,6 +70,8 @@ jest.mock('expo-router', () => ({ useRouter: () => ({ replace: mockReplace, push
 
 // eslint-disable-next-line import/first
 import { SavePlanSheet, programWelcomeParams } from '../../components/first-run/SavePlanSheet'
+// eslint-disable-next-line import/first
+import { TERMS_VERSION } from '../../lib/legal'
 
 const answers = {
   sportId: 'basketball',
@@ -82,7 +91,15 @@ const press = (id: string) =>
     fireEvent.press(screen.getByTestId(id))
   })
 
+const ADULT_SENTENCE =
+  'I agree to the Terms of Service and Privacy Policy, and I acknowledge the Health & Fitness Disclaimer (general strength and conditioning guidance only, not medical advice).'
+const YOUTH_SENTENCE =
+  "I have my parent or legal guardian's permission to use WanderFit, and together we agree to the Terms of Service, Privacy Policy, and Health & Fitness Disclaimer."
+
+const isChecked = () => screen.getByTestId('save-plan-accept').props.accessibilityState.checked
+
 async function signUpWithEmail() {
+  await press('save-plan-accept')
   await press('save-plan-email')
   fireEvent.changeText(screen.getByTestId('save-plan-name'), 'Sam')
   fireEvent.changeText(screen.getByTestId('save-plan-email-input'), 'a@b.co')
@@ -98,6 +115,7 @@ beforeEach(async () => {
   jest.clearAllMocks()
   mockClerk.user = null
   mockSignedIn = null
+  mockConvexUser = null
   testDraft.reset()
   await testDraft.seed({ answers, lastStep: 'reveal' })
   await testDraft.current.load()
@@ -127,7 +145,9 @@ describe('Save your plan', () => {
       email: 'a@b.co',
       name: 'Sam',
       role: 'client',
+      termsAcceptance: { termsVersion: TERMS_VERSION, ageGroup: '14-17' },
     })
+    expect(mockRecordTerms).not.toHaveBeenCalled()
     expect(mockCompleteIntake).toHaveBeenCalledWith(
       expect.objectContaining({
         sportId: 'basketball',
@@ -169,6 +189,7 @@ describe('Save your plan', () => {
 
   it('labels name, email and password, with a show-password control', async () => {
     await show()
+    await press('save-plan-accept')
     await press('save-plan-email')
     expect(screen.getByTestId('save-plan-name').props.accessibilityLabel).toBe('First name')
     expect(screen.getByTestId('save-plan-email-input').props.accessibilityLabel).toBe('Email')
@@ -182,6 +203,7 @@ describe('Save your plan', () => {
 
   it('shows field errors next to the fields', async () => {
     await show()
+    await press('save-plan-accept')
     await press('save-plan-email')
     await press('save-plan-create')
     expect(screen.getByText('Enter your first name.')).toBeTruthy()
@@ -201,6 +223,7 @@ describe('Save your plan', () => {
   it('goes back to fix a mistyped email after the code is sent', async () => {
     await testDraft.seed({ answers, lastStep: 'reveal' })
     await show()
+    await press('save-plan-accept')
     await press('save-plan-email')
     fireEvent.changeText(screen.getByTestId('save-plan-name'), 'Sam')
     fireEvent.changeText(screen.getByTestId('save-plan-email-input'), 'a@b.cm')
@@ -224,6 +247,7 @@ describe('Save your plan', () => {
         })
     )
     await show()
+    await press('save-plan-accept')
     await press('save-plan-email')
     fireEvent.changeText(screen.getByTestId('save-plan-name'), 'Sam')
     fireEvent.changeText(screen.getByTestId('save-plan-email-input'), 'a@b.co')
@@ -239,6 +263,7 @@ describe('Save your plan', () => {
   it('offers sign-in when the email already has an account', async () => {
     mockSignUp.create.mockRejectedValueOnce({ errors: [{ code: 'form_identifier_exists' }] })
     await show()
+    await press('save-plan-accept')
     await press('save-plan-email')
     fireEvent.changeText(screen.getByTestId('save-plan-name'), 'Sam')
     fireEvent.changeText(screen.getByTestId('save-plan-email-input'), 'a@b.co')
@@ -246,6 +271,93 @@ describe('Save your plan', () => {
     await press('save-plan-create')
     await press('save-plan-sign-in')
     expect(mockPush).toHaveBeenCalledWith('/(auth)/sign-in')
+  })
+})
+
+describe('Save your plan, acceptance', () => {
+  it('starts unticked, and keeps Continue with email off until the athlete ticks it', async () => {
+    await show()
+    expect(isChecked()).toBe(false)
+    expect(screen.getByTestId('save-plan-email').props['aria-disabled']).toBe(true)
+    await press('save-plan-email')
+    expect(screen.queryByTestId('save-plan-name')).toBeNull()
+    await press('save-plan-accept')
+    expect(isChecked()).toBe(true)
+    await press('save-plan-email')
+    expect(screen.getByTestId('save-plan-create')).toBeTruthy()
+  })
+
+  it('asks 14-17 athletes to confirm a parent or legal guardian’s permission', async () => {
+    await show()
+    expect(screen.getByTestId('save-plan-accept').props.accessibilityLabel).toBe(YOUTH_SENTENCE)
+  })
+
+  it('asks athletes 18 and over to agree and acknowledge the disclaimer', async () => {
+    await testDraft.current.save({ answers: { ageGroup: '18-35' } })
+    await show()
+    expect(screen.getByTestId('save-plan-accept').props.accessibilityLabel).toBe(ADULT_SENTENCE)
+    await press('save-plan-accept')
+    await press('save-plan-email')
+    fireEvent.changeText(screen.getByTestId('save-plan-name'), 'Sam')
+    fireEvent.changeText(screen.getByTestId('save-plan-email-input'), 'a@b.co')
+    fireEvent.changeText(screen.getByTestId('save-plan-password'), 'long-enough-1')
+    await press('save-plan-create')
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId('save-plan-code'), '424242')
+    })
+    await act(async () => {})
+    expect(mockCreateUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        termsAcceptance: { termsVersion: TERMS_VERSION, ageGroup: '18-35' },
+      })
+    )
+  })
+
+  it('opens Terms and Privacy in the browser without ticking the box', async () => {
+    await show()
+    await press('save-plan-link-terms')
+    await press('save-plan-link-privacy')
+    expect(mockOpenBrowser.mock.calls).toEqual([
+      ['https://wanderfit.app/terms'],
+      ['https://wanderfit.app/privacy'],
+    ])
+    expect(isChecked()).toBe(false)
+  })
+
+  it('shows the Health & Fitness Disclaimer in the sheet, then goes back', async () => {
+    await show()
+    await press('save-plan-accept')
+    await press('save-plan-link-disclaimer')
+    expect(screen.getByTestId('save-plan-disclaimer')).toBeTruthy()
+    expect(
+      screen.getByText(/not medical advice, diagnosis, treatment, or physical therapy/)
+    ).toBeTruthy()
+    expect(screen.queryByTestId('save-plan-email')).toBeNull()
+    await press('save-plan-disclaimer-back')
+    expect(screen.queryByTestId('save-plan-disclaimer')).toBeNull()
+    expect(isChecked()).toBe(true)
+  })
+
+  it('keeps Save to this account off until ticked, then records the acceptance on the existing account', async () => {
+    mockSignedIn = { primaryEmailAddress: { emailAddress: 'a@b.co' } }
+    mockClerk.user = {
+      id: 'user_1',
+      primaryEmailAddress: { emailAddress: 'a@b.co' },
+      fullName: 'Sam',
+      firstName: 'Sam',
+    }
+    mockConvexUser = { _id: 'u1' }
+    await show()
+    await press('save-plan-signed-in')
+    expect(mockCompleteIntake).not.toHaveBeenCalled()
+    await press('save-plan-accept')
+    await press('save-plan-signed-in')
+    await act(async () => {})
+    expect(mockCreateUser).not.toHaveBeenCalled()
+    expect(mockRecordTerms).toHaveBeenCalledWith({
+      termsAcceptance: { termsVersion: TERMS_VERSION, ageGroup: '14-17' },
+    })
+    expect(mockCompleteIntake).toHaveBeenCalled()
   })
 })
 

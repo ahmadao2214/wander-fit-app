@@ -103,7 +103,7 @@ const PHASE_SPECS: {
 }[] = [
   {
     key: 'GPP',
-    body: 'Movement quality, work capacity and injury prevention. This builds the engine everything else runs on.',
+    body: 'Movement quality, work capacity and athletic durability. This builds the engine everything else runs on.',
     icon: Target,
     specs: [
       { icon: Weight, label: 'Load', value: '60–75%' },
@@ -498,6 +498,11 @@ export default function TrainingSciencePage() {
             loads and maximum power output.
           </BodyText>
         </ScienceSection>
+
+        <Caption color="$color10" text="center" px="$2" testID="training-science-footnote">
+          WanderFit provides general athletic strength and conditioning guidance and is not medical
+          advice or physical therapy.
+        </Caption>
       </YStack>
     </ScrollView>
   )

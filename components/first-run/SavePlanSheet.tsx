@@ -1,15 +1,24 @@
 import { useMemo, useRef, useState } from 'react'
-import { Keyboard, Platform, ScrollView } from 'react-native'
+import { Keyboard, Platform, Pressable, ScrollView, type GestureResponderEvent } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useClerk, useSignUp, useSSO, useUser } from '@clerk/clerk-expo'
 import * as AuthSession from 'expo-auth-session'
+import * as WebBrowser from 'expo-web-browser'
 import { Button, Input, Sheet, Spinner, Text, XStack, YStack } from 'tamagui'
-import { Eye, EyeOff } from '@tamagui/lucide-icons'
+import { Check, Eye, EyeOff } from '@tamagui/lucide-icons'
 import { FieldLabel } from '../FieldLabel'
 import { VerificationCodeInput } from '../VerificationCodeInput'
 import { useFirstRunDraft } from '../../hooks/useFirstRunDraft'
 import { analytics, type AuthMethod } from '../../lib/analytics'
+import {
+  acceptanceParts,
+  acceptanceText,
+  HEALTH_DISCLAIMER,
+  legalUrl,
+  type LegalPage,
+} from '../../lib/legal'
 import { getSignUpFormErrors, getVerificationErrorMessage } from '../../lib/signUpErrors'
+import type { AgeGroup } from '../../types'
 import { useSavePlan } from './useSavePlan'
 
 /**
@@ -71,6 +80,100 @@ function ErrorText({ children, testID }: { children?: string; testID?: string })
 }
 
 /**
+ * The acceptance checkbox. Athletes 14–17 confirm a parent or legal
+ * guardian's permission. Terms, Privacy and the Disclaimer are tappable.
+ */
+function AcceptanceCheckbox({
+  ageGroup,
+  checked,
+  onChange,
+  onOpen,
+}: {
+  ageGroup: AgeGroup | undefined
+  checked: boolean
+  onChange: (checked: boolean) => void
+  onOpen: (doc: LegalPage | 'disclaimer') => void
+}) {
+  const toggle = () => onChange(!checked)
+  return (
+    <XStack gap="$3" items="flex-start" testID="save-plan-acceptance">
+      <Pressable
+        onPress={toggle}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked }}
+        aria-checked={checked}
+        accessibilityLabel={acceptanceText(ageGroup)}
+        hitSlop={10}
+        testID="save-plan-accept"
+        style={{ paddingTop: 1 }}
+      >
+        <XStack
+          width={26}
+          height={26}
+          rounded="$2"
+          borderWidth={2}
+          borderColor={checked ? '$primary' : '$color9'}
+          bg={checked ? '$primary' : 'transparent'}
+          items="center"
+          justify="center"
+        >
+          {checked ? <Check size={18} color="white" strokeWidth={3} /> : null}
+        </XStack>
+      </Pressable>
+      <Text
+        flex={1}
+        fontFamily="$body"
+        fontSize={14}
+        lineHeight={20}
+        color="$color11"
+        onPress={toggle}
+      >
+        {acceptanceParts(ageGroup).map((part, i) =>
+          typeof part === 'string' ? (
+            part
+          ) : (
+            <Text
+              key={i}
+              fontFamily="$body"
+              fontSize={14}
+              lineHeight={20}
+              fontWeight="600"
+              color="$primaryText"
+              textDecorationLine="underline"
+              accessibilityRole="link"
+              testID={`save-plan-link-${part.link}`}
+              onPress={(e: GestureResponderEvent) => {
+                // The sentence toggles the box; a link only opens its document.
+                e?.stopPropagation?.()
+                onOpen(part.link)
+              }}
+            >
+              {part.text}
+            </Text>
+          )
+        )}
+      </Text>
+    </XStack>
+  )
+}
+
+/** The Health & Fitness Disclaimer, inside the sheet, with a way back. */
+function DisclaimerView({ onBack }: { onBack: () => void }) {
+  return (
+    <YStack gap="$3" testID="save-plan-disclaimer">
+      {HEALTH_DISCLAIMER.map((line) => (
+        <Text key={line} fontFamily="$body" fontSize={15} lineHeight={22} color="$color12">
+          {line}
+        </Text>
+      ))}
+      <PrimaryButton onPress={onBack} testID="save-plan-disclaimer-back">
+        Back
+      </PrimaryButton>
+    </YStack>
+  )
+}
+
+/**
  * "Save your plan": the account is created and the program saved in one
  * step, after the reveal. No skip, no role question. Closing the sheet keeps
  * the draft, so nothing is lost.
@@ -114,6 +217,20 @@ export function SavePlanSheet({
   const [accountExists, setAccountExists] = useState(false)
   const [busy, setBusy] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  // The acceptance checkbox gates every way to an account. Never pre-ticked.
+  const [accepted, setAccepted] = useState(false)
+  const [disclaimerOpen, setDisclaimerOpen] = useState(false)
+  const ageGroup = draft?.answers.ageGroup
+
+  const openDocument = (doc: LegalPage | 'disclaimer') => {
+    if (doc === 'disclaimer') {
+      setDisclaimerOpen(true)
+      return
+    }
+    WebBrowser.openBrowserAsync(legalUrl(doc)).catch((error) =>
+      console.error('Opening the page failed:', error)
+    )
+  }
 
   const finish = async (
     account: { email?: string; name?: string } = {},
@@ -141,7 +258,8 @@ export function SavePlanSheet({
     }
   }
 
-  const onSaveSignedIn = () =>
+  const onSaveSignedIn = () => {
+    if (!accepted) return
     void finish(
       {
         email: fields.current.email.trim() || undefined,
@@ -149,8 +267,10 @@ export function SavePlanSheet({
       },
       'existing_session'
     )
+  }
 
   const onApple = async () => {
+    if (!accepted) return
     setErrors({})
     try {
       const result = await startSSOFlow({ strategy: 'oauth_apple', redirectUrl: ssoRedirect() })
@@ -175,7 +295,7 @@ export function SavePlanSheet({
   }
 
   const onCreate = async () => {
-    if (!isLoaded) return
+    if (!isLoaded || !accepted) return
     Keyboard.dismiss()
     const { name, email, password } = fields.current
     const missing = {
@@ -244,8 +364,11 @@ export function SavePlanSheet({
     }
   }
 
-  const chooseSnap = APPLE_SIGN_IN_ENABLED || clerkUser ? 42 : 34
-  const snapPoints = useMemo(() => [step === 'choose' ? chooseSnap : 90], [step, chooseSnap])
+  const chooseSnap = APPLE_SIGN_IN_ENABLED || clerkUser ? 58 : 50
+  const snapPoints = useMemo(
+    () => [step === 'choose' && !disclaimerOpen ? chooseSnap : 90],
+    [step, chooseSnap, disclaimerOpen]
+  )
 
   const close = (next: boolean) => {
     if (step === 'saving') return
@@ -289,14 +412,22 @@ export function SavePlanSheet({
                 color="$color12"
                 accessibilityRole="header"
               >
-                {step === 'code' ? 'Check your email' : 'Save your plan'}
+                {disclaimerOpen
+                  ? 'Health & Fitness Disclaimer'
+                  : step === 'code'
+                    ? 'Check your email'
+                    : 'Save your plan'}
               </Text>
-              <Text fontFamily="$body" fontSize={16} color="$color11">
-                {step === 'code'
-                  ? `Enter the 6-digit code we sent to ${sentTo}.`
-                  : "So it's here tomorrow."}
-              </Text>
+              {disclaimerOpen ? null : (
+                <Text fontFamily="$body" fontSize={16} color="$color11">
+                  {step === 'code'
+                    ? `Enter the 6-digit code we sent to ${sentTo}.`
+                    : "So it's here tomorrow."}
+                </Text>
+              )}
             </YStack>
+
+            {disclaimerOpen ? <DisclaimerView onBack={() => setDisclaimerOpen(false)} /> : null}
 
             <ErrorText testID="save-plan-error">{errors.general}</ErrorText>
 
@@ -309,7 +440,16 @@ export function SavePlanSheet({
               </XStack>
             ) : null}
 
-            {step === 'choose' && clerkUser ? (
+            {step === 'choose' && !disclaimerOpen ? (
+              <AcceptanceCheckbox
+                ageGroup={ageGroup}
+                checked={accepted}
+                onChange={setAccepted}
+                onOpen={openDocument}
+              />
+            ) : null}
+
+            {step === 'choose' && !disclaimerOpen && clerkUser ? (
               <YStack gap="$2">
                 <Text
                   fontFamily="$body"
@@ -320,7 +460,11 @@ export function SavePlanSheet({
                 >
                   Signed in as {clerkUser.primaryEmailAddress?.emailAddress ?? 'your account'}
                 </Text>
-                <PrimaryButton onPress={onSaveSignedIn} testID="save-plan-signed-in">
+                <PrimaryButton
+                  onPress={onSaveSignedIn}
+                  disabled={!accepted}
+                  testID="save-plan-signed-in"
+                >
                   Save to this account
                 </PrimaryButton>
                 <Text
@@ -339,24 +483,32 @@ export function SavePlanSheet({
               </YStack>
             ) : null}
 
-            {step === 'choose' && !clerkUser ? (
+            {step === 'choose' && !disclaimerOpen && !clerkUser ? (
               <YStack gap="$3">
                 {APPLE_SIGN_IN_ENABLED ? (
                   <Button
                     size="$5"
-                    bg="$color12"
-                    color="$background"
+                    bg={accepted ? '$color12' : '$color5'}
+                    color={accepted ? '$background' : '$color10'}
                     fontFamily="$body"
                     fontWeight="700"
                     rounded="$4"
-                    pressStyle={{ scale: 0.98 }}
+                    pressStyle={accepted ? { scale: 0.98 } : undefined}
+                    disabled={!accepted}
+                    aria-disabled={!accepted}
                     onPress={onApple}
                     testID="save-plan-apple"
                   >
                     Continue with Apple
                   </Button>
                 ) : null}
-                <PrimaryButton onPress={() => setStep('email')} testID="save-plan-email">
+                <PrimaryButton
+                  onPress={() => {
+                    if (accepted) setStep('email')
+                  }}
+                  disabled={!accepted}
+                  testID="save-plan-email"
+                >
                   Continue with email
                 </PrimaryButton>
               </YStack>
@@ -467,7 +619,11 @@ export function SavePlanSheet({
                   </XStack>
                   <ErrorText>{errors.password}</ErrorText>
                 </YStack>
-                <PrimaryButton onPress={onCreate} disabled={busy} testID="save-plan-create">
+                <PrimaryButton
+                  onPress={onCreate}
+                  disabled={busy || !accepted}
+                  testID="save-plan-create"
+                >
                   {busy ? 'Creating account…' : 'Create account'}
                 </PrimaryButton>
               </YStack>

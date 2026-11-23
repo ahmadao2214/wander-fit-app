@@ -67,15 +67,32 @@ url: ${VERIFY_URL}
 - takeScreenshot: 04-days
 - tapOn:
     id: first-run-continue
-# About you is a player card: one labeled question at a time, and the second
-# answer starts the reveal with no Continue button.
+# About you is a player card: one labeled question at a time. The first asks
+# for a birth month and year and names no minimum age; only the age group it
+# gives stamps onto the card. June 2000 is Performance (18-35) for years to
+# come. The second answer starts the reveal with no Continue button.
 - extendedWaitUntil:
-    visible: "AGE GROUP"
+    visible: "When were you born\\?"
     timeout: 30000
-- tapOn: "Performance"
+- assertNotVisible: ".*COPPA.*"
+# The card and the month grid push the year field below the 625px viewport.
+- swipe:
+    start: 50%, 80%
+    end: 50%, 20%
+    duration: 800
+# A month chip's accessibility label is its full name (see the gotcha above);
+# the year input matches by label on web and testID on native.
+- tapOn:
+    id: "June|birth-month-6"
+- tapOn:
+    id: "Birth year|birth-year"
+- inputText: "2000"
+- tapOn:
+    id: birth-continue
 - extendedWaitUntil:
     visible: "YEARS TRAINING FOR YOUR SPORT"
     timeout: 10000
+- assertVisible: "18–35"
 - tapOn: "New to training"
 - takeScreenshot: 05-about
 # The reveal opens on the category and moves on to the plan after 3 s. On web,
@@ -122,7 +139,13 @@ url: ${VERIFY_URL}
       id: save-plan-email
     timeout: 30000
 - assertNotVisible: "Skip"
+# Every way to an account waits for the acceptance checkbox. Its accessibility
+# label is the sentence, which web reports as its id.
+- assertVisible:
+    id: "I agree to the Terms of Service.*|save-plan-accept"
 - takeScreenshot: 08-save-plan
+- tapOn:
+    id: "I agree to the Terms of Service.*|save-plan-accept"
 - tapOn:
     id: save-plan-email
 - extendedWaitUntil:
