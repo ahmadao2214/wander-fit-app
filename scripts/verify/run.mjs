@@ -1567,16 +1567,19 @@ function deployPreview(key) {
   publishConvexUrl(url)
 }
 
-// The dev deploy records the git tree hash of the convex/ it pushed, so a
+// The dev deploy records a fingerprint of the backend code it pushed, so a
 // shared-mode run can tell whether wander-fit-e2e is running its code (#137).
 export const DEPLOYED_TREE_VAR = 'E2E_CONVEX_TREE'
+// Recorded when a deploy came from uncommitted files, so no commit matches it
+// and the next shared-mode run catches up.
+export const DIRTY_TREE = 'dirty'
 
 // Pure: what a shared-mode run does with wander-fit-e2e.
-// - reuse: the backend already runs this checkout's convex/.
-// - catch-up: it doesn't, but this checkout's convex/ is exactly main's
+// - reuse: the backend already runs this checkout's backend code.
+// - catch-up: it doesn't, but this checkout's backend code is exactly main's
 //   current one, i.e. main's own deploy is still queued. Deploying it now is
 //   what main is about to do anyway, so the run doesn't fail falsely.
-// - reuse-stale: the PR's convex/ differs from main's tip too (the PR is
+// - reuse-stale: the PR's backend code differs from main's tip too (the PR is
 //   behind main). Never push that, or the shared backend would go backwards.
 export function sharedBackendAction({ deployedTree = '', headTree = '', mainTree = '' } = {}) {
   if (!headTree || deployedTree === headTree) return 'reuse'
@@ -1584,24 +1587,55 @@ export function sharedBackendAction({ deployedTree = '', headTree = '', mainTree
   return 'reuse-stale'
 }
 
-function gitConvexTree(ref) {
-  const result = spawnSync('git', ['rev-parse', '--verify', '--quiet', `${ref}:convex`], {
+// Pure: the paths whose content is the deployed backend: all of convex/, the
+// files Convex imports from outside it (e.g. lib/sessionTiming.ts), and
+// convex.json.
+export function backendFingerprintPaths(runtimeFiles = []) {
+  const outside = runtimeFiles.filter((file) => !file.startsWith('convex/'))
+  return [...new Set(['convex', 'convex.json', ...outside])].sort()
+}
+
+// Pure: one hash over `git ls-tree` output (object ids per path), so any change
+// to a listed file or anything under convex/ changes it.
+export function fingerprintFromLsTree(stdout) {
+  const lines = (stdout || '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .sort()
+  if (lines.length === 0) return ''
+  return createHash('sha256').update(lines.join('\n')).digest('hex')
+}
+
+function backendFingerprint(ref, paths = backendFingerprintPaths(convexRuntimeFiles())) {
+  const result = spawnSync('git', ['ls-tree', ref, '--', ...paths], {
     cwd: root,
     encoding: 'utf8',
   })
-  return result.status === 0 ? (result.stdout || '').trim() : ''
+  return result.status === 0 ? fingerprintFromLsTree(result.stdout) : ''
 }
 
-function mainConvexTree() {
+function mainBackendFingerprint(paths) {
   const fetched = spawnSync('git', ['fetch', '--quiet', '--depth=1', 'origin', 'main'], {
     cwd: root,
     encoding: 'utf8',
   })
-  return fetched.status === 0 ? gitConvexTree('FETCH_HEAD') : ''
+  return fetched.status === 0 ? backendFingerprint('FETCH_HEAD', paths) : ''
 }
 
+function backendFilesDirty(paths) {
+  const status = spawnSync('git', ['status', '--porcelain', '--', ...paths], {
+    cwd: root,
+    encoding: 'utf8',
+  })
+  return status.status !== 0 || (status.stdout || '').trim() !== ''
+}
+
+// deployDev uploads the working checkout, so a deploy with uncommitted backend
+// edits records DIRTY_TREE rather than HEAD's fingerprint.
 function recordDeployedTree(env) {
-  const tree = gitConvexTree('HEAD')
+  const paths = backendFingerprintPaths(convexRuntimeFiles())
+  const tree = backendFilesDirty(paths) ? DIRTY_TREE : backendFingerprint('HEAD', paths)
   if (!tree) return
   const marked = convexCli(['env', 'set', DEPLOYED_TREE_VAR, tree], env)
   if (marked.status !== 0) fail(`convex env set ${DEPLOYED_TREE_VAR} exited ${marked.status ?? 1}`)
@@ -1634,18 +1668,21 @@ function deployBackend() {
     if (process.env.CONVEX_DEPLOY_KEY_E2E) {
       const { env } = convexInvocation()
       const deployed = convexOutput(['env', 'get', DEPLOYED_TREE_VAR], env)
+      const paths = backendFingerprintPaths(convexRuntimeFiles())
       const action = sharedBackendAction({
         deployedTree: deployed.status === 0 ? deployed.stdout : '',
-        headTree: gitConvexTree('HEAD'),
-        mainTree: mainConvexTree(),
+        headTree: backendFilesDirty(paths) ? '' : backendFingerprint('HEAD', paths),
+        mainTree: mainBackendFingerprint(paths),
       })
       if (action === 'catch-up') {
-        console.log("wander-fit-e2e is behind main's convex/; deploying main's code before the run")
+        console.log("wander-fit-e2e is behind main's backend code; deploying main's code first")
         deployDev()
         return
       }
       if (action === 'reuse-stale') {
-        console.log("note: this PR's convex/ is behind main's; the shared backend runs newer code")
+        console.log(
+          "note: this PR's backend code differs from main's tip; reusing the backend as is"
+        )
       }
     }
     console.log(`no convex/ runtime changes; reusing shared wander-fit-e2e (${host})`)

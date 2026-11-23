@@ -18,6 +18,9 @@ import {
   redactEvidence,
   restoreFiles,
   runSuite,
+  backendFingerprintPaths,
+  DIRTY_TREE,
+  fingerprintFromLsTree,
   settlePersona,
   sharedBackendAction,
   snapshotFiles,
@@ -823,6 +826,30 @@ describe('sharedBackendAction', () => {
     )
     expect(sharedBackendAction({ deployedTree: 'old', headTree: '', mainTree: 'old' })).toBe(
       'reuse'
+    )
+  })
+})
+
+describe('backend fingerprint', () => {
+  it('covers convex/, convex.json and the files Convex imports from outside it', () => {
+    expect(
+      backendFingerprintPaths(['convex/a.ts', 'lib/sessionTiming.ts', 'lib/sessionTiming.ts'])
+    ).toEqual(['convex', 'convex.json', 'lib/sessionTiming.ts'])
+  })
+
+  it('changes when an imported file outside convex/ changes', () => {
+    const before = 'tree aaa\tconvex\nblob bbb\tlib/sessionTiming.ts'
+    const after = 'tree aaa\tconvex\nblob ccc\tlib/sessionTiming.ts'
+    expect(fingerprintFromLsTree(before)).not.toBe(fingerprintFromLsTree(after))
+    expect(fingerprintFromLsTree(before)).toBe(
+      fingerprintFromLsTree('blob bbb\tlib/sessionTiming.ts\ntree aaa\tconvex\n')
+    )
+    expect(fingerprintFromLsTree('')).toBe('')
+  })
+
+  it('a dirty deploy never matches a commit, so the next shared run catches up', () => {
+    expect(sharedBackendAction({ deployedTree: DIRTY_TREE, headTree: 'a', mainTree: 'a' })).toBe(
+      'catch-up'
     )
   })
 })
