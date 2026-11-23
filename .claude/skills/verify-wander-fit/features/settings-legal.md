@@ -38,4 +38,5 @@ Preconditions:
 - The link rows open new tabs on public pages that may not be live yet, so the flow asserts the rows and doesn't follow them.
 - App Settings scrolls inside a React Native `ScrollView`, which Maestro web's `scroll` doesn't move. The flow swipes (`.maestro/flow-layout.md`).
 - On web, a pressable with an accessibility label is matched by that label (`id: "Delete account"`), while Tamagui buttons keep their testID (`delete-account-continue`).
+- On the 625px web viewport the delete sheet's `Keep my account` starts below the fold; the flow swipes the sheet's content up to it. A closed sheet parks just under the viewport, where its title still counts as visible, so the flow waits for `delete-account-cancel` to go instead.
 - Both sheets use `FeedbackSheetFrame`, whose close button is labelled `Close`. If a closed sheet ever stays in the tree on web, `id: "Close"` can match the wrong one; close the delete sheet with `delete-account-cancel` instead.
