@@ -99,8 +99,11 @@ url: ${VERIFY_URL}
           duration: 400
 - tapOn:
     id: delete-account-cancel
+# A closed sheet parks just under the viewport's bottom edge, where its title
+# still counts as visible to the driver. Its buttons sit lower and don't.
 - extendedWaitUntil:
-    notVisible: 'Delete your account?'
+    notVisible:
+      id: delete-account-cancel
     timeout: 15000
 - assertVisible:
     id: 'Delete account'
