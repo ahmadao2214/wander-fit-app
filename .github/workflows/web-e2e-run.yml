@@ -219,6 +219,14 @@ jobs:
           path: e2e-artifacts/settings-telemetry/web/
           if-no-files-found: warn
           retention-days: 14
+      - name: Upload feedback evidence
+        if: always() && hashFiles('e2e-artifacts/feedback/web/.scrubbed') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-web-feedback
+          path: e2e-artifacts/feedback/web/
+          if-no-files-found: warn
+          retention-days: 14
       - name: Upload shard results
         if: always() && hashFiles('e2e-artifacts/web-results.json') != ''
         uses: actions/upload-artifact@v4
