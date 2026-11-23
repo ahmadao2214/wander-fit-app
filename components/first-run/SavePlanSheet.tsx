@@ -2,30 +2,19 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Keyboard, Platform, ScrollView } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useClerk, useSignIn, useSignUp, useSSO, useUser } from '@clerk/clerk-expo'
-import * as AuthSession from 'expo-auth-session'
 import { Button, Input, Sheet, Spinner, Text, XStack, YStack } from 'tamagui'
 import { Eye, EyeOff } from '@tamagui/lucide-icons'
-import { GoogleIcon } from '../GoogleIcon'
 import { FieldLabel } from '../FieldLabel'
+import { AppleSignInButton, GoogleSignInButton } from '../SocialSignInButtons'
 import { VerificationCodeInput } from '../VerificationCodeInput'
 import { useFirstRunDraft } from '../../hooks/useFirstRunDraft'
 import { DRAFT_KEY, parseDraft } from '../../lib/firstRunDraft'
 import { analytics, type AuthMethod } from '../../lib/analytics'
+import { oauthRedirectUrl } from '../../lib/oauthRedirect'
 import { getSignUpFormErrors, getVerificationErrorMessage } from '../../lib/signUpErrors'
 import { useSavePlan } from './useSavePlan'
 
-/**
- * Sign in with Apple appears once it's enabled in Clerk and the Apple
- * Developer account. Set EXPO_PUBLIC_APPLE_SIGN_IN=1 in that build.
- */
-export const APPLE_SIGN_IN_ENABLED = process.env.EXPO_PUBLIC_APPLE_SIGN_IN === '1'
-
 type Step = 'choose' | 'email' | 'code' | 'saving'
-
-const ssoRedirect = () =>
-  Platform.OS === 'web'
-    ? AuthSession.makeRedirectUri()
-    : AuthSession.makeRedirectUri({ scheme: 'myapp', path: 'oauth' })
 
 function PrimaryButton({
   children,
@@ -183,7 +172,7 @@ export function SavePlanSheet({
       }
       const result = await startSSOFlow({
         strategy: provider === 'google' ? 'oauth_google' : 'oauth_apple',
-        redirectUrl: ssoRedirect(),
+        redirectUrl: oauthRedirectUrl(),
       })
       let sessionId = result.createdSessionId
       if (!sessionId && provider === 'apple' && result.signUp) {
@@ -202,8 +191,9 @@ export function SavePlanSheet({
         },
         provider
       )
-    } catch {
+    } catch (error) {
       const name = provider === 'google' ? 'Google' : 'Apple'
+      console.error(`${name} sign-in failed:`, error)
       setErrors({ general: `${name} sign-in didn't finish. Try again, or continue with email.` })
     } finally {
       setBusy(false)
@@ -280,7 +270,7 @@ export function SavePlanSheet({
     }
   }
 
-  const chooseSnap = APPLE_SIGN_IN_ENABLED && !clerkUser ? 54 : 44
+  const chooseSnap = clerkUser ? 42 : 54
   const snapPoints = useMemo(() => [step === 'choose' ? chooseSnap : 90], [step, chooseSnap])
 
   const close = (next: boolean) => {
@@ -377,36 +367,14 @@ export function SavePlanSheet({
 
             {step === 'choose' && !clerkUser ? (
               <YStack gap="$3">
-                {APPLE_SIGN_IN_ENABLED ? (
-                  <Button
-                    size="$5"
-                    bg="$color12"
-                    color="$background"
-                    fontFamily="$body"
-                    fontWeight="700"
-                    rounded="$4"
-                    pressStyle={{ scale: 0.98 }}
-                    disabled={busy}
-                    onPress={() => onSocial('apple')}
-                    testID="save-plan-apple"
-                  >
-                    Continue with Apple
-                  </Button>
-                ) : null}
-                <Button
-                  size="$5"
-                  bg="white"
-                  color="#3c4043"
-                  fontFamily="$body"
-                  fontWeight="700"
-                  rounded="$4"
-                  icon={<GoogleIcon size={20} />}
-                  disabled={busy || !isLoaded}
-                  onPress={() => onSocial('google')}
+                <AppleSignInButton
+                  onPress={() => void onSocial('apple')}
+                  testID="save-plan-apple"
+                />
+                <GoogleSignInButton
+                  onPress={() => void onSocial('google')}
                   testID="save-plan-google"
-                >
-                  Continue with Google
-                </Button>
+                />
                 <PrimaryButton
                   disabled={busy}
                   onPress={() => setStep('email')}

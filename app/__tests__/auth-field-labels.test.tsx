@@ -1,12 +1,13 @@
 import React from 'react'
-import { render } from '@testing-library/react-native'
+import { act, fireEvent, render } from '@testing-library/react-native'
 import { TamaguiProvider } from 'tamagui'
 import config from '../../tamagui.config'
 
+const mockStartSSOFlow = jest.fn(async (_args: unknown) => ({}))
 jest.mock('@clerk/clerk-expo', () => ({
   useSignIn: () => ({ isLoaded: true, signIn: {}, setActive: jest.fn() }),
   useSignUp: () => ({ isLoaded: true, signUp: {}, setActive: jest.fn() }),
-  useSSO: () => ({ startSSOFlow: jest.fn() }),
+  useSSO: () => ({ startSSOFlow: mockStartSSOFlow }),
   useUser: () => ({ user: null }),
   useClerk: () => ({ signOut: jest.fn() }),
 }))
@@ -33,7 +34,10 @@ jest.mock('expo-web-browser', () => ({
   warmUpAsync: jest.fn(),
   coolDownAsync: jest.fn(),
 }))
-jest.mock('expo-auth-session', () => ({ makeRedirectUri: () => 'myapp://' }))
+jest.mock('expo-auth-session', () => ({
+  makeRedirectUri: (options?: { scheme?: string; path?: string }) =>
+    options?.scheme ? `${options.scheme}://${options.path}` : 'http://localhost:8081/',
+}))
 
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 44, bottom: 34, left: 0, right: 0 }),
@@ -66,6 +70,26 @@ describe('Auth field labels', () => {
     const screen = render(<SignInScreen />, { wrapper: AllTheProviders })
     expectLabeledField(screen, 'sign-in-email', 'Email address')
     expectLabeledField(screen, 'sign-in-password', 'Password')
+  })
+
+  it('sign-in offers Apple, Google and email together', () => {
+    const screen = render(<SignInScreen />, { wrapper: AllTheProviders })
+    expect(screen.getByText('Continue with Apple')).toBeTruthy()
+    expect(screen.getByText('Continue with Google')).toBeTruthy()
+    expect(screen.getByTestId('sign-in-email')).toBeTruthy()
+    expect(screen.getByTestId('sign-in-submit')).toBeTruthy()
+  })
+
+  it.each([
+    ['sign-in-apple', 'oauth_apple'],
+    ['sign-in-google', 'oauth_google'],
+  ])('%s starts %s and returns to wanderfit://oauth', async (testID, strategy) => {
+    mockStartSSOFlow.mockClear()
+    const screen = render(<SignInScreen />, { wrapper: AllTheProviders })
+    await act(async () => {
+      fireEvent.press(screen.getByTestId(testID))
+    })
+    expect(mockStartSSOFlow).toHaveBeenCalledWith({ strategy, redirectUrl: 'wanderfit://oauth' })
   })
 
   it('sign-in shows the Wander Fit wordmark instead of the lightning bolt', () => {
