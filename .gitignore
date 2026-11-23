@@ -46,6 +46,7 @@ yarn.lock
 
 # Local verification export and proof. Do not commit recordings.
 dist-verify/
+dist-android/
 e2e-artifacts/
 .env.e2e
 
