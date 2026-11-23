@@ -1,15 +1,17 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Keyboard, Platform, Pressable, ScrollView, type GestureResponderEvent } from 'react-native'
 import { useRouter } from 'expo-router'
-import { useClerk, useSignUp, useSSO, useUser } from '@clerk/clerk-expo'
-import * as AuthSession from 'expo-auth-session'
+import { useClerk, useSignIn, useSignUp, useSSO, useUser } from '@clerk/clerk-expo'
 import * as WebBrowser from 'expo-web-browser'
 import { Button, Input, Sheet, Spinner, Text, XStack, YStack } from 'tamagui'
 import { Check, Eye, EyeOff } from '@tamagui/lucide-icons'
 import { FieldLabel } from '../FieldLabel'
+import { AppleSignInButton, GoogleSignInButton } from '../SocialSignInButtons'
 import { VerificationCodeInput } from '../VerificationCodeInput'
 import { useFirstRunDraft } from '../../hooks/useFirstRunDraft'
+import { DRAFT_KEY, parseDraft } from '../../lib/firstRunDraft'
 import { analytics, type AuthMethod } from '../../lib/analytics'
+import { ageGateLock } from '../../lib/ageGateLockStorage'
 import {
   acceptanceParts,
   acceptanceText,
@@ -17,22 +19,12 @@ import {
   legalUrl,
   type LegalPage,
 } from '../../lib/legal'
+import { oauthRedirectUrl } from '../../lib/oauthRedirect'
 import { getSignUpFormErrors, getVerificationErrorMessage } from '../../lib/signUpErrors'
 import type { AgeGroup } from '../../types'
 import { useSavePlan } from './useSavePlan'
 
-/**
- * Sign in with Apple appears once it's enabled in Clerk and the Apple
- * Developer account. Set EXPO_PUBLIC_APPLE_SIGN_IN=1 in that build.
- */
-export const APPLE_SIGN_IN_ENABLED = process.env.EXPO_PUBLIC_APPLE_SIGN_IN === '1'
-
 type Step = 'choose' | 'email' | 'code' | 'saving'
-
-const ssoRedirect = () =>
-  Platform.OS === 'web'
-    ? AuthSession.makeRedirectUri()
-    : AuthSession.makeRedirectUri({ scheme: 'myapp', path: 'oauth' })
 
 function PrimaryButton({
   children,
@@ -188,14 +180,17 @@ export function SavePlanSheet({
   open,
   onOpenChange,
   nextLabel,
+  returningFromGoogle = false,
 }: {
   open: boolean
+  returningFromGoogle?: boolean
   onOpenChange: (open: boolean) => void
   /** When Day 1 is ("Tomorrow"), for the Program tab's Up next card. */
   nextLabel?: string
 }) {
   const router = useRouter()
   const { isLoaded, signUp, setActive } = useSignUp()
+  const { signIn } = useSignIn()
   const { startSSOFlow } = useSSO()
   const { user: clerkUser } = useUser()
   const { signOut } = useClerk()
@@ -232,10 +227,24 @@ export function SavePlanSheet({
     )
   }
 
+  /**
+   * The age gate can close after this screen opened: another tab on the same
+   * device entered a birth date under the minimum age. Checked before an
+   * account is created and before the plan is saved. True when it sent the
+   * athlete back to the closed age step.
+   */
+  const ageGateClosed = async () => {
+    if (!(await ageGateLock.isLocked())) return false
+    onOpenChange(false)
+    router.replace('/(first-run)/about')
+    return true
+  }
+
   const finish = async (
     account: { email?: string; name?: string } = {},
     authMethod: AuthMethod = 'existing_session'
   ) => {
+    if (await ageGateClosed()) return
     setStep('saving')
     try {
       const { keptExistingProgram } = await savePlan(account)
@@ -258,6 +267,17 @@ export function SavePlanSheet({
     }
   }
 
+  // The Google redirect only starts from a ticked checkbox (onSocial), and
+  // 'wf-google-save' is written there, so a matching snapshot was accepted.
+  useEffect(() => {
+    if (!returningFromGoogle || !clerkUser || !draft || !open) return
+    const approved = parseDraft(sessionStorage.getItem('wf-google-save'))
+    if (!approved || JSON.stringify(approved) !== JSON.stringify(parseDraft(JSON.stringify(draft))))
+      return
+    sessionStorage.removeItem('wf-google-save')
+    void finish({}, 'google')
+  })
+
   const onSaveSignedIn = () => {
     if (!accepted) return
     void finish(
@@ -269,16 +289,39 @@ export function SavePlanSheet({
     )
   }
 
-  const onApple = async () => {
-    if (!accepted) return
+  const onSocial = async (provider: 'apple' | 'google') => {
+    if (busy || !isLoaded || !accepted) return
+    setBusy(true)
+    if (await ageGateClosed()) {
+      setBusy(false)
+      return
+    }
     setErrors({})
     try {
-      const result = await startSSOFlow({ strategy: 'oauth_apple', redirectUrl: ssoRedirect() })
+      if (provider === 'google' && Platform.OS === 'web') {
+        if (!signIn || !draft) throw new Error('Sign-in is not ready')
+        const snapshot = JSON.stringify(draft)
+        sessionStorage.setItem(DRAFT_KEY, snapshot)
+        sessionStorage.setItem('wf-google-save', snapshot)
+        await signIn.authenticateWithRedirect({
+          strategy: 'oauth_google',
+          redirectUrl: '/google-save-callback',
+          redirectUrlComplete: '/reveal?saveWith=google',
+        })
+        return
+      }
+      const result = await startSSOFlow({
+        strategy: provider === 'google' ? 'oauth_google' : 'oauth_apple',
+        redirectUrl: oauthRedirectUrl(),
+      })
       let sessionId = result.createdSessionId
-      if (!sessionId && result.signUp) {
+      if (!sessionId && provider === 'apple' && result.signUp) {
         sessionId = (await result.signUp.create({})).createdSessionId
       }
-      if (!sessionId) return
+      if (!sessionId) {
+        if (result.authSessionResult?.type === 'success') throw new Error('Incomplete sign-in')
+        return
+      }
       await result.setActive!({ session: sessionId })
       const su = result.signUp
       await finish(
@@ -286,17 +329,21 @@ export function SavePlanSheet({
           email: su?.emailAddress ?? undefined,
           name: `${su?.firstName ?? ''} ${su?.lastName ?? ''}`.trim() || undefined,
         },
-        'apple'
+        provider
       )
     } catch (error) {
-      console.error('Apple sign-in failed:', error)
-      setErrors({ general: "Apple sign-in didn't finish. Try again, or continue with email." })
+      const name = provider === 'google' ? 'Google' : 'Apple'
+      console.error(`${name} sign-in failed:`, error)
+      setErrors({ general: `${name} sign-in didn't finish. Try again, or continue with email.` })
+    } finally {
+      setBusy(false)
     }
   }
 
   const onCreate = async () => {
     if (!isLoaded || !accepted) return
     Keyboard.dismiss()
+    if (await ageGateClosed()) return
     const { name, email, password } = fields.current
     const missing = {
       name: name.trim() ? undefined : 'Enter your first name.',
@@ -364,14 +411,15 @@ export function SavePlanSheet({
     }
   }
 
-  const chooseSnap = APPLE_SIGN_IN_ENABLED || clerkUser ? 58 : 50
+  // Room for the checkbox above the buttons; the 14–17 sentence runs longer.
+  const chooseSnap = clerkUser ? 52 : 68
   const snapPoints = useMemo(
     () => [step === 'choose' && !disclaimerOpen ? chooseSnap : 90],
     [step, chooseSnap, disclaimerOpen]
   )
 
   const close = (next: boolean) => {
-    if (step === 'saving') return
+    if (step === 'saving' || busy) return
     onOpenChange(next)
   }
 
@@ -485,28 +533,21 @@ export function SavePlanSheet({
 
             {step === 'choose' && !disclaimerOpen && !clerkUser ? (
               <YStack gap="$3">
-                {APPLE_SIGN_IN_ENABLED ? (
-                  <Button
-                    size="$5"
-                    bg={accepted ? '$color12' : '$color5'}
-                    color={accepted ? '$background' : '$color10'}
-                    fontFamily="$body"
-                    fontWeight="700"
-                    rounded="$4"
-                    pressStyle={accepted ? { scale: 0.98 } : undefined}
-                    disabled={!accepted}
-                    aria-disabled={!accepted}
-                    onPress={onApple}
-                    testID="save-plan-apple"
-                  >
-                    Continue with Apple
-                  </Button>
-                ) : null}
+                <AppleSignInButton
+                  disabled={busy || !accepted}
+                  onPress={() => void onSocial('apple')}
+                  testID="save-plan-apple"
+                />
+                <GoogleSignInButton
+                  disabled={busy || !accepted}
+                  onPress={() => void onSocial('google')}
+                  testID="save-plan-google"
+                />
                 <PrimaryButton
+                  disabled={busy || !accepted}
                   onPress={() => {
                     if (accepted) setStep('email')
                   }}
-                  disabled={!accepted}
                   testID="save-plan-email"
                 >
                   Continue with email

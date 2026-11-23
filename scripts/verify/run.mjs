@@ -639,7 +639,7 @@ function maskPassword(password) {
   if (process.env.GITHUB_ACTIONS === 'true') console.log(`::add-mask::${password}`)
 }
 
-function createPersona(state) {
+export function createPersona(state) {
   const result = spawnSync(
     process.execPath,
     ['scripts/verify/persona.mjs', 'create', '--state', state, '--json'],
@@ -839,7 +839,7 @@ function inspectPersona(persona, flow) {
   return inspected
 }
 
-function deletePersona(persona) {
+export function deletePersona(persona) {
   const result = spawnSync(
     process.execPath,
     ['scripts/verify/persona.mjs', 'delete', persona.email],
@@ -855,7 +855,7 @@ function deletePersona(persona) {
 // Drop persona-latest.json only after both the scrub and the account delete
 // have succeeded. The next create overwrites that file, so a half-finished
 // persona has to live in persona-pending.json instead.
-function releasePersonaFile(email) {
+export function releasePersonaFile(email) {
   if (!email || !fs.existsSync(personaFile)) return
   const current = JSON.parse(fs.readFileSync(personaFile, 'utf8'))
   if (current.email === email) fs.rmSync(personaFile, { force: true })
@@ -904,12 +904,14 @@ function scrubMarker(dir) {
   return path.join(dir, '.scrubbed')
 }
 
+// Folders whose upload is gated on a .scrubbed marker: each web flow's folder,
+// and the Android run's one folder (scripts/verify/android.mjs).
 function evidenceDirs() {
   if (!fs.existsSync(artifactsDir)) return []
-  return fs
-    .readdirSync(artifactsDir)
-    .map((name) => path.join(artifactsDir, name, 'web'))
-    .filter((dir) => fs.existsSync(dir))
+  return [
+    ...fs.readdirSync(artifactsDir).map((name) => path.join(artifactsDir, name, 'web')),
+    path.join(artifactsDir, 'android'),
+  ].filter((dir) => fs.existsSync(dir))
 }
 
 const binaryEvidence = /\.(png|jpe?g|gif|webp|mp4|webm|mov|zip)$/i
@@ -938,23 +940,9 @@ export function redactEvidence(dir, secret, skip = []) {
   return changed
 }
 
-// Maestro's beta web driver occasionally crashes in Chromium/CDP within a few
-// seconds of launchApp before the flow takes any screenshot (e.g. #88 main run
-// 44995849336 failing at 3.4s on a 90s extendedWaitUntil). Retry once ONLY on
-// that cold-start signature; real assertion failures take >20s or happen after
-// the flow has taken its own screenshots and are never retried.
-export function shouldRetryColdStart({ elapsedMs, hasScreenshots, attempt }) {
-  return attempt === 0 && elapsedMs < 20_000 && !hasScreenshots
-}
-
-// Maestro saves its own step screenshots on every failure, under
-// `<run>/<flow>/screenshots/step-011-assertCondition-....png` (and one per
-// runFlow step). Those prove nothing about how far the flow got, so only the
-// flow's own `takeScreenshot` evidence (`<run>/<flow>/takeScreenshot/01-today.png`)
-// counts. Archived `attempt-N/` folders belong to an earlier attempt.
 const maestroStepShot = /^step-\d+-/i
 
-export function hasFlowEvidence(dir) {
+function hasFlowEvidence(dir) {
   if (!fs.existsSync(dir)) return false
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name)
@@ -968,9 +956,6 @@ export function hasFlowEvidence(dir) {
   return false
 }
 
-// Moves the failed first attempt's Maestro output into a dedicated subfolder
-// (e.g. `attempt-1/`) inside `outDir` before retrying, so crash logs from the
-// original cold-start failure survive and are scrubbed alongside attempt 2.
 export function archiveAttemptEvidence(outDir, attemptLabel = 'attempt-1') {
   if (!fs.existsSync(outDir)) return false
   const entries = fs.readdirSync(outDir).filter((name) => !/^attempt-\d+$/.test(name))
@@ -981,6 +966,15 @@ export function archiveAttemptEvidence(outDir, attemptLabel = 'attempt-1') {
     fs.renameSync(path.join(outDir, name), path.join(archiveDir, name))
   }
   return true
+}
+
+export function runWithColdStartRetry(outDir, launch, onRetry) {
+  const first = launch()
+  if (first.status === 0 || first.elapsedMs >= 20_000 || hasFlowEvidence(outDir))
+    return first.status
+  archiveAttemptEvidence(outDir)
+  onRetry(first)
+  return launch().status
 }
 
 function runMaestro(flowFile, outDir, url, persona) {
@@ -995,26 +989,24 @@ function runMaestro(flowFile, outDir, url, persona) {
   args.push(flowFile)
   fs.rmSync(outDir, { recursive: true, force: true })
   fs.mkdirSync(outDir, { recursive: true })
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const started = Date.now()
-    const result = spawnSync(maestro, args, { cwd: root, stdio: 'inherit', env })
-    if (result.status === 0) {
-      console.log(`evidence: ${outDir}`)
-      return
-    }
-    const elapsedMs = Date.now() - started
-    const hasScreenshots = hasFlowEvidence(outDir)
-    if (shouldRetryColdStart({ elapsedMs, hasScreenshots, attempt })) {
-      archiveAttemptEvidence(outDir, `attempt-${attempt + 1}`)
+  const status = runWithColdStartRetry(
+    outDir,
+    () => {
+      const started = performance.now()
+      const result = spawnSync(maestro, args, { cwd: root, stdio: 'inherit', env })
+      return { status: result.status ?? 1, elapsedMs: performance.now() - started }
+    },
+    ({ status, elapsedMs }) =>
       console.warn(
-        `retrying ${flowFile} once after cold-start Maestro exit ${result.status ?? 1} (${Math.round(elapsedMs / 1000)}s, no flow screenshots); preserved attempt-${attempt + 1}/`
+        `retrying ${flowFile} once after cold-start Maestro exit ${status} (${Math.round(elapsedMs / 1000)}s, no flow screenshots)`
       )
-      continue
-    }
-    const error = new Error(`Maestro exited ${result.status ?? 1}`)
-    error.exitStatus = result.status ?? 1
+  )
+  if (status !== 0) {
+    const error = new Error(`Maestro exited ${status}`)
+    error.exitStatus = status
     throw error
   }
+  console.log(`evidence: ${outDir}`)
 }
 
 function drive(url, submitting = submitMode(), flow = 'sign-in') {

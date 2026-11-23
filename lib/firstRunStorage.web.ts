@@ -1,11 +1,22 @@
 import { createDraftStore } from './firstRunDraft'
 
-/**
- * The First Run draft on web, kept in localStorage. Private windows and
- * blocked storage throw; the store treats that as an empty draft.
+/** During a Google redirect, this tab keeps the plan the athlete chose.
+ * Other tabs can keep editing the shared draft while the athlete signs in.
  */
 export const firstRunDraft = createDraftStore({
-  getItem: async (key) => window.localStorage.getItem(key),
-  setItem: async (key, value) => window.localStorage.setItem(key, value),
-  removeItem: async (key) => window.localStorage.removeItem(key),
+  getItem: async (key) => window.sessionStorage.getItem(key) ?? window.localStorage.getItem(key),
+  setItem: async (key, value) => {
+    const pending = window.sessionStorage.getItem(key)
+    if (pending !== null) window.sessionStorage.setItem(key, value)
+    if (pending === null || window.localStorage.getItem(key) === pending) {
+      window.localStorage.setItem(key, value)
+    }
+  },
+  removeItem: async (key) => {
+    const pending = window.sessionStorage.getItem(key)
+    if (pending === null || window.localStorage.getItem(key) === pending) {
+      window.localStorage.removeItem(key)
+    }
+    window.sessionStorage.removeItem(key)
+  },
 })

@@ -29,6 +29,14 @@ Preconditions:
 - **Signed-out screen only.** Run `node scripts/verify/run.mjs screen`. `.maestro/sign-in-screen.yaml` checks `WELCOME BACK`, `Email address`, `Password` and `Sign In`, taps `Email address`, and checks `Sign In` is still visible. It never submits or creates a persona.
 - **Proof.** `e2e-artifacts/sign-in/web/<timestamp>/sign-in/` holds `02-filled.png` (password field masked), `03-today.png`, `04-profile.png`, `05-signed-out.png` under `takeScreenshot/` and `startRecording/recording.mp4`; `all` adds `e2e-artifacts/sign-in/web/result.json` with `"status": "passed"`.
 
+- **On Android, whole journey.** `node scripts/verify/android.mjs run sign-in` (APK from `node scripts/verify/android.mjs build`, emulator booted). It creates an onboarded persona, runs `.maestro/native/sign-in.yaml`, scrubs the password from the evidence, deletes the persona, and prints `PASS sign-in`. CI runs it in the Android E2E workflow: nightly, on dispatch, and on PRs labelled `run-native-e2e`.
+- **On Android, steps.** It's the same journey as web, with three differences:
+  - It inlines the sign-in steps so it can `hideKeyboard` before tapping `id: sign-in-submit`, which the Android keyboard covers.
+  - It scrolls the Profile list to `id: sign-out` (native `scrollUntilVisible` works) instead of following `/profile#sign-out`.
+  - It taps **Wait** on a system "isn't responding" dialog after launch (`.maestro/native/subflows/_dismiss-anr.yaml`).
+- **On Android, proof.** `e2e-artifacts/android/sign-in/debug/sign-in/` holds `01-sign-in.png` through `05-signed-out.png` under `takeScreenshot/` and `startRecording/recording.mp4`. `e2e-artifacts/android/results.json` lists `sign-in` as `passed`. CI uploads the folder as `e2e-android` only after the scrub writes `e2e-artifacts/android/.scrubbed`.
+- **On Android, password echo.** Android briefly shows each typed password character, and the video would capture it. On CI the runner sets `show_password` to `0`. Locally, run with `CI=1` on a throwaway emulator, or keep the video private.
+
 ## Gotchas
 
 - The submitted path uses a new `e2e.<timestamp>+clerk_test@example.com` user on `wander-fit-e2e`, never the shared manual account.

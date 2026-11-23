@@ -179,8 +179,13 @@ describe('web flows', () => {
       'Lower Body A',
       'id: first-run-save',
       'id: save-plan-email',
+      // The sheet offers Apple, Google and email, in that order (Guideline 4.8).
+      'assertVisible:\n    id: save-plan-apple',
+      'assertVisible:\n    id: save-plan-google',
+      'assertVisible:\n    id: save-plan-email',
       'assertNotVisible: "Skip"',
       'id: "I agree to the Terms of Service.*|save-plan-accept"',
+      'tapOn:\n    id: save-plan-email',
       'inputText: "Verify Athlete"',
       'inputText: ${PERSONA_EMAIL}',
       'inputText: ${PERSONA_PASSWORD}',

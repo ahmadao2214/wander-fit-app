@@ -7,9 +7,9 @@ import {
   parseNullSeparatedPaths,
   resolveDiffBase,
   selectFormatTargets,
+  root,
 } from './check-format.mjs'
 import { evaluateBudget, parseBudgetArgs } from './run-budgeted.mjs'
-import { listConvexTestFiles, planUnitTests, prChangedFilesArgs, root } from './select-tests.mjs'
 
 const checks = parse(fs.readFileSync(path.join(root, '.github/workflows/checks.yml'), 'utf8'))
 const runWorkflow = parse(
@@ -67,217 +67,6 @@ describe('run-budgeted', () => {
     })
     expect(failed.ok).toBe(false)
     expect(failed.exitCode).toBe(2)
-  })
-})
-
-describe('select-tests', () => {
-  const convexTests = [
-    'convex/__tests__/authGuards.test.ts',
-    'convex/__tests__/programTemplatesDbIo.test.ts',
-  ]
-  const runtimeFiles = ['convex/workoutCalendar.ts', 'lib/executionOrder.ts', 'lib/today.ts']
-  const allExist = () => true
-
-  it('disables git rename detection so moves report both source and destination', () => {
-    expect(prChangedFilesArgs()).toEqual(['diff', '--no-renames', '--name-only', 'HEAD^1', 'HEAD'])
-  })
-
-  it('runs the full randomized suite on push/manual events, missing diffs, config edits, and deleted code files', () => {
-    expect(
-      planUnitTests({
-        eventName: 'push',
-        changedFiles: ['README.md'],
-        runtimeFiles,
-        convexTests,
-        exists: allExist,
-      })
-    ).toMatchObject({
-      mode: 'full',
-      jestArgs: ['--ci', '--randomize'],
-    })
-    expect(
-      planUnitTests({
-        eventName: 'pull_request',
-        changedFiles: null,
-        runtimeFiles,
-        convexTests,
-        exists: allExist,
-      }).mode
-    ).toBe('full')
-    expect(
-      planUnitTests({
-        eventName: 'pull_request',
-        changedFiles: ['jest.config.js'],
-        runtimeFiles,
-        convexTests,
-        exists: allExist,
-      }).mode
-    ).toBe('full')
-    expect(
-      planUnitTests({
-        eventName: 'pull_request',
-        changedFiles: ['package.json'],
-        runtimeFiles,
-        convexTests,
-        exists: allExist,
-      }).mode
-    ).toBe('full')
-    expect(
-      planUnitTests({
-        eventName: 'pull_request',
-        changedFiles: ['convex/schema.ts'],
-        runtimeFiles,
-        convexTests,
-        exists: allExist,
-      }).mode
-    ).toBe('full')
-    expect(
-      planUnitTests({
-        eventName: 'pull_request',
-        changedFiles: ['lib/oldHelper.ts'],
-        runtimeFiles,
-        convexTests,
-        exists: () => false,
-      }).mode
-    ).toBe('full')
-  })
-
-  it('skips pure documentation PRs but keeps tests that scan skill docs or Maestro notes', () => {
-    expect(
-      planUnitTests({
-        eventName: 'pull_request',
-        changedFiles: ['README.md', 'docs/BUILDS.md'],
-        runtimeFiles,
-        convexTests,
-        exists: allExist,
-      }).mode
-    ).toBe('skip')
-
-    const skillPlan = planUnitTests({
-      eventName: 'pull_request',
-      changedFiles: ['.claude/skills/verify-wander-fit/features/first-run.md'],
-      runtimeFiles,
-      convexTests,
-      exists: allExist,
-    })
-    expect(skillPlan.mode).toBe('related')
-    expect(skillPlan.targets).toContain('scripts/verify/feature-map.test.mjs')
-
-    const maestroNotePlan = planUnitTests({
-      eventName: 'pull_request',
-      changedFiles: ['.maestro/flow-layout.md'],
-      runtimeFiles,
-      convexTests,
-      exists: allExist,
-    })
-    expect(maestroNotePlan.mode).toBe('related')
-    expect(maestroNotePlan.targets).toContain('scripts/verify/flows.test.mjs')
-
-    // Tests that read files from disk, which --findRelatedTests can't trace.
-    const plan = (changedFiles) =>
-      planUnitTests({
-        eventName: 'pull_request',
-        changedFiles,
-        runtimeFiles,
-        convexTests,
-        exists: allExist,
-      })
-
-    const newRoute = plan(['app/(athlete)/newscreen.tsx'])
-    expect(newRoute.mode).toBe('related')
-    expect(newRoute.targets).toContain('lib/__tests__/analyticsRoutes.test.ts')
-
-    const signOutScroll = plan(['lib/signOutScroll.ts'])
-    expect(signOutScroll.mode).toBe('related')
-    expect(signOutScroll.targets).toContain('scripts/verify/flows.test.mjs')
-
-    for (const link of ['.cursor/skills/verify-wander-fit', '.agents/skills/verify-wander-fit']) {
-      const linkPlan = plan([link])
-      expect({ link, mode: linkPlan.mode }).toEqual({ link, mode: 'related' })
-      expect(linkPlan.targets).toContain('scripts/verify/feature-map.test.mjs')
-    }
-  })
-
-  it('does not fail the advisory E2E check when the run was cancelled', () => {
-    const advisory = checks.jobs['web-e2e']
-    expect(advisory.if).toContain('!cancelled()')
-    expect(advisory.if).not.toContain('always()')
-  })
-
-  it('adds all convex/__tests__ suites when convex/ or convex-imported lib/ files change', () => {
-    const convexPlan = planUnitTests({
-      eventName: 'pull_request',
-      changedFiles: ['convex/workoutCalendar.ts'],
-      runtimeFiles,
-      convexTests,
-      exists: allExist,
-    })
-    expect(convexPlan.mode).toBe('related')
-    expect(convexPlan.targets).toEqual(
-      expect.arrayContaining([
-        'convex/workoutCalendar.ts',
-        'convex/__tests__/authGuards.test.ts',
-        'convex/__tests__/programTemplatesDbIo.test.ts',
-        'scripts/verify/doctor.test.mjs',
-      ])
-    )
-
-    const sharedLibPlan = planUnitTests({
-      eventName: 'pull_request',
-      changedFiles: ['lib/executionOrder.ts'],
-      runtimeFiles,
-      convexTests,
-      exists: allExist,
-    })
-    expect(sharedLibPlan.mode).toBe('related')
-    expect(sharedLibPlan.targets).toEqual(expect.arrayContaining(convexTests))
-    expect(listConvexTestFiles().length).toBeGreaterThan(10)
-  })
-
-  it('includes filesystem-scanning guard tests for screen, workflow, and Lottie edits', () => {
-    const screenPlan = planUnitTests({
-      eventName: 'pull_request',
-      changedFiles: ['app/(first-run)/sport.tsx'],
-      runtimeFiles,
-      convexTests,
-      exists: allExist,
-    })
-    expect(screenPlan.targets).toEqual(
-      expect.arrayContaining([
-        'app/(first-run)/sport.tsx',
-        'lib/__tests__/actionColor.test.ts',
-        'lib/__tests__/typography.test.ts',
-        'lib/__tests__/webDistributionConfig.test.ts',
-        'scripts/verify/flows.test.mjs',
-      ])
-    )
-
-    const workflowPlan = planUnitTests({
-      eventName: 'pull_request',
-      changedFiles: ['.github/workflows/checks.yml'],
-      runtimeFiles,
-      convexTests,
-      exists: allExist,
-    })
-    expect(workflowPlan.targets).toEqual([
-      'scripts/ci/ci.test.mjs',
-      'scripts/verify/flows.test.mjs',
-      'scripts/verify/nightly.test.mjs',
-    ])
-
-    const lottiePlan = planUnitTests({
-      eventName: 'pull_request',
-      changedFiles: ['assets/lottie/sports/basketball.json'],
-      runtimeFiles,
-      convexTests,
-      exists: allExist,
-    })
-    expect(lottiePlan.targets).toEqual(
-      expect.arrayContaining([
-        'lib/__tests__/sportAnimations.test.ts',
-        'scripts/lottie/build.test.mjs',
-      ])
-    )
   })
 })
 
@@ -345,25 +134,27 @@ describe('check-format', () => {
 })
 
 describe('CI workflow speed and budgets', () => {
+  it('does not fail the advisory E2E check when the run was cancelled', () => {
+    const advisory = checks.jobs['web-e2e']
+    expect(advisory.if).toContain('!cancelled()')
+    expect(advisory.if).not.toContain('always()')
+  })
+
   it('sets explicit timeout-minutes, blobless checkouts, Bun cache, and budgeted unit/typecheck/lint runs', () => {
     for (const name of ['unit', 'typecheck', 'lint', 'e2e-plan', 'web-e2e']) {
       expect(checks.jobs[name]['timeout-minutes']).toBeGreaterThan(0)
     }
     const unitCheckout = checks.jobs.unit.steps[0]
     expect(unitCheckout.with.filter).toBe('blob:none')
-    expect(unitCheckout.with['fetch-depth']).toBe(
-      "${{ github.event_name == 'pull_request' && 2 || 1 }}"
-    )
-
     const lintCheckout = checks.jobs.lint.steps[0]
     expect(lintCheckout.with.filter).toBe('blob:none')
     expect(lintCheckout.with['fetch-depth']).toBe(
       "${{ github.event_name == 'push' && '0' || '2' }}"
     )
 
-    const unitRun = checks.jobs.unit.steps.find((s) => (s.run || '').includes('select-tests.mjs'))
+    const unitRun = checks.jobs.unit.steps.find((s) => (s.run || '').endsWith('-- bun run test:ci'))
     expect(unitRun.run).toContain('run-budgeted.mjs')
-    expect(unitRun.env.GITHUB_EVENT_NAME).toBe('${{ github.event_name }}')
+    expect(unitRun.run).toContain('--max-seconds 120')
 
     const typecheckRun = checks.jobs.typecheck.steps.find((s) =>
       (s.run || '').includes('typecheck')

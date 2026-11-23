@@ -22,6 +22,9 @@ Preconditions:
 - **Launch and relaunch.** Run `.maestro/native/native-launch.yaml` on that simulator. The screen-only flow clears local app state, never submits credentials and never resets an account. The First Run appears after each launch.
 - **Proof.** Keep the `native-launch-first-run`, `native-launch-sign-in` and `native-relaunch-first-run` screenshots.
 
+- **On Android.** `node scripts/verify/android.mjs run native-launch` installs `dist-android/app-release.apk` (from `node scripts/verify/android.mjs build`) on the booted emulator and runs this flow, with no persona. CI runs it in the Android E2E workflow.
+- **On Android, timing.** An Android cold start took about 36 s on an emulator, so both First Run waits allow 90 s. The relaunch screenshot waits for animations to end: on CI the text reached the view tree before the first frame painted.
+
 ## Gotchas
 
 - The web harness (`run.mjs`) cannot drive this. A maintenance pass on web reports it `verified-unreachable` with the prerequisite "iOS simulator and local Release build".

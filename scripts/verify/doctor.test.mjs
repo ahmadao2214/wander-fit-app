@@ -11,7 +11,6 @@ import {
   seedInputFiles,
   seedInputsHash,
   selectBackendMode,
-  shouldRetryColdStart,
   shouldSeed,
   sourceStamp,
   stampDiffArgs,
@@ -359,7 +358,7 @@ describe('seed inputs and backend mode', () => {
     ).toBe('preview')
   })
 
-  it('builds balanced E2E plans and retries only cold-start Maestro crashes with no screenshots', () => {
+  it('builds balanced E2E plans', () => {
     const planDocs = buildE2EPlan({
       eventName: 'pull_request',
       changedFiles: ['docs/BUILDS.md'],
@@ -394,12 +393,5 @@ describe('seed inputs and backend mode', () => {
     expect(planFirstRunRoutes.flows.length).toBeGreaterThan(1)
 
     expect(prChangedFilesArgs()).toEqual(['diff', '--no-renames', '--name-only', 'HEAD^1', 'HEAD'])
-
-    expect(shouldRetryColdStart({ elapsedMs: 3400, hasScreenshots: false, attempt: 0 })).toBe(true)
-    expect(shouldRetryColdStart({ elapsedMs: 3400, hasScreenshots: false, attempt: 1 })).toBe(false)
-    expect(shouldRetryColdStart({ elapsedMs: 25000, hasScreenshots: false, attempt: 0 })).toBe(
-      false
-    )
-    expect(shouldRetryColdStart({ elapsedMs: 5000, hasScreenshots: true, attempt: 0 })).toBe(false)
   })
 })
