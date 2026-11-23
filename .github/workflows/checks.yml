@@ -20,7 +20,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           filter: blob:none
-          fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 1 }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -36,9 +35,7 @@ jobs:
             bun-${{ runner.os }}-
       - run: bun install --frozen-lockfile
       - name: Run unit tests (budgeted)
-        env:
-          GITHUB_EVENT_NAME: ${{ github.event_name }}
-        run: node scripts/ci/run-budgeted.mjs --name "Unit tests (Jest)" --max-seconds 120 -- node scripts/ci/select-tests.mjs
+        run: node scripts/ci/run-budgeted.mjs --name "Unit tests (Jest)" --max-seconds 120 -- bun run test:ci
 
   typecheck:
     name: Typecheck
@@ -64,6 +61,28 @@ jobs:
       - run: bun install --frozen-lockfile
       - name: Run typecheck (budgeted)
         run: node scripts/ci/run-budgeted.mjs --name "Typecheck" --max-seconds 30 -- bun run typecheck
+
+  progression:
+    name: Workout progression model
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.5
+      - run: bun install --frozen-lockfile
+      - name: Replay progression on a disposable Convex database
+        run: |
+          cd "$RUNNER_TEMP"
+          curl --fail --silent --show-error --location --retry 2 -o backend.zip https://github.com/get-convex/convex-backend/releases/download/precompiled-2026-10-10-72ce13c/convex-local-backend-x86_64-unknown-linux-gnu.zip
+          echo 'fcc51faa1168011819eec9aba85bf6959a6a7ce3929381cdc21c7da29f4bf3d5  backend.zip' | sha256sum --check
+          unzip -q backend.zip
+          chmod +x convex-local-backend
+          CONVEX_LOCAL_BACKEND="$RUNNER_TEMP/convex-local-backend" bash "$GITHUB_WORKSPACE/scripts/progression/run.sh"
 
   lint:
     name: Lint & format

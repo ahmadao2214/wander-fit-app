@@ -536,16 +536,6 @@ export const completeIntake = mutation({
   },
 })
 
-/**
- * Advance to next workout day
- * Called after completing a workout session
- *
- * HYBRID MODEL: This advances the "scheduled workout" pointer.
- * Athletes can still VIEW any workout in unlocked phases via browse.
- *
- * SEQUENTIAL PHASES: When a phase completes (4 weeks done), the next
- * phase is unlocked. Athletes cannot access SPP until GPP is complete.
- */
 export const advanceToNextDay = mutation({
   args: {
     programId: v.id('user_programs'),
@@ -572,16 +562,10 @@ export const advanceToNextDay = mutation({
       throw new Error('Not authorized')
     }
 
-    // Check if program is paused
     if (program.pausedAt) {
       throw new Error('Program is paused. Resume before continuing.')
     }
 
-    // The app calls this right after completing a workout. A Redo is extra
-    // work on a workout already done, so the program stays where it is.
-    // (Installed builds call this too, so the check lives here, not in the
-    // app.) Without a session id, the workout just finished is the one
-    // completed last: a workout started since on another device doesn't hide it.
     const latest = args.sessionId
       ? await ctx.db.get(args.sessionId)
       : (
@@ -611,30 +595,23 @@ export const advanceToNextDay = mutation({
     const now = Date.now()
     let { currentDay, currentWeek, currentPhase } = program
 
-    // Advance day
     currentDay++
 
-    // Get preferred training days from linked intake
     const intake = program.intakeResponseId ? await ctx.db.get(program.intakeResponseId) : null
     const preferredDays = intake?.preferredTrainingDaysPerWeek ?? 4
 
-    // Check if we need to advance week
     if (currentDay > preferredDays) {
       currentDay = 1
       currentWeek++
     }
 
-    // Check if we need to advance phase (dynamic weeks per phase)
     const weeksPerPhase = program.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE
     if (currentWeek > weeksPerPhase) {
-      // Phase is complete — set reassessment pending instead of advancing
-      // The athlete must complete a reassessment before the next phase unlocks
       if (program.reassessmentPendingForPhase) {
         throw new Error('Reassessment already pending. Complete it before advancing.')
       }
 
       await ctx.db.patch(args.programId, {
-        // Keep athlete at last position (don't advance to next phase)
         currentWeek: weeksPerPhase,
         currentDay: preferredDays,
         reassessmentPendingForPhase: currentPhase,
@@ -658,7 +635,6 @@ export const advanceToNextDay = mutation({
       }
     }
 
-    // Normal day/week advancement
     await ctx.db.patch(args.programId, {
       currentDay,
       currentWeek,
