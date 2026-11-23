@@ -328,7 +328,24 @@ export const purgeAthleteRecords = internalMutation({
     | { deleted: true; dependentDocs: number }
   > => {
     const user = await findUserByClerkId(ctx, clerkId)
-    if (!user) return { deleted: false, alreadyGone: true }
+    if (!user) {
+      // Clerk's webhook can finish the purge before deleteMyAccount gets here.
+      // The webhook has no email, so the invitations are still this call's job.
+      if (verifiedEmail) {
+        const invitations = await ctx.db
+          .query('clientInvitations')
+          .withIndex('by_email', (q) => q.eq('email', verifiedEmail))
+          .take(PURGE_BATCH_SIZE)
+        for (const invitation of invitations) await ctx.db.delete(invitation._id)
+        if (invitations.length >= PURGE_BATCH_SIZE) {
+          await ctx.scheduler.runAfter(0, internal.users.purgeAthleteRecords, {
+            clerkId,
+            verifiedEmail,
+          })
+        }
+      }
+      return { deleted: false, alreadyGone: true }
+    }
 
     if (await ownsTrainerData(ctx, user._id)) {
       throw trainerDataError()
