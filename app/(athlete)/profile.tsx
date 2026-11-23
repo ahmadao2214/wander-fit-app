@@ -88,6 +88,7 @@ export default function ProfilePage() {
           flex={1}
           showsVerticalScrollIndicator={false}
           scrollEventThrottle={32}
+          testID="profile-scroll"
           onScroll={(event) => {
             // The status bar sits over the top inset. Once the header has scrolled
             // out from under it, the page behind is light again.
