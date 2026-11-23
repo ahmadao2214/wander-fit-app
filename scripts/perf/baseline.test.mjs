@@ -1,10 +1,14 @@
 import {
   aggregate,
   appDurations,
+  appPid,
+  appPidsIn,
+  lastAppPid,
   buildReport,
   mainFlushMs,
   median,
   parseArgs,
+  pidFromLaunchctl,
   stats,
   tableRows,
   tableSchemas,
@@ -20,6 +24,7 @@ describe('parseArgs', () => {
       device: 'X',
       label: 'base',
       template: 'Time Profiler',
+      excludePids: [],
       positional: ['tabs'],
     })
   })
@@ -139,6 +144,70 @@ describe('buildReport', () => {
 describe('aggregate', () => {
   it('is null with no values', () => {
     expect(aggregate([])).toBeNull()
+  })
+})
+
+const OTHER_SIM = 'Main Thread (0x21) (asrafit, pid: 5693)'
+
+describe('pid scoping', () => {
+  const twoSims = [
+    '<node>',
+    `<row><thread id="1" fmt="${MAIN}">t</thread><weight id="2" fmt="1.00 ms">1000000</weight><tagged-backtrace id="3"><frame id="4" inlined="true" name="worklets::AnimationFrameBatchinator::flush()"/></tagged-backtrace></row>`,
+    `<row><thread id="5" fmt="${OTHER_SIM}">t</thread><weight ref="2"/><tagged-backtrace ref="3"/></row>`,
+    '<row><thread ref="5"/><weight ref="2"/><tagged-backtrace ref="3"/></row>',
+    '</node>',
+  ].join('')
+
+  it('reads the pid of the app under test only', () => {
+    expect([
+      appPid(MAIN),
+      appPid(OTHER_APP),
+      appPid('Main Thread (0x1) (asrafit-dev, pid: 7)'),
+    ]).toEqual([9, null, null])
+  })
+
+  it('finds every app pid in a table', () => {
+    expect([...appPidsIn(twoSims)].sort()).toEqual([5693, 9])
+  })
+
+  it("leaves out another simulator's process with the same name", () => {
+    const pids = new Set([9])
+    expect(threadBusy(tableRows(twoSims, ['thread', 'weight']), pids)).toEqual({
+      mainMs: 1,
+      jsMs: 0,
+      appMs: 1,
+    })
+    expect(mainFlushMs(twoSims, pids)).toBe(1)
+    expect(mainFlushMs(twoSims)).toBe(3)
+  })
+})
+
+describe('lastAppPid', () => {
+  it('picks the instance with the latest sample, so a cold start counts only the relaunched app', () => {
+    const OLD = 'Main Thread (0x31) (asrafit, pid: 100)'
+    const NEW = 'Main Thread (0x32) (asrafit, pid: 200)'
+    const xml = [
+      `<row><sample-time id="1">5</sample-time><thread id="2" fmt="${OLD}">t</thread></row>`,
+      `<row><sample-time id="3">9</sample-time><thread id="4" fmt="${NEW}">t</thread></row>`,
+      `<row><sample-time id="5">12</sample-time><thread id="6" fmt="${OTHER_SIM}">t</thread></row>`,
+    ].join('')
+    expect(lastAppPid(xml, new Set([100, 200]))).toBe(200)
+  })
+})
+
+describe('pidFromLaunchctl', () => {
+  it("reads the app's pid from a simulator's launchctl listing", () => {
+    const listing = [
+      '87654\t0\tUIKitApplication:com.apple.mobilecal[725d][rb-legacy]',
+      '58788\t0\tUIKitApplication:com.offseason.asrafit[b911][rb-legacy]',
+    ].join('\n')
+    expect(pidFromLaunchctl(listing)).toBe(58788)
+  })
+
+  it('is null when the app is not running', () => {
+    expect(
+      pidFromLaunchctl('-\t0\tUIKitApplication:com.offseason.asrafit[b911][rb-legacy]')
+    ).toBeNull()
   })
 })
 

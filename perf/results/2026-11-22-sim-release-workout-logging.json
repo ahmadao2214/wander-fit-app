@@ -5,7 +5,7 @@
   "device": "C88D28E5-9CE7-40D3-AD2D-000B74D8D094",
   "build": "Release simulator (scripts/verify/explore.mjs build)",
   "commit": "77fe00a",
-  "recordedAt": "2026-11-23T02:19:52.523Z",
+  "recordedAt": "2026-11-23T01:48:20.595011Z",
   "runs": 5,
   "failedRuns": 0,
   "flowMs": {
@@ -30,29 +30,30 @@
     "max": 359.1
   },
   "mainThreadBusyMs": {
-    "median": 14667,
-    "min": 14027,
-    "max": 15221
+    "median": 2028,
+    "min": 1491,
+    "max": 2137
   },
   "mainThreadFlushMs": {
-    "median": 11237,
-    "min": 10997,
-    "max": 12335
+    "median": 152,
+    "min": 14,
+    "max": 196
   },
   "mainThreadOtherMs": {
-    "median": 3030,
-    "min": 2594,
-    "max": 3540
+    "median": 1876,
+    "min": 1477,
+    "max": 1941
   },
   "jsThreadBusyMs": {
-    "median": 1243,
-    "min": 932,
-    "max": 1939
+    "median": 1109,
+    "min": 883,
+    "max": 1514
   },
+  "jsThreadFound": true,
   "appBusyMs": {
-    "median": 16814,
-    "min": 15478,
-    "max": 17244
+    "median": 3386,
+    "min": 2583,
+    "max": 3903
   },
   "hitchCount": null,
   "hitchTotalMs": null,
@@ -61,85 +62,105 @@
       "run": 1,
       "ok": true,
       "flowMs": 51139,
+      "pids": [
+        38859
+      ],
       "hangs": {
         "count": 0,
         "totalMs": 0,
         "maxMs": 0
       },
       "busy": {
-        "mainMs": 14059,
-        "jsMs": 932,
-        "appMs": 15478,
-        "mainFlushMs": 11465,
-        "mainOtherMs": 2594
+        "mainMs": 1491,
+        "jsMs": 883,
+        "appMs": 2583,
+        "mainFlushMs": 14,
+        "mainOtherMs": 1477,
+        "jsThreadFound": true
       }
     },
     {
       "run": 2,
       "ok": true,
       "flowMs": 54490,
+      "pids": [
+        38859
+      ],
       "hangs": {
         "count": 1,
         "totalMs": 359.1,
         "maxMs": 359.1
       },
       "busy": {
-        "mainMs": 14667,
-        "jsMs": 1717,
-        "appMs": 16935,
-        "mainFlushMs": 11180,
-        "mainOtherMs": 3487
+        "mainMs": 2077,
+        "jsMs": 1190,
+        "appMs": 3554,
+        "mainFlushMs": 163,
+        "mainOtherMs": 1914,
+        "jsThreadFound": true
       }
     },
     {
       "run": 3,
       "ok": true,
       "flowMs": 52300,
+      "pids": [
+        38859
+      ],
       "hangs": {
         "count": 0,
         "totalMs": 0,
         "maxMs": 0
       },
       "busy": {
-        "mainMs": 14027,
-        "jsMs": 1243,
-        "appMs": 15755,
-        "mainFlushMs": 10997,
-        "mainOtherMs": 3030
+        "mainMs": 2028,
+        "jsMs": 1109,
+        "appMs": 3386,
+        "mainFlushMs": 152,
+        "mainOtherMs": 1876,
+        "jsThreadFound": true
       }
     },
     {
       "run": 4,
       "ok": true,
       "flowMs": 55215,
+      "pids": [
+        38859
+      ],
       "hangs": {
         "count": 0,
         "totalMs": 0,
         "maxMs": 0
       },
       "busy": {
-        "mainMs": 14777,
-        "jsMs": 1939,
-        "appMs": 17244,
-        "mainFlushMs": 11237,
-        "mainOtherMs": 3540
+        "mainMs": 2137,
+        "jsMs": 1514,
+        "appMs": 3903,
+        "mainFlushMs": 196,
+        "mainOtherMs": 1941,
+        "jsThreadFound": true
       }
     },
     {
       "run": 5,
       "ok": true,
       "flowMs": 51843,
+      "pids": [
+        38859
+      ],
       "hangs": {
         "count": 0,
         "totalMs": 0,
         "maxMs": 0
       },
       "busy": {
-        "mainMs": 15221,
-        "jsMs": 1148,
-        "appMs": 16814,
-        "mainFlushMs": 12335,
-        "mainOtherMs": 2886
+        "mainMs": 1696,
+        "jsMs": 1108,
+        "appMs": 2997,
+        "mainFlushMs": 19,
+        "mainOtherMs": 1677,
+        "jsThreadFound": true
       }
     }
   ]

@@ -5,7 +5,7 @@
   "device": "C88D28E5-9CE7-40D3-AD2D-000B74D8D094",
   "build": "Release simulator (scripts/verify/explore.mjs build)",
   "commit": "77fe00a",
-  "recordedAt": "2026-11-23T03:12:25.896Z",
+  "recordedAt": "2026-11-23T01:23:40.903723Z",
   "runs": 5,
   "failedRuns": 0,
   "flowMs": {
@@ -15,12 +15,12 @@
   },
   "flowMsNote": "Wall time of the whole Maestro run, including Maestro's own start-up (20-30 s). Not a launch time.",
   "hangCount": {
-    "median": 2,
+    "median": 1,
     "min": 1,
     "max": 3
   },
   "hangTotalMs": {
-    "median": 908.8,
+    "median": 817.7,
     "min": 552.8,
     "max": 1334.4
   },
@@ -30,29 +30,30 @@
     "max": 999.1
   },
   "mainThreadBusyMs": {
-    "median": 14086,
-    "min": 11463,
-    "max": 14685
+    "median": 3698,
+    "min": 2326,
+    "max": 4075
   },
   "mainThreadFlushMs": {
-    "median": 8940,
-    "min": 8028,
-    "max": 9737
+    "median": 3,
+    "min": 1,
+    "max": 25
   },
   "mainThreadOtherMs": {
-    "median": 4948,
-    "min": 3435,
-    "max": 5301
+    "median": 3683,
+    "min": 2324,
+    "max": 4050
   },
   "jsThreadBusyMs": {
-    "median": 540,
-    "min": 322,
-    "max": 669
+    "median": 302,
+    "min": 236,
+    "max": 318
   },
+  "jsThreadFound": true,
   "appBusyMs": {
-    "median": 16888,
-    "min": 13767,
-    "max": 17642
+    "median": 5948,
+    "min": 4127,
+    "max": 6777
   },
   "hitchCount": null,
   "hitchTotalMs": null,
@@ -61,85 +62,105 @@
       "run": 1,
       "ok": true,
       "flowMs": 37221,
+      "pids": [
+        16806
+      ],
       "hangs": {
         "count": 2,
         "totalMs": 817.7,
         "maxMs": 457.2
       },
       "busy": {
-        "mainMs": 11463,
-        "jsMs": 540,
-        "appMs": 13767,
-        "mainFlushMs": 8028,
-        "mainOtherMs": 3435
+        "mainMs": 2326,
+        "jsMs": 236,
+        "appMs": 4127,
+        "mainFlushMs": 2,
+        "mainOtherMs": 2324,
+        "jsThreadFound": true
       }
     },
     {
       "run": 2,
       "ok": true,
       "flowMs": 43292,
+      "pids": [
+        21997
+      ],
       "hangs": {
-        "count": 2,
-        "totalMs": 908.8,
+        "count": 1,
+        "totalMs": 619.7,
         "maxMs": 619.7
       },
       "busy": {
-        "mainMs": 14086,
-        "jsMs": 635,
-        "appMs": 16888,
-        "mainFlushMs": 8940,
-        "mainOtherMs": 5146
+        "mainMs": 3698,
+        "jsMs": 318,
+        "appMs": 5948,
+        "mainFlushMs": 15,
+        "mainOtherMs": 3683,
+        "jsThreadFound": true
       }
     },
     {
       "run": 3,
       "ok": true,
       "flowMs": 45894,
+      "pids": [
+        27318
+      ],
       "hangs": {
         "count": 1,
         "totalMs": 999.1,
         "maxMs": 999.1
       },
       "busy": {
-        "mainMs": 14685,
-        "jsMs": 324,
-        "appMs": 17642,
-        "mainFlushMs": 9737,
-        "mainOtherMs": 4948
+        "mainMs": 4075,
+        "jsMs": 305,
+        "appMs": 6777,
+        "mainFlushMs": 25,
+        "mainOtherMs": 4050,
+        "jsThreadFound": true
       }
     },
     {
       "run": 4,
       "ok": true,
       "flowMs": 43621,
+      "pids": [
+        33435
+      ],
       "hangs": {
         "count": 3,
         "totalMs": 1334.4,
         "maxMs": 605.8
       },
       "busy": {
-        "mainMs": 14615,
-        "jsMs": 669,
-        "appMs": 17581,
-        "mainFlushMs": 9314,
-        "mainOtherMs": 5301
+        "mainMs": 3730,
+        "jsMs": 302,
+        "appMs": 6089,
+        "mainFlushMs": 3,
+        "mainOtherMs": 3727,
+        "jsThreadFound": true
       }
     },
     {
       "run": 5,
       "ok": true,
       "flowMs": 40528,
+      "pids": [
+        38859
+      ],
       "hangs": {
         "count": 1,
         "totalMs": 552.8,
         "maxMs": 552.8
       },
       "busy": {
-        "mainMs": 12309,
-        "jsMs": 322,
-        "appMs": 14542,
-        "mainFlushMs": 8278,
-        "mainOtherMs": 4031
+        "mainMs": 3157,
+        "jsMs": 273,
+        "appMs": 5155,
+        "mainFlushMs": 1,
+        "mainOtherMs": 3156,
+        "jsThreadFound": true
       }
     }
   ]

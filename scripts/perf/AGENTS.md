@@ -15,7 +15,16 @@ Notes:
 - Apple's Animation Hitches instrument doesn't run on the simulator ("Hitches is not supported on this platform"). Dropped frames are measured on a phone only.
 - The simulator runs on the Mac's CPU, so its numbers look better than a phone's. Use it for before and after on one machine. Use a physical iPhone for the true number, before a release or a platform decision.
 - Screen recordings capture at 30fps, so a choppy video alone doesn't show jank.
-- Maestro reads the screen through accessibility, which runs on the app's main thread. In the first tabs trial that was about 7% of main-thread time. It is the same in every run, so it cancels out in before and after comparisons.
+- `xctrace --all-processes` records every simulator on the Mac, and another simulator can run a build with the same process name (`asrafit`). The first baseline was skewed this way: a dev build on another simulator supplied most of its main-thread time. Now the harness refuses to record while the app runs on another booted simulator. It keeps only the instance that ran the journey on the target device (read from `launchctl` after the journey; for a cold start, that's the relaunched instance, not the one stopped). Older traces are rebuilt with `resummarize --exclude-pids <pid>`, which keeps the last-running app pid.
+- `jsThreadFound` says whether React Native's JS thread was found. On another runtime (Exact) `jsThreadBusyMs` would read 0, so compare `appBusyMs` (the whole process) there.
+- The Animation Hitches path hasn't been run against a real device export yet. Check that hitch rows were matched before trusting a 0.
+- Maestro reads the screen through accessibility, and that runs on the app's main thread. In one tabs trace, accessibility snapshot stacks made up about half of the app's main-thread samples. It is not known to be constant across runs or across app versions (a bigger view tree costs more to read), so compare main-thread time only between runs of the same journey, and treat it as a diagnostic, not the headline. Hangs are the sturdier number.
+- Time Profiler figures are sampled CPU estimates (1 ms samples), not exact durations.
+
+Known gaps (follow-ups):
+
+- `flowMs` includes Maestro's start-up and isn't a launch time. A user-ready window (first action to a stable endpoint) and launch time from the App Launch template on a device are still to do.
+- The tabs and workout journeys run on a freshly created account, so History is short and the workout list depends on the plan's first day. A dedicated persona with fixed history would make runs across days comparable.
 
 ## Run it
 
