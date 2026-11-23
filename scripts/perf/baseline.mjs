@@ -8,7 +8,7 @@
 // Hitches" with a device UDID adds hitch counts there.
 //
 //   node scripts/perf/baseline.mjs run <journey> [--runs 5] [--device <udid>] [--label <name>] [--template <name>]
-//   node scripts/perf/baseline.mjs summarize <trace>
+//   node scripts/perf/baseline.mjs summarize <trace> [--pids <pid,...>] [--exclude-pids <pid,...>]
 //   node scripts/perf/baseline.mjs resummarize <label> <journey> [--exclude-pids <pid,...>]
 //
 // Journeys are .maestro/perf/<journey>.yaml. Each run writes
@@ -38,6 +38,7 @@ export function parseArgs(argv) {
     label: null,
     template: DEFAULT_TEMPLATE,
     excludePids: [],
+    pids: null,
     positional: [],
   }
   for (let i = 0; i < rest.length; i++) {
@@ -48,6 +49,8 @@ export function parseArgs(argv) {
     else if (arg === '--template') options.template = rest[++i]
     else if (arg === '--exclude-pids')
       options.excludePids = rest[++i].split(',').map((p) => Number.parseInt(p, 10))
+    else if (arg === '--pids')
+      options.pids = rest[++i].split(',').map((p) => Number.parseInt(p, 10))
     else options.positional.push(arg)
   }
   if (!Number.isInteger(options.runs) || options.runs < 1)
@@ -244,16 +247,21 @@ async function table(tracePath, schema) {
   ])
 }
 
-// pids: the app process that ran the journey on the target device. When a run
-// has none recorded (older traces), it is the last-running app pid in the trace
-// that isn't in excludePids (another simulator's build).
-async function summarize(tracePath, { pids, excludePids = [] } = {}) {
+// pids: the app process that ran the journey on the target device. Without
+// pids, the app pids in the trace minus excludePids must leave exactly one,
+// unless pickLast (resummarize of older traces that predate saved pids, where
+// the caller has excluded other simulators' builds) picks the last-running one.
+async function summarize(tracePath, { pids, excludePids = [], pickLast = false } = {}) {
   const schemas = tableSchemas(await xml(['--input', tracePath, '--toc']))
   const summary = {}
   const profile = schemas.includes('time-profile') ? await table(tracePath, 'time-profile') : null
   if (!pids) {
     const found = profile ? appPidsIn(profile) : new Set()
     const candidates = new Set([...found].filter((p) => !excludePids.includes(p)))
+    if (candidates.size > 1 && !pickLast)
+      throw new Error(
+        `${tracePath} has several app processes (${[...candidates].join(', ')}); pass --pids or --exclude-pids`
+      )
     const last = profile ? lastAppPid(profile, candidates) : null
     pids = new Set(last === null ? [] : [last])
   }
@@ -268,6 +276,8 @@ async function summarize(tracePath, { pids, excludePids = [] } = {}) {
   }
   if (profile) {
     summary.busy = threadBusy(tableRows(profile, ['thread', 'weight']), pids)
+    if (summary.busy.appMs === 0)
+      throw new Error(`${tracePath} has no samples for app pid ${[...pids].join(', ') || '(none)'}`)
     summary.busy.mainFlushMs = mainFlushMs(profile, pids)
     summary.busy.mainOtherMs = summary.busy.mainMs - summary.busy.mainFlushMs
     // jsMs depends on React Native's JS thread name; another runtime (Exact)
@@ -311,8 +321,45 @@ function devicePid(device) {
   return out.status === 0 ? pidFromLaunchctl(out.stdout) : null
 }
 
+// Whether a recorded run counts, from what happened during it. Pure, so the
+// failure cases are tested without a simulator.
+export function classifyRun({
+  exitedEarly,
+  maestroStatus,
+  maestroOutput = '',
+  pidBefore,
+  pidAfter,
+  relaunches,
+  code,
+  traceExists,
+  log = '',
+}) {
+  if (exitedEarly)
+    return { ok: false, error: `xctrace stopped before the journey ended: ${log.slice(-400)}` }
+  if (maestroStatus !== 0) return { ok: false, error: maestroOutput.slice(-600) }
+  if (pidAfter === null) return { ok: false, error: `${APP_ID} was not running after the journey` }
+  if (relaunches && pidAfter === pidBefore)
+    return { ok: false, error: 'the journey relaunches the app, but its pid did not change' }
+  if (code !== 0 && !traceExists)
+    return { ok: false, error: `xctrace exited ${code} without a trace: ${log.slice(-400)}` }
+  return { ok: true, pids: [pidAfter] }
+}
+
+function runMaestro(device, flow) {
+  return new Promise((resolve) => {
+    const child = spawn('maestro', ['--device', device, 'test', flow], { cwd: root })
+    let output = ''
+    child.stdout.on('data', (d) => (output += d))
+    child.stderr.on('data', (d) => (output += d))
+    child.on('error', (e) => resolve({ status: 1, output: String(e) }))
+    child.on('close', (status) => resolve({ status, output }))
+  })
+}
+
 function record(device, tracePath, flow, template) {
   const pidBefore = devicePid(device)
+  // A journey that launches the app (cold start) must end on a new instance.
+  const relaunches = /launchApp/.test(fs.readFileSync(flow, 'utf8'))
   const recorder = spawn(
     'xcrun',
     [
@@ -351,37 +398,27 @@ function record(device, tracePath, flow, template) {
         return
       }
       const t0 = Date.now()
-      const maestro = spawnSync('maestro', ['--device', device, 'test', flow], {
-        cwd: root,
-        encoding: 'utf8',
-      })
+      // Async, so the recorder's exit event is delivered while Maestro runs.
+      const maestro = await runMaestro(device, flow)
       const flowMs = Date.now() - t0
       const pidAfter = devicePid(device)
-      if (exited) {
-        resolve({
-          ok: false,
-          flowMs,
-          error: `xctrace stopped before the journey ended: ${log.slice(-400)}`,
-        })
-        return
-      }
-      recorder.kill('SIGINT')
+      const exitedEarly = exited
+      if (!exitedEarly) recorder.kill('SIGINT')
       const code = await exit
-      // A cold start replaces the instance; the journey belongs to the new one.
-      const pids = [pidAfter ?? pidBefore].filter((p) => p !== null)
-      if (maestro.status !== 0) {
-        resolve({ ok: false, flowMs, error: (maestro.stdout + maestro.stderr).slice(-600) })
-      } else if (pids.length === 0) {
-        resolve({ ok: false, flowMs, error: `${APP_ID} was not running on ${device}` })
-      } else if (code !== 0 && !fs.existsSync(tracePath)) {
-        resolve({
-          ok: false,
-          flowMs,
-          error: `xctrace exited ${code} without a trace: ${log.slice(-400)}`,
-        })
-      } else {
-        resolve({ ok: true, flowMs, pids: [...new Set(pids)] })
-      }
+      resolve({
+        flowMs,
+        ...classifyRun({
+          exitedEarly,
+          maestroStatus: maestro.status,
+          maestroOutput: maestro.output,
+          pidBefore,
+          pidAfter,
+          relaunches,
+          code,
+          traceExists: fs.existsSync(tracePath),
+          log,
+        }),
+      })
     }, 250)
   })
 }
@@ -414,7 +451,14 @@ async function run({ positional, runs, device, label, template }) {
     }
     // Summarize only after the recording stops, so the export's CPU load never
     // overlaps the next run's recording.
-    const summary = await summarize(tracePath, { pids: new Set(pids) })
+    let summary
+    try {
+      summary = await summarize(tracePath, { pids: new Set(pids) })
+    } catch (e) {
+      results.push({ run: n, ok: false, flowMs, error: e.message })
+      console.log(`run ${n}: failed: ${e.message}`)
+      continue
+    }
     results.push({ run: n, ok, flowMs, ...summary })
     console.log(
       `run ${n}: ${flowMs} ms, hangs ${summary.hangs?.count ?? 'n/a'} (${summary.hangs?.totalMs ?? 'n/a'} ms), main ${summary.busy?.mainOtherMs ?? 'n/a'} ms + flush ${summary.busy?.mainFlushMs ?? 'n/a'} ms, JS ${summary.busy?.jsMs ?? 'n/a'} ms${summary.hitches ? `, hitches ${summary.hitches.count}` : ''}`
@@ -496,6 +540,7 @@ async function resummarize({ positional, excludePids }) {
             ...(await summarize(path.join(root, 'perf/runs', label, `${journey}-${r.run}.trace`), {
               pids: r.pids ? new Set(r.pids) : undefined,
               excludePids,
+              pickLast: true,
             })),
           }
         : r
@@ -516,13 +561,16 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = parseArgs(process.argv.slice(2))
   if (args.command === 'run') run(args).catch((error) => fail(error.message))
   else if (args.command === 'summarize')
-    summarize(args.positional[0]).then(
+    summarize(args.positional[0], {
+      pids: args.pids ? new Set(args.pids) : undefined,
+      excludePids: args.excludePids,
+    }).then(
       (s) => console.log(JSON.stringify(s, null, 2)),
       (error) => fail(error.message)
     )
   else if (args.command === 'resummarize') resummarize(args).catch((error) => fail(error.message))
   else
     fail(
-      'usage: baseline.mjs run <journey> [--runs 5] [--device <udid>] [--label <name>] [--template "Time Profiler"] | summarize <trace> | resummarize <label> <journey>'
+      'usage: baseline.mjs run <journey> [--runs 5] [--device <udid>] [--label <name>] [--template "Time Profiler"] | summarize <trace> [--pids <pid,...>] [--exclude-pids <pid,...>] | resummarize <label> <journey> [--exclude-pids <pid,...>]'
     )
 }

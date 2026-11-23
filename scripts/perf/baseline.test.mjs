@@ -5,6 +5,7 @@ import {
   appPidsIn,
   lastAppPid,
   buildReport,
+  classifyRun,
   mainFlushMs,
   median,
   parseArgs,
@@ -25,6 +26,7 @@ describe('parseArgs', () => {
       label: 'base',
       template: 'Time Profiler',
       excludePids: [],
+      pids: null,
       positional: ['tabs'],
     })
   })
@@ -192,6 +194,39 @@ describe('lastAppPid', () => {
       `<row><sample-time id="5">12</sample-time><thread id="6" fmt="${OTHER_SIM}">t</thread></row>`,
     ].join('')
     expect(lastAppPid(xml, new Set([100, 200]))).toBe(200)
+  })
+})
+
+describe('classifyRun', () => {
+  const good = {
+    exitedEarly: false,
+    maestroStatus: 0,
+    pidBefore: 10,
+    pidAfter: 10,
+    relaunches: false,
+    code: 0,
+    traceExists: true,
+  }
+
+  it('accepts a complete run on the instance that ended the journey', () => {
+    expect(classifyRun(good)).toEqual({ ok: true, pids: [10] })
+  })
+
+  it('rejects a recording that stopped before the journey ended, even when a partial trace exists', () => {
+    expect(classifyRun({ ...good, exitedEarly: true }).ok).toBe(false)
+  })
+
+  it('rejects a cold start whose pid did not change', () => {
+    expect(classifyRun({ ...good, relaunches: true }).ok).toBe(false)
+    expect(classifyRun({ ...good, relaunches: true, pidAfter: 11 })).toEqual({
+      ok: true,
+      pids: [11],
+    })
+  })
+
+  it('rejects a run with no app process afterwards or a failed journey', () => {
+    expect(classifyRun({ ...good, pidAfter: null }).ok).toBe(false)
+    expect(classifyRun({ ...good, maestroStatus: 1 }).ok).toBe(false)
   })
 })
 
