@@ -1,0 +1,97 @@
+# Perf setup, run once: a clean install walks the First Run and saves the plan
+# to a new +clerk_test account (PERSONA_EMAIL / PERSONA_PASSWORD; code 424242),
+# so the journeys start signed in with a program.
+appId: com.offseason.asrafit
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "(?i)(let's build your plan for this season\\.|[1-5]/5|save my plan)"
+    timeout: 90000
+# A First Run draft outlives clearState: it can reopen on a question or on the
+# reveal. Answer the questions only when the reveal isn't already showing.
+- runFlow:
+    when:
+      notVisible: "Save my plan"
+    commands:
+      - repeat:
+          while:
+            notVisible: "LET'S BUILD YOUR PLAN FOR THIS SEASON."
+          times: 6
+          commands:
+            - tapOn: "Back"
+      - tapOn:
+          id: first-run-start
+      - extendedWaitUntil:
+          visible: "PICK YOUR SPORT"
+          timeout: 30000
+      - tapOn: "Basketball"
+      - tapOn:
+          id: first-run-continue
+      - extendedWaitUntil:
+          visible: "WHEN'S YOUR FIRST GAME?"
+          timeout: 30000
+      # Keep the default game date.
+      - tapOn:
+          id: first-run-continue
+      - extendedWaitUntil:
+          visible: "3 SESSIONS A WEEK"
+          timeout: 30000
+      - tapOn:
+          id: first-run-continue
+      - extendedWaitUntil:
+          visible: "AGE GROUP"
+          timeout: 30000
+      - tapOn: "Performance, 18–35"
+      - extendedWaitUntil:
+          visible: "YEARS TRAINING FOR YOUR SPORT"
+          timeout: 10000
+      - scrollUntilVisible:
+          element: "(?i)new to training.*"
+          direction: DOWN
+      - tapOn: "(?i)new to training.*"
+      - extendedWaitUntil:
+          visible: "BASKETBALL PLAN"
+          timeout: 60000
+- scrollUntilVisible:
+    element:
+      id: first-run-save
+    direction: DOWN
+- tapOn:
+    id: first-run-save
+- extendedWaitUntil:
+    visible:
+      id: save-plan-email
+    timeout: 30000
+- tapOn:
+    id: save-plan-email
+- tapOn:
+    id: save-plan-name
+- inputText: "Perf Athlete"
+- tapOn:
+    id: save-plan-email-input
+- inputText: ${PERSONA_EMAIL}
+- tapOn:
+    id: save-plan-password
+# iOS offers a strong password over the keyboard; close it before typing.
+- runFlow:
+    when:
+      visible: "Use Strong Password?"
+    commands:
+      - tapOn: "Close"
+      - tapOn:
+          id: save-plan-password
+- eraseText: 40
+- inputText: ${PERSONA_PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: save-plan-create
+- extendedWaitUntil:
+    visible: "Check your email"
+    timeout: 90000
+- tapOn:
+    id: save-plan-code
+- inputText: "424242"
+- extendedWaitUntil:
+    visible: "Up next · .*"
+    timeout: 90000

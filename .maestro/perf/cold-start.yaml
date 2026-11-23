@@ -1,0 +1,10 @@
+# Perf journey: cold start of a signed-in athlete to Today.
+# Starts signed in, app running or not. Ends on Today. Leaves no state behind.
+appId: com.offseason.asrafit
+---
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: today-heading
+    timeout: 60000

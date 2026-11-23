@@ -1,0 +1,146 @@
+{
+  "journey": "workout-logging",
+  "label": "2026-11-22-sim-release",
+  "template": "Time Profiler",
+  "device": "C88D28E5-9CE7-40D3-AD2D-000B74D8D094",
+  "build": "Release simulator (scripts/verify/explore.mjs build)",
+  "commit": "77fe00a",
+  "recordedAt": "2026-11-23T02:19:52.523Z",
+  "runs": 5,
+  "failedRuns": 0,
+  "flowMs": {
+    "median": 52300,
+    "min": 51139,
+    "max": 55215
+  },
+  "flowMsNote": "Wall time of the whole Maestro run, including Maestro's own start-up (20-30 s). Not a launch time.",
+  "hangCount": {
+    "median": 0,
+    "min": 0,
+    "max": 1
+  },
+  "hangTotalMs": {
+    "median": 0,
+    "min": 0,
+    "max": 359.1
+  },
+  "hangMaxMs": {
+    "median": 0,
+    "min": 0,
+    "max": 359.1
+  },
+  "mainThreadBusyMs": {
+    "median": 14667,
+    "min": 14027,
+    "max": 15221
+  },
+  "mainThreadFlushMs": {
+    "median": 11237,
+    "min": 10997,
+    "max": 12335
+  },
+  "mainThreadOtherMs": {
+    "median": 3030,
+    "min": 2594,
+    "max": 3540
+  },
+  "jsThreadBusyMs": {
+    "median": 1243,
+    "min": 932,
+    "max": 1939
+  },
+  "appBusyMs": {
+    "median": 16814,
+    "min": 15478,
+    "max": 17244
+  },
+  "hitchCount": null,
+  "hitchTotalMs": null,
+  "results": [
+    {
+      "run": 1,
+      "ok": true,
+      "flowMs": 51139,
+      "hangs": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "busy": {
+        "mainMs": 14059,
+        "jsMs": 932,
+        "appMs": 15478,
+        "mainFlushMs": 11465,
+        "mainOtherMs": 2594
+      }
+    },
+    {
+      "run": 2,
+      "ok": true,
+      "flowMs": 54490,
+      "hangs": {
+        "count": 1,
+        "totalMs": 359.1,
+        "maxMs": 359.1
+      },
+      "busy": {
+        "mainMs": 14667,
+        "jsMs": 1717,
+        "appMs": 16935,
+        "mainFlushMs": 11180,
+        "mainOtherMs": 3487
+      }
+    },
+    {
+      "run": 3,
+      "ok": true,
+      "flowMs": 52300,
+      "hangs": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "busy": {
+        "mainMs": 14027,
+        "jsMs": 1243,
+        "appMs": 15755,
+        "mainFlushMs": 10997,
+        "mainOtherMs": 3030
+      }
+    },
+    {
+      "run": 4,
+      "ok": true,
+      "flowMs": 55215,
+      "hangs": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "busy": {
+        "mainMs": 14777,
+        "jsMs": 1939,
+        "appMs": 17244,
+        "mainFlushMs": 11237,
+        "mainOtherMs": 3540
+      }
+    },
+    {
+      "run": 5,
+      "ok": true,
+      "flowMs": 51843,
+      "hangs": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "busy": {
+        "mainMs": 15221,
+        "jsMs": 1148,
+        "appMs": 16814,
+        "mainFlushMs": 12335,
+        "mainOtherMs": 2886
+      }
+    }
+  ]
+}

@@ -26,7 +26,8 @@
     "review:build": "node scripts/verify/explore.mjs build",
     "review:screens": "node scripts/verify/explore.mjs review",
     "sim:tunnel": "NODE_OPTIONS=\"--require ./scripts/sim/no-multipart.cjs\" expo start --tunnel",
-    "sim:cloud-check": "bash scripts/sim/cloud-check.sh"
+    "sim:cloud-check": "bash scripts/sim/cloud-check.sh",
+    "perf:baseline": "node scripts/perf/baseline.mjs run"
   },
   "dependencies": {
     "@clerk/clerk-expo": "^2.15.0",

@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "skills": {
+    "argent-native-profiler": {
+      "source": "software-mansion/argent",
+      "sourceType": "github",
+      "skillPath": "packages/skills/skills/argent-native-profiler/SKILL.md",
+      "computedHash": "d9d25ae7b7a78ae0e3166795e08afb0a9fc95ff31aa8d8f1cfbe5ed3d3c9bdba"
+    },
+    "argent-react-native-optimization": {
+      "source": "software-mansion/argent",
+      "sourceType": "github",
+      "skillPath": "packages/skills/skills/argent-react-native-optimization/SKILL.md",
+      "computedHash": "1aff015d596f72e2a174eae70037ed725595fc02a6b3f27eefc44c3c5f7ab364"
+    },
+    "argent-react-native-profiler": {
+      "source": "software-mansion/argent",
+      "sourceType": "github",
+      "skillPath": "packages/skills/skills/argent-react-native-profiler/SKILL.md",
+      "computedHash": "a666e888f42d4ae11b14874767f40a877c20f17dbd09359e89cbb459d44399c8"
+    },
+    "react-native-best-practices": {
+      "source": "callstackincubator/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-native-best-practices/SKILL.md",
+      "computedHash": "4b2b9561ff7b4b9d15ff76d2dd2a6191e3cdc7f36c06d171e377bfefcbcb2bfb"
+    }
+  }
+}

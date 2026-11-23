@@ -1,0 +1,34 @@
+# Perf journey: tab switches and scrolling on Program and History.
+# Starts and ends on Today, signed in. Read-only.
+appId: com.offseason.asrafit
+---
+- assertVisible:
+    id: today-heading
+- tapOn: "Program, tab.*"
+- extendedWaitUntil:
+    visible:
+      id: program-season-header
+    timeout: 15000
+- swipe:
+    direction: UP
+    duration: 600
+- swipe:
+    direction: UP
+    duration: 600
+- swipe:
+    direction: DOWN
+    duration: 600
+- swipe:
+    direction: DOWN
+    duration: 600
+- tapOn: "History, tab.*"
+- swipe:
+    direction: UP
+    duration: 600
+- swipe:
+    direction: DOWN
+    duration: 600
+- tapOn: "Profile, tab.*"
+- tapOn: "Today, tab.*"
+- assertVisible:
+    id: today-heading
