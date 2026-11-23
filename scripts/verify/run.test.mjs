@@ -13,6 +13,7 @@ import {
   cleanupPending,
   createSignupPersona,
   hasCdpTransportCrash,
+  isCdpTransportCrash,
   ownServerReady,
   readPending,
   redactEvidence,
@@ -739,6 +740,40 @@ const cdpCrashLog = [
 const assertionLog =
   '00:31:39.396 [ERROR] maestro.orchestra.Orchestra.executeCommands: [Command execution] CommandFailed: Assertion is false: id: today-workout-card is visible'
 
+describe('isCdpTransportCrash', () => {
+  it('matches the real crash log', () => {
+    expect(isCdpTransportCrash(cdpCrashLog)).toBe(true)
+  })
+
+  it('is not a crash when a real assertion failure comes after the crash lines', () => {
+    expect(isCdpTransportCrash(`${cdpCrashLog}\n${assertionLog}`)).toBe(false)
+  })
+
+  it('is a crash when an earlier, recovered failure precedes it', () => {
+    expect(isCdpTransportCrash(`${assertionLog}\n${cdpCrashLog}`)).toBe(true)
+  })
+
+  it('is not a crash when the page truly hung for the full timeout', () => {
+    const hung = cdpCrashLog
+      .replace('11:04:51.939', '11:05:18.976')
+      .replace('11:04:52.986', '11:05:19.986')
+    expect(isCdpTransportCrash(hung)).toBe(false)
+  })
+
+  it('is not a crash when the exception belongs to an earlier command', () => {
+    expect(isCdpTransportCrash(cdpCrashLog.replace('11:04:52.986', '11:05:40.000'))).toBe(false)
+  })
+
+  it('handles a log that crosses midnight, and logs with no crash', () => {
+    const midnight = cdpCrashLog
+      .replace('11:04:47.976', '23:59:58.500')
+      .replace('11:04:51.939', '00:00:02.100')
+      .replace('11:04:52.986', '00:00:03.100')
+    expect(isCdpTransportCrash(midnight)).toBe(true)
+    expect([isCdpTransportCrash(''), isCdpTransportCrash(assertionLog)]).toEqual([false, false])
+  })
+})
+
 describe('Maestro retry after a DevTools transport crash', () => {
   const layout = (files) => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-cdp-'))
@@ -751,9 +786,30 @@ describe('Maestro retry after a DevTools transport crash', () => {
   }
   const log = '2026-11-23_110429/feedback/logs/maestro.log'
   const cases = [
-    { name: 'crash at 33s', files: { [log]: cdpCrashLog }, elapsedMs: 33_000, reason: 'cdp-transport' },
-    { name: 'crash under 20s', files: { [log]: cdpCrashLog }, elapsedMs: 13_000, reason: 'cold-start' },
-    { name: 'assertion false at 40s', files: { [log]: assertionLog }, elapsedMs: 40_000, reason: null },
+    {
+      name: 'crash at 33s',
+      files: { [log]: cdpCrashLog },
+      elapsedMs: 33_000,
+      reason: 'cdp-transport',
+    },
+    {
+      name: 'crash under 20s',
+      files: { [log]: cdpCrashLog },
+      elapsedMs: 13_000,
+      reason: 'cold-start',
+    },
+    {
+      name: 'assertion false at 40s',
+      files: { [log]: assertionLog },
+      elapsedMs: 40_000,
+      reason: null,
+    },
+    {
+      name: 'assertion false after crash lines',
+      files: { [log]: `${cdpCrashLog}\n${assertionLog}` },
+      elapsedMs: 40_000,
+      reason: null,
+    },
     {
       name: 'only the websocket line',
       files: { [log]: cdpCrashLog.split('\n').slice(0, 4).join('\n') },
@@ -805,14 +861,20 @@ describe('Maestro retry after a DevTools transport crash', () => {
         dir,
         () => {
           trace.push('launch')
-          const file = path.join(dir, trace.length === 1 ? log : '2026-11-23_110832/x/logs/maestro.log')
+          const file = path.join(
+            dir,
+            trace.length === 1 ? log : '2026-11-23_110832/x/logs/maestro.log'
+          )
           fs.mkdirSync(path.dirname(file), { recursive: true })
           fs.writeFileSync(file, cdpCrashLog)
           return { status: 1, elapsedMs: 33_000 }
         },
         ({ reason }) => trace.push(`retry:${reason}`)
       )
-      expect({ status, trace }).toEqual({ status: 1, trace: ['launch', 'retry:cdp-transport', 'launch'] })
+      expect({ status, trace }).toEqual({
+        status: 1,
+        trace: ['launch', 'retry:cdp-transport', 'launch'],
+      })
       expect(fs.existsSync(path.join(dir, 'attempt-1', log))).toBe(true)
     } finally {
       fs.rmSync(dir, { recursive: true, force: true })

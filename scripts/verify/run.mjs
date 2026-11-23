@@ -970,13 +970,51 @@ export function archiveAttemptEvidence(outDir, attemptLabel = 'attempt-1') {
 
 // Maestro 2.12.1's web driver opens a new DevTools websocket for every JS call.
 // When Chrome closes one before it answers, the driver logs "No message with id
-// N received within 30000ms" (at once, not after 30 seconds), its executeJS
+// N received within 30000ms" (within seconds, not after 30), its executeJS
 // returns null, and deviceInfo dies casting that null to Int. The page on
-// screen is fine. Both lines must be in the same attempt's log (#174).
-const cdpTransportCrash = [
-  /No message with id \d+ received within \d+ms/,
-  /CommandFailed: null cannot be cast to non-null type kotlin\.Int/,
-]
+// screen is fine (#174).
+const logTime = /^(\d{2}):(\d{2}):(\d{2})\.(\d{3}) \[/
+const noMessage = /No message with id \d+ received within (\d+)ms/
+const nullCast = /CommandFailed: null cannot be cast to non-null type kotlin\.Int/
+
+function logMs(line) {
+  const match = logTime.exec(line)
+  if (!match) return null
+  const [, h, m, sec, ms] = match
+  return ((Number(h) * 60 + Number(m)) * 60 + Number(sec)) * 1000 + Number(ms)
+}
+
+// Milliseconds from an earlier log line to a later one; the log has no date,
+// so a negative gap means it crossed midnight.
+function elapsed(from, to) {
+  return to >= from ? to - from : to + 86_400_000 - from
+}
+
+// Pure: is this maestro.log a DevTools transport crash, and only that?
+// - The LAST CommandFailed in the log must be the null cast. A crash line
+//   followed by a real assertion failure is an assertion failure.
+// - The "No message" exception must belong to that command: its error line is
+//   logged at most 10 s before the CommandFailed.
+// - It must have come back early. Maestro's real timeout takes the full time in
+//   the message, so the error line must follow the line before it by less than
+//   half that. A page that truly hangs for 30 s is not a transport crash.
+export function isCdpTransportCrash(log) {
+  const lines = String(log || '').split('\n')
+  const failed = lines.findLastIndex((line) => /CommandFailed: /.test(line))
+  if (failed === -1 || !nullCast.test(lines[failed])) return false
+  const failedAt = logMs(lines[failed])
+  const exception = lines.findLastIndex((line, index) => index < failed && noMessage.test(line))
+  if (exception === -1 || failedAt === null) return false
+  const timeoutMs = Number(noMessage.exec(lines[exception])[1])
+  // The exception line carries no timestamp; its error line is the timestamped
+  // line just above it.
+  const error = lines.findLastIndex((line, index) => index <= exception && logMs(line) !== null)
+  const before = lines.findLastIndex((line, index) => index < error && logMs(line) !== null)
+  if (error === -1 || before === -1) return false
+  const errorAt = logMs(lines[error])
+  if (elapsed(errorAt, failedAt) > 10_000) return false
+  return elapsed(logMs(lines[before]), errorAt) < timeoutMs / 2
+}
 
 export function hasCdpTransportCrash(dir) {
   if (!fs.existsSync(dir)) return false
@@ -986,8 +1024,7 @@ export function hasCdpTransportCrash(dir) {
       if (/^attempt-\d+$/.test(entry.name)) continue
       if (hasCdpTransportCrash(full)) return true
     } else if (entry.name === 'maestro.log') {
-      const log = fs.readFileSync(full, 'utf8')
-      if (cdpTransportCrash.every((line) => line.test(log))) return true
+      if (isCdpTransportCrash(fs.readFileSync(full, 'utf8'))) return true
     }
   }
   return false
