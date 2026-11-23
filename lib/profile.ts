@@ -1,3 +1,6 @@
+import type { Phase } from '../types'
+import { PHASES } from './phase'
+
 /**
  * Baseline facts on Profile, in words rather than stat tiles (design audit
  * F06: Profile holds settings and baseline information, not a scoreboard).
@@ -18,4 +21,95 @@ export function experienceLabel(years: number): string {
 /** "3 a week" */
 export function trainingDaysLabel(daysPerWeek: number): string {
   return `${daysPerWeek} a week`
+}
+
+/**
+ * Weeks per phase when the program doesn't say. Mirrors
+ * DEFAULT_WEEKS_PER_PHASE in convex/weekMapping.ts; lib doesn't import from
+ * convex, so keep the two in step.
+ */
+const DEFAULT_WEEKS_PER_PHASE = 4
+
+export interface PhaseTrackSegment {
+  phase: Phase
+  /** 0..1: earlier phases 1, later phases 0, the current one week / weeksPerPhase */
+  fill: number
+  current: boolean
+  /** "Week 3 of 4" for the current phase, "4 weeks" for the others */
+  label: string
+}
+
+export interface PhaseTrack {
+  /** GPP, SPP, SSP, in that order */
+  segments: PhaseTrackSegment[]
+  /** Week of the whole program, 1-based */
+  overallWeek: number
+  totalWeeks: number
+  /** "Week 3 of 12" */
+  summary: string
+  /** "GPP, week 3 of 4. SPP, 4 weeks. SSP, 4 weeks." */
+  accessibilityLabel: string
+}
+
+export interface PhaseTrackInput {
+  phase: Phase | string | null | undefined
+  week: number
+  weeksPerPhase?: number | null
+}
+
+function positiveWhole(n: number | null | undefined): number | null {
+  return typeof n === 'number' && Number.isFinite(n) && n >= 1 ? Math.floor(n) : null
+}
+
+function weeksLabel(n: number): string {
+  return n === 1 ? '1 week' : `${n} weeks`
+}
+
+/**
+ * Where the athlete is in the three-phase program, for the Profile header's
+ * phase track. An unknown phase reads as GPP, as lib/phase.ts does.
+ */
+export function phaseTrack({ phase, week, weeksPerPhase }: PhaseTrackInput): PhaseTrack {
+  const current: Phase = phase === 'SPP' || phase === 'SSP' ? phase : 'GPP'
+  const perPhase = positiveWhole(weeksPerPhase) ?? DEFAULT_WEEKS_PER_PHASE
+  // The program is three phases of perPhase weeks. The season countdown
+  // (totalProgramWeeks on the program) is not its length: it is longer when it
+  // doesn't divide by three (14 weeks, 3 × 4) and shorter when the season is
+  // close (1 week, 3 × 2). So the count uses the same length as the bars.
+  const totalWeeks = perPhase * PHASES.length
+  const currentIndex = PHASES.indexOf(current)
+  const clampedWeek = Math.min(Math.max(Number.isFinite(week) ? Math.floor(week) : 1, 1), perPhase)
+
+  const segments = PHASES.map((p, i): PhaseTrackSegment => {
+    if (i === currentIndex) {
+      return {
+        phase: p,
+        fill: clampedWeek / perPhase,
+        current: true,
+        label: `Week ${clampedWeek} of ${perPhase}`,
+      }
+    }
+    return {
+      phase: p,
+      fill: i < currentIndex ? 1 : 0,
+      current: false,
+      label: weeksLabel(perPhase),
+    }
+  })
+
+  const overallWeek = Math.min(currentIndex * perPhase + clampedWeek, totalWeeks)
+  const summary = `Week ${overallWeek} of ${totalWeeks}`
+  // The header shows the overall week as text right above the track, so the
+  // spoken label is the three phases only and VoiceOver doesn't say it twice.
+  const accessibilityLabel = segments
+    .map((s) => `${s.phase}, ${s.current ? s.label.replace(/^Week/, 'week') : s.label}`)
+    .join('. ')
+
+  return {
+    segments,
+    overallWeek,
+    totalWeeks,
+    summary,
+    accessibilityLabel: `${accessibilityLabel}.`,
+  }
 }
