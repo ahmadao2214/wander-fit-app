@@ -90,3 +90,43 @@ describe('nightly E2E workflow', () => {
     expect(deploy.steps[1].env.PAGE_URL).toBe('${{ steps.pages.outputs.page_url }}')
   })
 })
+
+describe('nightly persona sweep', () => {
+  const sweep = nightly.jobs['persona-sweep']
+  const sweepStep = sweep.steps.find((step) => /persona\.mjs sweep/.test(step.run || ''))
+
+  it('sweeps test athletes older than 2h with the dev E2E key', () => {
+    expect(sweepStep.run).toBe('node scripts/verify/persona.mjs sweep --older-than 2h')
+    expect(sweepStep.env).toEqual({
+      EXPO_PUBLIC_CONVEX_URL_E2E: '${{ vars.EXPO_PUBLIC_CONVEX_URL_E2E }}',
+      CLERK_SECRET_KEY: '${{ secrets.CLERK_SECRET_KEY }}',
+      CONVEX_DEPLOY_KEY_E2E: '${{ secrets.CONVEX_DEPLOY_KEY_E2E }}',
+    })
+    expect(sweep.env.CONVEX_PREVIEW_NAME_E2E).toBe('')
+  })
+
+  it('runs after the web flows pass or fail, but not after a cancel', () => {
+    expect(sweep.needs).toBe('web-e2e')
+    expect(sweep.if).toBe('${{ !cancelled() }}')
+    expect(sweep.if).not.toContain('always()')
+    expect(sweep['timeout-minutes']).toBeLessThanOrEqual(15)
+  })
+
+  it('stays out of the e2e-backend queue and never blocks the gallery', () => {
+    expect(sweep).not.toHaveProperty('concurrency')
+    const needs = Object.values(nightly.jobs).flatMap((job) => [job.needs || []].flat())
+    expect(needs).not.toContain('persona-sweep')
+  })
+
+  it('installs dependencies before the sweep and gives secrets to the sweep alone', () => {
+    const runs = sweep.steps.map((step) => step.run || step.uses || '')
+    expect(runs.indexOf('bun install --frozen-lockfile')).toBeGreaterThan(-1)
+    expect(runs.indexOf('bun install --frozen-lockfile')).toBeLessThan(runs.indexOf(sweepStep.run))
+    expect(JSON.stringify(sweep.env || {})).not.toContain('secrets.')
+    expect(JSON.stringify(nightly.env || {})).not.toContain('secrets.')
+    // The whole step counts, so a secret in an action's `with` is caught too.
+    const withSecrets = sweep.steps.filter((step) => JSON.stringify(step).includes('secrets.'))
+    expect(withSecrets).toEqual([sweepStep])
+    expect(sweep.permissions).toEqual({ contents: 'read' })
+  })
+})

@@ -29,7 +29,7 @@ export const ACCESS_CONFIG = {
       platform: 'Browser',
       label: 'Mobile Web (No Install)',
       cta: 'Open Web App',
-      url: '', // e.g. 'https://app.wanderfit.app'
+      url: 'https://wanderfit-web-beta.vercel.app',
       comingSoonNote:
         'Hosted mobile web access is coming online shortly. We will email you the link.',
       steps: [
