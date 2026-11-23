@@ -93,7 +93,7 @@ const EXTRA_TEST_RULES = [
     tests: ['scripts/verify/flows.test.mjs', 'scripts/verify/feature-map.test.mjs'],
   },
   {
-    match: /^\.(claude|cursor|agents)\/skills\/verify-wander-fit\//,
+    match: /^\.(claude|cursor|agents)\/skills\/verify-wander-fit(\/|$)/,
     tests: ['scripts/verify/feature-map.test.mjs'],
   },
   {
@@ -108,10 +108,17 @@ const EXTRA_TEST_RULES = [
     match: /^(app|components)\//,
     tests: [
       'lib/__tests__/actionColor.test.ts',
+      // Scans app/ with readdirSync and compares it to WEB_ROUTE_PATTERNS.
+      'lib/__tests__/analyticsRoutes.test.ts',
       'lib/__tests__/typography.test.ts',
       'lib/__tests__/webDistributionConfig.test.ts',
       'scripts/verify/flows.test.mjs',
     ],
+  },
+  {
+    // flows.test.mjs reads this file's source and asserts it uses scrollTop.
+    match: /^lib\/signOutScroll\.ts$/,
+    tests: ['scripts/verify/flows.test.mjs'],
   },
   {
     match: /^public\//,
