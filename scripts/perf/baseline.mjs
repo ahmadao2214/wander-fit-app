@@ -30,11 +30,11 @@ function fail(message) {
   process.exit(1)
 }
 
-function pidList(flag, value) {
-  const pids = (value ?? '').split(',').map((p) => Number.parseInt(p, 10))
-  if (!value || pids.some((p) => !Number.isInteger(p) || p <= 0))
+export function pidList(flag, value) {
+  const tokens = (value ?? '').split(',').map((t) => t.trim())
+  if (!value || tokens.some((t) => !/^[1-9]\d*$/.test(t) || !Number.isSafeInteger(Number(t))))
     throw new Error(`${flag} needs a comma-separated list of pids`)
-  return pids
+  return tokens.map(Number)
 }
 
 export function parseArgs(argv) {
@@ -353,7 +353,10 @@ function devicePid(device) {
   const out = spawnSync('xcrun', ['simctl', 'spawn', device, 'launchctl', 'list'], {
     encoding: 'utf8',
   })
-  if (out.status !== 0) throw new Error(`can't list processes on ${device}: ${out.stderr.trim()}`)
+  if (out.status !== 0)
+    throw new Error(
+      `can't list processes on ${device}: ${out.stderr?.trim() || out.error?.message || `exit ${out.status}`}`
+    )
   return pidFromLaunchctl(out.stdout)
 }
 
@@ -437,10 +440,17 @@ function record(device, tracePath, flow, template) {
       // Async, so the recorder's exit event is delivered while Maestro runs.
       const maestro = await runMaestro(device, flow)
       const flowMs = Date.now() - t0
-      const pidAfter = devicePid(device)
       const exitedEarly = exited
+      // Stop the recorder before anything that can throw, so it never keeps running.
       if (!exitedEarly) recorder.kill('SIGINT')
       const code = await exit
+      let pidAfter
+      try {
+        pidAfter = devicePid(device)
+      } catch (e) {
+        resolve({ ok: false, flowMs, error: e.message })
+        return
+      }
       resolve({
         flowMs,
         ...classifyRun({
@@ -473,13 +483,14 @@ async function run({ positional, runs, device, label, template }) {
   const results = []
   for (let n = 1; n <= runs; n++) {
     const tracePath = path.join(runDir, `${journey}-${n}.trace`)
-    fs.rmSync(tracePath, { recursive: true, force: true })
-    // Checked before every run: another simulator can start the app mid-batch.
+    // Checked before every run (another simulator can start the app mid-batch),
+    // and before the old trace is deleted, so a refused run never erases one.
     const others = otherDevicesRunningApp(udid)
     if (others.length)
       fail(
         `${APP_ID} is also running on ${others.join(', ')}. Another simulator's app competes for the CPU and can be mistaken for this one; stop it (or ask the thread using it) first.`
       )
+    fs.rmSync(tracePath, { recursive: true, force: true })
     const { flowMs, ok, error, pids } = await record(udid, tracePath, flow, template)
     if (!ok) {
       results.push({ run: n, ok, flowMs, error })

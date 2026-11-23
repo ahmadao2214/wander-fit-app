@@ -12,6 +12,7 @@ import {
   mainFlushMs,
   median,
   parseArgs,
+  pidList,
   pidFromLaunchctl,
   stats,
   tableRows,
@@ -32,6 +33,12 @@ describe('parseArgs', () => {
       pids: null,
       positional: ['tabs'],
     })
+  })
+
+  it('accepts only whole positive pids', () => {
+    expect(pidList('--pids', '38859, 16806')).toEqual([38859, 16806])
+    for (const bad of ['38859oops', '0', '-5', '1.5', '', '99999999999999999999'])
+      expect(() => pidList('--pids', bad)).toThrow('--pids')
   })
 
   it('rejects a pid flag with no value', () => {
