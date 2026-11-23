@@ -639,7 +639,7 @@ function maskPassword(password) {
   if (process.env.GITHUB_ACTIONS === 'true') console.log(`::add-mask::${password}`)
 }
 
-function createPersona(state) {
+export function createPersona(state) {
   const result = spawnSync(
     process.execPath,
     ['scripts/verify/persona.mjs', 'create', '--state', state, '--json'],
@@ -839,7 +839,7 @@ function inspectPersona(persona, flow) {
   return inspected
 }
 
-function deletePersona(persona) {
+export function deletePersona(persona) {
   const result = spawnSync(
     process.execPath,
     ['scripts/verify/persona.mjs', 'delete', persona.email],
@@ -855,7 +855,7 @@ function deletePersona(persona) {
 // Drop persona-latest.json only after both the scrub and the account delete
 // have succeeded. The next create overwrites that file, so a half-finished
 // persona has to live in persona-pending.json instead.
-function releasePersonaFile(email) {
+export function releasePersonaFile(email) {
   if (!email || !fs.existsSync(personaFile)) return
   const current = JSON.parse(fs.readFileSync(personaFile, 'utf8'))
   if (current.email === email) fs.rmSync(personaFile, { force: true })
