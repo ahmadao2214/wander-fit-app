@@ -43,8 +43,8 @@ export const ACCESS_CONFIG = {
       platform: 'Android',
       label: 'Android Beta',
       cta: 'Download Android Beta',
-      // EAS preview build 7 (main 115eb9c, 2026-11-23). Replace it after each new Android preview build.
-      url: 'https://expo.dev/artifacts/eas/u35xqWl0iKYgu1E59w7_9zsexFjmlIX-uIaKpXaze_0.apk',
+      // EAS preview build 8 (main 115eb9c, 2026-11-24). Replace it after each new Android preview build.
+      url: 'https://expo.dev/artifacts/eas/cqHwNxYbh3F75mEGxjFcihrRyGuuOCdYb44OX9eLNTY.apk',
       comingSoonNote:
         'Android preview is coming shortly. You are on the list and we will email your link.',
       steps: [
