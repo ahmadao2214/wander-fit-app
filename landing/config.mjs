@@ -15,7 +15,7 @@ export const ACCESS_CONFIG = {
       platform: 'iPhone',
       label: 'iOS Beta (TestFlight)',
       cta: 'Open TestFlight Invite',
-      url: '', // e.g. 'https://testflight.apple.com/join/XXXXXXXX'
+      url: 'https://testflight.apple.com/join/S2DahGvr',
       comingSoonNote:
         'TestFlight invite link is being finalized. We will email it as soon as it is live.',
       steps: [
@@ -43,7 +43,8 @@ export const ACCESS_CONFIG = {
       platform: 'Android',
       label: 'Android Beta',
       cta: 'Download Android Beta',
-      url: '', // e.g. EAS preview link or Play Internal Testing link
+      // EAS preview build 8 (main 115eb9c, 2026-11-24). Replace it after each new Android preview build.
+      url: 'https://expo.dev/artifacts/eas/cqHwNxYbh3F75mEGxjFcihrRyGuuOCdYb44OX9eLNTY.apk',
       comingSoonNote:
         'Android preview is coming shortly. You are on the list and we will email your link.',
       steps: [
