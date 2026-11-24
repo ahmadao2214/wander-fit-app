@@ -15,7 +15,7 @@ export const ACCESS_CONFIG = {
       platform: 'iPhone',
       label: 'iOS Beta (TestFlight)',
       cta: 'Open TestFlight Invite',
-      url: '', // e.g. 'https://testflight.apple.com/join/XXXXXXXX'
+      url: 'https://testflight.apple.com/join/S2DahGvr',
       comingSoonNote:
         'TestFlight invite link is being finalized. We will email it as soon as it is live.',
       steps: [
