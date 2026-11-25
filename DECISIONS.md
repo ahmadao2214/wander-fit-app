@@ -44,3 +44,6 @@ Format: `YYYY-MM-DD · who · decision · why`.
 - 2026-11-23 · Lead · Builders report judgment calls in their final message and the Lead logs them here · two Builders appending to this file in parallel would conflict.
 - 2026-11-23 · Lead · Android failure issues are filed on schedule, dispatch and push runs only; PR runs are dry-run · a labelled PR that breaks a flow shouldn't open a public issue.
 - 2026-11-23 · Lead · The nightly persona sweep goes in `nightly-e2e.yml`, not `android-e2e.yml` · keeps the two #83 slices in different files so they can run in parallel.
+- 2026-11-24 · Lead · Policy pages publish as pilot drafts with no contact email; every request goes through the `/support` form · Azhar's call ("Can't it just be a form?"); the drafts are not attorney-reviewed.
+- 2026-11-24 · Lead · The policy pages name the operator as "WanderFit" and leave governing law for later · no company is registered yet, and a state can't be guessed.
+- 2026-11-24 · Lead · Changed `DEFAULT_SITE_URL` to the landing site instead of setting `EXPO_PUBLIC_SITE_URL` per build · one change covers web, EAS and local builds, and an EAS variable could still override it.
