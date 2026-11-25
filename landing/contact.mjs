@@ -77,7 +77,9 @@ function init() {
     } catch (error) {
       const offline = error instanceof TypeError
       showError(
-        offline ? 'We could not reach the server. Check your connection and try again.' : error.message
+        offline
+          ? 'We could not reach the server. Check your connection and try again.'
+          : error.message
       )
     } finally {
       submit.disabled = false

@@ -27,11 +27,20 @@ describe('policy and support pages', () => {
 })
 
 describe('readContact', () => {
-  const valid = { topic: 'delete_account', email: ' parent@example.test ', message: ' Please delete. ' }
+  const valid = {
+    topic: 'delete_account',
+    email: ' parent@example.test ',
+    message: ' Please delete. ',
+  }
 
   it('trims a valid request', () => {
     expect(readContact(valid)).toEqual({
-      body: { topic: 'delete_account', email: 'parent@example.test', message: 'Please delete.', website: '' },
+      body: {
+        topic: 'delete_account',
+        email: 'parent@example.test',
+        message: 'Please delete.',
+        website: '',
+      },
     })
   })
 
