@@ -87,3 +87,48 @@ test('preview never applies on the live site', async () => {
   expect(isPreview({ hostname: 'localhost', search: '?preview=0' })).toBe(false)
   expect(isPreview({ hostname: 'wanderfit-beta.vercel.app', search: '?preview=1' })).toBe(false)
 })
+
+test('an invalid email is marked, described by the error, and cleared on the next try', async () => {
+  await load()
+  element('contact-message').value = 'Help.'
+  element('contact-email').value = 'nope'
+  element('contact-submit').click()
+  const email = element('contact-email')
+  expect([email.getAttribute('aria-invalid'), email.getAttribute('aria-describedby')]).toEqual([
+    'true',
+    'contact-email-hint contact-error',
+  ])
+  expect(document.activeElement).toBe(email)
+  email.value = 'parent@example.test'
+  element('contact-submit').click()
+  await settle()
+  expect(email.hasAttribute('aria-invalid')).toBe(false)
+  expect(element('contact-done').hidden).toBe(false)
+})
+
+test.each([
+  [
+    'the network is down',
+    () => Promise.reject(new TypeError('Failed to fetch')),
+    'We could not reach the server. Check your connection and try again.',
+  ],
+  [
+    'the server answers without JSON',
+    async () => ({
+      ok: false,
+      json: async () => {
+        throw new Error('no json')
+      },
+    }),
+    'We could not send your request. Try again.',
+  ],
+])('when %s the error takes focus and the form stays', async (_name, respond, message) => {
+  await load()
+  global.fetch = jest.fn(respond)
+  fill()
+  element('contact-submit').click()
+  await settle()
+  expect(element('contact-error').textContent).toBe(message)
+  expect(document.activeElement).toBe(element('contact-error'))
+  expect(element('contact-form').hidden).toBe(false)
+})

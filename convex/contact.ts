@@ -1,4 +1,5 @@
 import { v } from 'convex/values'
+import { internal } from './_generated/api'
 import { internalMutation } from './_generated/server'
 
 /**
@@ -19,6 +20,8 @@ export const MAX_EMAIL_LENGTH = 254
 /** A closed request is deleted by the daily cleanup once it is this old. The policy pages state it. */
 export const CLOSED_REQUEST_RETENTION_MS = 90 * 24 * 60 * 60 * 1000
 
+const PRUNE_BATCH_SIZE = 200
+
 export type ContactRequest = {
   topic: ContactTopic
   email: string
@@ -32,7 +35,7 @@ export type CleanContactResult =
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 // oxlint-disable-next-line no-control-regex -- Strip control characters, but keep tabs and line breaks in the message.
-const CONTROL_CHARS = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g
+const CONTROL_CHARS = /[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g
 
 /**
  * Any Unicode control or format character: tabs and line breaks, and also
@@ -41,7 +44,9 @@ const CONTROL_CHARS = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g
 const ANY_CONTROL_CHAR = /[\p{Cc}\p{Cf}]/u
 
 function text(value: unknown, max: number): string {
-  return typeof value === 'string' ? value.replace(CONTROL_CHARS, '').trim().slice(0, max) : ''
+  if (typeof value !== 'string') return ''
+  // A form sends each line break as \r\n; count it as the one character the person typed.
+  return value.replace(/\r\n?/g, '\n').replace(CONTROL_CHARS, '').trim().slice(0, max)
 }
 
 /** Validate and normalize a raw support-form body. */
@@ -112,8 +117,12 @@ export const pruneClosed = internalMutation({
     const expired = await ctx.db
       .query('contact_requests')
       .withIndex('by_status', (q) => q.eq('status', 'done').lte('createdAt', cutoff))
-      .take(200)
+      .take(PRUNE_BATCH_SIZE)
     for (const row of expired) await ctx.db.delete(row._id)
+    // A full batch means more may be waiting: carry on now, not tomorrow.
+    if (expired.length === PRUNE_BATCH_SIZE) {
+      await ctx.scheduler.runAfter(0, internal.contact.pruneClosed, args)
+    }
     return { deleted: expired.length }
   },
 })

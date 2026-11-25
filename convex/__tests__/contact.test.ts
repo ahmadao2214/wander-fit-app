@@ -49,6 +49,12 @@ describe('cleanContact', () => {
     })
   })
 
+  it('counts a form line break as one character, so a full message is not cut', () => {
+    const typed = `${'x'.repeat(MAX_MESSAGE_LENGTH - 30)}\n`.repeat(1) + 'maya@example.test'
+    const result = cleanContact({ ...request, message: typed.replace(/\n/g, '\r\n') })
+    expect(result.ok && result.value.message).toBe(typed)
+  })
+
   it('drops a filled honeypot as spam', () => {
     expect(cleanContact({ ...request, website: 'https://spam.test' })).toEqual({
       ok: false,
@@ -105,6 +111,29 @@ describe('pruneClosed', () => {
     expect(await t.mutation(internal.contact.pruneClosed, { now })).toEqual({ deleted: 1 })
     const left = await t.run((ctx) => ctx.db.query('contact_requests').collect())
     expect(left.map((row) => row.message).sort()).toEqual(['new done', 'old open'])
+  })
+
+  it('carries on past one batch', async () => {
+    jest.useFakeTimers()
+    const t = convexTest(schema, modules)
+    const now = Date.now()
+    await t.run(async (ctx) => {
+      for (let i = 0; i < 205; i++) {
+        await ctx.db.insert('contact_requests', {
+          topic: 'support',
+          email: 'a@example.test',
+          message: 'old',
+          status: 'done',
+          createdAt: now - CLOSED_REQUEST_RETENTION_MS - 1000,
+        })
+      }
+    })
+    await t.mutation(internal.contact.pruneClosed, { now })
+    await t.finishAllScheduledFunctions(jest.runAllTimers)
+    jest.useRealTimers()
+    expect(
+      await t.run(async (ctx) => (await ctx.db.query('contact_requests').collect()).length)
+    ).toBe(0)
   })
 })
 
@@ -172,6 +201,8 @@ describe('POST /contact limits and CORS', () => {
       statuses.push((await send(t, `p${i}@example.test`, '203.0.113.9')).status)
     }
     expect(statuses.at(-1)).toBe(429)
+    const blocked = await send(t, 'another@example.test', '203.0.113.9')
+    expect(Number(blocked.headers.get('Retry-After'))).toBeGreaterThan(0)
   })
 
   it('caps saved requests even when every IP and email is new', async () => {

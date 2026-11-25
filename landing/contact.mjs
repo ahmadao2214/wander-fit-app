@@ -10,7 +10,9 @@ const LOCAL_HOSTS = ['localhost', '127.0.0.1', '[::1]']
 export function readContact({ topic, email, message, website }) {
   const submitted = String(email ?? '')
   const cleanEmail = submitted.replace(/^ +| +$/g, '')
-  const cleanMessage = String(message ?? '').trim()
+  const cleanMessage = String(message ?? '')
+    .replace(/\r\n?/g, '\n')
+    .trim()
   if (!TOPICS.includes(topic)) return { error: 'Choose what you need help with.', field: 'topic' }
   // Same rule as the server: refuse a control character, never clean it away.
   if (
@@ -55,10 +57,17 @@ function init() {
     errorEl.textContent = message
     errorEl.hidden = false
     for (const [name, el] of Object.entries(fields)) {
-      if (name === field) el.setAttribute('aria-invalid', 'true')
-      else el.removeAttribute('aria-invalid')
+      const hint = `contact-${name}-hint`
+      if (name === field) {
+        el.setAttribute('aria-invalid', 'true')
+        el.setAttribute('aria-describedby', `${hint} contact-error`)
+      } else {
+        el.removeAttribute('aria-invalid')
+        el.setAttribute('aria-describedby', hint)
+      }
     }
-    fields[field]?.focus()
+    // Disabling the button while sending drops focus, so put it somewhere useful.
+    ;(fields[field] ?? errorEl).focus()
   }
 
   form.addEventListener('submit', async (event) => {
@@ -77,7 +86,10 @@ function init() {
     }
 
     errorEl.hidden = true
-    for (const el of Object.values(fields)) el.removeAttribute('aria-invalid')
+    for (const [name, el] of Object.entries(fields)) {
+      el.removeAttribute('aria-invalid')
+      el.setAttribute('aria-describedby', `contact-${name}-hint`)
+    }
     submit.disabled = true
     submit.textContent = 'Sending…'
     try {
