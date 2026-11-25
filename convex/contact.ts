@@ -16,7 +16,7 @@ export type ContactTopic = (typeof TOPICS)[number]
 export const MAX_MESSAGE_LENGTH = 2000
 export const MAX_EMAIL_LENGTH = 254
 
-/** A closed request is deleted this long after it arrived. The policy pages state it. */
+/** A closed request is deleted by the daily cleanup once it is this old. The policy pages state it. */
 export const CLOSED_REQUEST_RETENTION_MS = 90 * 24 * 60 * 60 * 1000
 
 export type ContactRequest = {
@@ -34,8 +34,8 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 // oxlint-disable-next-line no-control-regex -- Strip control characters, but keep tabs and line breaks in the message.
 const CONTROL_CHARS = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g
 
-// oxlint-disable-next-line no-control-regex -- Refuse an email that holds any control character.
-const ANY_CONTROL_CHAR = /[\u0000-\u001f\u007f]/
+/** Any Unicode control character, tabs and line breaks included. */
+const ANY_CONTROL_CHAR = /\p{Cc}/u
 
 function text(value: unknown, max: number): string {
   return typeof value === 'string' ? value.replace(CONTROL_CHARS, '').trim().slice(0, max) : ''
@@ -58,10 +58,13 @@ export function cleanContact(raw: unknown): CleanContactResult {
 
   // The reply goes to this address, so it is never cut or cleaned into a
   // different one: anything too long or holding a control character is refused.
-  const rawEmail = typeof body.email === 'string' ? body.email.trim() : ''
+  // Control characters are checked before anything is trimmed, and only
+  // plain spaces around the address are trimmed.
+  const submitted = typeof body.email === 'string' ? body.email : ''
+  const rawEmail = submitted.replace(/^ +| +$/g, '')
   if (
+    ANY_CONTROL_CHAR.test(submitted) ||
     rawEmail.length > MAX_EMAIL_LENGTH ||
-    ANY_CONTROL_CHAR.test(rawEmail) ||
     !EMAIL.test(rawEmail)
   ) {
     return { ok: false, error: 'Enter a valid email address.' }

@@ -19,7 +19,7 @@ Open `http://localhost:4173/?preview=1` to test the form locally without posting
 - `fonts/` — Preloaded `Archivo-latin-var.woff2` + `Archivo-OFL.txt`.
 - `assets/` — `favicon.svg`, `apple-touch-icon.png` (180×180), `og.png` (1200×630), `flyer-qr.{svg,png}`, and clean unedited Football (Strength) `main` screenshots in `assets/shots/`.
 - `privacy/`, `terms/`, `refunds/`, `support/`, `delete-account/` — Policy and support pages (one `index.html` each), styled by `legal.css`. The app opens them from Settings and the Save your plan sheet (`lib/legal.ts`). They are pilot drafts that an attorney has not reviewed; when the text of the terms or privacy policy changes, bump `LEGAL_VERSIONS` in `lib/legal.ts` and the version line on the page.
-- `contact.mjs` — The support form on `/support` (`/support?topic=delete_account` preselects account deletion; `?preview=1` skips the POST).
+- `contact.mjs` — The support form on `/support` (`/support?topic=delete_account` preselects account deletion). To try it without sending anything, open `http://localhost:4173/support/?preview=1`. Preview works on localhost only: a hosted preview deployment sends the request to the live endpoint.
 - `robots.txt` & `sitemap.xml` — Search crawler metadata.
 - `scripts/generate-flyer-qr.mjs` — Regenerates the printable gym-flyer QR asset (`assets/flyer-qr.svg`) for any production domain:
   ```sh

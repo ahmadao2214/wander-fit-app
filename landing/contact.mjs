@@ -3,14 +3,21 @@
 const TOPICS = ['support', 'privacy', 'delete_account']
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MAX_EMAIL_LENGTH = 254
+const ANY_CONTROL_CHAR = /\p{Cc}/u
 const LOCAL_HOSTS = ['localhost', '127.0.0.1', '[::1]']
 
 /** The request body for the form's current values, or the first problem with them. */
 export function readContact({ topic, email, message, website }) {
-  const cleanEmail = String(email ?? '').trim()
+  const submitted = String(email ?? '')
+  const cleanEmail = submitted.replace(/^ +| +$/g, '')
   const cleanMessage = String(message ?? '').trim()
   if (!TOPICS.includes(topic)) return { error: 'Choose what you need help with.', field: 'topic' }
-  if (cleanEmail.length > MAX_EMAIL_LENGTH || !EMAIL.test(cleanEmail)) {
+  // Same rule as the server: refuse a control character, never clean it away.
+  if (
+    ANY_CONTROL_CHAR.test(submitted) ||
+    cleanEmail.length > MAX_EMAIL_LENGTH ||
+    !EMAIL.test(cleanEmail)
+  ) {
     return { error: 'Enter a valid email address.', field: 'email' }
   }
   if (!cleanMessage) return { error: 'Tell us what you need.', field: 'message' }

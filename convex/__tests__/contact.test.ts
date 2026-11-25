@@ -37,6 +37,9 @@ describe('cleanContact', () => {
   it.each([
     ['is over 254 characters', `${'a'.repeat(250)}@example.museum`],
     ['holds a control character', 'par\u0000ent@example.test'],
+    ['starts with a tab', '\tparent@example.test'],
+    ['ends with a line break', 'parent@example.test\n'],
+    ['holds a C1 control character', 'par\u0085ent@example.test'],
   ])('refuses an email that %s, and never cuts it into another address', (_name, email) => {
     expect(cleanContact({ ...request, email })).toEqual({
       ok: false,
