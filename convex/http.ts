@@ -254,18 +254,25 @@ function extractClientIp(request: Request): string | null {
   return null
 }
 
-/** Read a JSON body of at most MAX_BODY_BYTES: 413 when larger, 400 when it isn't JSON. */
+/**
+ * A 2,000-character message can take four UTF-8 bytes a character, and JSON
+ * escaping can add more, so the support form gets a larger cap than /waitlist.
+ */
+const MAX_CONTACT_BODY_BYTES = 16384
+
+/** Read a JSON body of at most `maxBytes`: 413 when larger, 400 when it isn't JSON. */
 async function readJsonBody(
-  request: Request
+  request: Request,
+  maxBytes = MAX_BODY_BYTES
 ): Promise<{ ok: true; body: unknown } | { ok: false; status: 400 | 413 }> {
   const reader = request.body?.getReader()
-  const bytes = new Uint8Array(MAX_BODY_BYTES)
+  const bytes = new Uint8Array(maxBytes)
   let length = 0
   if (reader) {
     while (true) {
       const { value, done } = await reader.read()
       if (done) break
-      if (length + value.byteLength > MAX_BODY_BYTES) {
+      if (length + value.byteLength > maxBytes) {
         await reader.cancel()
         return { ok: false, status: 413 }
       }
@@ -361,7 +368,7 @@ http.route({
   path: '/contact',
   method: 'POST',
   handler: httpAction(async (ctx, request) => {
-    const read = await readJsonBody(request)
+    const read = await readJsonBody(request, MAX_CONTACT_BODY_BYTES)
     if (!read.ok) {
       return waitlistJson(request, read.status, {
         error: read.status === 413 ? 'That message is too long.' : 'Send the request as JSON.',

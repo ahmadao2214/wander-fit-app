@@ -14,6 +14,10 @@ export const TOPICS = ['support', 'privacy', 'delete_account'] as const
 export type ContactTopic = (typeof TOPICS)[number]
 
 export const MAX_MESSAGE_LENGTH = 2000
+export const MAX_EMAIL_LENGTH = 254
+
+/** A closed request is deleted this long after it arrived. The policy pages state it. */
+export const CLOSED_REQUEST_RETENTION_MS = 90 * 24 * 60 * 60 * 1000
 
 export type ContactRequest = {
   topic: ContactTopic
@@ -29,6 +33,9 @@ export type CleanContactResult =
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 // oxlint-disable-next-line no-control-regex -- Strip control characters, but keep tabs and line breaks in the message.
 const CONTROL_CHARS = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g
+
+// oxlint-disable-next-line no-control-regex -- Refuse an email that holds any control character.
+const ANY_CONTROL_CHAR = /[\u0000-\u001f\u007f]/
 
 function text(value: unknown, max: number): string {
   return typeof value === 'string' ? value.replace(CONTROL_CHARS, '').trim().slice(0, max) : ''
@@ -49,10 +56,17 @@ export function cleanContact(raw: unknown): CleanContactResult {
     return { ok: false, error: 'Choose what you need help with.' }
   }
 
-  const email = text(body.email, 254).toLowerCase()
-  if (!EMAIL.test(email)) {
+  // The reply goes to this address, so it is never cut or cleaned into a
+  // different one: anything too long or holding a control character is refused.
+  const rawEmail = typeof body.email === 'string' ? body.email.trim() : ''
+  if (
+    rawEmail.length > MAX_EMAIL_LENGTH ||
+    ANY_CONTROL_CHAR.test(rawEmail) ||
+    !EMAIL.test(rawEmail)
+  ) {
     return { ok: false, error: 'Enter a valid email address.' }
   }
+  const email = rawEmail.toLowerCase()
 
   const message = text(body.message, MAX_MESSAGE_LENGTH)
   if (!message) {
@@ -76,5 +90,23 @@ export const record = internalMutation({
       createdAt: Date.now(),
     })
     return { id }
+  },
+})
+
+/**
+ * Delete handled requests once they are 90 days old, so a deletion request
+ * does not outlive the account it asked to delete for long. Open requests stay
+ * until someone closes them.
+ */
+export const pruneClosed = internalMutation({
+  args: { now: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const cutoff = (args.now ?? Date.now()) - CLOSED_REQUEST_RETENTION_MS
+    const expired = await ctx.db
+      .query('contact_requests')
+      .withIndex('by_status', (q) => q.eq('status', 'done').lte('createdAt', cutoff))
+      .take(200)
+    for (const row of expired) await ctx.db.delete(row._id)
+    return { deleted: expired.length }
   },
 })

@@ -7,4 +7,5 @@ crons.interval(
   { minutes: 1 },
   internal.waitlist.pruneExpiredRateLimits
 )
+crons.interval('Delete closed support requests', { hours: 24 }, internal.contact.pruneClosed, {})
 export default crons

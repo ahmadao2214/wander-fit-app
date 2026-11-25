@@ -2,21 +2,32 @@
 
 const TOPICS = ['support', 'privacy', 'delete_account']
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const MAX_EMAIL_LENGTH = 254
+const LOCAL_HOSTS = ['localhost', '127.0.0.1', '[::1]']
 
 /** The request body for the form's current values, or the first problem with them. */
 export function readContact({ topic, email, message, website }) {
   const cleanEmail = String(email ?? '').trim()
   const cleanMessage = String(message ?? '').trim()
   if (!TOPICS.includes(topic)) return { error: 'Choose what you need help with.', field: 'topic' }
-  if (!EMAIL.test(cleanEmail)) return { error: 'Enter a valid email address.', field: 'email' }
+  if (cleanEmail.length > MAX_EMAIL_LENGTH || !EMAIL.test(cleanEmail)) {
+    return { error: 'Enter a valid email address.', field: 'email' }
+  }
   if (!cleanMessage) return { error: 'Tell us what you need.', field: 'message' }
   return { body: { topic, email: cleanEmail, message: cleanMessage, website: website ?? '' } }
+}
+
+/** `?preview=1` skips the POST, and only on a local server: never on the live site. */
+export function isPreview({ hostname, search }) {
+  return LOCAL_HOSTS.includes(hostname) && new URLSearchParams(search).get('preview') === '1'
 }
 
 function init() {
   const form = document.getElementById('contact-form')
   if (!form) return
   const done = document.getElementById('contact-done')
+  const doneTitle = document.getElementById('contact-done-title')
+  const doneBody = document.getElementById('contact-done-body')
   const errorEl = document.getElementById('contact-error')
   const submit = document.getElementById('contact-submit')
   const fields = {
@@ -24,7 +35,7 @@ function init() {
     message: document.getElementById('contact-message'),
   }
   const params = new URLSearchParams(location.search)
-  const preview = params.has('preview')
+  const preview = isPreview(location)
   const endpoint = document.querySelector('meta[name="contact-endpoint"]')?.content ?? ''
 
   // /delete-account links here with the topic already chosen.
@@ -54,13 +65,16 @@ function init() {
       website: data.get('website'),
     })
     if (result.error) return showError(result.error, result.field)
+    if (!preview && !endpoint) {
+      return showError('The form is not available right now. Try again later.')
+    }
 
     errorEl.hidden = true
     for (const el of Object.values(fields)) el.removeAttribute('aria-invalid')
     submit.disabled = true
     submit.textContent = 'Sending…'
     try {
-      if (!preview && endpoint) {
+      if (!preview) {
         const response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -70,6 +84,9 @@ function init() {
           const payload = await response.json().catch(() => ({}))
           throw new Error(payload.error || 'We could not send your request. Try again.')
         }
+      } else {
+        doneTitle.textContent = 'Preview only'
+        doneBody.textContent = 'The request was not sent.'
       }
       form.hidden = true
       done.hidden = false
@@ -86,6 +103,10 @@ function init() {
       submit.textContent = 'Send request'
     }
   })
+
+  // The button ships disabled so the form can't fall back to a plain GET,
+  // which would put the email and message in the URL.
+  submit.disabled = false
 }
 
 if (typeof document !== 'undefined') init()
