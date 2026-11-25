@@ -410,7 +410,18 @@ http.route({
       key: 'contact-global',
       limit: MAX_CONTACT_REQUESTS_PER_WINDOW,
     })
-    if (!globalLimit.allowed) return tooMany(globalLimit.retryAfterSeconds)
+    if (!globalLimit.allowed) {
+      console.warn('POST /contact hit its global cap; requests are being refused')
+      return waitlistJson(
+        request,
+        429,
+        {
+          error:
+            'The form is busy. Try again in a few minutes. To delete an account now, use Profile → App settings → Delete account in the app.',
+        },
+        { 'Retry-After': String(globalLimit.retryAfterSeconds) }
+      )
+    }
 
     await ctx.runMutation(internal.contact.record, result.value)
     return waitlistJson(request, 200, { ok: true })

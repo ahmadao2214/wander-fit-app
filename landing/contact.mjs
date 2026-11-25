@@ -101,7 +101,8 @@ function init() {
         })
         if (!response.ok) {
           const payload = await response.json().catch(() => ({}))
-          throw new Error(payload.error || 'We could not send your request. Try again.')
+          const reason = typeof payload?.error === 'string' && payload.error
+          throw new Error(reason || 'We could not send your request. Try again.')
         }
       } else {
         doneTitle.textContent = 'Preview only'

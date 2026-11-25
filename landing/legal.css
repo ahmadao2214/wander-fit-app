@@ -82,6 +82,7 @@
   color: var(--muted);
 }
 
+.top-nav a[aria-current='page'],
 .foot-nav a[aria-current='page'] {
   color: var(--ink);
 }
@@ -142,7 +143,6 @@
   margin-top: 0;
 }
 
-.contact h2:focus,
 .contact-done:focus {
   outline: none;
 }

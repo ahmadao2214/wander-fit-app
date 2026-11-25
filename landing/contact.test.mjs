@@ -122,6 +122,11 @@ test.each([
     }),
     'We could not send your request. Try again.',
   ],
+  [
+    'the server answers with JSON null',
+    async () => ({ ok: false, json: async () => null }),
+    'We could not send your request. Try again.',
+  ],
 ])('when %s the error takes focus and the form stays', async (_name, respond, message) => {
   await load()
   global.fetch = jest.fn(respond)

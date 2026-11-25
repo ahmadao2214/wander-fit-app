@@ -36,7 +36,7 @@ The Beta On-Ramp form posts JSON to `<meta name="waitlist-endpoint">` in `index.
 
 ## Backend (`POST /contact`)
 
-The support form posts JSON to `<meta name="contact-endpoint">` in `support/index.html`. The route (`convex/http.ts`) has the same guards as `/waitlist` and saves through `internal.contact.record` into `contact_requests` with status `open`. Nothing sends an alert yet: read open requests in the Convex dashboard, reply by email, and set `status` to `done`.
+The support form posts JSON to `<meta name="contact-endpoint">` in `support/index.html`. The route (`convex/http.ts`) has the same guards as `/waitlist` and saves through `internal.contact.record` into `contact_requests` with status `open`. Emails are stored as typed, so match case-insensitively when you look one up. Nothing sends an alert yet: read open requests in the Convex dashboard, reply by email, and set `status` to `done`.
 
 ## Tests
 

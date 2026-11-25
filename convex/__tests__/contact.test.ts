@@ -50,7 +50,9 @@ describe('cleanContact', () => {
   })
 
   it('counts a form line break as one character, so a full message is not cut', () => {
-    const typed = `${'x'.repeat(MAX_MESSAGE_LENGTH - 30)}\n`.repeat(1) + 'maya@example.test'
+    // Exactly the 2,000 characters the textarea allows, ending in the part that would be cut.
+    const typed = `${'x\n'.repeat(990)}maya@example.test...`
+    expect(typed.length).toBe(MAX_MESSAGE_LENGTH)
     const result = cleanContact({ ...request, message: typed.replace(/\n/g, '\r\n') })
     expect(result.ok && result.value.message).toBe(typed)
   })
@@ -128,9 +130,12 @@ describe('pruneClosed', () => {
         })
       }
     })
-    await t.mutation(internal.contact.pruneClosed, { now })
-    await t.finishAllScheduledFunctions(jest.runAllTimers)
-    jest.useRealTimers()
+    try {
+      await t.mutation(internal.contact.pruneClosed, { now })
+      await t.finishAllScheduledFunctions(jest.runAllTimers)
+    } finally {
+      jest.useRealTimers()
+    }
     expect(
       await t.run(async (ctx) => (await ctx.db.query('contact_requests').collect()).length)
     ).toBe(0)
