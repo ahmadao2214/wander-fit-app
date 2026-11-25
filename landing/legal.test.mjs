@@ -50,6 +50,7 @@ describe('readContact', () => {
     [{ ...valid, email: '\tparent@example.test' }, 'email'],
     [{ ...valid, email: 'parent@example.test\n' }, 'email'],
     [{ ...valid, email: 'par\u0085ent@example.test' }, 'email'],
+    [{ ...valid, email: 'parent@exa\u200bmple.test' }, 'email'],
     [{ ...valid, email: `${'a'.repeat(250)}@example.museum` }, 'email'],
     [{ ...valid, message: '   ' }, 'message'],
   ])('names the field that is wrong', (input, field) => {

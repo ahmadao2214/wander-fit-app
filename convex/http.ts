@@ -260,6 +260,9 @@ function extractClientIp(request: Request): string | null {
  */
 const MAX_CONTACT_BODY_BYTES = 16384
 
+/** Saved support requests per 15-minute window, across every sender. */
+const MAX_CONTACT_REQUESTS_PER_WINDOW = 100
+
 /** Read a JSON body of at most `maxBytes`: 413 when larger, 400 when it isn't JSON. */
 async function readJsonBody(
   request: Request,
@@ -397,9 +400,17 @@ http.route({
     if (!result.ok) return waitlistJson(request, 400, { error: result.error })
 
     const emailLimit = await ctx.runMutation(internal.waitlist.checkRateLimit, {
-      key: `contact-email:${result.value.email}`,
+      key: `contact-email:${result.value.email.toLowerCase()}`,
     })
     if (!emailLimit.allowed) return tooMany(emailLimit.retryAfterSeconds)
+
+    // The IP comes from request headers and the email changes freely, so a
+    // script can dodge both limits. This one caps saved requests whatever it sends.
+    const globalLimit = await ctx.runMutation(internal.waitlist.checkRateLimit, {
+      key: 'contact-global',
+      limit: MAX_CONTACT_REQUESTS_PER_WINDOW,
+    })
+    if (!globalLimit.allowed) return tooMany(globalLimit.retryAfterSeconds)
 
     await ctx.runMutation(internal.contact.record, result.value)
     return waitlistJson(request, 200, { ok: true })

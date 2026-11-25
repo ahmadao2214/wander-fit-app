@@ -34,8 +34,11 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 // oxlint-disable-next-line no-control-regex -- Strip control characters, but keep tabs and line breaks in the message.
 const CONTROL_CHARS = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g
 
-/** Any Unicode control character, tabs and line breaks included. */
-const ANY_CONTROL_CHAR = /\p{Cc}/u
+/**
+ * Any Unicode control or format character: tabs and line breaks, and also
+ * zero-width and text-direction marks, which make an address read as another.
+ */
+const ANY_CONTROL_CHAR = /[\p{Cc}\p{Cf}]/u
 
 function text(value: unknown, max: number): string {
   return typeof value === 'string' ? value.replace(CONTROL_CHARS, '').trim().slice(0, max) : ''
@@ -69,7 +72,8 @@ export function cleanContact(raw: unknown): CleanContactResult {
   ) {
     return { ok: false, error: 'Enter a valid email address.' }
   }
-  const email = rawEmail.toLowerCase()
+  // Stored as typed: lowercasing can change a non-ASCII address.
+  const email = rawEmail
 
   const message = text(body.message, MAX_MESSAGE_LENGTH)
   if (!message) {

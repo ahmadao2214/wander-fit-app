@@ -14,12 +14,12 @@ const request = {
 }
 
 describe('cleanContact', () => {
-  it('normalizes the email and keeps line breaks in the message', () => {
+  it('trims spaces around the email and keeps line breaks in the message', () => {
     expect(cleanContact(request)).toEqual({
       ok: true,
       value: {
         topic: 'delete_account',
-        email: 'parent@example.test',
+        email: 'Parent@Example.test',
         message: "Please delete my daughter's account.\nHer email is maya@example.test.",
       },
     })
@@ -40,6 +40,8 @@ describe('cleanContact', () => {
     ['starts with a tab', '\tparent@example.test'],
     ['ends with a line break', 'parent@example.test\n'],
     ['holds a C1 control character', 'par\u0085ent@example.test'],
+    ['holds a zero-width space', 'parent@exa\u200bmple.test'],
+    ['holds a text-direction mark', 'parent\u202e@example.test'],
   ])('refuses an email that %s, and never cuts it into another address', (_name, email) => {
     expect(cleanContact({ ...request, email })).toEqual({
       ok: false,
@@ -69,7 +71,7 @@ describe('record', () => {
     await t.mutation(internal.contact.record, cleaned.value)
     const rows = await t.run((ctx) => ctx.db.query('contact_requests').collect())
     expect(rows.map(({ topic, email, status }) => ({ topic, email, status }))).toEqual([
-      { topic: 'delete_account', email: 'parent@example.test', status: 'open' },
+      { topic: 'delete_account', email: 'Parent@Example.test', status: 'open' },
     ])
   })
 })
@@ -152,5 +154,55 @@ describe('POST /contact', () => {
     }
     expect(statuses.at(-1)).toBe(429)
     expect(await count(t)).toBe(RATE_LIMIT_MAX_REQUESTS)
+  })
+})
+
+describe('POST /contact limits and CORS', () => {
+  const send = (t: ReturnType<typeof convexTest>, email: string, ip: string) =>
+    t.fetch('/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-forwarded-for': ip },
+      body: JSON.stringify({ ...request, email }),
+    })
+
+  it('rate limits one IP address across emails', async () => {
+    const t = convexTest(schema, modules)
+    const statuses: number[] = []
+    for (let i = 0; i <= RATE_LIMIT_MAX_REQUESTS; i++) {
+      statuses.push((await send(t, `p${i}@example.test`, '203.0.113.9')).status)
+    }
+    expect(statuses.at(-1)).toBe(429)
+  })
+
+  it('caps saved requests even when every IP and email is new', async () => {
+    const t = convexTest(schema, modules)
+    const statuses: number[] = []
+    for (let i = 0; i <= 100; i++) {
+      statuses.push((await send(t, `p${i}@example.test`, `198.51.${i % 250}.${i}`)).status)
+    }
+    expect(statuses.filter((status) => status === 200).length).toBe(100)
+    expect(statuses.at(-1)).toBe(429)
+  })
+
+  it('keeps its limits apart from the waitlist form', async () => {
+    const t = convexTest(schema, modules)
+    await send(t, 'parent@example.test', '203.0.113.9')
+    const keys = await t.run(async (ctx) =>
+      (await ctx.db.query('waitlist_rate_limits').collect()).map((row) => row.key).sort()
+    )
+    expect(keys).toEqual([
+      'contact-email:parent@example.test',
+      'contact-global',
+      'contact-ip:203.0.113.9',
+    ])
+  })
+
+  it('answers the preflight with CORS headers', async () => {
+    const t = convexTest(schema, modules)
+    const response = await t.fetch('/contact', { method: 'OPTIONS' })
+    expect([response.status, response.headers.get('Access-Control-Allow-Methods')]).toEqual([
+      204,
+      'POST, OPTIONS',
+    ])
   })
 })

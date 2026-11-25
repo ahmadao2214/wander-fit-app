@@ -3,7 +3,7 @@
 const TOPICS = ['support', 'privacy', 'delete_account']
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MAX_EMAIL_LENGTH = 254
-const ANY_CONTROL_CHAR = /\p{Cc}/u
+const ANY_CONTROL_CHAR = /[\p{Cc}\p{Cf}]/u
 const LOCAL_HOSTS = ['localhost', '127.0.0.1', '[::1]']
 
 /** The request body for the form's current values, or the first problem with them. */
