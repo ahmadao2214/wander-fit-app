@@ -450,8 +450,8 @@ describe('Save your plan, acceptance', () => {
     await press('save-plan-link-terms')
     await press('save-plan-link-privacy')
     expect(mockOpenBrowser.mock.calls).toEqual([
-      ['https://wanderfit.app/terms'],
-      ['https://wanderfit.app/privacy'],
+      ['https://wanderfit-beta.vercel.app/terms'],
+      ['https://wanderfit-beta.vercel.app/privacy'],
     ])
     expect(isChecked()).toBe(false)
   })

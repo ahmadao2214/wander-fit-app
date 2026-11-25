@@ -1271,6 +1271,12 @@ input[aria-invalid="true"] {
   line-height: 1.55;
 }
 
+.legal-note a {
+  color: inherit;
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 920px) {
   .hero {

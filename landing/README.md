@@ -18,6 +18,8 @@ Open `http://localhost:4173/?preview=1` to test the form locally without posting
 - `qr.mjs` + `qr.test.mjs` — Zero-dependency ISO/IEC 18004 QR code encoder (Byte mode, EC Level M, Versions 1–10) and single-`<path>` SVG renderer (`renderQrSvg`).
 - `fonts/` — Preloaded `Archivo-latin-var.woff2` + `Archivo-OFL.txt`.
 - `assets/` — `favicon.svg`, `apple-touch-icon.png` (180×180), `og.png` (1200×630), `flyer-qr.{svg,png}`, and clean unedited Football (Strength) `main` screenshots in `assets/shots/`.
+- `privacy/`, `terms/`, `refunds/`, `support/`, `delete-account/` — Policy and support pages (one `index.html` each), styled by `legal.css`. The app opens them from Settings and the Save your plan sheet (`lib/legal.ts`). They are pilot drafts that an attorney has not reviewed; when the text of the terms or privacy policy changes, bump `LEGAL_VERSIONS` in `lib/legal.ts` and the version line on the page.
+- `contact.mjs` — The support form on `/support` (`/support?topic=delete_account` preselects account deletion; `?preview=1` skips the POST).
 - `robots.txt` & `sitemap.xml` — Search crawler metadata.
 - `scripts/generate-flyer-qr.mjs` — Regenerates the printable gym-flyer QR asset (`assets/flyer-qr.svg`) for any production domain:
   ```sh
@@ -32,9 +34,13 @@ The Beta On-Ramp form posts JSON to `<meta name="waitlist-endpoint">` in `index.
 - Validation & persistence: `cleanSignup`, `checkRateLimit`, and `record` (`convex/waitlist.ts`) storing into `waitlist_signups` (one row per normalized email, with edits limited to the original signup token) and `waitlist_rate_limits`.
 - Deploying Convex backend updates: run `bun run typecheck && bun run test:ci` first, then `npx convex deploy --typecheck=disable` (Convex's own typecheck chokes on Jest test files).
 
+## Backend (`POST /contact`)
+
+The support form posts JSON to `<meta name="contact-endpoint">` in `support/index.html`. The route (`convex/http.ts`) has the same guards as `/waitlist` and saves through `internal.contact.record` into `contact_requests` with status `open`. Nothing sends an alert yet: read open requests in the Convex dashboard, reply by email, and set `status` to `done`.
+
 ## Tests
 
 ```sh
 bun run test -- landing/
-bun run test -- convex/__tests__/waitlist.test.ts
+bun run test -- convex/__tests__/waitlist.test.ts convex/__tests__/contact.test.ts
 ```

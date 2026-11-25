@@ -1,0 +1,211 @@
+/* Policy and support pages: /privacy, /terms, /refunds, /support, /delete-account.
+   Loaded after styles.css, which supplies the tokens, header, footer and fields. */
+
+.doc {
+  max-width: 760px;
+  padding-block: 32px 72px;
+}
+
+.doc h1 {
+  font-size: clamp(32px, 6vw, 44px);
+  font-weight: 800;
+  font-stretch: 88%;
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+.doc h2 {
+  font-size: 22px;
+  font-weight: 750;
+  line-height: 1.25;
+  margin-top: 40px;
+  text-wrap: balance;
+  scroll-margin-top: 16px;
+}
+
+.doc h3 {
+  font-size: 17px;
+  font-weight: 700;
+  margin-top: 24px;
+}
+
+.doc p,
+.doc ul,
+.doc ol,
+.doc .table-scroll {
+  margin-top: 12px;
+}
+
+.doc p,
+.doc li {
+  max-width: 68ch;
+  text-wrap: pretty;
+}
+
+.doc ul,
+.doc ol {
+  padding-left: 22px;
+}
+
+.doc li + li {
+  margin-top: 8px;
+}
+
+.doc a {
+  color: var(--ink);
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+
+.doc a:focus-visible,
+.top-nav a:focus-visible,
+.foot-nav a:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.doc-meta {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--r-field);
+  background: var(--surface);
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.doc-lede {
+  margin-top: 16px;
+  font-size: 19px;
+  color: var(--muted);
+}
+
+.foot-nav a[aria-current='page'] {
+  color: var(--ink);
+}
+
+/* ---------- Table ---------- */
+.table-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--r-field);
+  background: var(--surface);
+}
+
+.doc table {
+  width: 100%;
+  min-width: 520px;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.doc th,
+.doc td {
+  padding: 12px 14px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.doc th {
+  font-weight: 700;
+  border-bottom: 1px solid var(--rule-strong);
+}
+
+.doc tbody tr + tr td {
+  border-top: 1px solid var(--rule);
+}
+
+.doc td:first-child {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ---------- Support form ---------- */
+.contact,
+.contact-done {
+  margin-top: 28px;
+  padding: 24px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.contact {
+  display: grid;
+  gap: 20px;
+}
+
+.contact h2,
+.contact-done h2 {
+  margin-top: 0;
+}
+
+.contact h2:focus,
+.contact-done:focus {
+  outline: none;
+}
+
+.choices {
+  display: grid;
+  gap: 4px;
+}
+
+.choices label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 0;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.choices input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 2px 0 0;
+  accent-color: var(--cta-bg);
+}
+
+.contact textarea {
+  width: 100%;
+  min-height: 140px;
+  font: inherit;
+  font-size: 16px;
+  padding: 12px 14px;
+  background: var(--field);
+  color: var(--ink);
+  border: 1px solid var(--field-line);
+  border-radius: var(--r-field);
+  resize: vertical;
+  transition: border-color 150ms var(--ease-out), box-shadow 150ms var(--ease-out);
+}
+
+.contact textarea:focus {
+  outline: none;
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.contact textarea[aria-invalid='true'] {
+  border-color: var(--error);
+}
+
+/* Honeypot: off-screen for people, present for bots. */
+.trap {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+@media (max-width: 520px) {
+  .contact,
+  .contact-done {
+    padding: 18px;
+  }
+}

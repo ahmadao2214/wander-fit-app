@@ -7,9 +7,9 @@ import {
 } from '../legal'
 
 describe('legalUrl', () => {
-  it('uses wanderfit.app when no site URL is set', () => {
-    expect(legalUrl('terms', undefined)).toBe('https://wanderfit.app/terms')
-    expect(legalUrl('privacy', '')).toBe('https://wanderfit.app/privacy')
+  it('uses the landing site when no site URL is set', () => {
+    expect(legalUrl('terms', undefined)).toBe('https://wanderfit-beta.vercel.app/terms')
+    expect(legalUrl('privacy', '')).toBe('https://wanderfit-beta.vercel.app/privacy')
   })
 
   it('uses EXPO_PUBLIC_SITE_URL when it is set, without a doubled slash', () => {

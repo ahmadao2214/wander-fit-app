@@ -864,4 +864,19 @@ export default defineSchema({
   })
     .index('by_key', ['key'])
     .index('by_window_start', ['windowStart']),
+
+  /**
+   * Support, privacy and account-deletion requests from the public support
+   * form (landing/support). Written only by POST /contact through
+   * internal.contact.record. `status` is set by hand when a request is handled.
+   */
+  contact_requests: defineTable({
+    topic: v.union(v.literal('support'), v.literal('privacy'), v.literal('delete_account')),
+    email: v.string(),
+    message: v.string(),
+    status: v.union(v.literal('open'), v.literal('done')),
+    createdAt: v.number(),
+  })
+    .index('by_status', ['status', 'createdAt'])
+    .index('by_email', ['email']),
 })
