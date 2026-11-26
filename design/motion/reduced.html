@@ -1,0 +1,22 @@
+<!DOCTYPE html><html data-reduced="1"><head><meta charset="utf-8"><title>Motion</title>
+<meta name="draw-on-ms" content="480">
+<meta name="instrument-ms" content="180">
+<meta name="reduced-motion-ms" content="0">
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; font-family: system-ui, sans-serif; }
+  .board { width: 390px; height: 700px; display: flex; flex-direction: column; padding: 22px 16px 16px; box-sizing: border-box; }
+  h2 { margin: 0 0 12px; font-size: 22px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+  .field { flex: 1; min-height: 0; }
+  .field svg { width: 100%; height: 100%; display: block; }
+  .leg { fill: none; stroke: #d8875b; stroke-width: 2.8; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset 480ms cubic-bezier(0.45, 0, 0.25, 1); }
+  .play .leg { stroke-dashoffset: 0; }
+  button { height: 48px; border: 0; border-radius: 14px; font-family: inherit; font-weight: 700; font-size: 16px; line-height: 1; background: #ede7df; color: #2a2520; }
+  button.press { animation: press 180ms cubic-bezier(0.65, 0, 0.35, 1) both; }
+  @keyframes press { 0% { transform: none; } 45% { transform: translateY(3px); } 100% { transform: none; } }
+  html[data-reduced="1"] .leg { stroke-dashoffset: 0; transition: none; }
+  html[data-reduced="1"] button { animation: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .leg { stroke-dashoffset: 0; transition: none; }
+    button { animation: none; }
+  }
+</style></head><body><main class="board" data-reduced="1" style="background:#1b1511;color:#ede7df"><h2>Program</h2><div class="field"><svg class="play" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 700"><rect width="340" height="700" fill="#1b1511"/><path class="leg" pathLength="1" d="M58 394 Q26 316 66 232" style="transition:none;stroke-dashoffset:0"/><path class="leg" pathLength="1" d="M66 232 Q150 318 254 268" style="transition:none;stroke-dashoffset:0"/><path class="leg" pathLength="1" d="M254 268 Q302 214 214 172" style="transition:none;stroke-dashoffset:0"/></svg></div></main></body></html>
