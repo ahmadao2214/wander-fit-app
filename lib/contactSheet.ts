@@ -39,7 +39,7 @@ export function renderContactSheet(): string {
   // Column order is chalkboard, then whiteboard. Each column is Program over Execute.
   const ordered = [cells[0], cells[2], cells[1], cells[3]].join('')
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Program and Execute</title><style>
-    html, body { margin: 0; background: transparent; color: var(--foreground); font-family: var(--font-sans), system-ui, sans-serif; }
+    html, body { margin: 0; background: transparent; color: var(--foreground); font-family: var(--font-sans, system-ui), sans-serif; }
     .sheet { display: grid; grid-template-columns: 1fr 1fr; gap: 28px 20px; }
     .cap { margin: 0 0 8px; font-size: 13px; letter-spacing: 0.02em; }
     .phone, section { box-sizing: border-box; }
@@ -51,6 +51,6 @@ export function renderContactSheet(): string {
     .lift { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.03em; }
     .set, .reps, .load { margin: 0; font-size: 15px; }
     .reps span, .load span { font-size: 56px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.04em; }
-    button { height: 48px; border: 0; border-radius: 14px; font: 700 16px/1 inherit; }
+    button { height: 48px; border: 0; border-radius: 14px; font-family: inherit; font-weight: 700; font-size: 16px; line-height: 1; }
   </style></head><body><main class="sheet">${ordered}</main></body></html>`
 }
