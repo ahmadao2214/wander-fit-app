@@ -42,19 +42,21 @@ function Cell({ label, value, marker, testID }: { label: string; value: string; 
 
 export function TodayScorebug({ week, phase, phaseStep, phaseOf, season, onPress }: Props) {
   const third = thirdCell(season)
+  // The harness sample says "week 1". The live cell does not number the season.
+  const seasonValue = season.kind === 'in-season' ? 'In season' : third.value
   const phaseValue = `${phase} ${phaseStep}/${phaseOf}`
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`Week ${week}. ${phase}, phase ${phaseStep} of ${phaseOf}. ${third.label} ${third.value}. Opens Program.`}
+      accessibilityLabel={`Week ${week}. ${phase}, phase ${phaseStep} of ${phaseOf}. ${third.label} ${seasonValue}. Opens Program.`}
       testID="today-scorebug"
       style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
     >
       <XStack flexWrap="wrap" bg="$background" borderWidth={1} borderColor="$color" rounded={12} minH={44}>
         <Cell label="Week" value={String(week)} marker testID="scorebug-week" />
         <Cell label="Phase" value={phaseValue} testID="scorebug-phase" />
-        <Cell label={third.label} value={third.value} testID="scorebug-season" />
+        <Cell label={third.label} value={seasonValue} testID="scorebug-season" />
       </XStack>
     </Pressable>
   )

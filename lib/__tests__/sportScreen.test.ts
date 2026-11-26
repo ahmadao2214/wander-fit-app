@@ -1,4 +1,4 @@
-import { PHASE_WORDS, phaseStep, phaseWord, programWeek, seasonStartsAt, sportSchemeFor, todaySeason } from '../sportScreen'
+import { PHASE_WORDS, phaseStep, phaseWord, programWeek, seasonSource, seasonStartsAt, sportSchemeFor, todaySeason } from '../sportScreen'
 
 describe('sportSchemeFor', () => {
   it('maps dark to the chalkboard and everything else to the whiteboard', () => {
@@ -37,6 +37,19 @@ describe('programWeek', () => {
   })
 })
 
+describe('seasonSource', () => {
+  const initial = { intakeType: 'initial', completedAt: 1_000, weeksUntilSeason: 8 }
+  const checkIn = { intakeType: 'reassessment', completedAt: 2_000, weeksUntilSeason: 8 }
+
+  it('keeps the first game on the intake that set the season', () => {
+    expect(seasonSource([checkIn, initial])).toEqual(initial)
+  })
+
+  it('is null when only a check-in copied the weeks', () => {
+    expect(seasonSource([checkIn, { intakeType: 'initial', completedAt: 1_000, weeksUntilSeason: null }])).toBeNull()
+  })
+})
+
 describe('seasonStartsAt', () => {
   it('adds the intake weeks to when the intake was answered', () => {
     const answered = new Date(2026, 10, 1).getTime()
@@ -59,6 +72,13 @@ describe('todaySeason', () => {
   it('reads in season once the game day comes', () => {
     const game = new Date(2026, 10, 14, 7, 0).getTime()
     expect(todaySeason({ seasonStartsAt: game, week: 12, programWeeks: 12, now })).toEqual({ kind: 'in-season' })
+  })
+
+  it('counts a daylight-saving night as one calendar day', () => {
+    // 1 Nov 2026 is the US fall-back. The local night can last 25 hours.
+    const now = new Date(2026, 9, 31, 23, 30)
+    const game = new Date(2026, 10, 1, 0, 30).getTime()
+    expect(todaySeason({ seasonStartsAt: game, week: 1, programWeeks: 12, now })).toEqual({ kind: 'dated', daysToGame: 1 })
   })
 
   it('falls back to the plan count with no date', () => {

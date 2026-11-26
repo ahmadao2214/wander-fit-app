@@ -48,6 +48,24 @@ export function programWeek(phase: Phase | string | null | undefined, week: numb
 const DAY_MS = 24 * 60 * 60 * 1000
 const WEEK_MS = 7 * DAY_MS
 
+type SeasonIntake = {
+  intakeType: string
+  completedAt: number
+  weeksUntilSeason?: number | null
+}
+
+/**
+ * The intake where the athlete set the season. A check-in copies the weeks
+ * onto a new record and must not move the first game.
+ */
+export function seasonSource<T extends SeasonIntake>(intakes: readonly T[]): T | null {
+  const supplied = intakes.filter(
+    (row) => row.intakeType === 'initial' && typeof row.weeksUntilSeason === 'number',
+  )
+  if (supplied.length === 0) return null
+  return supplied.reduce((earliest, row) => (row.completedAt < earliest.completedAt ? row : earliest))
+}
+
 /**
  * When the first game is, from the intake: it said the season starts
  * `weeksUntilSeason` weeks after it was answered. Null when there is no set season.
@@ -57,8 +75,11 @@ export function seasonStartsAt(intakeCompletedAt: number, weeksUntilSeason: numb
   return intakeCompletedAt + weeksUntilSeason * WEEK_MS
 }
 
-function startOfLocalDay(date: Date): number {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
+/** Local calendar dates, so a daylight-saving night still counts as one day. */
+function calendarDaysUntil(from: Date, until: Date): number {
+  const fromDay = Date.UTC(from.getFullYear(), from.getMonth(), from.getDate())
+  const untilDay = Date.UTC(until.getFullYear(), until.getMonth(), until.getDate())
+  return Math.round((untilDay - fromDay) / DAY_MS)
 }
 
 /**
@@ -75,7 +96,7 @@ export function todaySeason(input: {
   if (input.seasonStartsAt === null || input.seasonStartsAt === undefined) {
     return { kind: 'open', done: input.week, total: input.programWeeks }
   }
-  const daysToGame = Math.ceil((startOfLocalDay(new Date(input.seasonStartsAt)) - startOfLocalDay(input.now)) / DAY_MS)
+  const daysToGame = calendarDaysUntil(input.now, new Date(input.seasonStartsAt))
   if (daysToGame <= 0) return { kind: 'in-season' }
   return { kind: 'dated', daysToGame }
 }

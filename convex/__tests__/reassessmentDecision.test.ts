@@ -88,6 +88,31 @@ async function setup({ completedInBlock = 3, completedBeforeBlock = 0 } = {}) {
 
 const checkIn = { phaseDifficulty: "just_right" as const, maxesUpdated: false };
 
+describe("first game after a check-in", () => {
+  it("stays on the day the athlete set, not the check-in day", async () => {
+    const { t, asAthlete } = await setup({ completedInBlock: 3 });
+    const answered = Date.now() - 30 * DAY;
+    await t.run(async (ctx) => {
+      const user = await ctx.db
+        .query("users")
+        .withIndex("by_clerk", (q) => q.eq("clerkId", "clerk_athlete"))
+        .first();
+      const intake = await ctx.db
+        .query("intake_responses")
+        .withIndex("by_user", (q) => q.eq("userId", user!._id))
+        .first();
+      await ctx.db.patch(intake!._id, { weeksUntilSeason: 12, completedAt: answered });
+    });
+
+    const before = await asAthlete.query(api.userPrograms.getCurrentProgramState, {});
+    await asAthlete.mutation(api.userPrograms.completeReassessment, checkIn);
+    const after = await asAthlete.query(api.userPrograms.getCurrentProgramState, {});
+
+    expect(before?.seasonStartsAt).toBe(answered + 12 * 7 * DAY);
+    expect(after?.seasonStartsAt).toBe(before?.seasonStartsAt);
+  });
+});
+
 describe("end-of-block check-in", () => {
   it("counts only the sessions in the block that just ended", async () => {
     const { asAthlete } = await setup({ completedInBlock: 1, completedBeforeBlock: 3 });

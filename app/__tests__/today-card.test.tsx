@@ -141,6 +141,19 @@ describe('Today card', () => {
       expect(queryByText(/GPP|SPP|SSP|SCORE/)).toBeNull()
     })
 
+    it('reads in season without a week number once the first game has come', () => {
+      jest.useFakeTimers({ now: new Date(2026, 10, 20, 9, 0, 0) })
+      try {
+        programState.seasonStartsAt = new Date(2026, 10, 14, 9, 0, 0).getTime()
+        const { getByTestId, queryByText } = render(<AthleteDashboard />, { wrapper: AllTheProviders })
+        const bug = within(getByTestId('today-scorebug'))
+        expect(bug.getByText('In season')).toBeTruthy()
+        expect(queryByText(/week 1/)).toBeNull()
+      } finally {
+        jest.useRealTimers()
+      }
+    })
+
     it('counts down to the first game when the season is dated', () => {
       jest.useFakeTimers({ now: new Date(2026, 10, 14, 9, 0, 0) })
       try {
