@@ -1,11 +1,10 @@
 import { useCallback, useRef, useEffect, useMemo } from 'react'
-import { YStack, XStack, Stack, Text } from 'tamagui'
+import { YStack, XStack, Stack, Text, useTheme } from 'tamagui'
 import { Body, Caption, Supporting, numeric } from '../Typography'
 import { View, LayoutChangeEvent, useWindowDimensions, type ViewInstance } from 'react-native'
 import { CalendarWorkoutCard, CalendarWorkoutCardProps, STACK_FONT_SCALE, type MoveTarget } from './CalendarWorkoutCard'
 import { DraggableWorkoutCard } from './DraggableWorkoutCard'
 import type { Phase } from '../../types'
-import { phaseTokens } from '../../lib/phase'
 import { DAY_NAMES, DAY_NAMES_FULL } from '../../lib/calendarUtils'
 
 // At accessibility text sizes the date goes above the cards, not beside them
@@ -123,11 +122,14 @@ export function CalendarDayCell({
     onWorkoutLongPress?.(workout.templateId)
   }, [onDragStart, onWorkoutLongPress])
 
+  // The Program board's theme: the hovered day takes the words colour, not blue
+  const theme = useTheme()
+
   // Determine background color for compact (month) view
-  // Priority: Blue (hovering) > Green (valid target) > Red (invalid) > Today
+  // Priority: hovering > Green (valid target) > Red (invalid). Today is the day circle.
   const getCompactBackground = () => {
     if (isDropTarget && isValidDropTarget) {
-      return '#dbeafe' // Blue - hovering and about to drop
+      return theme.color3?.val // Hovering and about to drop
     }
     if (isDragActive && !isValidDropTarget) {
       return '#fee2e2' // Light red - invalid
@@ -135,15 +137,12 @@ export function CalendarDayCell({
     if (isDragActive && isValidDropTarget) {
       return '#f0fdf4' // Light green - valid drop target
     }
-    if (isToday) {
-      return 'rgba(59, 130, 246, 0.1)' // Light blue for today
-    }
     return 'transparent'
   }
 
   const getCompactBorderColor = () => {
     if (isDropTarget && isValidDropTarget) {
-      return '#3b82f6' // Blue - hovering and about to drop
+      return theme.color?.val // Words colour - hovering and about to drop
     }
     if (isDragActive && !isValidDropTarget) {
       return '#ef4444' // Red - invalid
@@ -156,7 +155,7 @@ export function CalendarDayCell({
 
   if (compact) {
     // Month view - shows workout titles with drag-drop support
-    // Show border for all targets during drag (valid = green, invalid = red, hovering = blue)
+    // Show border for all targets during drag (valid = green, invalid = red, hovering = words)
     const showCompactBorder = isDragActive || isDropTarget
     return (
       <View
@@ -191,7 +190,7 @@ export function CalendarDayCell({
               fontSize={12}
               lineHeight={16}
               fontWeight={isToday ? '700' : '500'}
-              color={isToday ? 'white' : '$color11'}
+              color={isToday ? '$background' : '$color11'}
             >
               {dayNumber}
             </Text>
@@ -202,7 +201,6 @@ export function CalendarDayCell({
         {workouts.length > 0 && (
           <YStack gap={2}>
             {workouts.slice(0, 3).map((workout, idx) => {
-              const phaseColor = phaseTokens(workout.phase).fill
               const slotKey = workout.slotPhase && workout.slotWeek && workout.slotDay
                 ? `${workout.slotPhase}-${workout.slotWeek}-${workout.slotDay}`
                 : workout.templateId
@@ -292,7 +290,7 @@ export function CalendarDayCell({
               items="center"
               justify="center"
             >
-              <Body fontWeight="600" color={isToday ? 'white' : '$color12'} style={numeric}>
+              <Body fontWeight="600" color={isToday ? '$background' : '$color12'} style={numeric}>
                 {dayNumber}
               </Body>
             </YStack>

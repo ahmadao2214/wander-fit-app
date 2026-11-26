@@ -4,14 +4,15 @@ import { useQuery } from 'convex/react'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming } from 'react-native-reanimated'
-import { Text, YStack } from 'tamagui'
+import { Text, XStack, YStack, useTheme } from 'tamagui'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
 import { Display, Supporting } from '../Typography'
-import { StoryPhaseBar } from '../first-run/StoryPhaseBar'
+import { PHASE_BAR_HEIGHT, spokenWeeks } from '../first-run/StoryPhaseBar'
 import { bandHeight } from '../first-run/PlanView'
 import { useReducedMotion } from '../../hooks/useReducedMotion'
-import { workoutShortName } from '../../lib/firstRunStory'
+import { STORY_PHASES, workoutShortName } from '../../lib/firstRunStory'
+import { phaseWord } from '../../lib/sportScreen'
 import { PHASES } from '../../lib/phase'
 import type { Phase } from '../../types'
 
@@ -37,6 +38,48 @@ export function upNextLabel(next?: string): string {
   return next ? `Up next · ${next}` : 'Up next'
 }
 
+/** "Wk 1–4": a phase's weeks along the season. */
+export function phaseWeeks(index: number, weeksPerPhase: number): string {
+  return `Wk ${index * weeksPerPhase + 1}–${(index + 1) * weeksPerPhase}`
+}
+
+/**
+ * The season as three phases, in words only: Build, Train, Sharpen, each with
+ * its weeks. It is as tall as the reveal's phase bar, so the welcome visit
+ * keeps the bar where it was. Program sits on the sport board, so there is no
+ * phase fill: the current phase is the one outlined in the words colour.
+ */
+function ProgramPhaseRow({ phase, weeksPerPhase }: { phase: Phase; weeksPerPhase: number }) {
+  return (
+    <XStack gap={3} height={PHASE_BAR_HEIGHT} testID="phase-bar">
+      {STORY_PHASES.map((p, i) => {
+        const current = p.phase === phase
+        return (
+          <YStack
+            key={p.phase}
+            flex={1}
+            justify="center"
+            px="$2"
+            rounded="$3"
+            borderWidth={current ? 2 : 1}
+            borderColor={current ? '$color' : '$borderColor'}
+            accessible
+            accessibilityLabel={`${p.label}, ${spokenWeeks(i, weeksPerPhase)}${current ? ', now' : ''}`}
+            testID={`phase-${phaseWord(p.phase)}`}
+          >
+            <Text fontFamily="$body" fontSize={16} lineHeight={20} fontWeight="700" color="$color">
+              {phaseWord(p.phase)}
+            </Text>
+            <Text fontFamily="$body" fontSize={12} lineHeight={16} color="$color11">
+              {phaseWeeks(i, weeksPerPhase)}
+            </Text>
+          </YStack>
+        )
+      })}
+    </XStack>
+  )
+}
+
 /** The shortest screen with room for the band-tall welcome header and both calendar rows. */
 export const WELCOME_TALL_MIN_HEIGHT = 800
 
@@ -57,7 +100,7 @@ export function isUpNext(workout: unknown, session: { status: string } | null | 
 }
 
 /**
- * The top of the Program tab: the season as the reveal's phase bar, today
+ * The top of the Program tab: the season as three phase words, today
  * marked, and an Up next card for the next workout. On the first visit after
  * saving (`welcome`), the header is as tall as the reveal's band, so the bar
  * sits exactly where it was and appears to stay still, and the card's edge
@@ -75,6 +118,7 @@ export function ProgramSeasonHeader({ welcome, kept, next }: { welcome: boolean;
   )
   const showUpNext = isUpNext(upNext, upNextSession)
   const { height: windowHeight } = useWindowDimensions()
+  const theme = useTheme()
   const pulse = useSharedValue(0)
 
   useEffect(() => {
@@ -98,7 +142,7 @@ export function ProgramSeasonHeader({ welcome, kept, next }: { welcome: boolean;
         </Supporting>
       </YStack>
       <View style={{ marginTop: 16 }}>
-        <StoryPhaseBar weeksPerPhase={weeksPerPhase} ranges />
+        <ProgramPhaseRow phase={state.phase as Phase} weeksPerPhase={weeksPerPhase} />
         <View style={{ height: 20, marginTop: 4 }}>
           <Text
             position="absolute"
@@ -106,7 +150,7 @@ export function ProgramSeasonHeader({ welcome, kept, next }: { welcome: boolean;
             fontFamily="$body"
             fontSize={12}
             fontWeight="700"
-            color="$primaryText"
+            color="$color"
             testID="program-you-are-here"
           >
             {here.text}
@@ -129,7 +173,7 @@ export function ProgramSeasonHeader({ welcome, kept, next }: { welcome: boolean;
           style={({ pressed }) => ({ marginTop: 12, transform: [{ scale: pressed ? 0.98 : 1 }] })}
         >
           <YStack bg="$surface" rounded="$5" p="$4" gap="$1" borderWidth={1} borderColor="$borderColor">
-            <Text fontFamily="$body" fontSize={12} fontWeight="700" color="$primaryText">
+            <Text fontFamily="$body" fontSize={12} fontWeight="700" color="$color">
               {upNextLabel(next)}
             </Text>
             <Display fontSize={30} lineHeight={32}>
@@ -141,7 +185,7 @@ export function ProgramSeasonHeader({ welcome, kept, next }: { welcome: boolean;
             <Animated.View
               pointerEvents="none"
               style={[
-                { position: 'absolute', top: -2, left: -2, right: -2, bottom: -2, borderRadius: 18, borderWidth: 2, borderColor: '#2563EB' },
+                { position: 'absolute', top: -2, left: -2, right: -2, bottom: -2, borderRadius: 18, borderWidth: 2, borderColor: theme.color?.val },
                 pulseStyle,
               ]}
             />

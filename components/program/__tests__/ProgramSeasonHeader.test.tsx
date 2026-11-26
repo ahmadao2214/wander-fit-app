@@ -1,7 +1,9 @@
 import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react-native'
-import { TamaguiProvider } from 'tamagui'
+import { TamaguiProvider, Theme } from 'tamagui'
 import config from '../../../tamagui.config'
+import { PHASE_SWATCHES } from '../../../lib/phase'
+import { SPORT_SCHEMES, paint, paintedColors, sportPaint } from '../../../jest/sportPaint'
 
 const STATE = { phase: 'GPP', week: 1, day: 1, weeksPerPhase: 4, sportName: 'Basketball' }
 const NEXT = { _id: 'tpl1', name: 'Lower Body A - Foundation', day: 1, estimatedDurationMinutes: 28 }
@@ -36,12 +38,29 @@ beforeEach(() => {
 })
 
 describe('ProgramSeasonHeader', () => {
-  it('shows the season as the reveal’s phases, with weeks, and today marked', () => {
+  it('shows the season as three phase words, with weeks, and today marked', () => {
     render(<ProgramSeasonHeader welcome={false} kept={false} />, { wrapper })
-    expect(screen.getByText('Build the base')).toBeTruthy()
-    expect(screen.getByText('GPP · Wk 1–4')).toBeTruthy()
-    expect(screen.getByText('SSP · Wk 9–12')).toBeTruthy()
+    expect(['Build', 'Train', 'Sharpen'].map((word) => screen.getByText(word) !== null)).toEqual([true, true, true])
+    expect(screen.getByText('Wk 1–4')).toBeTruthy()
+    expect(screen.getByText('Wk 9–12')).toBeTruthy()
+    expect(screen.queryByText(/GPP|SPP|SSP/)).toBeNull()
+    expect(screen.getByLabelText('Build the base, weeks 1 to 4, now')).toBeTruthy()
     expect(screen.getByTestId('program-you-are-here')).toBeTruthy()
+  })
+
+  it.each(SPORT_SCHEMES)('paints no phase fill on the %s board', (scheme) => {
+    render(
+      <Theme name={scheme}>
+        <ProgramSeasonHeader welcome={false} kept={false} />
+      </Theme>,
+      { wrapper }
+    )
+    const colors = sportPaint(scheme)
+    const fills = Object.values(PHASE_SWATCHES).flatMap((byPhase) => Object.values(byPhase).map((s) => s.fill))
+    const painted = paintedColors(screen.getByTestId('program-season-header'))
+    expect(painted.filter((c) => [...fills, '#2563EB'].includes(c))).toEqual([])
+    // Tamagui spreads borderColor to each side
+    expect(paint(screen.getByTestId('phase-Build')).borderTopColor).toBe(colors.words)
   })
 
   it('offers Day 1 as Up next with its day, and opens it only on a tap', () => {

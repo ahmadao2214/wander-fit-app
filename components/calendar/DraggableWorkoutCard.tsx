@@ -1,5 +1,6 @@
 import { useRef, useCallback } from 'react'
 import { ViewStyle, StyleSheet, Platform } from 'react-native'
+import { useTheme } from 'tamagui'
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -119,8 +120,9 @@ export function DraggableWorkoutCard({
     opacity: opacity.value,
   }))
 
-  // Drop target highlight style
-  const dropTargetStyle: ViewStyle = isDropTarget ? styles.dropTarget : {}
+  // Drop target highlight style, in the words colour of the Program board's theme
+  const theme = useTheme()
+  const dropTargetStyle: ViewStyle = isDropTarget ? { ...styles.dropTarget, borderColor: theme.color?.val } : {}
 
   // Web doesn't support gesture handler the same way
   if (Platform.OS === 'web') {
@@ -152,7 +154,6 @@ const styles = StyleSheet.create({
   },
   dropTarget: {
     borderWidth: 2,
-    borderColor: '#3b82f6',
     borderStyle: 'dashed',
     borderRadius: 8,
   },

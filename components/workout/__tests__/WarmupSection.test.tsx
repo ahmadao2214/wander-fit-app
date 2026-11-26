@@ -1,7 +1,9 @@
 import React from 'react'
 import { render, fireEvent } from '@testing-library/react-native'
-import { TamaguiProvider } from 'tamagui'
+import { TamaguiProvider, Theme } from 'tamagui'
 import config from '../../../tamagui.config'
+import { PHASE_SWATCHES } from '../../../lib/phase'
+import { SPORT_SCHEMES, paintedColors, sportPaint } from '../../../jest/sportPaint'
 import { WarmupSection, WarmupExercise } from '../WarmupSection'
 
 const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
@@ -119,7 +121,6 @@ describe('WarmupSection', () => {
         totalDuration={10}
         onComplete={mockOnComplete}
         mode="preview"
-        trainingPhase="GPP"
       />,
       { wrapper: AllTheProviders }
     )
@@ -209,7 +210,6 @@ describe('WarmupSection', () => {
         totalDuration={10}
         onComplete={mockOnComplete}
         mode="preview"
-        trainingPhase="GPP"
       />,
       { wrapper: AllTheProviders }
     )
@@ -274,7 +274,6 @@ describe('WarmupSection', () => {
         totalDuration={10}
         onComplete={mockOnComplete}
         mode="preview"
-        trainingPhase="GPP"
       />,
       { wrapper: AllTheProviders }
     )
@@ -298,7 +297,6 @@ describe('WarmupSection', () => {
         totalDuration={10}
         onComplete={mockOnComplete}
         mode="preview"
-        trainingPhase="GPP"
       />,
       { wrapper: AllTheProviders }
     )
@@ -487,18 +485,26 @@ describe('WarmupSection', () => {
     expect(queryByTestId('phase-affordance-mobility')).toBeNull()
   })
 
-  it('accepts the trainingPhase prop without crashing', () => {
-    const { getByText } = render(
-      <WarmupSection
-        exercises={mockExercises}
-        totalDuration={10}
-        onComplete={mockOnComplete}
-        mode="flow"
-        trainingPhase="GPP"
-      />,
+  it.each(SPORT_SCHEMES)('paints no phase fill on the %s theme, and labels Start on the neutral face', (scheme) => {
+    const { toJSON } = render(
+      <Theme name={scheme}>
+        <WarmupSection
+          exercises={mockExercises}
+          totalDuration={10}
+          onComplete={mockOnComplete}
+          mode="flow"
+        />
+      </Theme>,
       { wrapper: AllTheProviders }
     )
-    expect(getByText('WARMUP')).toBeTruthy()
+    const fills = Object.values(PHASE_SWATCHES).flatMap((byPhase) => Object.values(byPhase).map((s) => s.fill))
+    const tree = toJSON() as unknown as Parameters<typeof paintedColors>[0]
+    const painted = paintedColors(tree)
+    expect(painted.length).toBeGreaterThan(5)
+    expect(painted.filter((c) => [...fills, '#2563EB'].includes(c))).toEqual([])
+    const colors = sportPaint(scheme)
+    // The step badges are the words colour
+    expect(painted).toContain(colors.words.toUpperCase())
   })
 
   // ═══════════════════════════════════════════════════════════════════════════

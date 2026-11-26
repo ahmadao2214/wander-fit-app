@@ -548,7 +548,6 @@ export default function WorkoutDetailScreen() {
             totalDuration={warmupDuration}
             onComplete={() => {}}
             mode="preview"
-            trainingPhase={template?.phase}
           />
         )}
 

@@ -26,7 +26,6 @@ import { ExerciseTypeIcon } from '../../../../components/workout/ExerciseTypeIco
 import { SetTracker } from '../../../../components/workout/SetTracker'
 import { InstructionsAccordion } from '../../../../components/workout/InstructionsAccordion'
 import { ExerciseQueue } from '../../../../components/workout/ExerciseQueue'
-import { ConfettiEffect } from '../../../../components/workout/ConfettiEffect'
 import { WarmupSection, type WarmupExercise } from '../../../../components/workout/WarmupSection'
 import { WARMUP_PHASES } from '../../../../convex/warmupSequences'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -39,7 +38,8 @@ import {
   mainTemplateIndices,
   normalizeExerciseOrder,
 } from '../../../../lib/executionOrder'
-import { phaseTokens } from '../../../../lib/phase'
+import { phaseWord } from '../../../../lib/sportScreen'
+import { useSportScheme } from '../../../../hooks/useSportScheme'
 import { Display, Title, SectionTitle, Body, Supporting, Caption, numeric, TYPE_SCALE } from '../../../../components/Typography'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -91,8 +91,21 @@ interface ExerciseCompletion {
  * - Navigation controls
  * - Swipe drawer for exercise queue
  * - Intensity-based theming (green/yellow/red)
+ *
+ * It sits on the basketball sport theme (issue #209): the instrument ground,
+ * chalk or ink words, the neutral button face. It is a workout logger, so it
+ * draws no court and no play.
  */
 export default function WorkoutExecutionScreen() {
+  const scheme = useSportScheme()
+  return (
+    <Theme name={scheme}>
+      <WorkoutExecution />
+    </Theme>
+  )
+}
+
+function WorkoutExecution() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { id: sessionId } = useLocalSearchParams<{ id: string }>()
@@ -171,9 +184,6 @@ export default function WorkoutExecutionScreen() {
     () => mapIntensityToLevel(session?.targetIntensity),
     [session?.targetIntensity]
   )
-
-  // Phase identity colors (progress dots, set tiles, queue); actions use $primary
-  const phase = phaseTokens(session?.template?.phase)
 
   // Keep refs in sync
   useEffect(() => {
@@ -651,7 +661,7 @@ export default function WorkoutExecutionScreen() {
   if (!session || !template) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$primaryText" />
+        <Spinner size="large" color="$color" />
         <Text fontFamily="$body" color="$color10">Loading workout...</Text>
       </YStack>
     )
@@ -668,7 +678,6 @@ export default function WorkoutExecutionScreen() {
         onComplete={() => setShowWarmup(false)}
         onBack={() => router.back()}
         mode="flow"
-        trainingPhase={template?.phase}
       />
     )
   }
@@ -687,7 +696,7 @@ export default function WorkoutExecutionScreen() {
   const isLastExercise = currentExerciseIndex === orderedExercises.length - 1
 
   return (
-    <YStack flex={1} bg="$background" items="center">
+    <YStack flex={1} bg="$background" items="center" testID="execute-screen">
       {/* Constrain width for web */}
       <YStack flex={1} width="100%" maxW={600}>
         {/* Header */}
@@ -710,7 +719,7 @@ export default function WorkoutExecutionScreen() {
           </Pressable>
 
           {/* Dot Stepper Progress */}
-          {/* Done = solid phase dot, current = wide pill, upcoming = hollow ring:
+          {/* Done = solid dot, current = wide pill, upcoming = hollow ring:
               the shape carries the state, so it never depends on color alone */}
           {/* The dots are also the visible way into the exercise list: a 44pt-tall
               button in the header, instead of only the narrow edge tab */}
@@ -734,7 +743,7 @@ export default function WorkoutExecutionScreen() {
                   width={isCurrent ? 18 : 8}
                   height={8}
                   rounded={100}
-                  bg={isCurrent ? '$color12' : isCompleted ? phase.fill : 'transparent'}
+                  bg={isCurrent || isCompleted ? '$color12' : 'transparent'}
                   borderWidth={isCurrent || isCompleted ? 0 : 1.5}
                   borderColor={isCurrent || isCompleted ? undefined : '$color8'}
                 />
@@ -813,7 +822,6 @@ export default function WorkoutExecutionScreen() {
                   prescribedReps={currentExercise.scaledReps ?? currentExercise.reps}
                   prescribedSets={currentExercise.scaledSets ?? currentExercise.sets}
                   onSetUpdate={handleSetUpdate}
-                  trainingPhase={session?.template?.phase}
                   previousSets={previousSetsForCurrentExercise}
                 />
               )}
@@ -853,7 +861,7 @@ export default function WorkoutExecutionScreen() {
             flex={1}
             size="$5"
             bg="$primary"
-            color="white"
+            color="$background"
             iconAfter={isLastExercise ? Trophy : ChevronRight}
             fontSize={18}
             fontFamily="$body" fontWeight="700"
@@ -883,7 +891,6 @@ export default function WorkoutExecutionScreen() {
         onReorder={handleReorder}
         open={queueOpen}
         onOpenChange={setQueueOpen}
-        trainingPhase={session?.template?.phase}
       />
 
       {/* Exit Confirmation Dialog */}
@@ -945,7 +952,7 @@ export default function WorkoutExecutionScreen() {
                   <Button 
                     flex={1} 
                     bg="$primary"
-                    color="white"
+                    color="$background"
                     fontFamily="$body" fontWeight="700"
                     rounded="$4"
                     onPress={handlePauseWorkout}
@@ -963,9 +970,6 @@ export default function WorkoutExecutionScreen() {
       {/* Completion Dialog */}
       <AlertDialog open={showCompletionDialog} onOpenChange={setShowCompletionDialog}>
         <AlertDialog.Portal>
-          {/* Confetti celebration effect */}
-          <ConfettiEffect trigger={showCompletionDialog} />
-
           <AlertDialog.Overlay
             key="overlay"
             animation="quick"
@@ -1016,7 +1020,7 @@ export default function WorkoutExecutionScreen() {
               
               <XStack gap="$6">
                 <YStack items="center">
-                  <Title color="$primaryText" style={numeric}>
+                  <Title color="$color" style={numeric}>
                     {formatTime(elapsedTime)}
                   </Title>
                   <Caption color="$color10">
@@ -1088,7 +1092,7 @@ export default function WorkoutExecutionScreen() {
                 width="100%"
                 size="$5"
                 bg="$primary" 
-                color="white" 
+                color="$background"
                 icon={Check}
                 fontFamily="$body" fontWeight="700"
                 rounded="$4"
@@ -1105,7 +1109,6 @@ export default function WorkoutExecutionScreen() {
       {/* Reassessment Prompt Dialog */}
       <AlertDialog open={showReassessmentPrompt} onOpenChange={setShowReassessmentPrompt}>
         <AlertDialog.Portal>
-          <ConfettiEffect trigger={showReassessmentPrompt} />
           <AlertDialog.Overlay
             key="overlay"
             animation="quick"
@@ -1139,9 +1142,9 @@ export default function WorkoutExecutionScreen() {
               {/* The block's time is up, which is not the same as every session
                   done, so no trophy here; the recap screen tells which it was */}
               <YStack items="center" gap="$2">
-                <Title text="center">Your {reassessmentPhase} block is over</Title>
+                <Title text="center">Your {phaseWord(reassessmentPhase)} block is over</Title>
                 <Body color="$color11" text="center">
-                  A short check-in, then you choose: move on or repeat {reassessmentPhase}.
+                  A short check-in, then you choose: move on or repeat {phaseWord(reassessmentPhase)}.
                 </Body>
               </YStack>
 
@@ -1149,7 +1152,7 @@ export default function WorkoutExecutionScreen() {
                 width="100%"
                 size="$5"
                 bg="$primary"
-                color="white"
+                color="$background"
                 fontFamily="$body" fontWeight="700"
                 rounded="$4"
                 pressStyle={{ bg: '$primaryPress', scale: 0.98 }}

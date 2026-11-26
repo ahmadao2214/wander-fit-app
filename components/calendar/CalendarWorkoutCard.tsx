@@ -4,7 +4,7 @@ import { Body, Supporting, numeric } from '../Typography'
 import { workoutMetaLine } from '../../lib/workoutMeta'
 import { CheckCircle, Play, Lock } from '@tamagui/lucide-icons'
 import type { Phase } from '../../types'
-import { phaseTokens } from '../../lib/phase'
+import { phaseWord } from '../../lib/sportScreen'
 
 
 /** At accessibility text sizes the week view stacks the date and lets names wrap fully. */
@@ -62,11 +62,9 @@ export function CalendarWorkoutCard({
   onMove,
 }: CalendarWorkoutCardProps) {
   const { fontScale } = useWindowDimensions()
-  // Use phase colors for visual distinction
-  const colors = { dot: phaseTokens(phase).fill }
-
-  // One neutral surface for every card. Phase is the left stripe; today is
-  // the border; in progress, done and locked are the icon (and dimming).
+  // One neutral surface for every card, on the Program board's sport theme.
+  // No phase fill: the phase is a word. Today is the border; in progress, done
+  // and locked are the icon (and dimming).
   const isActive = !isLocked && !isCompleted && isToday
   const getBgColor = (): ColorTokens => (isLocked || isCompleted ? '$gray2' : '$background')
   const getBorderColor = (): ColorTokens => (isActive ? '$primary' : '$gray5')
@@ -88,15 +86,15 @@ export function CalendarWorkoutCard({
         : isToday
           ? 'today'
           : null
-  // Phase is shown by color, so screen readers get it in words
+  // The phase is a word (Build, Train, Sharpen), for screen readers too
   const exercisesLabel =
     exerciseCount > 0 ? `${exerciseCount} ${exerciseCount === 1 ? 'exercise' : 'exercises'}` : null
-  const accessibilityLabel = [`${phase} workout`, name, `about ${estimatedDurationMinutes} minutes`, exercisesLabel, stateLabel]
+  const accessibilityLabel = [`${phaseWord(phase)} workout`, name, `about ${estimatedDurationMinutes} minutes`, exercisesLabel, stateLabel]
     .filter(Boolean)
     .join(', ')
 
   if (compact) {
-    // Compact mode for month view - shows title and status, phase as the left stripe
+    // Compact mode for month view - shows title and status
     return (
       <Card
         pressStyle={isLocked ? undefined : { opacity: 0.8, scale: 0.98 }}
@@ -106,8 +104,6 @@ export function CalendarWorkoutCard({
         bg={getBgColor()}
         borderColor={getBorderColor()}
         borderWidth={1}
-        borderLeftWidth={3}
-        borderLeftColor={isLocked ? '$gray6' : colors.dot}
         rounded="$1"
         opacity={isLocked ? 0.5 : isCompleted ? 0.7 : 1}
         overflow="hidden"
@@ -150,8 +146,6 @@ export function CalendarWorkoutCard({
       bg={getBgColor()}
       borderColor={getBorderColor()}
       borderWidth={isActive ? 2 : 1}
-      borderLeftWidth={4}
-      borderLeftColor={isLocked ? '$gray6' : colors.dot}
       rounded="$4"
       opacity={isLocked ? 0.5 : isCompleted ? 0.7 : 1}
       overflow="hidden"

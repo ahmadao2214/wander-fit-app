@@ -13,7 +13,7 @@ import {
   ScrollView,
 } from 'tamagui'
 import { Supporting, Caption, numeric } from '../Typography'
-import { X, Check, Minus, Plus } from '@tamagui/lucide-icons'
+import { Check, Minus, Plus } from '@tamagui/lucide-icons'
 import { parseReps } from '../../lib'
 
 /**
@@ -132,13 +132,18 @@ export function SetEditSheet({
                 Prescribed: {prescribedReps} reps
               </Supporting>
             </YStack>
+            {/* Close is text: Save is the sheet's only filled button */}
             <Button
               size="$3"
-              circular
-              bg="$color3"
-              icon={X}
+              chromeless
+              color="$color"
+              fontFamily="$body"
+              fontWeight="600"
               onPress={() => onOpenChange(false)}
-            />
+              testID="set-edit-close"
+            >
+              Close
+            </Button>
           </XStack>
 
           <Separator />
@@ -152,8 +157,12 @@ export function SetEditSheet({
               <Button
                 size="$3"
                 circular
-                bg="$color4"
+                bg="transparent"
+                borderWidth={1}
+                borderColor="$color"
+                color="$color"
                 icon={Minus}
+                accessibilityLabel="One fewer rep"
                 onPress={() => setReps(Math.max(0, reps - 1))}
               />
               <YStack width={50} items="center">
@@ -164,8 +173,12 @@ export function SetEditSheet({
               <Button
                 size="$3"
                 circular
-                bg="$color4"
+                bg="transparent"
+                borderWidth={1}
+                borderColor="$color"
+                color="$color"
                 icon={Plus}
+                accessibilityLabel="One more rep"
                 onPress={() => setReps(reps + 1)}
               />
             </XStack>
@@ -200,7 +213,7 @@ export function SetEditSheet({
               <Supporting fontWeight="600" color="$color11">
                 RPE
               </Supporting>
-              <Text fontSize={18} fontFamily="$body" fontWeight="700" color="$primaryText" style={numeric}>
+              <Text fontSize={18} fontFamily="$body" fontWeight="700" color="$color" style={numeric}>
                 {rpe}/10
               </Text>
             </XStack>
@@ -219,7 +232,7 @@ export function SetEditSheet({
                 size={24}
                 bg="$primary"
                 borderWidth={2}
-                borderColor="white"
+                borderColor="$background"
                 circular
                 elevate
               />
@@ -235,7 +248,7 @@ export function SetEditSheet({
             <Button
               flex={1}
               size="$4"
-              bg="$color3"
+              chromeless
               color="$color11"
               fontFamily="$body"
               fontWeight="600"
@@ -247,7 +260,7 @@ export function SetEditSheet({
               flex={1}
               size="$4"
               bg="$primary"
-              color="white"
+              color="$background"
               icon={Check}
               fontFamily="$body"
               fontWeight="600"

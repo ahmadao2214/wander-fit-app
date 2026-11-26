@@ -25,6 +25,25 @@ export function nearestBackground(node: Styled, depth = 8): string | undefined {
   return undefined
 }
 
+type Host = Styled & { props: { accessibilityRole?: string; role?: string } }
+
+/** The button a label sits in: its nearest ancestor with the button role, or null. */
+export function buttonHost(node: Host): Host | null {
+  let host: Host | null = node
+  for (let i = 0; i < 10 && host; i++) {
+    if (host.props.accessibilityRole === 'button' || host.props.role === 'button') return host
+    host = host.parent as Host | null
+  }
+  return null
+}
+
+/** The face of the button a label sits in, if that button paints one. */
+export function buttonFace(node: Host): string | undefined {
+  const host = buttonHost(node)
+  const background = host ? paint(host).backgroundColor : undefined
+  return typeof background === 'string' ? background : undefined
+}
+
 /** The colours a moved screen paints with, for one scheme. */
 export function sportPaint(scheme: Scheme) {
   const theme = sportTheme('basketball', scheme)
@@ -43,7 +62,7 @@ export function paintedColors(node: { props: { style?: unknown }; children?: unk
   const walk = (n: unknown) => {
     if (!n || typeof n !== 'object' || !('props' in n)) return
     const style = paint(n as { props: { style?: unknown } })
-    for (const key of ['color', 'backgroundColor', 'borderColor', 'borderLeftColor'] as const) {
+    for (const key of ['color', 'backgroundColor', 'borderColor', 'borderTopColor', 'borderLeftColor'] as const) {
       const value = style[key]
       if (typeof value === 'string') out.push(value.toUpperCase())
     }
