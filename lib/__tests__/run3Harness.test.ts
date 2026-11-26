@@ -207,6 +207,12 @@ describe('Run 3 harness', () => {
     expect(renderRun3Screen('max-sheet')).toContain('.scrim { position: absolute; inset: 0; opacity: 0.72; }')
   })
 
+  it('marks a chosen check-in with a thicker border and no extra weight', () => {
+    const html = renderRun3Screen('check-in')
+    expect(html).toContain('.choice[aria-checked="true"] { border-width: 2px; }')
+    expect(html).not.toMatch(/\.choice\[aria-checked="true"\] \{[^}]*font-weight/)
+  })
+
   it('draws the main button 48px tall with a 14px radius', () => {
     const html = renderRun3Screen('reassessment')
     expect(cssPx(html, '.main', 'height')).toBe(48)
