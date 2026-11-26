@@ -40,10 +40,10 @@ const PAGE = (scheme: Scheme, body: string, script = '') => {
   button.press { animation: press ${MOTION.instrumentMs}ms ${MOTION.easeInOut} both; }
   @keyframes press { 0% { transform: none; } 45% { transform: translateY(3px); } 100% { transform: none; } }
   html[data-reduced="1"] .leg { stroke-dashoffset: 0; transition: none; }
-  html[data-reduced="1"] button { animation: none; }
+  html[data-reduced="1"] button.press { animation: none; }
   @media (prefers-reduced-motion: reduce) {
     .leg { stroke-dashoffset: 0; transition: none; }
-    button { animation: none; }
+    button.press { animation: none; }
   }
 </style></head><body>${body}${script}</body></html>`
 }

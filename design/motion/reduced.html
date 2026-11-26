@@ -14,9 +14,9 @@
   button.press { animation: press 180ms cubic-bezier(0.65, 0, 0.35, 1) both; }
   @keyframes press { 0% { transform: none; } 45% { transform: translateY(3px); } 100% { transform: none; } }
   html[data-reduced="1"] .leg { stroke-dashoffset: 0; transition: none; }
-  html[data-reduced="1"] button { animation: none; }
+  html[data-reduced="1"] button.press { animation: none; }
   @media (prefers-reduced-motion: reduce) {
     .leg { stroke-dashoffset: 0; transition: none; }
-    button { animation: none; }
+    button.press { animation: none; }
   }
 </style></head><body><main class="board" data-reduced="1" style="background:#1b1511;color:#ede7df"><h2>Program</h2><div class="field"><svg class="play" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 700"><rect width="340" height="700" fill="#1b1511"/><path class="leg" pathLength="1" d="M58 394 Q26 316 66 232" style="transition:none;stroke-dashoffset:0"/><path class="leg" pathLength="1" d="M66 232 Q150 318 254 268" style="transition:none;stroke-dashoffset:0"/><path class="leg" pathLength="1" d="M254 268 Q302 214 214 172" style="transition:none;stroke-dashoffset:0"/></svg></div></main></body></html>

@@ -38,6 +38,8 @@ describe('motion scheme', () => {
     const press = renderPress()
     expect(press).toContain(`${MOTION.instrumentMs}ms ${MOTION.easeInOut}`)
     expect(press).toContain('Log Set')
+    expect(press).toContain('@media (prefers-reduced-motion: reduce)')
+    expect(press).toContain('button.press { animation: none; }')
     expect(press).not.toContain('<path')
     expect(press).not.toContain('<svg')
     for (const leg of LONG) expect(press).not.toContain(leg)
