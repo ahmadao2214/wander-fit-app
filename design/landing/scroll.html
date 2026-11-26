@@ -1,0 +1,25 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=1100"><title>Landing Play</title><style>
+  html, body { margin: 0; background: transparent; font-family: system-ui, sans-serif; }
+  main { width: 1100px; margin: 0 auto; }
+  .board { width: 1100px; box-sizing: border-box; padding: 64px 0; display: flex; flex-direction: column; align-items: center; }
+  .words { margin: 0 0 24px; font-size: 22px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; }
+  .field svg { width: 340px; height: 700px; display: block; }
+  .leg { stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset 480ms cubic-bezier(0.45, 0, 0.25, 1); }
+  .play .leg { stroke-dashoffset: 0; }
+  @media (prefers-reduced-motion: reduce) {
+    .leg { stroke-dashoffset: 0; transition: none; }
+  }
+</style></head><body><main><section class="board" data-scheme="chalkboard" style="background:#1b1511;color:#ede7df"><p class="words">The play</p><div class="field"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 700"><rect width="340" height="700" fill="#1b1511"/><path class="leg" pathLength="1" style="transition-delay:0ms" d="M58 394 Q26 316 66 232" fill="none" stroke="#d8875b" stroke-width="2.8" stroke-linecap="round"/><path class="leg" pathLength="1" style="transition-delay:442ms" d="M66 232 Q150 318 254 268" fill="none" stroke="#d8875b" stroke-width="2.8" stroke-linecap="round"/><path class="leg" pathLength="1" style="transition-delay:884ms" d="M254 268 Q302 214 214 172" fill="none" stroke="#d8875b" stroke-width="2.8" stroke-linecap="round"/></svg></div></section><section class="board" data-scheme="whiteboard" style="background:#f3f1f0;color:#25211d"><p class="words">The play</p><div class="field"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 700"><rect width="340" height="700" fill="#f3f1f0"/><path class="leg" pathLength="1" style="transition-delay:0ms" d="M58 394 Q26 316 66 232" fill="none" stroke="#884b28" stroke-width="2.8" stroke-linecap="round"/><path class="leg" pathLength="1" style="transition-delay:442ms" d="M66 232 Q150 318 254 268" fill="none" stroke="#884b28" stroke-width="2.8" stroke-linecap="round"/><path class="leg" pathLength="1" style="transition-delay:884ms" d="M254 268 Q302 214 214 172" fill="none" stroke="#884b28" stroke-width="2.8" stroke-linecap="round"/></svg></div></section></main><script>
+(() => {
+  const boards = document.querySelectorAll(".board svg")
+  if (!("IntersectionObserver" in window)) { boards.forEach((svg) => svg.classList.add("play")); return }
+  const seen = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue
+      entry.target.classList.add("play")
+      seen.unobserve(entry.target)
+    }
+  }, { threshold: 0.33 })
+  boards.forEach((svg) => seen.observe(svg))
+})()
+</script></body></html>
