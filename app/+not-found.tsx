@@ -36,7 +36,7 @@ export default function NotFoundScreen() {
         <Button
           size="$5"
           bg="$primary"
-          color="white"
+          color="$background"
           fontFamily="$body"
           fontWeight="700"
           rounded="$4"

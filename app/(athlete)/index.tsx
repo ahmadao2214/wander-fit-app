@@ -395,8 +395,8 @@ function TodayScreen() {
                   </Supporting>
                   {isCompleted && (
                     <XStack items="center" gap="$1">
-                      <CheckCircle size={14} color="$green10" />
-                      <Caption color="$green11" fontWeight="600">
+                      <CheckCircle size={14} color="$color" />
+                      <Caption color="$color" fontWeight="600">
                         Done
                       </Caption>
                     </XStack>

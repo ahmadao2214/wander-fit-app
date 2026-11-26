@@ -277,12 +277,12 @@ function ProfilePageContent() {
                           width={32}
                           height={32}
                           rounded="$10"
-                          bg={exercise.currentMax ? '$green3' : '$color4'}
+                          bg={exercise.currentMax ? '$color3' : '$color4'}
                           items="center"
                           justify="center"
                         >
                           {exercise.currentMax ? (
-                            <Check size={16} color="$green10" />
+                            <Check size={16} color="$color" />
                           ) : (
                             <Dumbbell size={16} color="$color9" />
                           )}

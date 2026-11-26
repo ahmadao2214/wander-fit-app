@@ -31,7 +31,7 @@ export default function AthleteLayout() {
       <Tabs
         screenOptions={{
           // Theme tokens, so both labels pass AA on the bar in light and dark.
-          // The old hardcoded #94A3B8 on white was 2.6:1, and #2563EB on navy 3.5:1.
+          // The old hardcoded #94A3B8 on white was 2.6:1. Active is the neutral primary (issue #210).
           tabBarActiveTintColor: tint.active,
           tabBarInactiveTintColor: tint.inactive,
           // Tab bar styling - account for Android navigation bar

@@ -217,12 +217,12 @@ export function ExerciseQueue({
                 width={28}
                 height={28}
                 rounded="$10"
-                bg={isCompleted ? '$green10' : isCurrent ? '$color' : '$color4'}
+                bg={isCompleted ? '$color' : isCurrent ? '$color' : '$color4'}
                 items="center"
                 justify="center"
               >
                 {isCompleted ? (
-                  <Check size={16} color="white" strokeWidth={3} />
+                  <Check size={16} color="$background" strokeWidth={3} />
                 ) : (
                   <Caption fontWeight="700"
                     color={isCurrent ? '$background' : '$color11'}

@@ -3,8 +3,9 @@ import { join } from 'path'
 import config from '../../tamagui.config'
 import { contrastRatio } from '../contrast'
 
-// The action color has two jobs: $primary fills buttons under white labels,
-// and $primaryText colors blue text and icons on the screen and on cards.
+// The action color is the neutral button face (issue #210): $primary fills
+// buttons under $background labels, and $primaryText (the same face) colors
+// action text and icons on the screen and on cards.
 const themes = (config as unknown as { themes: Record<string, Record<string, { val: string }>> }).themes
 
 describe('action color', () => {
@@ -12,12 +13,12 @@ describe('action color', () => {
     const t = themes[mode]
     const v = (key: string) => t[key].val
 
-    it(`${mode}: white labels pass AA on the fill and its pressed state`, () => {
-      expect(contrastRatio('#FFFFFF', v('primary'))).toBeGreaterThanOrEqual(4.5)
-      expect(contrastRatio('#FFFFFF', v('primaryPress'))).toBeGreaterThanOrEqual(4.5)
+    it(`${mode}: $background labels pass AA on the fill and its pressed state`, () => {
+      expect(contrastRatio(v('background'), v('primary'))).toBeGreaterThanOrEqual(4.5)
+      expect(contrastRatio(v('background'), v('primaryPress'))).toBeGreaterThanOrEqual(4.5)
     })
 
-    it(`${mode}: blue text passes AA on the background and on cards`, () => {
+    it(`${mode}: action text passes AA on the background and on cards`, () => {
       expect(contrastRatio(v('primaryText'), v('background'))).toBeGreaterThanOrEqual(4.5)
       expect(contrastRatio(v('primaryText'), v('surface'))).toBeGreaterThanOrEqual(4.5)
     })
@@ -44,7 +45,7 @@ describe('action color', () => {
 
 // Pressing a $primary button must switch to the tested $primaryPress fill.
 // Fading it with opacity blends in the screen color: at 0.9 over a light
-// background, white labels drop to 4.4:1.
+// background, labels lose contrast.
 describe('pressed action buttons', () => {
   const ROOT = join(__dirname, '..', '..')
   const SKIP = /__tests__/
@@ -89,6 +90,19 @@ describe('pressed action buttons', () => {
       // Opening tags that fill with $primary and fade on press
       for (const tag of openingTags(source)) {
         if (tag.includes('bg="$primary"') && /pressStyle=\{\{[^}]*opacity/.test(tag)) {
+          offenders.push(file.replace(ROOT, ''))
+        }
+      }
+    }
+    expect(offenders).toEqual([])
+  })
+
+  it('label a $primary fill with $background, not white (the dark face is chalk)', () => {
+    const offenders: string[] = []
+    for (const file of [...files(join(ROOT, 'app')), ...files(join(ROOT, 'components'))]) {
+      const source = readFileSync(file, 'utf8')
+      for (const tag of openingTags(source)) {
+        if (tag.includes('bg="$primary"') && /color=["{]'?"?(white|#fff(fff)?)\b/i.test(tag)) {
           offenders.push(file.replace(ROOT, ''))
         }
       }

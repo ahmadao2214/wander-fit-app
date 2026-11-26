@@ -41,7 +41,6 @@ jest.mock('../../hooks/useAuth', () => ({
 }))
 
 import TrainingSciencePage from '../(athlete)/training-science/index'
-import { PHASE_SWATCHES } from '../../lib/phase'
 import { SPORT_SCHEMES, paint, paintedColors, sportPaint } from '../../jest/sportPaint'
 
 const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
@@ -188,7 +187,8 @@ describe('TrainingSciencePage Category Personalization', () => {
       const root = toJSON() as unknown as Parameters<typeof paintedColors>[0]
       expect(paint(root).backgroundColor).toBe(colors.ground)
       expect(paint(getByTestId('phase-block-GPP')).borderLeftColor).toBe(colors.words)
-      const fills = Object.values(PHASE_SWATCHES).flatMap((byPhase) => Object.values(byPhase).map((s) => s.fill))
+      // The old phase fills (light and dark), deleted in issue #210
+      const fills = ['#3B82F6', '#1D4ED8', '#1E3A8A', '#BFDBFE', '#60A5FA']
       const painted = paintedColors(root)
       expect(painted.filter((c) => [...fills, '#2563EB', '#EFF6FF', '#DBEAFE'].includes(c))).toEqual([])
     } finally {

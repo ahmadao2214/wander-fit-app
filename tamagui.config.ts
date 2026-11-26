@@ -12,8 +12,8 @@ import {
   gray, grayDark,
   slate, slateDark
 } from '@tamagui/colors'
-import { phaseThemeColors } from './lib/phase'
 import { sportTamaguiTheme } from './lib/sportTamaguiTheme'
+import { sportTheme } from './lib/sportTokens'
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ATHLETIC MOMENTUM DESIGN SYSTEM
@@ -21,23 +21,24 @@ import { sportTamaguiTheme } from './lib/sportTamaguiTheme'
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // ─────────────────────────────────────────────────────────────────────────────
+// NEUTRAL PRIMARY (issue #210)
+// The primary is the sport board's neutral button face, read from
+// sportTheme(): ink on the whiteboard for light, chalk on the chalkboard for
+// dark. Labels on a $primary fill use $background, never $primaryText.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const LIGHT_PRIMARY = sportTheme('basketball', 'whiteboard').button.hex
+const DARK_PRIMARY = sportTheme('basketball', 'chalkboard').button.hex
+
+// ─────────────────────────────────────────────────────────────────────────────
 // BRAND COLOR TOKENS
 // ─────────────────────────────────────────────────────────────────────────────
 
 const brandColors = {
-  // Primary Brand - Electric Blue
-  brand1: '#EFF6FF',   // Lightest blue background
-  brand2: '#DBEAFE',   // Light blue surface
-  brand3: '#BFDBFE',   // Blue highlight
-  brand4: '#93C5FD',   // Blue accent light
-  brand5: '#60A5FA',   // Blue accent
-  brand6: '#3B82F6',   // Blue primary
-  brand7: '#2563EB',   // Electric Blue - PRIMARY BRAND COLOR
-  brand8: '#1D4ED8',   // Blue pressed
-  brand9: '#1E40AF',   // Blue deep
-  brand10: '#1E3A8A',  // Blue darker
-  brand11: '#172554',  // Blue text on light
-  brand12: '#0F172A',  // Deep Navy - Text
+  // Blue tints with a caller: $brand1 tints the Today card, $brand2 the
+  // RadioButton surface. Neither is the primary (issue #210).
+  brand1: '#EFF6FF',
+  brand2: '#DBEAFE',
 
   // Secondary - Flame Orange (Energy/Achievements)
   accent1: '#FFF7ED',
@@ -207,13 +208,13 @@ const lightTheme = {
   color11: '#334155',           // Strong text
   color12: '#0F172A',           // Primary text
 
-  // Primary brand (Electric Blue)
-  primary: '#2563EB',
-  primaryHover: '#1D4ED8',
-  primaryPress: '#1E40AF',
-  primaryFocus: '#2563EB',
-  // Blue text and icons; $primary is the button fill
-  primaryText: '#2563EB',
+  // Neutral primary: the whiteboard button face (ink)
+  primary: LIGHT_PRIMARY,
+  primaryHover: LIGHT_PRIMARY,
+  primaryPress: LIGHT_PRIMARY,
+  primaryFocus: LIGHT_PRIMARY,
+  // The face again, as in the sport themes; labels on the fill use $background
+  primaryText: LIGHT_PRIMARY,
 
   // Accent (Flame Orange)
   accent: '#F97316',
@@ -225,7 +226,7 @@ const lightTheme = {
   borderColor: '#E2E8F0',
   borderColorHover: '#CBD5E1',
   borderColorPress: '#94A3B8',
-  borderColorFocus: '#2563EB',
+  borderColorFocus: LIGHT_PRIMARY,
 
   // Placeholder
   placeholderColor: '#94A3B8',
@@ -235,11 +236,8 @@ const lightTheme = {
   shadowColorHover: 'rgba(15, 23, 42, 0.12)',
 
   // Tab bar
-  tabActive: '#2563EB',
+  tabActive: LIGHT_PRIMARY,
   tabInactive: '#64748B',
-
-  // Phase colors (GPP/SPP/SSP): one brand hue, see lib/phase.ts
-  ...phaseThemeColors('light'),
 
   // Brand colors in theme
   ...brandColors,
@@ -304,14 +302,13 @@ const darkTheme = {
   color11: '#CBD5E1',           // Strong text
   color12: '#F8FAFC',           // Primary text
 
-  // Primary brand (Electric Blue). The fill stays at #2563EB in dark mode so
-  // white labels pass AA (5.2:1; #3B82F6 was 3.7:1). Blue text and icons use
-  // the lighter $primaryText instead.
-  primary: '#2563EB',
-  primaryHover: '#1D4ED8',
-  primaryPress: '#1E40AF',
-  primaryFocus: '#2563EB',
-  primaryText: '#60A5FA',
+  // Neutral primary: the chalkboard button face (chalk)
+  primary: DARK_PRIMARY,
+  primaryHover: DARK_PRIMARY,
+  primaryPress: DARK_PRIMARY,
+  primaryFocus: DARK_PRIMARY,
+  // The face again, as in the sport themes; labels on the fill use $background
+  primaryText: DARK_PRIMARY,
 
   // Accent (Flame Orange)
   accent: '#FB923C',
@@ -323,7 +320,7 @@ const darkTheme = {
   borderColor: '#334155',
   borderColorHover: '#475569',
   borderColorPress: '#64748B',
-  borderColorFocus: '#3B82F6',
+  borderColorFocus: DARK_PRIMARY,
 
   // Placeholder
   placeholderColor: '#64748B',
@@ -333,26 +330,13 @@ const darkTheme = {
   shadowColorHover: 'rgba(0, 0, 0, 0.4)',
 
   // Tab bar
-  tabActive: '#3B82F6',
+  tabActive: DARK_PRIMARY,
   tabInactive: '#94A3B8',
 
-  // Phase colors (GPP/SPP/SSP): one brand hue, see lib/phase.ts
-  ...phaseThemeColors('dark'),
-
-  // Brand colors (adjusted for dark mode)
-  // brand1 tints a card; it was the page background, so tinted cards vanished
+  // Blue tints with a caller (see brandColors). brand1 tints a card; it was
+  // the page background, so tinted cards vanished.
   brand1: '#172554',
   brand2: '#1E293B',
-  brand3: '#1E3A8A',
-  brand4: '#1E40AF',
-  brand5: '#1D4ED8',
-  brand6: '#2563EB',
-  brand7: '#3B82F6',
-  brand8: '#60A5FA',
-  brand9: '#93C5FD',
-  brand10: '#BFDBFE',
-  brand11: '#DBEAFE',
-  brand12: '#EFF6FF',
 
   accent1: '#1C0A00',
   accent2: '#431407',
@@ -723,7 +707,8 @@ export const categoryAccentColors = {
 } as const
 
 // Brand color constants for direct use
-export const brandPrimary = '#2563EB'  // Electric Blue
+/** The light primary: the whiteboard button face (issue #210). */
+export const brandPrimary = LIGHT_PRIMARY
 
 /** Tab bar label colors, for React Navigation (outside Tamagui's theme). */
 export const tabTints = {

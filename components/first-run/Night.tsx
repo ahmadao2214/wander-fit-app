@@ -128,7 +128,7 @@ export function NightButton({
         style,
       ]}
     >
-      <RNText style={{ fontFamily: BODY_BOLD, fontSize: 17, color: disabled ? NIGHT.fg2 : '#FFFFFF' }}>{label}</RNText>
+      <RNText style={{ fontFamily: BODY_BOLD, fontSize: 17, color: disabled ? NIGHT.fg2 : NIGHT.ink }}>{label}</RNText>
     </Pressable>
   )
 }

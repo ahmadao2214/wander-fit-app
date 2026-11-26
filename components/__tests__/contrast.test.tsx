@@ -16,33 +16,32 @@ const LARGE_OR_ICON = 3
 describe('contrastRatio', () => {
   it('matches known WCAG values', () => {
     expect(contrastRatio('#000000', '#FFFFFF')).toBeCloseTo(21, 0)
-    expect(contrastRatio('#FFFFFF', '#2563EB')).toBeCloseTo(5.17, 1)
+    expect(contrastRatio('#FFFFFF', '#0F172A')).toBeCloseTo(17.85, 1)
     expect(contrastRatio('#FFFFFF', '#F59E0B')).toBeCloseTo(2.15, 1)
   })
 })
 
-// The pairs the retained athlete and auth screens rely on. Phase fills
-// ($blue9/$orange9/$green9) are unchanged; text on them is large or navy.
-// Phase names shown as text keep their phase color until the palette pass,
-// so they aren't checked here.
+// The pairs the retained athlete and auth screens rely on. Phases have no
+// colour (issue #210), so no phase-fill pairs. The primary is the neutral
+// button face: labels on it are $background, and Done is the words colour.
 describe('Light theme text pairs meet WCAG AA', () => {
   const normalText: [string, string, string][] = [
     ['$color10', '$background', 'secondary text and tracked labels'],
     ['$color10', '$surface', 'secondary text on cards'],
     ['$color11', '$brand1', "Today card label and meta on its tint"],
-    ['$green11', '$surface', '"Done" and completed status text'],
+    ['$color', '$surface', '"Done" and completed status text'],
+    ['$color', '$background', '"Done" on the Today card and warmup rows'],
     ['$orange11', '$brand1', 'skill level on the Profile header'],
     ['$red11', '$red2', 'auth error message'],
     ['$red11', '$surface', 'auth field error'],
     ['$intensityLow9', '$intensityLow2', 'Training Science intensity headings'],
     ['$intensityMed9', '$intensityMed2', 'Training Science intensity headings'],
     ['$intensityHigh9', '$intensityHigh2', 'Training Science intensity headings'],
-    ['$color12', '$blue9', 'numbers on GPP-colored badges'],
-    ['$color12', '$orange9', 'numbers on SPP-colored badges'],
-    ['$color12', '$green9', 'numbers on SSP-colored badges'],
-    ['#FFFFFF', '$primary', 'white labels on primary buttons'],
+    ['$background', '$primary', 'labels on primary buttons'],
+    ['$background', '$primaryPress', 'labels on pressed primary buttons'],
+    ['$primaryText', '$background', 'action text and spinners'],
+    ['$primaryText', '$surface', 'action text on cards'],
     ['#FFFFFF', '$red11', 'Exit workout button'],
-    ['#FFFFFF', '$green11', "warmup Let's Go button"],
   ]
 
   for (const [fg, bg, where] of normalText) {
@@ -52,11 +51,10 @@ describe('Light theme text pairs meet WCAG AA', () => {
   }
 
   const largeTextOrIcons: [string, string, string][] = [
-    ['#FFFFFF', '$blue9', '19px bold labels on GPP-filled buttons'],
-    ['#FFFFFF', '$orange9', '19px bold labels on SPP-filled buttons'],
-    ['#FFFFFF', '$green9', '19px bold labels on SSP-filled buttons'],
-    ['#FFFFFF', '$green10', 'check icons on completed badges'],
-    ['$green10', '$surface', 'completed icons'],
+    ['$background', '$color', 'check icons on completed badges'],
+    ['$color', '$surface', 'completed icons'],
+    ['$color', '$color3', 'completed icons on their quiet badge'],
+    ['$primary', '$background', 'the button fill against the page'],
     ['$color10', '$surface', 'chevrons and calendar status icons'],
   ]
 

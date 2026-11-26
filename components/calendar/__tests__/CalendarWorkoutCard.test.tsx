@@ -2,7 +2,6 @@ import React from 'react'
 import { render, fireEvent } from '@testing-library/react-native'
 import { TamaguiProvider } from 'tamagui'
 import config from '../../../tamagui.config'
-import { PHASE_SWATCHES } from '../../../lib/phase'
 import { paintedColors } from '../../../jest/sportPaint'
 import { CalendarWorkoutCard, CalendarWorkoutCardProps } from '../CalendarWorkoutCard'
 
@@ -58,7 +57,8 @@ describe('CalendarWorkoutCard', () => {
         { wrapper: AllTheProviders }
       )
       expect(queryByText(/GPP|Build/)).toBeNull()
-      const fills = Object.values(PHASE_SWATCHES).flatMap((byPhase) => Object.values(byPhase).map((s) => s.fill))
+      // The old phase fills (light and dark), deleted in issue #210
+      const fills = ['#3B82F6', '#1D4ED8', '#1E3A8A', '#BFDBFE', '#60A5FA']
       const painted = paintedColors(getByLabelText(/^Build workout/))
       expect(painted.filter((c) => fills.includes(c))).toEqual([])
     })

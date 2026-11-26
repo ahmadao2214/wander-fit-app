@@ -326,12 +326,12 @@ export default function SignInPage() {
                   disabled={isSigningIn}
                   size="$5"
                   bg="$primary"
-                  color="white"
+                  color="$background"
                   fontFamily="$body" fontWeight="700"
                   rounded="$4"
                   opacity={isSigningIn ? 0.7 : 1}
-                  hoverStyle={{ bg: '#1d4ed8', opacity: 0.95 }}
-                  pressStyle={{ bg: '#1e40af', scale: 0.98 }}
+                  hoverStyle={{ bg: '$primaryHover', opacity: 0.95 }}
+                  pressStyle={{ bg: '$primaryPress', scale: 0.98 }}
                 >
                   {isSigningIn ? 'Signing in...' : 'Sign In'}
                 </Button>

@@ -43,7 +43,6 @@ jest.mock('../../hooks/useAuth', () => ({
 }))
 
 import HistoryPage from '../(athlete)/history'
-import { PHASE_SWATCHES } from '../../lib/phase'
 import { SPORT_SCHEMES, paint, paintedColors, sportPaint } from '../../jest/sportPaint'
 
 const AllTheProviders = ({ children }: { children: React.ReactNode }) => (
@@ -141,7 +140,8 @@ describe('History tab', () => {
       const { toJSON } = render(<HistoryPage />, { wrapper: AllTheProviders })
       const root = toJSON() as unknown as Parameters<typeof paintedColors>[0]
       expect(paint(root).backgroundColor).toBe(sportPaint(scheme).ground)
-      const fills = Object.values(PHASE_SWATCHES).flatMap((byPhase) => Object.values(byPhase).map((s) => s.fill))
+      // The old phase fills (light and dark), deleted in issue #210
+      const fills = ['#3B82F6', '#1D4ED8', '#1E3A8A', '#BFDBFE', '#60A5FA']
       const painted = paintedColors(root)
       expect(painted.length).toBeGreaterThan(5)
       expect(painted.filter((c) => [...fills, '#2563EB'].includes(c))).toEqual([])

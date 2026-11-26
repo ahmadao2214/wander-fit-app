@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { Platform, TextInput, StyleSheet, type TextInputInstance } from 'react-native'
 import { XStack, useTheme } from 'tamagui'
+import { brandPrimary } from '../tamagui.config'
 
 // Minimal delay - just enough to let React Native process the state update
 const FOCUS_DELAY = 0
@@ -58,10 +59,10 @@ export function VerificationCodeInput({
       color: theme.color12?.val as string || '#000',
     },
     inputFocused: {
-      borderColor: theme.primary?.val as string || '#2563eb',
+      borderColor: theme.primary?.val as string || brandPrimary,
     },
     inputFilled: {
-      borderColor: theme.primary?.val as string || '#2563eb',
+      borderColor: theme.primary?.val as string || brandPrimary,
     },
   }), [theme])
 

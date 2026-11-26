@@ -2,7 +2,6 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 import config from '../../tamagui.config'
 import { sportTheme } from '../sportTokens'
-import { phaseThemeColors } from '../phase'
 import { sportThemeOverrides } from '../sportTamaguiTheme'
 
 // Issue #208: the basketball chalkboard and whiteboard themes sit beside light
@@ -19,18 +18,53 @@ const read = (path: string) => readFileSync(join(ROOT, path), 'utf8')
 // A hex colour: 6 or 8 digits, or 3/4 with a letter in them, so "issue #208" is not one.
 const RAW_HEX = /#(?:[0-9a-f]{8}|[0-9a-f]{6}|(?=[0-9]*[a-f])[0-9a-f]{3,4})\b/gi
 
-describe('light and dark are unchanged', () => {
-  it('keep Electric Blue as primary', () => {
-    expect([val('light', 'primary'), val('dark', 'primary')]).toEqual(['#2563EB', '#2563EB'])
+// Issue #210: light and dark lose Electric Blue and the phase colours. Their
+// primary is the board's neutral button face.
+const PHASE_KEY = /^phase(GPP|SPP|SSP)/
+const ELECTRIC_BLUE = '#2563EB'
+const PRIMARY_ROLE = [
+  'primary',
+  'primaryHover',
+  'primaryPress',
+  'primaryFocus',
+  'primaryText',
+  'borderColorFocus',
+  'tabActive',
+] as const
+
+describe('light and dark', () => {
+  it('take the neutral button face as primary: ink in light, chalk in dark', () => {
+    expect([val('light', 'primary'), val('dark', 'primary')]).toEqual([white.button.hex, chalk.button.hex])
   })
 
-  it('keep the phase colours', () => {
-    const missing = (['light', 'dark'] as const).flatMap((scheme) =>
-      Object.entries(phaseThemeColors(scheme))
-        .filter(([key, hex]) => val(scheme, key) !== hex)
-        .map(([key]) => `${scheme}.${key}`),
+  it('give every primary-role key that face, never the marker', () => {
+    const wrong = (
+      [
+        ['light', white],
+        ['dark', chalk],
+      ] as const
+    ).flatMap(([scheme, sport]) =>
+      PRIMARY_ROLE.filter((key) => val(scheme, key) !== sport.button.hex || val(scheme, key) === sport.marker.hex).map(
+        (key) => `${scheme}.${key}`,
+      ),
     )
-    expect(missing).toEqual([])
+    expect(wrong).toEqual([])
+  })
+
+  it('carry no phase colour keys', () => {
+    const left = (['light', 'dark'] as const).flatMap((scheme) =>
+      Object.keys(themes[scheme])
+        .filter((key) => PHASE_KEY.test(key))
+        .map((key) => `${scheme}.${key}`),
+    )
+    expect(left).toEqual([])
+  })
+
+  it('paint no primary-role key Electric Blue', () => {
+    const blue = (['light', 'dark'] as const).flatMap((scheme) =>
+      PRIMARY_ROLE.filter((key) => val(scheme, key)?.toUpperCase() === ELECTRIC_BLUE).map((key) => `${scheme}.${key}`),
+    )
+    expect(blue).toEqual([])
   })
 
   it('carry no marker, so old screens cannot reach the pen', () => {

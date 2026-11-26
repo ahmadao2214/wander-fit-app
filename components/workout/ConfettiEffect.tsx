@@ -7,14 +7,10 @@ interface ConfettiEffectProps {
   onComplete?: () => void
 }
 
-// Mix of brand colors and standard confetti colors
+// Confetti colors. No Electric Blue: it is not the primary any more (issue #210).
 const CONFETTI_COLORS = [
-  // Brand colors
-  '#2563EB', // Electric Blue (primary)
-  '#3B82F6', // Blue accent
   '#F97316', // Flame Orange (accent)
   '#10B981', // Success green
-  // Standard confetti colors
   '#FFD700', // Gold
   '#FF6B6B', // Coral red
   '#A855F7', // Purple

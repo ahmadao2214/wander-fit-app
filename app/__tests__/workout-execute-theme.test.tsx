@@ -66,7 +66,6 @@ let mockScheme: 'chalkboard' | 'whiteboard' = 'whiteboard'
 jest.mock('../../hooks/useSportScheme', () => ({ useSportScheme: () => mockScheme }))
 
 import WorkoutExecutionScreen from '../(athlete)/workout/execute/[id]'
-import { PHASE_SWATCHES } from '../../lib/phase'
 import { SPORT_SCHEMES, nearestBackground, paint, paintedColors, sportPaint } from '../../jest/sportPaint'
 
 const AllTheProviders = ({ children }: { children: React.ReactNode }) => (
@@ -110,7 +109,8 @@ describe('Workout execution on the sport theme', () => {
     mockScheme = scheme
     const colors = sportPaint(scheme)
     const { getByTestId, queryByTestId, queryByText } = renderSession()
-    const fills = Object.values(PHASE_SWATCHES).flatMap((byPhase) => Object.values(byPhase).map((s) => s.fill))
+    // The old phase fills (light and dark), deleted in issue #210
+    const fills = ['#3B82F6', '#1D4ED8', '#1E3A8A', '#BFDBFE', '#60A5FA']
     const painted = paintedColors(getByTestId('execute-screen'))
     expect(painted.length).toBeGreaterThan(10)
     expect(painted.filter((c) => [...fills, '#2563EB', colors.board.toUpperCase()].includes(c))).toEqual([])
