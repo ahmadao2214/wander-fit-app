@@ -160,6 +160,11 @@ describe('sport token contract', () => {
     )
   })
 
+  it('tries white before it reports that a pair cannot reach the ratio', () => {
+    const message = contrastFailure('basketball', 'marker-on-board', '#888888', '#595959', 7)
+    expect(message).toMatch(/^basketball marker-on-board: lightness \d+\.\d{2} → 1\.00 \(\+\d+\.\d{2}\)$/)
+  })
+
   it('stays quiet when a shipped pair already clears', () => {
     for (const scheme of SCHEMES) {
       for (const sport of SPORTS) {

@@ -120,7 +120,7 @@ function walk(
 ): number | null {
   for (let step = 1; step <= 100; step++) {
     const l = Math.round((start + direction * step * 0.01) * 100) / 100
-    if (l <= 0 || l >= 1) return null
+    if (l < 0 || l > 1) return null
     const hex = oklchToHex(l, fraction * maxChroma(l, h), h)
     if (contrastRatio(hex, background) >= minimum) return l
   }
