@@ -13,6 +13,7 @@ import {
   slate, slateDark
 } from '@tamagui/colors'
 import { phaseThemeColors } from './lib/phase'
+import { sportTamaguiTheme } from './lib/sportTamaguiTheme'
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ATHLETIC MOMENTUM DESIGN SYSTEM
@@ -659,6 +660,11 @@ const customConfig = {
     dark_intensity_low: darkIntensityLow,
     dark_intensity_medium: darkIntensityMedium,
     dark_intensity_high: darkIntensityHigh,
+    // Basketball sport themes (issue #208). Nothing mounts them yet: the app
+    // root stays on light and dark. The base only fills keys the sport theme
+    // does not own; ground, words, button and marker come from sportTheme().
+    chalkboard: sportTamaguiTheme('basketball', 'chalkboard', darkTheme),
+    whiteboard: sportTamaguiTheme('basketball', 'whiteboard', lightTheme),
   },
   fonts: {
     ...defaultConfig.fonts,
