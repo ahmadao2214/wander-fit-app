@@ -120,7 +120,7 @@ function HistoryPageContent() {
                       width={44}
                       height={44}
                       rounded="$5"
-                      bg={session.status === 'completed' ? '$intensityLow2' : '$accent1'}
+                      bg={session.status === 'completed' ? '$color3' : '$accent1'}
                       items="center"
                       justify="center"
                       // Completed rows have no chip, so the check carries the spoken
@@ -130,7 +130,7 @@ function HistoryPageContent() {
                       testID={session.status === 'completed' ? 'history-completed' : undefined}
                     >
                       {session.status === 'completed' ? (
-                        <CheckCircle size={22} color="$green10" />
+                        <CheckCircle size={22} color="$color" />
                       ) : (
                         <XCircle size={22} color="$orange10" />
                       )}

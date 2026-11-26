@@ -116,7 +116,7 @@ function PhaseCard({ phase, exercises, phaseIndex, isCompleted, onToggle }: {
   return (
     <Card
       borderWidth={1}
-      borderColor={isCompleted ? "$success" : "$borderColor"}
+      borderColor="$borderColor"
       bg={isCompleted ? "$color2" : "$background"}
       rounded="$4"
       p="$3"
@@ -133,12 +133,12 @@ function PhaseCard({ phase, exercises, phaseIndex, isCompleted, onToggle }: {
             height={28}
             rounded="$10"
             // The step badge is the words colour: no phase fill
-            bg={isCompleted ? "$green10" : "$color"}
+            bg="$color"
             items="center"
             justify="center"
           >
             {isCompleted ? (
-              <Check size={14} color="white" />
+              <Check size={14} color="$background" />
             ) : (
               <Caption color="$background" fontWeight="700">
                 {phaseIndex + 1}
@@ -156,8 +156,8 @@ function PhaseCard({ phase, exercises, phaseIndex, isCompleted, onToggle }: {
           {/* Tap affordance (right side) */}
           {isCompleted ? (
             <XStack items="center" gap="$1">
-              <Check size={14} color="$green10" />
-              <Caption color="$green11" fontWeight="600">Done</Caption>
+              <Check size={14} color="$color" />
+              <Caption color="$color" fontWeight="600">Done</Caption>
             </XStack>
           ) : (
             <YStack

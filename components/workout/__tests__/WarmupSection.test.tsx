@@ -2,7 +2,6 @@ import React from 'react'
 import { render, fireEvent } from '@testing-library/react-native'
 import { TamaguiProvider, Theme } from 'tamagui'
 import config from '../../../tamagui.config'
-import { PHASE_SWATCHES } from '../../../lib/phase'
 import { SPORT_SCHEMES, paintedColors, sportPaint } from '../../../jest/sportPaint'
 import { WarmupSection, WarmupExercise } from '../WarmupSection'
 
@@ -497,7 +496,8 @@ describe('WarmupSection', () => {
       </Theme>,
       { wrapper: AllTheProviders }
     )
-    const fills = Object.values(PHASE_SWATCHES).flatMap((byPhase) => Object.values(byPhase).map((s) => s.fill))
+    // The old phase fills (light and dark), deleted in issue #210
+    const fills = ['#3B82F6', '#1D4ED8', '#1E3A8A', '#BFDBFE', '#60A5FA']
     const tree = toJSON() as unknown as Parameters<typeof paintedColors>[0]
     const painted = paintedColors(tree)
     expect(painted.length).toBeGreaterThan(5)

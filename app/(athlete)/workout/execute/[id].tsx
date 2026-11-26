@@ -1003,12 +1003,12 @@ function WorkoutExecution() {
               <YStack
                 width={80}
                 height={80}
-                bg="$success"
+                bg="$primary"
                 rounded="$10"
                 items="center"
                 justify="center"
               >
-                <Trophy size={40} color="white" />
+                <Trophy size={40} color="$background" />
               </YStack>
               
               <YStack items="center" gap="$1">
@@ -1028,7 +1028,7 @@ function WorkoutExecution() {
                   </Caption>
                 </YStack>
                 <YStack items="center">
-                  <Title color="$green11" style={numeric}>
+                  <Title color="$color" style={numeric}>
                     {completedCount}/{orderedExercises.length}
                   </Title>
                   <Caption color="$color10">

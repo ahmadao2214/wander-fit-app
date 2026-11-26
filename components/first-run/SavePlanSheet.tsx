@@ -32,7 +32,7 @@ function PrimaryButton({ children, onPress, disabled, testID }: {
     <Button
       size="$5"
       bg={disabled ? '$color5' : '$primary'}
-      color={disabled ? '$color10' : 'white'}
+      color={disabled ? '$color10' : '$background'}
       disabled={disabled}
       onPress={onPress}
       fontFamily="$body"

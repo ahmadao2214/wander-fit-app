@@ -6,8 +6,15 @@
  */
 import type { Phase } from '../types'
 import { dayLabel, firstTrainingDate, formatSeasonDate, normalizeTrainingDays } from './firstRun'
+import { sportTheme } from './sportTokens'
 
 // ─── Game night ─────────────────────────────────────────────────────────────
+
+/**
+ * The neutral button on the dark intake: the chalkboard button face (chalk),
+ * the same face dark mode uses as $primary (issue #210). Not Electric Blue.
+ */
+const NIGHT_BUTTON = sportTheme('basketball', 'chalkboard').button.hex
 
 /** The intake is always dark, whatever the phone's theme. */
 export const NIGHT = {
@@ -16,9 +23,10 @@ export const NIGHT = {
   line: '#24314A', // hairlines, empty tiles
   fg: '#F4F6FB',
   fg2: '#9AA6BD',
-  action: '#2563EB',
-  actionPress: '#1E40AF',
-  link: '#60A5FA',
+  // The action face; its label is the ground (ink), the opposite of the face
+  action: NIGHT_BUTTON,
+  actionPress: NIGHT_BUTTON,
+  link: NIGHT_BUTTON,
 } as const
 
 /** Mixes `color` over `base`: `amount` 0 is `base`, 1 is `color`. Hex in, hex out. */
@@ -198,9 +206,6 @@ export const STORY_PHASES: readonly StoryPhase[] = [
   { phase: 'SPP', label: 'Train for your sport' },
   { phase: 'SSP', label: 'Sharpen for the season' },
 ]
-
-/** The colors the phase bar uses on game night: one hue deepening GPP → SSP. */
-export const NIGHT_PHASE_FILL: Record<Phase, string> = { GPP: '#3B82F6', SPP: '#1D4ED8', SSP: '#1E3A8A' }
 
 /** The caption under the phase bar. One holds while the bar draws; taps change it. */
 export function phaseCaption(phase: Phase, sportName: string, category: StoryCategory, noSeason: boolean): string {

@@ -89,7 +89,7 @@ export function PerformanceReviewItem({
           <Card
             width={28}
             height={28}
-            bg={isSkipped ? "$red4" : isPartiallyCompleted ? "$yellow4" : "$green4"}
+            bg={isSkipped ? "$red4" : isPartiallyCompleted ? "$yellow4" : "$color3"}
             rounded="$10"
             items="center"
             justify="center"
@@ -98,7 +98,7 @@ export function PerformanceReviewItem({
             {isSkipped ? (
               <X size={16} color="$red10" />
             ) : (
-              <Check size={16} color={isPartiallyCompleted ? "$yellow10" : "$green10"} />
+              <Check size={16} color={isPartiallyCompleted ? "$yellow10" : "$color"} />
             )}
           </Card>
 
@@ -172,7 +172,7 @@ export function PerformanceReviewItem({
                 <Card
                   width={24}
                   height={24}
-                  bg={set.skipped ? "$gray4" : set.completed ? "$green3" : "$gray4"}
+                  bg={set.skipped ? "$gray4" : set.completed ? "$color3" : "$gray4"}
                   rounded="$10"
                   items="center"
                   justify="center"

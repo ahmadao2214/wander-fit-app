@@ -49,7 +49,6 @@ jest.mock('../../components/SignOutButton', () => ({ SignOutButton: () => null }
 jest.mock('../../components/OneRepMaxSheet', () => ({ OneRepMaxSheet: () => null }))
 
 import ProfilePage from '../(athlete)/profile'
-import { PHASE_SWATCHES } from '../../lib/phase'
 import { SPORT_SCHEMES, paint, paintedColors, sportPaint } from '../../jest/sportPaint'
 
 const AllTheProviders = ({ children }: { children: React.ReactNode }) => (
@@ -97,7 +96,8 @@ describe('Profile', () => {
       expect(paint(root).backgroundColor).toBe(sportPaint(scheme).ground)
       expect(getByText('Build')).toBeTruthy()
       expect(queryByText(/GPP|Preparedness/)).toBeNull()
-      const fills = Object.values(PHASE_SWATCHES).flatMap((byPhase) => Object.values(byPhase).map((s) => s.fill))
+      // The old phase fills (light and dark), deleted in issue #210
+      const fills = ['#3B82F6', '#1D4ED8', '#1E3A8A', '#BFDBFE', '#60A5FA']
       const painted = paintedColors(root)
       expect(painted.filter((c) => [...fills, '#2563EB', '#EFF6FF', '#DBEAFE'].includes(c))).toEqual([])
     } finally {

@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Pressable, Text as RNText, View } from 'react-native'
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated'
-import { NIGHT_PHASE_FILL, STORY_PHASES } from '../../lib/firstRunStory'
+import { NIGHT, STORY_PHASES } from '../../lib/firstRunStory'
 import type { Phase } from '../../types'
 import { BODY_BOLD, DISPLAY } from './Night'
 import { PAGE_EASE } from './intakeMotion'
@@ -62,7 +62,10 @@ function Segment({
       style={[
         {
           flex: 1,
-          backgroundColor: NIGHT_PHASE_FILL[phase],
+          // Phases have no colour (issue #210): one raised surface, told apart by name
+          backgroundColor: NIGHT.ink2,
+          borderWidth: 1,
+          borderColor: NIGHT.line,
           paddingHorizontal: 8,
           paddingVertical: 8,
           justifyContent: 'space-between',
@@ -70,17 +73,17 @@ function Segment({
           borderBottomLeftRadius: first ? 8 : 4,
           borderTopRightRadius: last ? 8 : 4,
           borderBottomRightRadius: last ? 8 : 4,
-          borderBottomWidth: selected ? 3 : 0,
-          borderBottomColor: '#FFFFFF',
+          borderBottomWidth: selected ? 3 : 1,
+          borderBottomColor: selected ? NIGHT.fg : NIGHT.line,
           transformOrigin: 'left',
         },
         style,
       ]}
     >
-      <RNText numberOfLines={2} style={{ fontFamily: DISPLAY, fontSize: 17, lineHeight: 17, color: '#FFFFFF', letterSpacing: 0.6 }}>
+      <RNText numberOfLines={2} style={{ fontFamily: DISPLAY, fontSize: 17, lineHeight: 17, color: NIGHT.fg, letterSpacing: 0.6 }}>
         {label}
       </RNText>
-      <RNText style={{ fontFamily: BODY_BOLD, fontSize: 12, color: '#FFFFFF', opacity: 0.9 }}>{detail}</RNText>
+      <RNText style={{ fontFamily: BODY_BOLD, fontSize: 12, color: NIGHT.fg2 }}>{detail}</RNText>
     </Animated.View>
   )
   if (!onPress) return <View style={{ flex: 1 }} accessible accessibilityLabel={spoken}>{body}</View>

@@ -2,7 +2,6 @@ import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react-native'
 import { TamaguiProvider, Theme } from 'tamagui'
 import config from '../../../tamagui.config'
-import { PHASE_SWATCHES } from '../../../lib/phase'
 import { SPORT_SCHEMES, paint, paintedColors, sportPaint } from '../../../jest/sportPaint'
 
 const STATE = { phase: 'GPP', week: 1, day: 1, weeksPerPhase: 4, sportName: 'Basketball' }
@@ -56,7 +55,8 @@ describe('ProgramSeasonHeader', () => {
       { wrapper }
     )
     const colors = sportPaint(scheme)
-    const fills = Object.values(PHASE_SWATCHES).flatMap((byPhase) => Object.values(byPhase).map((s) => s.fill))
+    // The old phase fills (light and dark), deleted in issue #210
+    const fills = ['#3B82F6', '#1D4ED8', '#1E3A8A', '#BFDBFE', '#60A5FA']
     const painted = paintedColors(screen.getByTestId('program-season-header'))
     expect(painted.filter((c) => [...fills, '#2563EB'].includes(c))).toEqual([])
     // Tamagui spreads borderColor to each side

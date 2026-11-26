@@ -83,8 +83,6 @@ jest.mock('../../hooks/useSportScheme', () => ({ useSportScheme: () => mockSchem
 // eslint-disable-next-line import/first
 import WorkoutDetailScreen from '../(athlete)/workout/[id]'
 // eslint-disable-next-line import/first
-import { PHASE_SWATCHES } from '../../lib/phase'
-// eslint-disable-next-line import/first
 import { SPORT_SCHEMES, buttonFace, paint, paintedColors, sportPaint } from '../../jest/sportPaint'
 
 const AllTheProviders = ({ children }: { children: React.ReactNode }) => (
@@ -108,7 +106,8 @@ describe('Workout detail on the sport theme', () => {
     expect(getByText('Train')).toBeTruthy()
     expect(paint(getByTestId('workout-meta')).color).not.toBe('#2563EB')
     expect(queryByText(/GPP|SPP|SSP/)).toBeNull()
-    const fills = Object.values(PHASE_SWATCHES).flatMap((byPhase) => Object.values(byPhase).map((s) => s.fill))
+    // The old phase fills (light and dark), deleted in issue #210
+    const fills = ['#3B82F6', '#1D4ED8', '#1E3A8A', '#BFDBFE', '#60A5FA']
     const painted = paintedColors(root)
     expect(painted.length).toBeGreaterThan(10)
     expect(painted).toContain(colors.ground.toUpperCase())

@@ -409,11 +409,11 @@ function WorkoutDetailScreenContent() {
 
         {/* Completed Badge with View Mode Toggle */}
         {isCompleted && (
-          <Card p="$3" bg="$green2" borderColor="$green7">
+          <Card p="$3" bg="$surface" borderColor="$borderColor" borderWidth={1}>
             <XStack items="center" justify="space-between">
               <XStack items="center" gap="$2">
-                <CheckCircle size={20} color="$green10" />
-                <Text fontWeight="600" color="$green11">
+                <CheckCircle size={20} color="$color" />
+                <Text fontWeight="600" color="$color">
                   Workout Completed
                 </Text>
               </XStack>

@@ -116,7 +116,7 @@ function ErrorFallback({
         <Button
           size="$4"
           bg="$primary"
-          color="white"
+          color="$background"
           icon={<RefreshCw size={18} />}
           onPress={onRetry}
         >

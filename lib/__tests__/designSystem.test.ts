@@ -5,6 +5,7 @@ import {
   brandAccent,
   brandNavy,
 } from "../../tamagui.config";
+import { sportTheme } from "../sportTokens";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // INTENSITY THEME MAP TESTS
@@ -134,9 +135,10 @@ describe("categoryAccentColors", () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe("Brand color constants", () => {
-  describe("brandPrimary (Electric Blue)", () => {
-    it("has the correct hex value", () => {
-      expect(brandPrimary).toBe("#2563EB");
+  describe("brandPrimary (the neutral whiteboard button, issue #210)", () => {
+    it("is the whiteboard button face, not Electric Blue", () => {
+      expect(brandPrimary).toBe(sportTheme("basketball", "whiteboard").button.hex);
+      expect(brandPrimary.toUpperCase()).not.toBe("#2563EB");
     });
 
     it("is a valid 6-character hex color", () => {
@@ -171,8 +173,8 @@ describe("Brand color constants", () => {
       expect(uniqueColors.size).toBe(colors.length);
     });
 
-    it("brandPrimary matches Strength category dark color", () => {
-      expect(brandPrimary).toBe(categoryAccentColors[4].dark);
+    it("brandPrimary is no longer tied to the Strength category blue", () => {
+      expect(brandPrimary).not.toBe(categoryAccentColors[4].dark);
     });
 
     it("brandAccent matches Rotation category primary color", () => {
