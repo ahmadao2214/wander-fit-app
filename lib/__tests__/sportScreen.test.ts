@@ -45,8 +45,15 @@ describe('seasonSource', () => {
     expect(seasonSource([checkIn, initial])).toEqual(initial)
   })
 
-  it('is null when only a check-in copied the weeks', () => {
-    expect(seasonSource([checkIn, { intakeType: 'initial', completedAt: 1_000, weeksUntilSeason: null }])).toBeNull()
+  it('uses the newest initial after intake is redone, even with no season', () => {
+    const old = { intakeType: 'initial', completedAt: 1_000, weeksUntilSeason: 12 }
+    const next = { intakeType: 'initial', completedAt: 5_000, weeksUntilSeason: null }
+    expect(seasonSource([old, checkIn, next])).toEqual(next)
+    expect(seasonStartsAt(next.completedAt, next.weeksUntilSeason)).toBeNull()
+  })
+
+  it('is null when there is no initial intake', () => {
+    expect(seasonSource([checkIn])).toBeNull()
   })
 })
 

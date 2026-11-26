@@ -55,15 +55,14 @@ type SeasonIntake = {
 }
 
 /**
- * The intake where the athlete set the season. A check-in copies the weeks
- * onto a new record and must not move the first game.
+ * The initial intake for the current program: the newest one. A check-in is
+ * not initial, so it cannot move the date. A redone intake is newer, so it
+ * replaces the old answer, including an answer of no season.
  */
 export function seasonSource<T extends SeasonIntake>(intakes: readonly T[]): T | null {
-  const supplied = intakes.filter(
-    (row) => row.intakeType === 'initial' && typeof row.weeksUntilSeason === 'number',
-  )
-  if (supplied.length === 0) return null
-  return supplied.reduce((earliest, row) => (row.completedAt < earliest.completedAt ? row : earliest))
+  const initials = intakes.filter((row) => row.intakeType === 'initial')
+  if (initials.length === 0) return null
+  return initials.reduce((latest, row) => (row.completedAt > latest.completedAt ? row : latest))
 }
 
 /**

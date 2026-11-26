@@ -46,6 +46,30 @@ const intake = (sportId: Id<"sports">) => ({
   ageGroup: "14-17" as const,
 });
 
+describe("season date after intake is redone", () => {
+  it("drops the old first game when the new intake has no season", async () => {
+    const t = newTest();
+    const { sportId } = await setup(t);
+    const asAthlete = t.withIdentity({ subject: clerkId });
+
+    await asAthlete.mutation(api.userPrograms.completeIntake, {
+      ...intake(sportId),
+      weeksUntilSeason: 12,
+      firstLaunchAt: Date.now() - 1000,
+    });
+    const first = await asAthlete.query(api.userPrograms.getCurrentProgramState, {});
+    expect(typeof first?.seasonStartsAt).toBe("number");
+
+    await asAthlete.mutation(api.userPrograms.deleteProgram, {});
+    await asAthlete.mutation(api.userPrograms.completeIntake, {
+      ...intake(sportId),
+      firstLaunchAt: Date.now(),
+    });
+    const second = await asAthlete.query(api.userPrograms.getCurrentProgramState, {});
+    expect(second?.seasonStartsAt).toBeNull();
+  });
+});
+
 describe("completeIntake from the First Run", () => {
   it("stores firstLaunchAt and starts a new program at GPP week 1 day 1", async () => {
     const t = newTest();
