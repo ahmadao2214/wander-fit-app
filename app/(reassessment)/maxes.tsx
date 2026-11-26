@@ -8,7 +8,9 @@ import {
   ScrollView,
   Input,
   Spinner,
+  Theme,
 } from 'tamagui'
+import { useSportScheme } from '../../hooks/useSportScheme'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api'
@@ -24,7 +26,7 @@ import { Title, Body, Supporting, numeric } from '../../components/Typography'
  * Lets athletes update their 1RM for core lifts.
  * Shows previous max as placeholder with change indicators.
  */
-export default function MaxesScreen() {
+function MaxesScreenContent() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
@@ -48,7 +50,7 @@ export default function MaxesScreen() {
   if (coreLifts === undefined) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$primaryText" />
+        <Spinner size="large" color="$color" />
         <Supporting color="$color10">Loading...</Supporting>
       </YStack>
     )
@@ -229,7 +231,7 @@ export default function MaxesScreen() {
                 width="100%"
                 size="$5"
                 bg={hasErrors ? '$color4' : '$primary'}
-                color={hasErrors ? '$color10' : 'white'}
+                color={hasErrors ? '$color10' : '$background'}
                 fontFamily="$body"
                 fontWeight="700"
                 rounded="$4"
@@ -255,5 +257,15 @@ export default function MaxesScreen() {
         </ScrollView>
       </YStack>
     </KeyboardAvoidingView>
+  )
+}
+
+/** On the basketball sport theme (issue #209): dark → chalkboard, light → whiteboard. */
+export default function MaxesScreen() {
+  const scheme = useSportScheme()
+  return (
+    <Theme name={scheme}>
+      <MaxesScreenContent />
+    </Theme>
   )
 }

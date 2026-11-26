@@ -7,7 +7,7 @@ describe('blockRecap', () => {
     const recap = blockRecap('GPP', 0, 12)
     expect(recap).toMatchObject({
       outcome: 'none',
-      title: 'Your GPP block is over',
+      title: 'Your Build block is over',
       sessions: '0 of 12 sessions',
       celebrate: false,
     })
@@ -17,7 +17,7 @@ describe('blockRecap', () => {
   it('some sessions: states the count, with no celebration', () => {
     expect(blockRecap('SPP', 9, 12)).toMatchObject({
       outcome: 'partial',
-      title: 'Your SPP block is over',
+      title: 'Your Train block is over',
       sessions: '9 of 12 sessions',
       summary: 'You trained 9 sessions of the 12 planned.',
       celebrate: false,
@@ -27,7 +27,7 @@ describe('blockRecap', () => {
   it('every session: celebrates the finished block', () => {
     expect(blockRecap('SSP', 12, 12)).toMatchObject({
       outcome: 'full',
-      title: 'You finished SSP',
+      title: 'You finished Sharpen',
       celebrate: true,
     })
   })
@@ -77,13 +77,13 @@ describe('blockEnd', () => {
 describe('decisionCopy', () => {
   it('describes repeating the same phase', () => {
     expect(decisionCopy('repeat', 'GPP', 'SPP', false)).toEqual({
-      label: 'Repeat GPP',
-      detail: 'Run the GPP block again from week 1.',
+      label: 'Repeat Build',
+      detail: 'Run the Build block again from week 1.',
     })
   })
 
   it('describes moving on, and a new cycle after SSP', () => {
-    expect(decisionCopy('move_on', 'GPP', 'SPP', false).label).toBe('Move on to SPP')
-    expect(decisionCopy('move_on', 'SSP', 'GPP', true).detail).toBe('Start a new cycle at GPP, week 1.')
+    expect(decisionCopy('move_on', 'GPP', 'SPP', false).label).toBe('Move on to Train')
+    expect(decisionCopy('move_on', 'SSP', 'GPP', true).detail).toBe('Start a new cycle at Build, week 1.')
   })
 })

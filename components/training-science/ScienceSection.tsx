@@ -17,8 +17,9 @@ interface ScienceSectionProps {
 export function ScienceSection({
   title,
   icon: Icon,
-  iconColor = '$primaryText',
-  iconBgColor = '$brand2',
+  // Neutral on the sport theme: the words colour on a quiet base step
+  iconColor = '$color',
+  iconBgColor = '$color3',
   defaultExpanded = false,
   children,
 }: ScienceSectionProps) {

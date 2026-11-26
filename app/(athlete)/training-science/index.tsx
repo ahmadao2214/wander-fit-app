@@ -1,4 +1,5 @@
-import { YStack, XStack, Text, Card, ScrollView, styled, Spinner } from 'tamagui'
+import { YStack, XStack, Text, Card, ScrollView, styled, Spinner, Theme } from 'tamagui'
+import { useSportScheme } from '../../../hooks/useSportScheme'
 import { useQuery } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { useAuth } from '../../../hooks/useAuth'
@@ -19,7 +20,7 @@ import {
 } from '@tamagui/lucide-icons'
 import type { ColorTokens } from 'tamagui'
 import { ScienceSection } from '../../../components/training-science/ScienceSection'
-import { phaseTitle, phaseTokens } from '../../../lib/phase'
+import { STORY_PHASES } from '../../../lib/firstRunStory'
 import type { Phase } from '../../../types'
 import { Body, Caption, Supporting } from '../../../components/Typography'
 
@@ -126,15 +127,12 @@ const PHASE_SPECS: {
   },
 ]
 
-const PHASES = PHASE_SPECS.map((spec) => {
-  const colors = phaseTokens(spec.key)
-  return {
-    ...spec,
-    title: phaseTitle(spec.key),
-    accent: colors.fill,
-    text: colors.text,
-  }
-})
+// On the sport theme the phases are words (Build, Train, Sharpen), in the
+// words colour: no phase fill and no GPP/SPP/SSP code (issue #209).
+const PHASES = PHASE_SPECS.map((spec) => ({
+  ...spec,
+  title: STORY_PHASES.find((p) => p.phase === spec.key)?.label ?? spec.key,
+}))
 
 /** Load / reps / tempo as three labeled values instead of one dense line. */
 function PhaseSpecs({ specs, accent, text }: { specs: PhaseSpec[]; accent: ColorTokens; text: ColorTokens }) {
@@ -161,7 +159,7 @@ function PhaseSpecs({ specs, accent, text }: { specs: PhaseSpec[]; accent: Color
 // MAIN COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function TrainingSciencePage() {
+function TrainingSciencePageContent() {
   const { user, isLoading: authLoading } = useAuth()
   const insets = useSafeAreaInsets()
 
@@ -177,7 +175,7 @@ export default function TrainingSciencePage() {
   if (authLoading) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$primaryText" />
+        <Spinner size="large" color="$color" />
         <Text color="$color10" fontFamily="$body">
           Loading...
         </Text>
@@ -212,8 +210,6 @@ export default function TrainingSciencePage() {
           <ScienceSection
             title="The three phases"
             icon={Layers}
-            iconColor="$primaryText"
-            iconBgColor="$brand2"
             defaultExpanded
           >
             <BodyText>
@@ -221,23 +217,23 @@ export default function TrainingSciencePage() {
             </BodyText>
 
             {PHASES.map((phase) => (
-              // The phase stripe and title carry the phase color; the copy stays
-              // neutral, with no tinted card nested inside the section card
+              // The stripe and title are the words colour; the copy stays neutral,
+              // with no tinted card nested inside the section card
               <YStack
                 key={phase.key}
                 testID={`phase-block-${phase.key}`}
                 pl="$3"
                 py="$1"
                 borderLeftWidth={3}
-                borderLeftColor={phase.accent}
+                borderLeftColor="$color"
               >
                 <YStack gap="$2">
                   <XStack items="center" gap="$2">
-                    <phase.icon size={16} color={phase.accent} />
-                    <SubHeading flex={1} color={phase.text}>{phase.title}</SubHeading>
+                    <phase.icon size={16} color="$color" />
+                    <SubHeading flex={1} color="$color">{phase.title}</SubHeading>
                   </XStack>
                   <BodyText>{phase.body}</BodyText>
-                  <PhaseSpecs specs={phase.specs} accent={phase.accent} text="$color12" />
+                  <PhaseSpecs specs={phase.specs} accent="$color" text="$color12" />
                 </YStack>
               </YStack>
             ))}
@@ -247,8 +243,6 @@ export default function TrainingSciencePage() {
           <ScienceSection
             title="Understanding your numbers"
             icon={Dumbbell}
-            iconColor="$primaryText"
-            iconBgColor="$brand2"
           >
             {/* 1RM */}
             <YStack gap="$2">
@@ -313,8 +307,6 @@ export default function TrainingSciencePage() {
           <ScienceSection
             title="Training intensity"
             icon={Activity}
-            iconColor="$primaryText"
-            iconBgColor="$brand2"
           >
             <BodyText>
               Your daily workout intensity varies between Low, Moderate, and High to optimize recovery and adaptation.
@@ -377,24 +369,22 @@ export default function TrainingSciencePage() {
             <ScienceSection
               title="Your sport category"
               icon={Trophy}
-              iconColor="$primaryText"
-              iconBgColor="$brand2"
             >
               <Card
-                bg="$brand1"
+                bg="$background"
                 p="$3"
                 rounded="$3"
                 borderLeftWidth={3}
-                borderLeftColor="$primary"
+                borderLeftColor="$color"
               >
                 <YStack gap="$2">
                   <XStack items="center" gap="$2">
-                    <category.icon size={18} color="$primaryText" />
-                    <SubHeading color="$primaryText">
+                    <category.icon size={18} color="$color" />
+                    <SubHeading color="$color">
                       Category {programState?.gppCategoryId}: {category.name}
                     </SubHeading>
                   </XStack>
-                  <Supporting fontWeight="600" color="$brand9">
+                  <Supporting fontWeight="600" color="$color11">
                     Emphasis: {category.emphasis}
                   </Supporting>
                 </YStack>
@@ -410,8 +400,6 @@ export default function TrainingSciencePage() {
           <ScienceSection
             title="Your profile factors"
             icon={Users}
-            iconColor="$primaryText"
-            iconBgColor="$brand2"
           >
             <BodyText>
               Beyond your sport, two factors fine-tune your training prescription:
@@ -442,8 +430,6 @@ export default function TrainingSciencePage() {
           <ScienceSection
             title="Rest periods"
             icon={Clock}
-            iconColor="$primaryText"
-            iconBgColor="$brand2"
           >
             <BodyText>
               Rest periods aren't random—they're designed to target specific energy systems and adaptations.
@@ -452,7 +438,7 @@ export default function TrainingSciencePage() {
             <Card bg="$color3" p="$3" rounded="$3">
               <YStack gap="$2">
                 <BodyText>
-                  <Text fontWeight="600">30 seconds:</Text> Builds work capacity and metabolic stress. Common in GPP phase.
+                  <Text fontWeight="600">30 seconds:</Text> Builds work capacity and metabolic stress. Common in the Build phase.
                 </BodyText>
                 <BodyText>
                   <Text fontWeight="600">60 seconds:</Text> Balanced recovery for moderate intensity work. Most common rest period.
@@ -469,5 +455,15 @@ export default function TrainingSciencePage() {
           </ScienceSection>
         </YStack>
       </ScrollView>
+  )
+}
+
+/** On the basketball sport theme (issue #209): dark → chalkboard, light → whiteboard. */
+export default function TrainingSciencePage() {
+  const scheme = useSportScheme()
+  return (
+    <Theme name={scheme}>
+      <TrainingSciencePageContent />
+    </Theme>
   )
 }

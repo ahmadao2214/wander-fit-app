@@ -93,13 +93,14 @@ export const SignOutButton = () => {
       testID="sign-out"
       nativeID="sign-out"
       size="$4"
-      bg="$color4"
+      // A second action stays text: only the main action is a filled button
+      chromeless
       color="$color12"
       icon={LogOut}
       fontFamily="$body"
       fontWeight="600"
       rounded="$4"
-      pressStyle={{ bg: '$color5' }}
+      pressStyle={{ opacity: 0.7 }}
       onPress={handleSignOut}
     >
       Sign Out

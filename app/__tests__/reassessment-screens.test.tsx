@@ -2,6 +2,7 @@ import React from 'react'
 import { render, fireEvent, waitFor } from '@testing-library/react-native'
 import { TamaguiProvider } from 'tamagui'
 import config from '../../tamagui.config'
+import { SPORT_SCHEMES, buttonFace, paint, sportPaint } from '../../jest/sportPaint'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MOCKS
@@ -14,6 +15,7 @@ const mockReplace = jest.fn()
 const mockBack = jest.fn()
 let mockReduceMotion = false
 let mockConfettiRenders = 0
+let mockScheme: 'chalkboard' | 'whiteboard' = 'whiteboard'
 
 jest.mock('convex/react', () => ({
   useQuery: (...args: any[]) => mockUseQuery(...args),
@@ -69,6 +71,8 @@ jest.mock('react-native-reanimated', () => {
     useReducedMotion: () => mockReduceMotion,
   }
 })
+
+jest.mock('../../hooks/useSportScheme', () => ({ useSportScheme: () => mockScheme }))
 
 jest.mock('../../components/workout/ConfettiEffect', () => ({
   ConfettiEffect: () => {
@@ -135,7 +139,7 @@ describe('CelebrationScreen (block recap)', () => {
     mockUseQuery.mockReturnValue(withSessions(0))
     const { getByText, queryByText, getByTestId } = render(<CelebrationScreen />, { wrapper: AllTheProviders })
     expect(getByTestId('block-recap-none')).toBeTruthy()
-    expect(getByText('Your GPP block is over')).toBeTruthy()
+    expect(getByText('Your Build block is over')).toBeTruthy()
     expect(getByText('0 of 16 sessions')).toBeTruthy()
     expect(getByText('No sessions were logged in this block.')).toBeTruthy()
     expect(queryByText(/completed|great work|%/i)).toBeNull()
@@ -145,24 +149,33 @@ describe('CelebrationScreen (block recap)', () => {
   it('some sessions: states the count, with no confetti', () => {
     mockUseQuery.mockReturnValue(withSessions(14))
     const { getByText } = render(<CelebrationScreen />, { wrapper: AllTheProviders })
-    expect(getByText('Your GPP block is over')).toBeTruthy()
+    expect(getByText('Your Build block is over')).toBeTruthy()
     expect(getByText('14 of 16 sessions')).toBeTruthy()
     expect(mockConfettiRenders).toBe(0)
   })
 
-  it('every session: celebrates once', () => {
+  // The recap is on the sport theme (issue #209): the title says the block was
+  // finished, and there is no confetti for any outcome
+  it('every session: says the block was finished, with no confetti', () => {
     mockUseQuery.mockReturnValue(withSessions(16))
     const { getByText } = render(<CelebrationScreen />, { wrapper: AllTheProviders })
-    expect(getByText('You finished GPP')).toBeTruthy()
-    expect(mockConfettiRenders).toBeGreaterThan(0)
+    expect(getByText('You finished Build')).toBeTruthy()
+    expect(mockConfettiRenders).toBe(0)
   })
 
-  it('every session with Reduce Motion on: no confetti', () => {
-    mockReduceMotion = true
-    mockUseQuery.mockReturnValue(withSessions(16))
-    const { getByText } = render(<CelebrationScreen />, { wrapper: AllTheProviders })
-    expect(getByText('You finished GPP')).toBeTruthy()
-    expect(mockConfettiRenders).toBe(0)
+  it.each(SPORT_SCHEMES)('paints the %s instrument and the neutral Start check-in button', (scheme) => {
+    mockScheme = scheme
+    try {
+      mockUseQuery.mockReturnValue(withSessions(16))
+      const colors = sportPaint(scheme)
+      const { getByText, getByTestId, queryByText } = render(<CelebrationScreen />, { wrapper: AllTheProviders })
+      expect(paint(getByTestId('block-recap-full')).backgroundColor).toBe(colors.ground)
+      const start = getByText('Start check-in')
+      expect([paint(start).color, buttonFace(start)]).toEqual([colors.ground, colors.button])
+      expect(queryByText(/GPP|SPP|SSP/)).toBeNull()
+    } finally {
+      mockScheme = 'whiteboard'
+    }
   })
 
   it('shows the block length and dates', () => {
@@ -224,7 +237,7 @@ describe('SelfAssessmentScreen', () => {
   it('renders the phase name in the header', () => {
     mockUseQuery.mockReturnValue(MOCK_REASSESSMENT_STATUS)
     const { getByText } = render(<SelfAssessmentScreen />, { wrapper: AllTheProviders })
-    expect(getByText('How did GPP go?')).toBeTruthy()
+    expect(getByText('How did Build go?')).toBeTruthy()
   })
 })
 
@@ -246,7 +259,7 @@ describe('ResultsScreen (decision)', () => {
   it('summarizes the check-in in one card', () => {
     mockUseQuery.mockReturnValue(MOCK_REASSESSMENT_STATUS)
     const { getByText } = render(<ResultsScreen />, { wrapper: AllTheProviders })
-    expect(getByText('GPP block')).toBeTruthy()
+    expect(getByText('Build block')).toBeTruthy()
     expect(getByText('14 of 16 sessions')).toBeTruthy()
     expect(getByText('Just right · moderate energy')).toBeTruthy()
     expect(getByText('No changes')).toBeTruthy()
@@ -256,8 +269,8 @@ describe('ResultsScreen (decision)', () => {
     mockUseQuery.mockReturnValue(MOCK_REASSESSMENT_STATUS)
     const { getByText, getByTestId, getAllByRole } = render(<ResultsScreen />, { wrapper: AllTheProviders })
     expect(getAllByRole('radio').map((r) => r.props.accessibilityState?.checked)).toEqual([false, false])
-    expect(getByText('Move on to SPP')).toBeTruthy()
-    expect(getByText('Repeat GPP')).toBeTruthy()
+    expect(getByText('Move on to Train')).toBeTruthy()
+    expect(getByText('Repeat Build')).toBeTruthy()
     expect(getByText('Choose an option')).toBeTruthy()
     fireEvent.press(getByTestId('decision-confirm'))
     expect(mockUseMutation).not.toHaveBeenCalled()
@@ -279,7 +292,7 @@ describe('ResultsScreen (decision)', () => {
     mockUseQuery.mockReturnValue(MOCK_REASSESSMENT_STATUS)
     const { getByTestId, getByText } = render(<ResultsScreen />, { wrapper: AllTheProviders })
     fireEvent.press(getByTestId('decision-repeat'))
-    expect(getByText('Start GPP again')).toBeTruthy()
+    expect(getByText('Start Build again')).toBeTruthy()
     fireEvent.press(getByTestId('decision-confirm'))
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/(athlete)'))
     expect(mockUseMutation).toHaveBeenCalledWith(expect.objectContaining({ decision: 'repeat', phaseDifficulty: 'just_right' }))
@@ -289,7 +302,7 @@ describe('ResultsScreen (decision)', () => {
     mockUseQuery.mockReturnValue(MOCK_REASSESSMENT_STATUS)
     const { getByTestId, getByText } = render(<ResultsScreen />, { wrapper: AllTheProviders })
     fireEvent.press(getByTestId('decision-move_on'))
-    expect(getByText('Start SPP')).toBeTruthy()
+    expect(getByText('Start Train')).toBeTruthy()
     fireEvent.press(getByTestId('decision-confirm'))
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/(athlete)'))
     expect(mockUseMutation).toHaveBeenCalledWith(expect.objectContaining({ decision: 'move_on' }))

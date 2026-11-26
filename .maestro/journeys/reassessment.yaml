@@ -1,7 +1,7 @@
 url: ${VERIFY_URL}
 ---
 # The end-of-block check-in tells the truth (design audit F04, F11).
-# Persona state phase-end: a GPP block ran its full length with no sessions
+# Persona state phase-end: a GPP (Build) block ran its full length with no sessions
 # logged, and the check-in is pending. The recap must not congratulate, and
 # the athlete chooses Repeat or Move on; nothing advances on a timer.
 - runFlow: ../subflows/_evidence-start.yaml
@@ -20,14 +20,14 @@ url: ${VERIFY_URL}
     timeout: 30000
 - assertVisible: "0 of .* sessions"
 - assertVisible: "No sessions were logged in this block."
-- assertNotVisible: "You finished GPP"
+- assertNotVisible: "You finished Build"
 - assertNotVisible: "(?i).*completed.*"
 - takeScreenshot: 02-recap
 - tapOn: "Start check-in"
 
 # Check-in, then skip the maxes
 - extendedWaitUntil:
-    visible: "How did GPP go[?]"
+    visible: "How did Build go[?]"
     timeout: 30000
 # Web reports the accessibility label as the id
 - tapOn:
@@ -52,8 +52,8 @@ url: ${VERIFY_URL}
 - extendedWaitUntil:
     visible: "What's next"
     timeout: 30000
-- assertVisible: "Move on to SPP"
-- assertVisible: "Repeat GPP"
+- assertVisible: "Move on to Train"
+- assertVisible: "Repeat Build"
 - takeScreenshot: 03-decision
 - swipe:
     start: 50%, 80%
@@ -61,8 +61,8 @@ url: ${VERIFY_URL}
     duration: 800
 - assertVisible: "Choose an option"
 - tapOn:
-    id: "Repeat GPP"
-- tapOn: "Start GPP again"
+    id: "Repeat Build"
+- tapOn: "Start Build again"
 
 # Today: Build again from week 1, and the check-in is gone
 - extendedWaitUntil:

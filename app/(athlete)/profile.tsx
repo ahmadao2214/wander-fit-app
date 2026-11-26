@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { YStack, XStack, Text, Card, Button, ScrollView, Spinner } from 'tamagui'
+import { YStack, XStack, Text, Card, Button, ScrollView, Spinner, Theme } from 'tamagui'
+import { useSportScheme } from '../../hooks/useSportScheme'
 import { useQuery } from 'convex/react'
 import { useRouter } from 'expo-router'
 import { api } from 'convex/_generated/api'
@@ -24,7 +25,7 @@ import {
   TrendingUp,
   ClipboardCheck,
 } from '@tamagui/lucide-icons'
-import { PHASE_NAMES } from '../../types'
+import { phaseWord } from '../../lib/sportScreen'
 import { experienceLabel, trainingDaysLabel } from '../../lib/profile'
 import { Title, SectionTitle, Body, Supporting, Caption, numeric } from '../../components/Typography'
 
@@ -32,7 +33,7 @@ import { Title, SectionTitle, Body, Supporting, Caption, numeric } from '../../c
 // MAIN COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function ProfilePage() {
+function ProfilePageContent() {
   const { user, isLoading: authLoading } = useAuth()
   const insets = useSafeAreaInsets()
   const router = useRouter()
@@ -66,7 +67,7 @@ export default function ProfilePage() {
   if (authLoading) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$primaryText" />
+        <Spinner size="large" color="$color" />
         <Text color="$color10" fontFamily="$body">
           Loading profile...
         </Text>
@@ -98,11 +99,12 @@ export default function ProfilePage() {
           self="center"
         >
           {/* Profile Header */}
-          <Card 
-            p="$5" 
-            bg="$brand1" 
+          <Card
+            p="$5"
+            bg="$background"
             rounded="$5"
-            borderWidth={0}
+            borderWidth={1}
+            borderColor="$borderColor"
           >
             <XStack items="center" gap="$4">
               <YStack
@@ -113,7 +115,7 @@ export default function ProfilePage() {
                 items="center"
                 justify="center"
               >
-                <User size={32} color="white" />
+                <User size={32} color="$background" />
               </YStack>
               <YStack flex={1} gap="$1">
                 <Title>{user.name}</Title>
@@ -154,12 +156,12 @@ export default function ProfilePage() {
                     </XStack>
                   )}
 
-                  {/* GPP Category */}
+                  {/* Training category */}
                   {programState.categoryName && (
                     <XStack items="center" gap="$3">
                       <Dumbbell size={20} color="$color9" />
                       <YStack flex={1}>
-                        <Caption>GPP Category</Caption>
+                        <Caption>Category</Caption>
                         <Body fontWeight="600">{programState.categoryName}</Body>
                       </YStack>
                     </XStack>
@@ -180,7 +182,7 @@ export default function ProfilePage() {
                     <Target size={20} color="$color9" />
                     <YStack flex={1}>
                       <Caption>Current phase</Caption>
-                      <Body fontWeight="600">{PHASE_NAMES[programState.phase as keyof typeof PHASE_NAMES]}</Body>
+                      <Body fontWeight="600">{phaseWord(programState.phase)}</Body>
                     </YStack>
                   </XStack>
 
@@ -321,8 +323,8 @@ export default function ProfilePage() {
               }}
             >
               <XStack items="center" gap="$3">
-                <YStack bg="$brand2" p="$2" rounded="$10">
-                  <Lightbulb size={18} color="$primaryText" />
+                <YStack borderWidth={1} borderColor="$color" p="$2" rounded="$10">
+                  <Lightbulb size={18} color="$color" />
                 </YStack>
                 <YStack flex={1}>
                   <Body fontWeight="500">Training Science</Body>
@@ -378,5 +380,15 @@ export default function ProfilePage() {
         />
       )}
     </YStack>
+  )
+}
+
+/** On the basketball sport theme (issue #209): dark → chalkboard, light → whiteboard. */
+export default function ProfilePage() {
+  const scheme = useSportScheme()
+  return (
+    <Theme name={scheme}>
+      <ProfilePageContent />
+    </Theme>
   )
 }

@@ -133,7 +133,7 @@ export function PerformanceReviewItem({
           {/* RPE Badge (if available) */}
           {avgRpe !== null && avgRpe > 0 && (
             <Card bg="$primary" px="$2" py="$1" rounded="$3">
-              <Caption color="white" fontWeight="600">
+              <Caption color="$background" fontWeight="600">
                 RPE {avgRpe}
               </Caption>
             </Card>
@@ -200,8 +200,8 @@ export function PerformanceReviewItem({
                     )}
                     {set.rpe !== undefined && set.rpe > 0 && (
                       <XStack items="center" gap="$1">
-                        <Activity size={12} color="$primaryText" />
-                        <Caption color="$primaryText" fontWeight="500">
+                        <Activity size={12} color="$color" />
+                        <Caption color="$color" fontWeight="500">
                           {set.rpe}
                         </Caption>
                       </XStack>

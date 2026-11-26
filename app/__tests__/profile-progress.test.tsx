@@ -38,6 +38,9 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 44, bottom: 34, left: 0, right: 0 }),
 }))
 
+let mockScheme: 'chalkboard' | 'whiteboard' = 'whiteboard'
+jest.mock('../../hooks/useSportScheme', () => ({ useSportScheme: () => mockScheme }))
+
 jest.mock('../../hooks/useAuth', () => ({
   useAuth: () => ({ user: { _id: 'user_1', name: 'Test Athlete', email: 'athlete@example.com' }, isLoading: false }),
 }))
@@ -46,6 +49,8 @@ jest.mock('../../components/SignOutButton', () => ({ SignOutButton: () => null }
 jest.mock('../../components/OneRepMaxSheet', () => ({ OneRepMaxSheet: () => null }))
 
 import ProfilePage from '../(athlete)/profile'
+import { PHASE_SWATCHES } from '../../lib/phase'
+import { SPORT_SCHEMES, paint, paintedColors, sportPaint } from '../../jest/sportPaint'
 
 const AllTheProviders = ({ children }: { children: React.ReactNode }) => (
   <TamaguiProvider config={config}>{children}</TamaguiProvider>
@@ -81,5 +86,22 @@ describe('Profile', () => {
     expect(getByText('Nov 15')).toBeTruthy()
     expect(queryByText(/Years\s+experience/)).toBeNull()
     expect(queryByText('0')).toBeNull()
+  })
+
+  it.each(SPORT_SCHEMES)('sits on the %s instrument ground, with the phase as a word', (scheme) => {
+    mockScheme = scheme
+    try {
+      mockProgress = summary(3, 0)
+      const { toJSON, getByText, queryByText } = render(<ProfilePage />, { wrapper: AllTheProviders })
+      const root = toJSON() as unknown as Parameters<typeof paintedColors>[0]
+      expect(paint(root).backgroundColor).toBe(sportPaint(scheme).ground)
+      expect(getByText('Build')).toBeTruthy()
+      expect(queryByText(/GPP|Preparedness/)).toBeNull()
+      const fills = Object.values(PHASE_SWATCHES).flatMap((byPhase) => Object.values(byPhase).map((s) => s.fill))
+      const painted = paintedColors(root)
+      expect(painted.filter((c) => [...fills, '#2563EB', '#EFF6FF', '#DBEAFE'].includes(c))).toEqual([])
+    } finally {
+      mockScheme = 'whiteboard'
+    }
   })
 })

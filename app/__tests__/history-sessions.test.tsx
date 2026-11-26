@@ -32,6 +32,9 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 44, bottom: 34, left: 0, right: 0 }),
 }))
 
+let mockScheme: 'chalkboard' | 'whiteboard' = 'whiteboard'
+jest.mock('../../hooks/useSportScheme', () => ({ useSportScheme: () => mockScheme }))
+
 jest.mock('../../hooks/useAuth', () => ({
   useAuth: () => ({
     user: { _id: 'user_1', name: 'Test Athlete' },
@@ -40,6 +43,8 @@ jest.mock('../../hooks/useAuth', () => ({
 }))
 
 import HistoryPage from '../(athlete)/history'
+import { PHASE_SWATCHES } from '../../lib/phase'
+import { SPORT_SCHEMES, paint, paintedColors, sportPaint } from '../../jest/sportPaint'
 
 const AllTheProviders = ({ children }: { children: React.ReactNode }) => (
   <TamaguiProvider config={config}>{children}</TamaguiProvider>
@@ -94,9 +99,11 @@ describe('History tab', () => {
 
   it('lists finished GPP sessions with their name, phase slot and duration', () => {
     mockUseQuery.mockReturnValue([session({ totalDurationSeconds: 42 * 60 })])
-    const { getByText } = render(<HistoryPage />, { wrapper: AllTheProviders })
+    const { getByText, queryByText } = render(<HistoryPage />, { wrapper: AllTheProviders })
     expect(getByText('Lower Body Foundation')).toBeTruthy()
-    expect(getByText('GPP W1D1')).toBeTruthy()
+    // The phase is a word on the sport theme (issue #209)
+    expect(getByText('Build W1D1')).toBeTruthy()
+    expect(queryByText(/GPP/)).toBeNull()
     expect(getByText('42 min')).toBeTruthy()
   })
 
@@ -125,5 +132,21 @@ describe('History tab', () => {
     const { queryByText, getByText } = render(<HistoryPage />, { wrapper: AllTheProviders })
     expect(queryByText('Lower Body Foundation')).toBeNull()
     expect(getByText(/no workouts yet/i)).toBeTruthy()
+  })
+
+  it.each(SPORT_SCHEMES)('sits on the %s instrument ground with no phase fill or Electric Blue', (scheme) => {
+    mockScheme = scheme
+    try {
+      mockUseQuery.mockReturnValue([session({ totalDurationSeconds: 42 * 60 })])
+      const { toJSON } = render(<HistoryPage />, { wrapper: AllTheProviders })
+      const root = toJSON() as unknown as Parameters<typeof paintedColors>[0]
+      expect(paint(root).backgroundColor).toBe(sportPaint(scheme).ground)
+      const fills = Object.values(PHASE_SWATCHES).flatMap((byPhase) => Object.values(byPhase).map((s) => s.fill))
+      const painted = paintedColors(root)
+      expect(painted.length).toBeGreaterThan(5)
+      expect(painted.filter((c) => [...fills, '#2563EB'].includes(c))).toEqual([])
+    } finally {
+      mockScheme = 'whiteboard'
+    }
   })
 })

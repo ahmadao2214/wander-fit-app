@@ -1,4 +1,5 @@
 import type { Phase } from '../types'
+import { phaseWord } from './sportScreen'
 
 /**
  * The end-of-block check-in, told truthfully (design audit F04, approved
@@ -23,7 +24,7 @@ export interface BlockRecap {
   sessions: string
   /** One plain sentence about what the numbers mean. */
   summary: string
-  /** Show the one celebration (confetti) for this outcome. */
+  /** The block was finished, so its title says so. Screens on the sport theme show no confetti. */
   celebrate: boolean
 }
 
@@ -36,7 +37,7 @@ export function blockRecap(phase: Phase, completed: number, expected: number): B
     case 'full':
       return {
         outcome,
-        title: `You finished ${phase}`,
+        title: `You finished ${phaseWord(phase)}`,
         sessions,
         summary: 'You trained every planned session in this block.',
         celebrate: true,
@@ -44,7 +45,7 @@ export function blockRecap(phase: Phase, completed: number, expected: number): B
     case 'partial':
       return {
         outcome,
-        title: `Your ${phase} block is over`,
+        title: `Your ${phaseWord(phase)} block is over`,
         sessions,
         summary: `You trained ${plural(completed, 'session')} of the ${expected} planned.`,
         celebrate: false,
@@ -52,7 +53,7 @@ export function blockRecap(phase: Phase, completed: number, expected: number): B
     case 'none':
       return {
         outcome,
-        title: `Your ${phase} block is over`,
+        title: `Your ${phaseWord(phase)} block is over`,
         sessions,
         summary: 'No sessions were logged in this block.',
         celebrate: false,
@@ -90,14 +91,14 @@ export function decisionCopy(
 ) {
   if (decision === 'repeat') {
     return {
-      label: `Repeat ${phase}`,
-      detail: `Run the ${phase} block again from week 1.`,
+      label: `Repeat ${phaseWord(phase)}`,
+      detail: `Run the ${phaseWord(phase)} block again from week 1.`,
     }
   }
   return {
-    label: `Move on to ${nextPhase}`,
+    label: `Move on to ${phaseWord(nextPhase)}`,
     detail: isFullCycleComplete
-      ? `Start a new cycle at ${nextPhase}, week 1.`
-      : `Start ${nextPhase} at week 1.`,
+      ? `Start a new cycle at ${phaseWord(nextPhase)}, week 1.`
+      : `Start ${phaseWord(nextPhase)} at week 1.`,
   }
 }

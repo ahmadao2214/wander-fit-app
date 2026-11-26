@@ -8,7 +8,9 @@ import {
   ScrollView,
   TextArea,
   Spinner,
+  Theme,
 } from 'tamagui'
+import { useSportScheme } from '../../hooks/useSportScheme'
 import { useRouter } from 'expo-router'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
@@ -17,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { KeyboardAvoidingView, Platform } from 'react-native'
 import { ArrowLeft, TrendingUp } from '@tamagui/lucide-icons'
 import { Title, Body, Supporting } from '../../components/Typography'
+import { phaseWord } from '../../lib/sportScreen'
 
 type Difficulty = 'too_easy' | 'just_right' | 'challenging' | 'too_hard'
 type EnergyLevel = 'low' | 'moderate' | 'high'
@@ -64,7 +67,7 @@ const ENERGY_OPTIONS: { value: EnergyLevel; label: string }[] = [
  * Captures how the phase felt: difficulty, energy, notes.
  * Data passed to results screen via route params.
  */
-export default function SelfAssessmentScreen() {
+function SelfAssessmentScreenContent() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
@@ -81,7 +84,7 @@ export default function SelfAssessmentScreen() {
   if (reassessmentStatus === undefined) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$primaryText" />
+        <Spinner size="large" color="$color" />
         <Supporting color="$color10">Loading...</Supporting>
       </YStack>
     )
@@ -124,7 +127,7 @@ export default function SelfAssessmentScreen() {
                 circular
               />
               <YStack flex={1}>
-                <Title accessibilityRole="header">How did {reassessmentStatus?.pendingForPhase} go?</Title>
+                <Title accessibilityRole="header">How did {phaseWord(reassessmentStatus?.pendingForPhase)} go?</Title>
               </YStack>
             </XStack>
 
@@ -170,7 +173,7 @@ export default function SelfAssessmentScreen() {
                     flex={1}
                     size="$4"
                     bg={energy === option.value ? '$primary' : '$surface'}
-                    color={energy === option.value ? 'white' : '$color11'}
+                    color={energy === option.value ? '$background' : '$color11'}
                     borderWidth={1}
                     borderColor={energy === option.value ? '$primary' : '$borderColor'}
                     fontFamily="$body"
@@ -205,14 +208,14 @@ export default function SelfAssessmentScreen() {
 
             {/* Skill Upgrade Preview */}
             {canUpgrade && reassessmentStatus?.nextSkillLevel && (
-              <Card p="$4" bg="$brand1" borderColor="$brand3" borderWidth={1} rounded="$4">
+              <Card p="$4" bg="$background" borderColor="$color" borderWidth={1} rounded="$4">
                 <XStack items="center" gap="$3">
-                  <TrendingUp size={24} color="$primaryText" />
+                  <TrendingUp size={24} color="$color" />
                   <YStack flex={1}>
-                    <Body fontWeight="700" color="$brand9">
+                    <Body fontWeight="700">
                       Skill level can go up
                     </Body>
-                    <Supporting color="$brand8">
+                    <Supporting color="$color10">
                       {reassessmentStatus.currentSkillLevel} → {reassessmentStatus.nextSkillLevel} if you move on
                     </Supporting>
                   </YStack>
@@ -225,7 +228,7 @@ export default function SelfAssessmentScreen() {
               width="100%"
               size="$5"
               bg={difficulty ? '$primary' : '$color4'}
-              color={difficulty ? 'white' : '$color10'}
+              color={difficulty ? '$background' : '$color10'}
               fontFamily="$body"
               fontWeight="700"
               rounded="$4"
@@ -248,5 +251,15 @@ export default function SelfAssessmentScreen() {
         </ScrollView>
       </YStack>
     </KeyboardAvoidingView>
+  )
+}
+
+/** On the basketball sport theme (issue #209): dark → chalkboard, light → whiteboard. */
+export default function SelfAssessmentScreen() {
+  const scheme = useSportScheme()
+  return (
+    <Theme name={scheme}>
+      <SelfAssessmentScreenContent />
+    </Theme>
   )
 }

@@ -1,28 +1,28 @@
 import { useEffect } from 'react'
-import { YStack, Button, Card, Spinner } from 'tamagui'
+import { YStack, Button, Card, Spinner, Theme } from 'tamagui'
+import { useSportScheme } from '../../hooks/useSportScheme'
 import { useRouter } from 'expo-router'
 import { useQuery } from 'convex/react'
-import { useReducedMotion } from 'react-native-reanimated'
 import { api } from '../../convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { ConfettiEffect } from '../../components/workout/ConfettiEffect'
 import { Display, Title, Body, Supporting, numeric } from '../../components/Typography'
 import { blockDates, blockEnd, blockRecap } from '../../lib/reassessment'
+import { phaseWord } from '../../lib/sportScreen'
 
 /**
  * Block recap, screen 1 of the end-of-block check-in.
  *
- * Says what actually happened in the block: a finished block is celebrated
- * once, and a block that ended with sessions missed is stated plainly
- * (design audit F04). Everything is on screen at once, with no staged
- * entrances (F11). Redirects to Today if no check-in is pending.
+ * Says what actually happened in the block: a finished block says so in its
+ * title, and a block that ended with sessions missed is stated plainly
+ * (design audit F04). On the sport theme there is no confetti (issue #209).
+ * Everything is on screen at once, with no staged entrances (F11). Redirects
+ * to Today if no check-in is pending.
  */
-export default function CelebrationScreen() {
+function CelebrationScreenContent() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
-  const reduceMotion = useReducedMotion()
 
   const reassessmentStatus = useQuery(
     api.userPrograms.getReassessmentStatus,
@@ -39,7 +39,7 @@ export default function CelebrationScreen() {
   if (reassessmentStatus === undefined) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$primaryText" />
+        <Spinner size="large" color="$color" />
         <Supporting color="$color10">Loading...</Supporting>
       </YStack>
     )
@@ -55,9 +55,6 @@ export default function CelebrationScreen() {
 
   return (
     <YStack flex={1} bg="$background" testID={`block-recap-${recap.outcome}`}>
-      {/* One celebration, only for a finished block, and none with Reduce Motion on */}
-      {recap.celebrate && !reduceMotion && <ConfettiEffect trigger />}
-
       <YStack
         flex={1}
         px="$4"
@@ -88,13 +85,13 @@ export default function CelebrationScreen() {
 
         <YStack gap="$3">
           <Supporting color="$color11">
-            A short check-in, then you choose: move on to {reassessmentStatus.nextPhase} or repeat {phase}.
+            A short check-in, then you choose: move on to {phaseWord(reassessmentStatus.nextPhase)} or repeat {phaseWord(phase)}.
           </Supporting>
           <Button
             width="100%"
             size="$5"
             bg="$primary"
-            color="white"
+            color="$background"
             fontFamily="$body"
             fontWeight="700"
             rounded="$4"
@@ -107,5 +104,15 @@ export default function CelebrationScreen() {
         </YStack>
       </YStack>
     </YStack>
+  )
+}
+
+/** On the basketball sport theme (issue #209): dark → chalkboard, light → whiteboard. */
+export default function CelebrationScreen() {
+  const scheme = useSportScheme()
+  return (
+    <Theme name={scheme}>
+      <CelebrationScreenContent />
+    </Theme>
   )
 }

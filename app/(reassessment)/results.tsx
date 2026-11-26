@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { YStack, XStack, Button, Card, ScrollView, Spinner } from 'tamagui'
+import { YStack, XStack, Button, Card, ScrollView, Spinner, Theme } from 'tamagui'
+import { useSportScheme } from '../../hooks/useSportScheme'
+import { phaseWord } from '../../lib/sportScreen'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api'
@@ -23,7 +25,7 @@ const DIFFICULTY_LABELS: Record<string, string> = {
  * phase or repeat this one. Nothing advances on its own: there is no timed
  * redirect, and confirming goes straight to Today (design audit F04, F11).
  */
-export default function ResultsScreen() {
+function ResultsScreenContent() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
@@ -48,7 +50,7 @@ export default function ResultsScreen() {
   if (reassessmentStatus === undefined) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$primaryText" />
+        <Spinner size="large" color="$color" />
         <Supporting color="$color10">Loading...</Supporting>
       </YStack>
     )
@@ -94,7 +96,7 @@ export default function ResultsScreen() {
   }
 
   const summaryRows: { label: string; value: string }[] = [
-    { label: `${phase} block`, value: recap.sessions },
+    { label: `${phaseWord(phase)} block`, value: recap.sessions },
     {
       label: 'How it felt',
       value: `${DIFFICULTY_LABELS[difficulty] ?? difficulty}${energy ? ` · ${energy} energy` : ''}`,
@@ -164,11 +166,11 @@ export default function ResultsScreen() {
                   key={option}
                   testID={`decision-${option}`}
                   p="$4"
-                  bg={selected ? '$brand1' : '$surface'}
+                  bg="$surface"
                   rounded="$4"
                   borderWidth={2}
-                  borderColor={selected ? '$primary' : '$borderColor'}
-                  pressStyle={{ bg: selected ? '$brand1' : '$surfaceHover' }}
+                  borderColor={selected ? '$color' : '$borderColor'}
+                  pressStyle={{ bg: '$surfaceHover' }}
                   onPress={() => setDecision(option)}
                   accessible
                   accessibilityRole="radio"
@@ -191,12 +193,12 @@ export default function ResultsScreen() {
                       height={24}
                       rounded="$10"
                       borderWidth={2}
-                      borderColor={selected ? '$primary' : '$color8'}
-                      bg={selected ? '$primary' : 'transparent'}
+                      borderColor={selected ? '$color' : '$color8'}
+                      bg={selected ? '$color' : 'transparent'}
                       items="center"
                       justify="center"
                     >
-                      {selected && <Check size={14} color="white" strokeWidth={3} />}
+                      {selected && <Check size={14} color="$background" strokeWidth={3} />}
                     </YStack>
                   </XStack>
                 </Card>
@@ -215,7 +217,7 @@ export default function ResultsScreen() {
             width="100%"
             size="$5"
             bg={decision ? '$primary' : '$color4'}
-            color={decision ? 'white' : '$color10'}
+            color={decision ? '$background' : '$color10'}
             fontFamily="$body"
             fontWeight="700"
             rounded="$4"
@@ -227,13 +229,23 @@ export default function ResultsScreen() {
             {isSubmitting
               ? 'Saving...'
               : decision === 'repeat'
-                ? `Start ${phase} again`
+                ? `Start ${phaseWord(phase)} again`
                 : decision === 'move_on'
-                  ? `Start ${nextPhase}`
+                  ? `Start ${phaseWord(nextPhase)}`
                   : 'Choose an option'}
           </Button>
         </YStack>
       </ScrollView>
     </YStack>
+  )
+}
+
+/** On the basketball sport theme (issue #209): dark → chalkboard, light → whiteboard. */
+export default function ResultsScreen() {
+  const scheme = useSportScheme()
+  return (
+    <Theme name={scheme}>
+      <ResultsScreenContent />
+    </Theme>
   )
 }
