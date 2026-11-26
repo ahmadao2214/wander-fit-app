@@ -4,7 +4,7 @@ When a block's time runs out, `advanceToNextDay` sets `reassessmentPendingForPha
 
 ## Behavior
 
-- **Today** shows "Your GPP block is over" with a **Check in** button while a check-in is pending. The prompt after the last workout of a block says the same, with no trophy.
+- **Today** shows "Your Build block is over" (the phase as a word: Build, Train or Sharpen) with a **Check in** button while a check-in is pending. The prompt after the last workout of a block says the same, with no trophy.
 - **Recap** (`/(reassessment)/celebration`, root testID `block-recap-<none|partial|full>`) shows the sessions done out of the sessions planned, the block length and its dates. Only a block with every planned session done says "You finished GPP" and shows confetti, and never with Reduce Motion on. Zero sessions reads "No sessions were logged in this block."
 - **Check-in** asks how the block felt (required), energy and notes (optional). **Maxes** can be updated or skipped.
 - **Decision** (`/(reassessment)/results`) summarizes the check-in and offers **Move on to SPP** (`decision-move_on`) or **Repeat GPP** (`decision-repeat`). Nothing is preselected and the confirm button (`decision-confirm`) reads "Choose an option" until one is. Confirming saves and goes straight to Today. There is no success screen and no timed redirect.
@@ -12,7 +12,7 @@ When a block's time runs out, `advanceToNextDay` sets `reassessmentPendingForPha
 
 ## Web flow
 
-`node scripts/verify/run.mjs all reassessment` runs `.maestro/web/reassessment.yaml` with a `phase-end` persona: a GPP block that ran its full length with no sessions logged and the check-in pending. It opens the check-in from Today, checks the recap shows "0 of … sessions" with no congratulations, answers "Just right", skips maxes, checks nothing is preselected, chooses Repeat GPP, and checks Today is back at GPP W1 D1 with no check-in banner. Screenshots: `01-today-check-in`, `02-recap`, `03-decision`, `04-today-repeated`.
+`node scripts/verify/run.mjs all reassessment` runs `.maestro/web/reassessment.yaml` with a `phase-end` persona: a GPP block that ran its full length with no sessions logged and the check-in pending. It opens the check-in from Today, checks the recap shows "0 of … sessions" with no congratulations, answers "Just right", skips maxes, checks nothing is preselected, chooses Repeat GPP, and checks Today is back at Build W1 D1 with no check-in banner. Screenshots: `01-today-check-in`, `02-recap`, `03-decision`, `04-today-repeated`.
 
 ## Unit coverage
 

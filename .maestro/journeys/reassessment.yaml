@@ -8,7 +8,7 @@ url: ${VERIFY_URL}
 - runFlow: ../subflows/_open-sign-in.yaml
 - runFlow: ../subflows/_sign-in.yaml
 - extendedWaitUntil:
-    visible: "Your GPP block is over"
+    visible: "Your Build block is over"
     timeout: 90000
 - takeScreenshot: 01-today-check-in
 - tapOn: "Check in"
@@ -64,12 +64,12 @@ url: ${VERIFY_URL}
     id: "Repeat GPP"
 - tapOn: "Start GPP again"
 
-# Today: GPP again from week 1, and the check-in is gone
+# Today: Build again from week 1, and the check-in is gone
 - extendedWaitUntil:
     visible:
       id: today-workout-card
     timeout: 30000
-- assertNotVisible: "Your GPP block is over"
-- assertVisible: "GPP W1 D1.*"
+- assertNotVisible: "Your Build block is over"
+- assertVisible: "Build W1 D1.*"
 - takeScreenshot: 04-today-repeated
 - runFlow: ../subflows/_evidence-stop.yaml

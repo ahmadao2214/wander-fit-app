@@ -5,7 +5,7 @@ import { TamaguiProvider } from 'tamagui'
 import config from '../../tamagui.config'
 
 // A two-week phase: the athlete is in week 2, which looks up template week 4
-const programState = {
+const programState: Record<string, unknown> = {
   phase: 'GPP',
   week: 2,
   day: 1,
@@ -24,6 +24,7 @@ const todayWorkout = {
 }
 
 let mockCurrentSession: any = null
+let mockScheme: 'chalkboard' | 'whiteboard' = 'whiteboard'
 let mockProgress: any = { daysCompleted: 0, weeksOnPlan: 0 }
 const mockAbandon = jest.fn().mockResolvedValue({ success: true })
 const mockPush = jest.fn()
@@ -66,9 +67,12 @@ jest.mock('../../hooks/useAuth', () => ({
   useAuth: () => ({ user: { _id: 'user_1', name: 'Test Athlete' }, isLoading: false }),
 }))
 jest.mock('../../components/SignOutButton', () => ({ SignOutButton: () => null }))
+jest.mock('../../hooks/useSportScheme', () => ({ useSportScheme: () => mockScheme }))
 
-import { fireEvent } from '@testing-library/react-native'
+import { fireEvent, within } from '@testing-library/react-native'
 import AthleteDashboard from '../(athlete)/index'
+import { PHASE_SWATCHES } from '../../lib/phase'
+import { SPORT_SCHEMES, nearestBackground, paint, paintedColors, sportPaint } from '../../jest/sportPaint'
 
 const AllTheProviders = ({ children }: { children: React.ReactNode }) => (
   <TamaguiProvider config={config}>{children}</TamaguiProvider>
@@ -90,8 +94,72 @@ describe('Today card', () => {
   it("shows the athlete's scheduled week, not the template's lookup week", () => {
     const { getByTestId, getByText, queryByText } = render(<AthleteDashboard />, { wrapper: AllTheProviders })
     expect(getByTestId('today-workout-meta')).toBeTruthy()
-    expect(getByText('GPP W2 D1')).toBeTruthy()
+    expect(getByText('Build W2 D1')).toBeTruthy()
+    expect(queryByText(/GPP/)).toBeNull()
     expect(queryByText(/W4/)).toBeNull()
+  })
+
+  describe('sport theme', () => {
+    afterEach(() => {
+      mockScheme = 'whiteboard'
+      programState.seasonStartsAt = undefined
+    })
+
+    it.each(SPORT_SCHEMES)('paints the %s instrument: ground, words, neutral button, marker week', (scheme) => {
+      mockScheme = scheme
+      const colors = sportPaint(scheme)
+      const { getByTestId, getByText } = render(<AthleteDashboard />, { wrapper: AllTheProviders })
+      expect(paint(getByTestId('today-screen')).backgroundColor).toBe(colors.ground)
+      expect(paint(getByTestId('scorebug-week-value')).color).toBe(colors.marker)
+      expect(paint(getByTestId('scorebug-phase-value')).color).toBe(colors.words)
+      const start = getByText('Start Workout')
+      expect(paint(start).color).toBe(colors.ground)
+      expect(nearestBackground(start)).toBe(colors.button)
+    })
+
+    it.each(SPORT_SCHEMES)('keeps phase fills and Electric Blue off the %s screen', (scheme) => {
+      mockScheme = scheme
+      const colors = sportPaint(scheme)
+      const { getByTestId, getAllByTestId } = render(<AthleteDashboard />, { wrapper: AllTheProviders })
+      const fills = Object.values(PHASE_SWATCHES).flatMap((byPhase) => Object.values(byPhase).map((s) => s.fill))
+      const painted = paintedColors(getByTestId('today-screen'))
+      expect(painted.length).toBeGreaterThan(10)
+      expect(painted.filter((c) => [...fills, '#2563EB'].includes(c))).toEqual([])
+      for (const segment of [...getAllByTestId('week-segment-done'), ...getAllByTestId('week-segment-current')]) {
+        expect(paint(segment).backgroundColor).toBe(colors.words)
+      }
+    })
+
+    it('reads the plan week, the phase as words and the plan count with no set season', () => {
+      const { getByTestId, queryByText } = render(<AthleteDashboard />, { wrapper: AllTheProviders })
+      const bug = within(getByTestId('today-scorebug'))
+      // Phase week 2 of GPP, two weeks a phase: plan week 2 of 6
+      expect(bug.getByTestId('scorebug-week-value').props.children).toBe('2')
+      expect(bug.getByText('Build 1/3')).toBeTruthy()
+      expect(bug.getByText('Plan')).toBeTruthy()
+      expect(bug.getByText('2 of 6')).toBeTruthy()
+      expect(queryByText(/GPP|SPP|SSP|SCORE/)).toBeNull()
+    })
+
+    it('counts down to the first game when the season is dated', () => {
+      jest.useFakeTimers({ now: new Date(2026, 10, 14, 9, 0, 0) })
+      try {
+        programState.seasonStartsAt = new Date(2026, 11, 26, 9, 0, 0).getTime()
+        const { getByTestId } = render(<AthleteDashboard />, { wrapper: AllTheProviders })
+        const bug = within(getByTestId('today-scorebug'))
+        expect(bug.getByText('1st game')).toBeTruthy()
+        expect(bug.getByText('6 wks')).toBeTruthy()
+      } finally {
+        jest.useRealTimers()
+      }
+    })
+
+    it('opens Program from the scorebug', () => {
+      mockPush.mockClear()
+      const { getByTestId } = render(<AthleteDashboard />, { wrapper: AllTheProviders })
+      fireEvent.press(getByTestId('today-scorebug'))
+      expect(mockPush).toHaveBeenCalledWith('/(athlete)/program')
+    })
   })
 
   describe('date heading', () => {

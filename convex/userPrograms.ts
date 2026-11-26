@@ -4,6 +4,7 @@ import { DEFAULT_WEEKS_PER_PHASE, mapUserWeekToTemplateWeek } from "./weekMappin
 import { programShape } from "./programShape";
 import { anchorsAfterCheckIn } from "./blockCompletion";
 import { weeksOnPlan, localDayArgs } from "../lib/weeksOnPlan";
+import { seasonStartsAt } from "../lib/sportScreen";
 
 /**
  * User Programs - Active State Management
@@ -201,6 +202,8 @@ export const getCurrentProgramState = query({
       // Program duration
       totalProgramWeeks: program.totalProgramWeeks ?? null,
       weeksPerPhase: program.weeksPerPhase ?? null,
+      // When the first game is, from the intake's weeks until season; null with no set season
+      seasonStartsAt: intake ? seasonStartsAt(intake.completedAt, intake.weeksUntilSeason) : null,
       // Sport and category info
       sportName,
       categoryName,
