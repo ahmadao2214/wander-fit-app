@@ -14,8 +14,6 @@ import {
   RotateCcw,
   Info,
 } from '@tamagui/lucide-icons'
-import { phaseTokens } from '../lib/phase'
-import type { Phase } from '../types'
 
 /**
  * Exercise type from the template (with optional intensity scaling)
@@ -54,8 +52,6 @@ interface ExerciseAccordionItemProps {
   onToggle: () => void
   drag?: () => void
   isActive?: boolean
-  /** Training phase: colors the order number and drag state */
-  trainingPhase?: Phase
 }
 
 /**
@@ -73,9 +69,7 @@ export function ExerciseAccordionItem({
   onToggle,
   drag,
   isActive,
-  trainingPhase,
 }: ExerciseAccordionItemProps) {
-  const phase = phaseTokens(trainingPhase)
   const exerciseDetails = exercise.exercise
 
   // Use scaled values if available, otherwise fall back to base values
@@ -85,7 +79,7 @@ export function ExerciseAccordionItem({
 
   return (
     <Card
-      borderColor={isActive ? phase.fill : "$borderColor"}
+      borderColor={isActive ? "$color" : "$borderColor"}
       borderWidth={isActive ? 2 : 1}
       bg={isActive ? "$color2" : "$background"}
       elevation={isActive ? 4 : 0}
@@ -109,22 +103,22 @@ export function ExerciseAccordionItem({
               styles.dragHandleInner,
               isActive && styles.dragHandleActive
             ]}>
-              <GripVertical size={20} color={isActive ? phase.text : "$color9"} />
+              <GripVertical size={20} color={isActive ? "$color" : "$color9"} />
             </View>
           </Pressable>
         )}
 
-        {/* Order Number */}
+        {/* Order Number, in the words colour: no phase fill */}
         <Card
           width={28}
           height={28}
-          bg={phase.fill}
+          bg="$color"
           rounded="$10"
           items="center"
           justify="center"
           p={0}
         >
-          <Text color={phase.onFill} fontWeight="700" fontSize="$2">
+          <Text color="$background" fontWeight="700" fontSize="$2">
             {index + 1}
           </Text>
         </Card>

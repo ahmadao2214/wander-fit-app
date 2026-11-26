@@ -2,6 +2,8 @@ import React from 'react'
 import { render, fireEvent } from '@testing-library/react-native'
 import { TamaguiProvider } from 'tamagui'
 import config from '../../../tamagui.config'
+import { PHASE_SWATCHES } from '../../../lib/phase'
+import { paintedColors } from '../../../jest/sportPaint'
 import { CalendarWorkoutCard, CalendarWorkoutCardProps } from '../CalendarWorkoutCard'
 
 // Jest's mocked screen reports fontScale 2; phones default to 1
@@ -50,12 +52,15 @@ describe('CalendarWorkoutCard', () => {
       expect(getByText('Lower Body Foundation')).toBeTruthy()
     })
 
-    it('shows phase by color only, with no phase label on the card', () => {
-      const { queryByText } = render(
+    it('shows no phase code and no phase colour on the card', () => {
+      const { queryByText, getByLabelText } = render(
         <CalendarWorkoutCard {...defaultProps} />,
         { wrapper: AllTheProviders }
       )
-      expect(queryByText('GPP')).toBeNull()
+      expect(queryByText(/GPP|Build/)).toBeNull()
+      const fills = Object.values(PHASE_SWATCHES).flatMap((byPhase) => Object.values(byPhase).map((s) => s.fill))
+      const painted = paintedColors(getByLabelText(/^Build workout/))
+      expect(painted.filter((c) => fills.includes(c))).toEqual([])
     })
 
     it('names the phase, workout and time for screen readers', () => {
@@ -63,7 +68,7 @@ describe('CalendarWorkoutCard', () => {
         <CalendarWorkoutCard {...defaultProps} isToday />,
         { wrapper: AllTheProviders }
       )
-      expect(getByLabelText('GPP workout, Lower Body Foundation, about 45 minutes, 8 exercises, today')).toBeTruthy()
+      expect(getByLabelText('Build workout, Lower Body Foundation, about 45 minutes, 8 exercises, today')).toBeTruthy()
     })
 
     it('shows how many main exercises, not a cut-off list of names', () => {
@@ -101,7 +106,7 @@ describe('CalendarWorkoutCard', () => {
         <CalendarWorkoutCard {...defaultProps} moveTargets={moveTargets} onMove={onMove} />,
         { wrapper: AllTheProviders }
       )
-      const card = getByLabelText(/^GPP workout/)
+      const card = getByLabelText(/^Build workout/)
       expect(card.props.accessibilityActions).toEqual([
         { name: '2026-11-18', label: 'Move to Wednesday' },
         { name: '2026-11-19', label: 'Move to Thursday' },
@@ -117,7 +122,7 @@ describe('CalendarWorkoutCard', () => {
           <CalendarWorkoutCard {...defaultProps} {...state} moveTargets={moveTargets} onMove={jest.fn()} />,
           { wrapper: AllTheProviders }
         )
-        expect({ state, actions: getByLabelText(/^GPP workout/).props.accessibilityActions }).toEqual({ state, actions: undefined })
+        expect({ state, actions: getByLabelText(/^Build workout/).props.accessibilityActions }).toEqual({ state, actions: undefined })
         unmount()
       }
     })
@@ -136,14 +141,14 @@ describe('CalendarWorkoutCard', () => {
         <CalendarWorkoutCard {...defaultProps} />,
         { wrapper: AllTheProviders }
       )
-      expect(getByLabelText(/^GPP workout/).props.accessibilityRole).toBe('button')
+      expect(getByLabelText(/^Build workout/).props.accessibilityRole).toBe('button')
     })
 
-    it('puts SPP and SSP in the accessibility label', () => {
+    it('puts Train and Sharpen in the accessibility label', () => {
       const spp = render(<CalendarWorkoutCard {...defaultProps} phase="SPP" />, { wrapper: AllTheProviders })
-      expect(spp.getByLabelText(/^SPP workout/)).toBeTruthy()
+      expect(spp.getByLabelText(/^Train workout/)).toBeTruthy()
       const ssp = render(<CalendarWorkoutCard {...defaultProps} phase="SSP" isLocked />, { wrapper: AllTheProviders })
-      expect(ssp.getByLabelText(/^SSP workout.*locked$/)).toBeTruthy()
+      expect(ssp.getByLabelText(/^Sharpen workout.*locked$/)).toBeTruthy()
     })
   })
 

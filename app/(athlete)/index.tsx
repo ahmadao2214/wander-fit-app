@@ -1,4 +1,4 @@
-import { AlertDialog, YStack, XStack, Text, Card, Button, ScrollView, Spinner } from 'tamagui'
+import { AlertDialog, YStack, XStack, Text, Card, Button, ScrollView, Spinner, Theme } from 'tamagui'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from 'convex/_generated/api'
 import { useAuth } from '../../hooks/useAuth'
@@ -18,7 +18,10 @@ import { useCurrentDate } from '../../hooks/useCurrentDate'
 import { workoutMetaLine } from '../../lib/workoutMeta'
 import { DEFAULT_WEEKS_PER_PHASE } from '../../lib/calendarUtils'
 import { pausedLabel } from '../../lib/sessionTiming'
-import { PHASE_NAMES, phaseTokens } from '../../lib/phase'
+import { PHASES } from '../../lib/phase'
+import { phaseStep, phaseWord, programWeek, todaySeason } from '../../lib/sportScreen'
+import { useSportScheme } from '../../hooks/useSportScheme'
+import { TodayScorebug } from '../../components/today/TodayScorebug'
 import type { Phase } from '../../types'
 import { Display, Title, Body, Supporting, Caption, numeric } from '../../components/Typography'
 
@@ -47,13 +50,13 @@ function PhaseProgress({
     <YStack gap="$2.5" testID="phase-progress">
       {/* The full name wraps on narrow phones or large text; the week count keeps its width */}
       <XStack justify="space-between" items="flex-end" gap="$3">
-        <Body fontWeight="600" style={{ flex: 1 }}>{PHASE_NAMES[phase]}</Body>
+        <Body fontWeight="600" style={{ flex: 1 }}>{phaseWord(phase)}</Body>
         <Supporting fontWeight="600" style={[numeric, { flexShrink: 0 }]}>
           Week {Math.min(week, segments.length)} of {segments.length}
         </Supporting>
       </XStack>
-      {/* Done and current weeks are solid; the current one is taller, so it reads
-          by shape instead of a faded fill that disappeared in dark mode */}
+      {/* Done and current weeks are solid in the words colour; the current one is
+          taller, so it reads by shape. No phase fill: the phase is words. */}
       <XStack gap="$1.5" items="center" accessibilityLabel={`Week ${week} of ${segments.length}`}>
         {segments.map((segment, index) => (
           <YStack
@@ -62,7 +65,7 @@ function PhaseProgress({
             flex={1}
             height={segment === 'current' ? 10 : 6}
             rounded="$10"
-            bg={segment === 'upcoming' ? '$color4' : phaseTokens(phase).fill}
+            bg={segment === 'upcoming' ? '$color4' : '$color'}
           />
         ))}
       </XStack>
@@ -169,6 +172,17 @@ function DiscardPausedWorkout({ onDiscard }: { onDiscard: () => Promise<void> })
  * 
  */
 export default function AthleteDashboard() {
+  // Today moved onto the basketball sport theme (issue #209): instrument ground,
+  // chalk or ink words, the neutral button face, the marker for the week.
+  const scheme = useSportScheme()
+  return (
+    <Theme name={scheme}>
+      <TodayScreen />
+    </Theme>
+  )
+}
+
+function TodayScreen() {
   const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
   const insets = useSafeAreaInsets()
@@ -213,14 +227,11 @@ export default function AthleteDashboard() {
   // Discard a paused session (the athlete's explicit choice; Exit only pauses)
   const abandonSession = useMutation(api.gppWorkoutSessions.abandonSession)
 
-  // Phase colors: one brand hue, deepening GPP → SSP (lib/phase.ts)
-  const phase = phaseTokens(programState?.phase)
-
   // Loading state
   if (authLoading || programState === undefined) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$primaryText" />
+        <Spinner size="large" color="$color" />
         <Text color="$color10" fontFamily="$body">
           Loading your program...
         </Text>
@@ -242,14 +253,15 @@ export default function AthleteDashboard() {
   if (!programState) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$5" px="$4">
-        <YStack 
-          bg="$brand2" 
-          p="$4" 
-          rounded="$10" 
-          items="center" 
+        <YStack
+          borderWidth={1}
+          borderColor="$color"
+          p="$4"
+          rounded="$10"
+          items="center"
           justify="center"
         >
-          <Target size={48} color="$primaryText" />
+          <Target size={48} color="$color" />
         </YStack>
         <YStack items="center" gap="$2">
           <Display text="center">Complete your setup</Display>
@@ -265,7 +277,7 @@ export default function AthleteDashboard() {
         <Button
           size="$5"
           bg="$primary"
-          color="white"
+          color="$background"
           fontFamily="$body" fontWeight="700"
           pressStyle={{ bg: '$primaryPress', scale: 0.98 }}
           onPress={() => router.replace('/')}
@@ -284,12 +296,14 @@ export default function AthleteDashboard() {
     todaySession.status === 'completed' &&
     todayWorkout
 
+  const weeksPerPhase = programState.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE
+
   const cardWorkoutName = pausedElsewhere
     ? (pausedSession.templateSnapshot?.name ?? pausedSession.template?.name ?? 'Your workout')
     : todayWorkout?.name
 
   return (
-    <YStack flex={1} bg="$background">
+    <YStack flex={1} bg="$background" testID="today-screen">
       <ScrollView flex={1} showsVerticalScrollIndicator={false}>
         <YStack
           gap="$5"
@@ -311,36 +325,46 @@ export default function AthleteDashboard() {
             <Display>{todayHeading(today)}</Display>
           </YStack>
 
+          {/* The scorebug: where the athlete is in the plan, and how far the first game is */}
+          <TodayScorebug
+            week={programWeek(programState.phase, programState.week, weeksPerPhase)}
+            phase={phaseWord(programState.phase)}
+            phaseStep={phaseStep(programState.phase)}
+            phaseOf={PHASES.length}
+            season={todaySeason({
+              seasonStartsAt: programState.seasonStartsAt,
+              week: programWeek(programState.phase, programState.week, weeksPerPhase),
+              programWeeks: weeksPerPhase * PHASES.length,
+              now: today,
+            })}
+            onPress={() => router.push('/(athlete)/program')}
+          />
+
           {/* Reassessment Banner */}
           {reassessmentStatus?.reassessmentPending && (
             <Card
-              bg="$brand1"
+              bg="$background"
               p="$4"
               rounded="$4"
-              borderLeftWidth={4}
-              borderLeftColor="$primary"
+              borderWidth={1}
+              borderColor="$color"
               borderCurve="continuous"
+              testID="today-reassessment"
             >
               <XStack items="center" gap="$3">
-                <YStack
-                  bg="$primary"
-                  p="$2"
-                  rounded="$10"
-                >
-                  <Bell color="white" size={20} />
-                </YStack>
+                <Bell color="$color" size={20} />
                 <YStack flex={1}>
-                  <Body fontWeight="600" color="$brand9">
-                    Your {reassessmentStatus.pendingForPhase} block is over
+                  <Body fontWeight="600">
+                    Your {phaseWord(reassessmentStatus.pendingForPhase)} block is over
                   </Body>
-                  <Supporting color="$brand8">
+                  <Supporting color="$color10">
                     Check in to choose what's next
                   </Supporting>
                 </YStack>
                 <Button
                   size="$3"
                   bg="$primary"
-                  color="white"
+                  color="$background"
                   fontFamily="$body" fontWeight="700"
                   rounded="$3"
                   pressStyle={{ bg: '$primaryPress' }}
@@ -357,16 +381,15 @@ export default function AthleteDashboard() {
           {/* Today's Workout Card */}
           <Card
             testID="today-workout-card"
-            bg={isCompleted ? '$surface' : '$brand1'}
-            borderWidth={isCompleted ? 1 : 0}
-            borderColor="$borderColor"
+            bg="$background"
+            borderWidth={1}
+            borderColor={isCompleted ? '$borderColor' : '$color'}
             p="$5"
             rounded="$5"
           >
             <YStack gap="$4">
               <YStack gap="$1.5">
                 <XStack justify="space-between" items="center">
-                  {/* $color11 for a little more weight on the card's $brand1 tint */}
                   <Supporting color="$color11" fontWeight="600">
                     {pausedElsewhere ? 'Paused workout' : "Today's workout"}
                   </Supporting>
@@ -382,10 +405,10 @@ export default function AthleteDashboard() {
                 <Title>{cardWorkoutName || 'Loading…'}</Title>
                 {todayWorkout && !pausedElsewhere && (
                   <Supporting testID="today-workout-meta">
-                    <Supporting fontWeight="600" color={phase.text}>
+                    <Supporting fontWeight="600" color="$color">
                       {/* The athlete's scheduled position. todayWorkout.week is the template's
                           lookup week, which differs when phases are shorter than 4 weeks. */}
-                      {programState.phase} W{programState.week} D{programState.day}
+                      {phaseWord(programState.phase)} W{programState.week} D{programState.day}
                     </Supporting>
                     {' · '}
                     {workoutMetaLine({
@@ -425,7 +448,7 @@ export default function AthleteDashboard() {
                   <Button
                     size="$5"
                     bg="$primary"
-                    color="white"
+                    color="$background"
                     icon={RotateCcw}
                     fontSize={18}
                     fontFamily="$body" fontWeight="700"
@@ -450,7 +473,7 @@ export default function AthleteDashboard() {
                 <Button
                   size="$5"
                   bg="$primary"
-                  color="white"
+                  color="$background"
                   icon={Play}
                   fontFamily="$body" fontWeight="700"
                   rounded="$4"
@@ -472,7 +495,7 @@ export default function AthleteDashboard() {
           <PhaseProgress
             phase={programState.phase}
             week={programState.week}
-            weeksPerPhase={programState.weeksPerPhase ?? DEFAULT_WEEKS_PER_PHASE}
+            weeksPerPhase={weeksPerPhase}
             caption={
               progress
                 ? progressCaption({ workoutsCompleted: progress.daysCompleted })

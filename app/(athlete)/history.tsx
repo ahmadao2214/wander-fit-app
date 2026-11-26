@@ -1,4 +1,6 @@
-import { YStack, XStack, Text, Card, Button, ScrollView, Spinner } from 'tamagui'
+import { YStack, XStack, Text, Card, Button, ScrollView, Spinner, Theme } from 'tamagui'
+import { useSportScheme } from '../../hooks/useSportScheme'
+import { phaseWord } from '../../lib/sportScreen'
 import { useQuery } from 'convex/react'
 import { useRouter } from 'expo-router'
 import { api } from 'convex/_generated/api'
@@ -28,7 +30,7 @@ import { useCurrentDate } from '../../hooks/useCurrentDate'
  * - Workout name and phase
  * - Completion status
  */
-export default function HistoryPage() {
+function HistoryPageContent() {
   const { user, isLoading: authLoading } = useAuth()
   const insets = useSafeAreaInsets()
   // The athlete's local day, so weeks on plan follow their calendar
@@ -52,7 +54,7 @@ export default function HistoryPage() {
   if (authLoading) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$primaryText" />
+        <Spinner size="large" color="$color" />
         <Text color="$color10" fontFamily="$body">
           Loading history...
         </Text>
@@ -154,7 +156,7 @@ export default function HistoryPage() {
                           <XStack items="center" gap="$1">
                             <Dumbbell size={13} color="$color10" />
                             <Caption>
-                              {session.templateSnapshot.phase} W{session.templateSnapshot.week}D{session.templateSnapshot.day}
+                              {phaseWord(session.templateSnapshot.phase)} W{session.templateSnapshot.week}D{session.templateSnapshot.day}
                             </Caption>
                           </XStack>
                         )}
@@ -228,7 +230,7 @@ function HistoryEmptyState() {
       <Button
         size="$4"
         bg="$primary"
-        color="white"
+        color="$background"
         fontFamily="$body"
         fontWeight="600"
         rounded="$4"
@@ -238,5 +240,15 @@ function HistoryEmptyState() {
         Go to today's workout
       </Button>
     </YStack>
+  )
+}
+
+/** On the basketball sport theme (issue #209): dark → chalkboard, light → whiteboard. */
+export default function HistoryPage() {
+  const scheme = useSportScheme()
+  return (
+    <Theme name={scheme}>
+      <HistoryPageContent />
+    </Theme>
   )
 }

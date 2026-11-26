@@ -1,5 +1,7 @@
-import { YStack, Text, Spinner } from 'tamagui'
-import { useCallback } from 'react'
+import { YStack, Text, Spinner, Theme } from 'tamagui'
+import { useCallback, useMemo } from 'react'
+import { StyleSheet, View } from 'react-native'
+import { SvgXml } from 'react-native-svg'
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
@@ -7,6 +9,30 @@ import { useAuth } from '../../hooks/useAuth'
 import { WorkoutCalendar } from '../../components/calendar'
 import { ProgramSeasonHeader } from '../../components/program/ProgramSeasonHeader'
 import type { Id } from 'convex/_generated/dataModel'
+import { useSportScheme } from '../../hooks/useSportScheme'
+import { sportTheme } from '../../lib/sportTokens'
+import { renderOriginalPlay } from '../../lib/originalPlay'
+import type { SportThemeName } from '../../lib/sportTamaguiTheme'
+
+/**
+ * The board behind Program: the play already drawn on the board ground, the
+ * marker's three paths at rest. It never animates, and it carries no athlete
+ * and no score. It sits under the header and the calendar and takes no touches.
+ */
+export function ProgramBoard({ scheme }: { scheme: SportThemeName }) {
+  const xml = useMemo(() => renderOriginalPlay(scheme, 'long'), [scheme])
+  return (
+    <View
+      pointerEvents="none"
+      style={StyleSheet.absoluteFill}
+      testID="program-board"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      <SvgXml xml={xml} width="100%" height="100%" preserveAspectRatio="xMidYMid slice" />
+    </View>
+  )
+}
 
 /**
  * Program Tab - Workout Calendar View
@@ -18,7 +44,7 @@ import type { Id } from 'convex/_generated/dataModel'
  * - Week view: 7-day horizontal grid with workout cards
  * - Month view: Full month grid with compact indicators
  * - Navigation between weeks/months
- * - Phase color coding (GPP blue, SPP orange, SSP green)
+ * - Phases as words (Build, Train, Sharpen); no phase colours
  * - Progress tracking with completion status
  *
  * UX Model: "Start = Swap"
@@ -27,6 +53,22 @@ import type { Id } from 'convex/_generated/dataModel'
  * - Drag-drop for manual schedule adjustments (future)
  */
 export default function ProgramPage() {
+  // Program is the board (issue #209): the sport theme for words and buttons,
+  // and its own ground, the board surface, under the drawn play. The theme's
+  // background stays the instrument ground for everything else.
+  const scheme = useSportScheme()
+  const board = sportTheme('basketball', scheme).boardSurface.hex
+  return (
+    <Theme name={scheme}>
+      <YStack flex={1} style={{ backgroundColor: board }} testID="program-screen">
+        <ProgramBoard scheme={scheme} />
+        <ProgramContent />
+      </YStack>
+    </Theme>
+  )
+}
+
+function ProgramContent() {
   const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
   const insets = useSafeAreaInsets()
@@ -49,8 +91,8 @@ export default function ProgramPage() {
   // Loading state while auth is resolving
   if (authLoading) {
     return (
-      <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$primaryText" />
+      <YStack flex={1} items="center" justify="center" gap="$4">
+        <Spinner size="large" color="$color" />
         <Text color="$color10">Loading...</Text>
       </YStack>
     )
@@ -59,7 +101,7 @@ export default function ProgramPage() {
   // Not authenticated
   if (!user) {
     return (
-      <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
+      <YStack flex={1} items="center" justify="center" gap="$4">
         <Text color="$color11">Please sign in to view your program.</Text>
       </YStack>
     )
@@ -69,7 +111,6 @@ export default function ProgramPage() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <YStack
         flex={1}
-        bg="$background"
         pt={insets.top + 16}
         pb={insets.bottom}
       >

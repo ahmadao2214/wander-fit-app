@@ -271,10 +271,11 @@ export function OneRepMaxSheet({
 
           {/* Action Buttons */}
           <XStack gap="$3" pt="$2">
+            {/* Cancel is text: Save is the sheet's only filled button */}
             <Button
               flex={1}
               size="$4"
-              bg="$color3"
+              chromeless
               color="$color11"
               fontFamily="$body"
               fontWeight="600"
@@ -287,7 +288,7 @@ export function OneRepMaxSheet({
               flex={2}
               size="$4"
               bg={hasErrors ? '$color6' : '$primary'}
-              color="white"
+              color="$background"
               icon={isSaving ? undefined : Check}
               fontFamily="$body"
               fontWeight="600"
@@ -295,7 +296,7 @@ export function OneRepMaxSheet({
               disabled={isSaving || hasErrors}
               opacity={hasErrors ? 0.6 : 1}
             >
-              {isSaving ? <Spinner color="white" /> : 'Save'}
+              {isSaving ? <Spinner color="$background" /> : 'Save'}
             </Button>
           </XStack>
         </YStack>

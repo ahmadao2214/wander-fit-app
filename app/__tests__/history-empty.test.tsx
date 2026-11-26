@@ -29,11 +29,15 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 44, bottom: 34, left: 0, right: 0 }),
 }))
 
+let mockScheme: 'chalkboard' | 'whiteboard' = 'whiteboard'
+jest.mock('../../hooks/useSportScheme', () => ({ useSportScheme: () => mockScheme }))
+
 jest.mock('../../hooks/useAuth', () => ({
   useAuth: () => ({ user: { _id: 'user_1', name: 'Test Athlete' }, isLoading: false }),
 }))
 
 import HistoryPage from '../(athlete)/history'
+import { SPORT_SCHEMES, buttonFace, paint, sportPaint } from '../../jest/sportPaint'
 
 const AllTheProviders = ({ children }: { children: React.ReactNode }) => (
   <TamaguiProvider config={config}>{children}</TamaguiProvider>
@@ -56,5 +60,14 @@ describe('History empty state', () => {
     const { getByText } = render(<HistoryPage />, { wrapper: AllTheProviders })
     fireEvent.press(getByText("Go to today's workout"))
     expect(mockNavigate).toHaveBeenCalledWith('/(athlete)')
+  })
+
+  it.each(SPORT_SCHEMES)("paints Go to today's workout on the %s neutral face", (scheme) => {
+    const colors = sportPaint(scheme)
+    mockScheme = scheme
+    const { getByText } = render(<HistoryPage />, { wrapper: AllTheProviders })
+    mockScheme = 'whiteboard'
+    const go = getByText("Go to today's workout")
+    expect([paint(go).color, buttonFace(go)]).toEqual([colors.ground, colors.button])
   })
 })

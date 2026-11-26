@@ -16,7 +16,7 @@ url: ${VERIFY_URL}
     visible: "Workout history"
     timeout: 30000
 - extendedWaitUntil:
-    visible: "GPP W1D1"
+    visible: "Build W1D1"
     timeout: 30000
 # Completed rows show the check (spoken "Completed") and no status chip.
 # Web reports the aria-label as the id; native reports the testID.

@@ -243,9 +243,9 @@ export function WorkoutCalendar({
           <Button
             size="$2"
             bg={viewMode === 'week' ? '$primary' : 'transparent'}
-            color={viewMode === 'week' ? 'white' : '$color11'}
+            color={viewMode === 'week' ? '$background' : '$color11'}
             onPress={() => setViewMode('week')}
-            // Darker fill on press, not opacity: white on a faded $primary drops under AA
+            // Darker fill on press, not opacity: the label on a faded $primary drops under AA
             pressStyle={{ bg: viewMode === 'week' ? '$primaryPress' : '$color4' }}
             rounded="$3"
             px="$4"
@@ -255,9 +255,9 @@ export function WorkoutCalendar({
           <Button
             size="$2"
             bg={viewMode === 'month' ? '$primary' : 'transparent'}
-            color={viewMode === 'month' ? 'white' : '$color11'}
+            color={viewMode === 'month' ? '$background' : '$color11'}
             onPress={() => setViewMode('month')}
-            // Darker fill on press, not opacity: white on a faded $primary drops under AA
+            // Darker fill on press, not opacity: the label on a faded $primary drops under AA
             pressStyle={{ bg: viewMode === 'month' ? '$primaryPress' : '$color4' }}
             rounded="$3"
             px="$4"

@@ -8,8 +8,6 @@ import type { WarmupPhase, ExerciseSection } from '../../types'
 import type { Id } from '../../convex/_generated/dataModel'
 import { WARMUP_PHASES } from '../../convex/warmupSequences'
 import { warmupSummary } from '../../lib/workoutMeta'
-import { phaseTokens } from '../../lib/phase'
-import type { Phase as TrainingPhase } from '../../types'
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -32,8 +30,6 @@ interface WarmupSectionProps {
   onComplete: () => void
   onBack?: () => void
   mode: "preview" | "flow"
-  /** Training phase (GPP/SPP/SSP): colors the step badges */
-  trainingPhase?: TrainingPhase
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -109,15 +105,13 @@ function getPhaseDuration(phase: WarmupPhase): number {
 // PHASE CARD (Flow mode — with toggle)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function PhaseCard({ phase, exercises, phaseIndex, isCompleted, onToggle, trainingPhase }: {
+function PhaseCard({ phase, exercises, phaseIndex, isCompleted, onToggle }: {
   phase: WarmupPhase
   exercises: WarmupExercise[]
   phaseIndex: number
   isCompleted?: boolean
   onToggle?: () => void
-  trainingPhase?: TrainingPhase
 }) {
-  const colors = phaseTokens(trainingPhase)
 
   return (
     <Card
@@ -138,14 +132,15 @@ function PhaseCard({ phase, exercises, phaseIndex, isCompleted, onToggle, traini
             width={28}
             height={28}
             rounded="$10"
-            bg={isCompleted ? "$green10" : colors.fill}
+            // The step badge is the words colour: no phase fill
+            bg={isCompleted ? "$green10" : "$color"}
             items="center"
             justify="center"
           >
             {isCompleted ? (
               <Check size={14} color="white" />
             ) : (
-              <Caption color={colors.onFill} fontWeight="700">
+              <Caption color="$background" fontWeight="700">
                 {phaseIndex + 1}
               </Caption>
             )}
@@ -185,7 +180,7 @@ function PhaseCard({ phase, exercises, phaseIndex, isCompleted, onToggle, traini
 // FLOW MODE (Pre-execution full-screen)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function WarmupFlow({ exercises, totalDuration, onComplete, onBack, trainingPhase }: Omit<WarmupSectionProps, 'mode'>) {
+function WarmupFlow({ exercises, totalDuration, onComplete, onBack }: Omit<WarmupSectionProps, 'mode'>) {
   const insets = useSafeAreaInsets()
   const phaseGroups = groupByPhase(exercises)
   const activePhases = PHASE_ORDER.filter((p) => phaseGroups.has(p))
@@ -308,7 +303,6 @@ function WarmupFlow({ exercises, totalDuration, onComplete, onBack, trainingPhas
               phaseIndex={index}
               isCompleted={completedPhases.has(phase)}
               onToggle={() => togglePhase(phase)}
-              trainingPhase={trainingPhase}
             />
           </YStack>
         ))}
@@ -325,7 +319,7 @@ function WarmupFlow({ exercises, totalDuration, onComplete, onBack, trainingPhas
           <Button
             size="$5"
             bg="$primary"
-            color="white"
+            color="$background"
             fontSize={18}
             fontWeight="700"
             onPress={onComplete}
@@ -343,15 +337,14 @@ function WarmupFlow({ exercises, totalDuration, onComplete, onBack, trainingPhas
 // PREVIEW MODE (Detail screen collapsible — compact phase summary)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function WarmupPreview({ exercises, totalDuration, trainingPhase }: Pick<WarmupSectionProps, 'exercises' | 'totalDuration' | 'trainingPhase'>) {
+function WarmupPreview({ exercises, totalDuration }: Pick<WarmupSectionProps, 'exercises' | 'totalDuration'>) {
   const [expanded, setExpanded] = useState(false)
   const phaseGroups = groupByPhase(exercises)
   const activePhases = PHASE_ORDER.filter((p) => phaseGroups.has(p))
   const ungrouped = ungroupedExercises(exercises)
-  const colors = phaseTokens(trainingPhase)
 
   return (
-    <Card borderColor="$borderColor" borderWidth={1} bg="$background" overflow="hidden" borderLeftColor={colors.fill} borderLeftWidth={4}>
+    <Card borderColor="$borderColor" borderWidth={1} bg="$background" overflow="hidden">
       {/* Collapsible header */}
       <XStack
         items="center"
@@ -398,11 +391,11 @@ function WarmupPreview({ exercises, totalDuration, trainingPhase }: Pick<WarmupS
                   width={22}
                   height={22}
                   rounded={11}
-                  bg={colors.fill}
+                  bg="$color"
                   items="center"
                   justify="center"
                 >
-                  <Caption color={colors.onFill} fontWeight="700">
+                  <Caption color="$background" fontWeight="700">
                     {index + 1}
                   </Caption>
                 </YStack>

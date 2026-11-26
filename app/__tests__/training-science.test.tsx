@@ -30,6 +30,9 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 44, bottom: 34, left: 0, right: 0 }),
 }))
 
+let mockScheme: 'chalkboard' | 'whiteboard' = 'whiteboard'
+jest.mock('../../hooks/useSportScheme', () => ({ useSportScheme: () => mockScheme }))
+
 jest.mock('../../hooks/useAuth', () => ({
   useAuth: () => ({
     user: { id: 'test-user', name: 'Test User' },
@@ -38,6 +41,8 @@ jest.mock('../../hooks/useAuth', () => ({
 }))
 
 import TrainingSciencePage from '../(athlete)/training-science/index'
+import { PHASE_SWATCHES } from '../../lib/phase'
+import { SPORT_SCHEMES, paint, paintedColors, sportPaint } from '../../jest/sportPaint'
 
 const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
   return <TamaguiProvider config={config}>{children}</TamaguiProvider>
@@ -74,18 +79,19 @@ describe('TrainingSciencePage', () => {
     expect(getByText('Rest periods')).toBeTruthy()
   })
 
-  it('renders the three phases content (defaultExpanded)', () => {
+  it('renders the three phases as words (defaultExpanded)', () => {
     mockUseQuery.mockReturnValue({ gppCategoryId: 2 })
 
-    const { getByText } = render(
+    const { getByText, queryByText } = render(
       <TrainingSciencePage />,
       { wrapper: AllTheProviders }
     )
 
     // The Three Phases section is defaultExpanded
-    expect(getByText('GPP: General Physical Preparedness')).toBeTruthy()
-    expect(getByText('SPP: Specific Physical Preparedness')).toBeTruthy()
-    expect(getByText('SSP: Sport-Specific Preparedness')).toBeTruthy()
+    expect(getByText('Build the base')).toBeTruthy()
+    expect(getByText('Train for your sport')).toBeTruthy()
+    expect(getByText('Sharpen for the season')).toBeTruthy()
+    expect(queryByText(/GPP|SPP|SSP|Preparedness/)).toBeNull()
   })
 
   it('never uses the retired phase expansions', () => {
@@ -171,5 +177,22 @@ describe('TrainingSciencePage Category Personalization', () => {
     )
 
     expect(queryByText('Your sport category')).toBeNull()
+  })
+
+  it.each(SPORT_SCHEMES)('paints the %s phases in the words colour, with no phase fill', (scheme) => {
+    mockScheme = scheme
+    try {
+      mockUseQuery.mockReturnValue({ gppCategoryId: 2 })
+      const colors = sportPaint(scheme)
+      const { toJSON, getByTestId } = render(<TrainingSciencePage />, { wrapper: AllTheProviders })
+      const root = toJSON() as unknown as Parameters<typeof paintedColors>[0]
+      expect(paint(root).backgroundColor).toBe(colors.ground)
+      expect(paint(getByTestId('phase-block-GPP')).borderLeftColor).toBe(colors.words)
+      const fills = Object.values(PHASE_SWATCHES).flatMap((byPhase) => Object.values(byPhase).map((s) => s.fill))
+      const painted = paintedColors(root)
+      expect(painted.filter((c) => [...fills, '#2563EB', '#EFF6FF', '#DBEAFE'].includes(c))).toEqual([])
+    } finally {
+      mockScheme = 'whiteboard'
+    }
   })
 })

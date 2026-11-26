@@ -8,7 +8,9 @@ import {
   Card,
   Button,
   Spinner,
+  Theme,
 } from 'tamagui'
+import { useSportScheme } from '../../../hooks/useSportScheme'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
@@ -44,7 +46,7 @@ import {
   normalizeExerciseOrder,
   templateOrderToMainOrder,
 } from '../../../lib/executionOrder'
-import { phaseTokens } from '../../../lib/phase'
+import { phaseWord } from '../../../lib/sportScreen'
 
 /**
  * Exercise type for the draggable list (with intensity scaling)
@@ -91,7 +93,7 @@ type ExerciseItem = {
  * - Start button in header for quick access from anywhere
  * - Shows exercises in user's custom order if they reordered during execution
  */
-export default function WorkoutDetailScreen() {
+function WorkoutDetailScreenContent() {
   const router = useRouter()
   const { id } = useLocalSearchParams<{ id: string }>()
   const { user } = useAuth()
@@ -305,9 +307,6 @@ export default function WorkoutDetailScreen() {
       ? 'High intensity'
       : 'Moderate intensity'
 
-  // Phase identity color (labels, exercise numbers); actions use $primary
-  const phase = phaseTokens(template?.phase)
-
   // Render item for DraggableFlatList
   const renderExerciseItem = useCallback(
     ({ item, drag, isActive, getIndex }: RenderItemParams<ExerciseItem>) => {
@@ -321,12 +320,11 @@ export default function WorkoutDetailScreen() {
             onToggle={() => toggleExpanded(item.exerciseId)}
             drag={canReorder ? drag : undefined}
             isActive={isActive}
-            trainingPhase={template?.phase}
           />
         </ScaleDecorator>
       )
     },
-    [expandedExerciseIds, toggleExpanded, canReorder, template?.phase]
+    [expandedExerciseIds, toggleExpanded, canReorder]
   )
 
   // Key extractor for FlatList
@@ -377,16 +375,16 @@ export default function WorkoutDetailScreen() {
       <YStack gap="$3" pb="$3">
         {/* Reassessment Required Banner */}
         {!isPhaseUnlocked && reassessmentStatus?.reassessmentPending && (
-          <Card p="$3" bg="$brand1" borderColor="$brand3">
+          <Card p="$3" bg="$background" borderColor="$color" borderWidth={1}>
             <XStack items="center" gap="$2">
-              <Bell size={18} color="$primaryText" />
-              <Supporting color="$brand9" flex={1}>
-                Complete your reassessment to unlock {template.phase} workouts
+              <Bell size={18} color="$color" />
+              <Supporting color="$color" flex={1}>
+                Complete your reassessment to unlock {phaseWord(template.phase)} workouts
               </Supporting>
               <Button
                 size="$2"
                 bg="$primary"
-                color="white"
+                color="$background"
                 fontFamily="$body" fontWeight="600"
                 rounded="$3"
                 onPress={() => router.push('/(reassessment)/celebration' as any)}
@@ -403,7 +401,7 @@ export default function WorkoutDetailScreen() {
             <XStack items="center" gap="$2">
               <Lock size={18} color="$orange11" />
               <Supporting color="$orange11" flex={1}>
-                Preview mode — complete {template.phase === 'SPP' ? 'GPP' : 'SPP'} to unlock
+                Preview mode — complete {phaseWord(template.phase === 'SPP' ? 'GPP' : 'SPP')} to unlock
               </Supporting>
             </XStack>
           </Card>
@@ -548,7 +546,6 @@ export default function WorkoutDetailScreen() {
             totalDuration={warmupDuration}
             onComplete={() => {}}
             mode="preview"
-            trainingPhase={template?.phase}
           />
         )}
 
@@ -594,7 +591,7 @@ export default function WorkoutDetailScreen() {
   if (template === undefined || unlockedPhases === undefined) {
     return (
       <YStack flex={1} bg="$background" items="center" justify="center" gap="$4">
-        <Spinner size="large" color="$primaryText" />
+        <Spinner size="large" color="$color" />
         <Text>Loading workout...</Text>
       </YStack>
     )
@@ -628,7 +625,7 @@ export default function WorkoutDetailScreen() {
               <Button
                 size="$4"
                 bg="$primary"
-                color="white"
+                color="$background"
                 onPress={startWorkout}
                 testID="workout-start"
                 icon={isStarting ? undefined : Play}
@@ -643,10 +640,11 @@ export default function WorkoutDetailScreen() {
             {isPhaseUnlocked && isCompleted && (
               <Button
                 size="$4"
-                bg="$color4"
+                // Redo is a second action: outlined text, not a filled button
+                bg="transparent"
                 borderWidth={2}
-                borderColor="$primary"
-                color="$primaryText"
+                borderColor="$color"
+                color="$color"
                 onPress={startWorkout}
                 icon={isStarting ? undefined : RotateCcw}
                 fontWeight="600"
@@ -660,8 +658,8 @@ export default function WorkoutDetailScreen() {
             {/* The one display moment on this screen; long names wrap rather than truncate */}
             <Display accessibilityRole="header">{template.name}</Display>
             <Supporting testID="workout-meta" color="$color10">
-              <Supporting fontWeight="600" color={phase.text}>
-                {template.phase}
+              <Supporting fontWeight="600" color="$color">
+                {phaseWord(template.phase)}
               </Supporting>
               {' · '}
               {workoutMetaLine({
@@ -731,3 +729,13 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
 })
+
+/** On the basketball sport theme (issue #209): dark → chalkboard, light → whiteboard. */
+export default function WorkoutDetailScreen() {
+  const scheme = useSportScheme()
+  return (
+    <Theme name={scheme}>
+      <WorkoutDetailScreenContent />
+    </Theme>
+  )
+}

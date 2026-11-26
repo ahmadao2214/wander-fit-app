@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import {
   YStack,
   XStack,
@@ -30,9 +30,7 @@ import DraggableFlatList, {
 } from 'react-native-draggable-flatlist'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
-import { phaseTokens } from '../../lib/phase'
 import { SectionTitle, Body, Supporting, Caption } from '../Typography'
-import type { Phase } from '../../types'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -53,8 +51,6 @@ interface ExerciseQueueProps {
   currentIndex: number
   onExerciseSelect: (index: number) => void
   onReorder: (fromIndex: number, toIndex: number) => void
-  /** Training phase: colors the current exercise and the edge tab */
-  trainingPhase?: Phase
   /** Open state, when a control outside the queue (the header) opens it */
   open?: boolean
   onOpenChange?: (open: boolean) => void
@@ -81,11 +77,9 @@ export function ExerciseQueue({
   currentIndex,
   onExerciseSelect,
   onReorder,
-  trainingPhase,
   open: openProp,
   onOpenChange,
 }: ExerciseQueueProps) {
-  const phase = useMemo(() => phaseTokens(trainingPhase), [trainingPhase])
   const [openState, setOpenState] = useState(false)
   const open = openProp ?? openState
   const onOpenChangeRef = useRef(onOpenChange)
@@ -197,7 +191,7 @@ export function ExerciseQueue({
             p="$3"
             mb="$2"
             bg={isActive ? '$color2' : isCurrent ? '$color2' : isCompleted ? '$color3' : '$surface'}
-            borderColor={isActive || isCurrent ? phase.fill : '$borderColor'}
+            borderColor={isActive || isCurrent ? '$color' : '$borderColor'}
             borderWidth={isCurrent || isActive ? 2 : 1}
             rounded="$4"
             opacity={isCompleted && !isCurrent ? 0.7 : 1}
@@ -223,7 +217,7 @@ export function ExerciseQueue({
                 width={28}
                 height={28}
                 rounded="$10"
-                bg={isCompleted ? '$green10' : isCurrent ? phase.fill : '$color4'}
+                bg={isCompleted ? '$green10' : isCurrent ? '$color' : '$color4'}
                 items="center"
                 justify="center"
               >
@@ -231,7 +225,7 @@ export function ExerciseQueue({
                   <Check size={16} color="white" strokeWidth={3} />
                 ) : (
                   <Caption fontWeight="700"
-                    color={isCurrent ? phase.onFill : '$color11'}
+                    color={isCurrent ? '$background' : '$color11'}
                   >
                     {index + 1}
                   </Caption>
@@ -256,8 +250,8 @@ export function ExerciseQueue({
 
               {/* Current Badge or Navigation Arrow */}
               {isCurrent ? (
-                <Card bg={phase.fill} px="$2" py="$1" rounded="$2">
-                  <Caption color={phase.onFill} fontWeight="700">
+                <Card bg="$color" px="$2" py="$1" rounded="$2">
+                  <Caption color="$background" fontWeight="700">
                     Now
                   </Caption>
                 </Card>
@@ -269,7 +263,7 @@ export function ExerciseQueue({
         </TouchableOpacity>
       </ScaleDecorator>
     )
-  }, [currentIndex, onExerciseSelect, triggerHaptic, phase])
+  }, [currentIndex, onExerciseSelect, triggerHaptic])
 
   const keyExtractor = useCallback((item: Exercise, index: number) =>
     `${item.exerciseId}-${index}`, [])
@@ -292,7 +286,7 @@ export function ExerciseQueue({
         testID="exercise-queue-tab"
       >
         <YStack
-          bg={phase.fill}
+          bg="$color"
           width={EDGE_TAB_WIDTH}
           height={80}
           borderTopLeftRadius={12}
@@ -304,7 +298,7 @@ export function ExerciseQueue({
           items="center"
           justify="center"
         >
-          <ChevronLeft size={16} color={phase.onFill} style={{ marginLeft: -2 }} />
+          <ChevronLeft size={16} color="$background" style={{ marginLeft: -2 }} />
         </YStack>
       </View>
 

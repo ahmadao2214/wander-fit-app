@@ -5,8 +5,6 @@ import { TouchableOpacity, Platform, Vibration, type LayoutChangeEvent } from 'r
 import { SetEditSheet } from './SetEditSheet'
 import { parseReps } from '../../lib'
 import { nextSetIndex, setTileLayout } from '../../lib/workout'
-import { phaseTokens } from '../../lib/phase'
-import type { Phase } from '../../types'
 import { Supporting, Caption, numeric, MIN_FONT_SIZE, TYPE_SCALE } from '../Typography'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -41,8 +39,6 @@ interface SetTrackerProps {
   prescribedReps: string
   prescribedSets: number
   onSetUpdate: (setIndex: number, data: SetData) => void
-  /** Training phase: colors the next set's tile and completed checks */
-  trainingPhase?: Phase
   /** Previous performance data for comparison hints */
   previousSets?: PreviousSetData[]
 }
@@ -63,10 +59,8 @@ export function SetTracker({
   prescribedReps,
   prescribedSets,
   onSetUpdate,
-  trainingPhase,
   previousSets,
 }: SetTrackerProps) {
-  const phase = phaseTokens(trainingPhase)
   const [editingSetIndex, setEditingSetIndex] = useState<number | null>(null)
   const [rowWidth, setRowWidth] = useState(0)
   const activeIndex = nextSetIndex(sets)
@@ -192,8 +186,9 @@ export function SetTracker({
                   py={isNext ? '$3.5' : '$3'}
                   minH={isNext ? 84 : 72}
                   justify="center"
-                  bg={isNext ? phase.tint : isCompleted ? '$color3' : isSkipped ? '$color4' : '$background'}
-                  borderColor={isNext ? phase.fill : '$borderColor'}
+                  // The next set is outlined in the words colour: no phase fill or tint
+                  bg={isCompleted ? '$color3' : isSkipped ? '$color4' : '$background'}
+                  borderColor={isNext ? '$color' : '$borderColor'}
                   borderWidth={isNext ? 2 : 1}
                   rounded="$4"
                 >
@@ -206,7 +201,7 @@ export function SetTracker({
                       // Weight goes on its own line so "12" and "225 lb" fit a third-width tile
                       <YStack items="center">
                         <XStack items="center" gap="$1">
-                          <Check size={18} color={phase.text} strokeWidth={3} />
+                          <Check size={18} color="$color" strokeWidth={3} />
                           {set.repsCompleted != null && (
                             <Text fontSize={18} lineHeight={24} color="$color12" fontFamily="$body" fontWeight="700" style={numeric}>
                               {set.repsCompleted}

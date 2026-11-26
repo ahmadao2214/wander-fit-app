@@ -4,6 +4,7 @@ import { DEFAULT_WEEKS_PER_PHASE, mapUserWeekToTemplateWeek } from "./weekMappin
 import { programShape } from "./programShape";
 import { anchorsAfterCheckIn } from "./blockCompletion";
 import { weeksOnPlan, localDayArgs } from "../lib/weeksOnPlan";
+import { seasonSource, seasonStartsAt } from "../lib/sportScreen";
 
 /**
  * User Programs - Active State Management
@@ -169,8 +170,14 @@ export const getCurrentProgramState = query({
       .withIndex("by_user_program", (q) => q.eq("userProgramId", program._id))
       .first();
 
-    // Get intake response for sport info
+    // Get intake response for sport info. The first game stays on the
+    // initial intake, not a later check-in that copies the same weeks.
     const intake = await ctx.db.get(program.intakeResponseId);
+    const intakes = await ctx.db
+      .query("intake_responses")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+    const supplied = seasonSource(intakes);
 
     // Get sport name
     let sportName: string | null = null;
@@ -201,6 +208,8 @@ export const getCurrentProgramState = query({
       // Program duration
       totalProgramWeeks: program.totalProgramWeeks ?? null,
       weeksPerPhase: program.weeksPerPhase ?? null,
+      // When the first game is, from the intake that set the season; null with no set season
+      seasonStartsAt: supplied ? seasonStartsAt(supplied.completedAt, supplied.weeksUntilSeason) : null,
       // Sport and category info
       sportName,
       categoryName,
