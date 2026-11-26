@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs'
+import { MOTION, legDelayMs, tripMs } from '../motion'
 
 const doc = readFileSync('DESIGN.md', 'utf8')
 
@@ -25,12 +26,14 @@ describe('DESIGN.md', () => {
   it('records the motion durations from the motion proof', () => {
     const motion = doc.slice(doc.indexOf('## Motion'), doc.indexOf('## Instrument screen'))
     expect(motion).toContain('lib/motion.ts')
-    expect(motion).toContain('480')
-    expect(motion).toContain('442')
-    expect(motion).toContain('1364')
-    expect(motion).toContain('180')
-    expect(motion).toContain('0 ms')
-    expect(motion).toContain('Bounce is 0')
+    expect(motion).toContain(`Draw-on is ${MOTION.drawOnMs} ms`)
+    expect(motion).toContain(MOTION.easeOut)
+    expect(motion).toContain(`after ${legDelayMs(1)} ms`)
+    expect(motion).toContain(`Three legs take ${tripMs()} ms`)
+    expect(motion).toContain(`is ${MOTION.instrumentMs} ms`)
+    expect(motion).toContain(MOTION.easeInOut)
+    expect(motion).toContain(`Reduced motion is ${MOTION.reducedMotionMs} ms`)
+    expect(motion).toContain(`Bounce is ${MOTION.bounce}`)
   })
 
   it('shows the instrument button on the neutral token', () => {
