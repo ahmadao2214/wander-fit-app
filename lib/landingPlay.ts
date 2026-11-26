@@ -55,7 +55,7 @@ const SCROLL_SCRIPT = `<script>
   if (!("IntersectionObserver" in window)) { boards.forEach((svg) => svg.classList.add("play")); return }
   const seen = new IntersectionObserver((entries) => {
     for (const entry of entries) {
-      if (!entry.isIntersecting) continue
+      if (entry.intersectionRatio < 0.33) continue
       entry.target.classList.add("play")
       seen.unobserve(entry.target)
     }

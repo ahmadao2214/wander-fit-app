@@ -56,6 +56,8 @@ describe('landing play', () => {
     expect(scroll).toContain(MOTION.easeOut)
     expect(scroll).toContain(`stroke-dashoffset ${MOTION.drawOnMs}ms ${MOTION.easeOut}`)
     expect(scroll).toContain('IntersectionObserver')
+    expect(scroll).toContain('entry.intersectionRatio < 0.33')
+    expect(scroll).not.toContain('entry.isIntersecting')
     expect(scroll).toMatch(/@media \(prefers-reduced-motion: reduce\) \{\s*\.leg \{ stroke-dashoffset: 0; transition: none; \}/)
   })
 
