@@ -63,3 +63,31 @@ _Avoid_: the chat assigning a phase
 **Athlete-added movement**:
 A library movement placed on a day by the athlete through a chat, in a later slice. It stays distinct from a movement the program prescribed.
 _Avoid_: custom exercise
+
+### Feedback
+
+**Feedback**:
+Anything an athlete sends from inside the app: a rating, a bug report or a feature request.
+_Avoid_: ticket, support request
+
+**Feature Request**:
+The athlete's own words for something they want. After triage it is a Product Enhancement of its own, joins one already tracked, or is dropped.
+_Avoid_: idea, suggestion
+
+**Triage**:
+Deciding what a piece of feedback is and what happens to it. It ends in a new issue, a merge into an existing issue, or a drop.
+_Avoid_: review, grooming
+
+### Kinds of work
+
+**Bug**:
+The app does something other than what it was built to do.
+_Avoid_: defect, issue (an issue is where any kind of work is tracked)
+
+**Product Enhancement**:
+A change an athlete can see or feel.
+_Avoid_: feature, enhancement on its own
+
+**Platform Enhancement**:
+A change no athlete sees: CI, tests, builds, releases, tooling, infrastructure.
+_Avoid_: chore, tech debt, enhancement on its own
