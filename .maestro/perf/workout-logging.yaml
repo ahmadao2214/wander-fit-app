@@ -1,0 +1,53 @@
+# Perf journey: start a workout, open the exercise queue, log sets, move to the
+# next exercise, pause and exit, then discard the paused session.
+# Starts on Today with an unlocked workout and no paused session, and ends the
+# same way, so it can run again.
+appId: com.offseason.asrafit
+---
+- assertVisible:
+    id: today-heading
+- tapOn: "Start Workout"
+- tapOn:
+    id: workout-start
+- runFlow:
+    when:
+      visible:
+        id: warmup-skip
+    commands:
+      - tapOn:
+          id: warmup-skip
+- assertVisible:
+    id: execute-exercise-name
+- tapOn:
+    id: exercise-progress
+- assertVisible: "Hold to reorder upcoming"
+- tapOn:
+    id: exercise-queue-close
+- tapOn:
+    id: set-0
+- runFlow:
+    when:
+      visible:
+        id: set-1
+    commands:
+      - tapOn:
+          id: set-1
+- tapOn:
+    id: execute-next
+- assertVisible:
+    id: execute-exercise-name
+- tapOn:
+    id: set-0
+- tapOn:
+    id: execute-exit
+- tapOn:
+    id: exit-pause
+- assertVisible:
+    id: today-paused
+- tapOn:
+    id: today-discard
+- tapOn:
+    id: today-discard-confirm
+- extendedWaitUntil:
+    visible: "Start Workout"
+    timeout: 15000

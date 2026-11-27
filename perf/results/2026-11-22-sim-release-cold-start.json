@@ -1,0 +1,158 @@
+{
+  "journey": "cold-start",
+  "label": "2026-11-22-sim-release",
+  "template": "Time Profiler",
+  "device": "C88D28E5-9CE7-40D3-AD2D-000B74D8D094",
+  "build": "Release simulator (scripts/verify/explore.mjs build)",
+  "commit": "77fe00a",
+  "recordedAt": "2026-11-23T01:23:40.903723Z",
+  "notes": "Provisional: recorded while another simulator ran a dev build of the app (pid 5693, about 9-13 s of CPU per trace). Its samples are excluded, but its CPU contention isn't, so hangs and flowMs may read worse than on a quiet machine. Re-record before the first before/after comparison.",
+  "runs": 5,
+  "failedRuns": 0,
+  "flowMs": {
+    "median": 43292,
+    "min": 37221,
+    "max": 45894
+  },
+  "flowMsNote": "Wall time of the whole Maestro run, including Maestro's own start-up (20-30 s). Not a launch time.",
+  "hangCount": {
+    "median": 1,
+    "min": 1,
+    "max": 3
+  },
+  "hangTotalMs": {
+    "median": 817.7,
+    "min": 552.8,
+    "max": 1334.4
+  },
+  "hangMaxMs": {
+    "median": 605.8,
+    "min": 457.2,
+    "max": 999.1
+  },
+  "mainThreadBusyMs": {
+    "median": 3698,
+    "min": 2326,
+    "max": 4075
+  },
+  "mainThreadFlushMs": {
+    "median": 3,
+    "min": 1,
+    "max": 25
+  },
+  "mainThreadOtherMs": {
+    "median": 3683,
+    "min": 2324,
+    "max": 4050
+  },
+  "jsThreadBusyMs": {
+    "median": 302,
+    "min": 236,
+    "max": 318
+  },
+  "jsThreadFound": true,
+  "appBusyMs": {
+    "median": 5948,
+    "min": 4127,
+    "max": 6777
+  },
+  "hitchCount": null,
+  "hitchTotalMs": null,
+  "results": [
+    {
+      "run": 1,
+      "ok": true,
+      "flowMs": 37221,
+      "pids": [16806],
+      "hangs": {
+        "count": 2,
+        "totalMs": 817.7,
+        "maxMs": 457.2
+      },
+      "busy": {
+        "mainMs": 2326,
+        "jsMs": 236,
+        "appMs": 4127,
+        "mainFlushMs": 2,
+        "mainOtherMs": 2324,
+        "jsThreadFound": true
+      }
+    },
+    {
+      "run": 2,
+      "ok": true,
+      "flowMs": 43292,
+      "pids": [21997],
+      "hangs": {
+        "count": 1,
+        "totalMs": 619.7,
+        "maxMs": 619.7
+      },
+      "busy": {
+        "mainMs": 3698,
+        "jsMs": 318,
+        "appMs": 5948,
+        "mainFlushMs": 15,
+        "mainOtherMs": 3683,
+        "jsThreadFound": true
+      }
+    },
+    {
+      "run": 3,
+      "ok": true,
+      "flowMs": 45894,
+      "pids": [27318],
+      "hangs": {
+        "count": 1,
+        "totalMs": 999.1,
+        "maxMs": 999.1
+      },
+      "busy": {
+        "mainMs": 4075,
+        "jsMs": 305,
+        "appMs": 6777,
+        "mainFlushMs": 25,
+        "mainOtherMs": 4050,
+        "jsThreadFound": true
+      }
+    },
+    {
+      "run": 4,
+      "ok": true,
+      "flowMs": 43621,
+      "pids": [33435],
+      "hangs": {
+        "count": 3,
+        "totalMs": 1334.4,
+        "maxMs": 605.8
+      },
+      "busy": {
+        "mainMs": 3730,
+        "jsMs": 302,
+        "appMs": 6089,
+        "mainFlushMs": 3,
+        "mainOtherMs": 3727,
+        "jsThreadFound": true
+      }
+    },
+    {
+      "run": 5,
+      "ok": true,
+      "flowMs": 40528,
+      "pids": [38859],
+      "hangs": {
+        "count": 1,
+        "totalMs": 552.8,
+        "maxMs": 552.8
+      },
+      "busy": {
+        "mainMs": 3157,
+        "jsMs": 273,
+        "appMs": 5155,
+        "mainFlushMs": 1,
+        "mainOtherMs": 3156,
+        "jsThreadFound": true
+      }
+    }
+  ]
+}
