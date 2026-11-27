@@ -5,8 +5,11 @@
  */
 import type { AgeGroup } from '../types'
 
-/** Placeholder until the final domain is attached. */
-export const DEFAULT_SITE_URL = 'https://wanderfit.app'
+/**
+ * The landing site (`landing/`), which serves /privacy, /terms, /refunds,
+ * /support and /delete-account. Change it when the final domain is attached.
+ */
+export const DEFAULT_SITE_URL = 'https://wanderfit-beta.vercel.app'
 
 /** The site origin from `EXPO_PUBLIC_SITE_URL`, without a trailing slash. */
 export function siteUrl(raw: string | undefined): string {

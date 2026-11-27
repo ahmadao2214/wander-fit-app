@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Get help with WanderFit, ask a privacy question, or request account deletion.">
+  <meta name="theme-color" content="#f6f7f9">
+  <meta name="color-scheme" content="light">
+  <title>Support · WanderFit</title>
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+  <link rel="preload" href="/fonts/Archivo-latin-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/styles.css?v=2">
+  <link rel="stylesheet" href="/legal.css?v=1">
+  <!-- Production Convex support-form endpoint. On localhost, ?preview=1 tests the form without storing. -->
+  <meta name="contact-endpoint" content="https://fleet-mallard-22.convex.site/contact">
+  <script type="module" src="/contact.mjs?v=1"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="top wrap">
+    <a class="wordmark" href="/">WanderFit</a>
+    <nav class="top-nav" aria-label="Site">
+      <a href="/support" aria-current="page">Support</a>
+    </nav>
+  </header>
+
+  <main id="main" class="doc wrap">
+    <h1>WanderFit support</h1>
+    <p class="doc-lede">Need help with your program, signing in, or a bug? Send a request and we will reply by email, usually within 2 business days.</p>
+
+    <form class="contact" id="contact-form" method="post" novalidate>
+      <h2 id="contact-title">Send us a request</h2>
+      <fieldset class="field">
+        <legend>What do you need?</legend>
+        <div class="choices">
+          <label><input type="radio" name="topic" value="support" checked> <span>Help with the app</span></label>
+          <label><input type="radio" name="topic" value="privacy"> <span>A privacy question or a parent or guardian request</span></label>
+          <label><input type="radio" name="topic" value="delete_account"> <span>Delete an account</span></label>
+        </div>
+      </fieldset>
+      <div class="field">
+        <label for="contact-email">Your email</label>
+        <input type="email" id="contact-email" name="email" autocomplete="email" inputmode="email" required aria-describedby="contact-email-hint">
+        <span class="hint" id="contact-email-hint">We reply to this address. For an account request, use the email on the account if you can.</span>
+      </div>
+      <div class="field">
+        <label for="contact-message">Your message</label>
+        <textarea id="contact-message" name="message" rows="6" maxlength="2000" required aria-describedby="contact-message-hint"></textarea>
+        <span class="hint" id="contact-message-hint">A parent or guardian asking about an athlete's account: include the athlete's account email and how you are related.</span>
+      </div>
+      <div class="trap" aria-hidden="true">
+        <label for="contact-website">Website</label>
+        <input id="contact-website" name="website" tabindex="-1" autocomplete="off">
+      </div>
+      <p class="err" id="contact-error" role="alert" tabindex="-1" hidden></p>
+      <button class="cta" type="submit" id="contact-submit" disabled>Send request</button>
+      <noscript><p class="hint">This form needs JavaScript. Turn it on in your browser and reload the page.</p></noscript>
+    </form>
+    <div class="contact-done" id="contact-done" tabindex="-1" hidden>
+      <h2 id="contact-done-title">Request sent</h2>
+      <p id="contact-done-body">We reply by email, usually within 2 business days.</p>
+    </div>
+
+    <h2 id="quick-help">Quick help</h2>
+    <ul>
+      <li><strong>Signing in.</strong> Use the same sign-in method you chose at the start: Sign in with Apple, Sign in with Google, or email and password.</li>
+      <li><strong>Your program and schedule.</strong> Open the Program tab to see upcoming workouts or change your training days. Open Profile to update your maxes for the core lifts.</li>
+      <li><strong>Deleting your account.</strong> In the app, go to Profile → App settings → Delete account. Without the app, see <a href="/delete-account">delete your account</a>.</li>
+    </ul>
+
+    <h2 id="legal">Policies</h2>
+    <ul>
+      <li><a href="/privacy">Privacy Policy</a></li>
+      <li><a href="/terms">Terms of Service</a></li>
+      <li><a href="/refunds">Refund Policy</a></li>
+    </ul>
+  </main>
+
+  <footer class="foot wrap">
+    <div class="foot-row">
+      <span class="wordmark small">WanderFit</span>
+      <span class="foot-meta">© 2026 · Not medical advice.</span>
+      <nav class="foot-nav" aria-label="Footer">
+        <a href="/privacy">Privacy Policy</a>
+        <a href="/terms">Terms of Service</a>
+        <a href="/refunds">Refund Policy</a>
+        <a href="/support" aria-current="page">Support</a>
+        <a href="/delete-account">Delete your account</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>

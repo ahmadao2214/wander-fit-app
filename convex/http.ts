@@ -1,3 +1,4 @@
+import { cleanContact } from './contact'
 import { cleanSignup } from './waitlist'
 import { verifySvixSignature } from './clerkWebhook'
 import { httpRouter } from 'convex/server'
@@ -253,6 +254,42 @@ function extractClientIp(request: Request): string | null {
   return null
 }
 
+/**
+ * A 2,000-character message can take four UTF-8 bytes a character, and JSON
+ * escaping can add more, so the support form gets a larger cap than /waitlist.
+ */
+const MAX_CONTACT_BODY_BYTES = 16384
+
+/** Saved support requests per 15-minute window, across every sender. */
+const MAX_CONTACT_REQUESTS_PER_WINDOW = 100
+
+/** Read a JSON body of at most `maxBytes`: 413 when larger, 400 when it isn't JSON. */
+async function readJsonBody(
+  request: Request,
+  maxBytes = MAX_BODY_BYTES
+): Promise<{ ok: true; body: unknown } | { ok: false; status: 400 | 413 }> {
+  const reader = request.body?.getReader()
+  const bytes = new Uint8Array(maxBytes)
+  let length = 0
+  if (reader) {
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+      if (length + value.byteLength > maxBytes) {
+        await reader.cancel()
+        return { ok: false, status: 413 }
+      }
+      bytes.set(value, length)
+      length += value.byteLength
+    }
+  }
+  try {
+    return { ok: true, body: JSON.parse(new TextDecoder().decode(bytes.subarray(0, length))) }
+  } catch {
+    return { ok: false, status: 400 }
+  }
+}
+
 http.route({
   path: '/waitlist',
   method: 'OPTIONS',
@@ -265,28 +302,13 @@ http.route({
   path: '/waitlist',
   method: 'POST',
   handler: httpAction(async (ctx, request) => {
-    const reader = request.body?.getReader()
-    const bytes = new Uint8Array(MAX_BODY_BYTES)
-    let length = 0
-    if (reader) {
-      while (true) {
-        const { value, done } = await reader.read()
-        if (done) break
-        if (length + value.byteLength > MAX_BODY_BYTES) {
-          await reader.cancel()
-          return waitlistJson(request, 413, { error: 'That sign-up is too large.' })
-        }
-        bytes.set(value, length)
-        length += value.byteLength
-      }
+    const read = await readJsonBody(request)
+    if (!read.ok) {
+      return waitlistJson(request, read.status, {
+        error: read.status === 413 ? 'That sign-up is too large.' : 'Send the sign-up as JSON.',
+      })
     }
-
-    let body: unknown
-    try {
-      body = JSON.parse(new TextDecoder().decode(bytes.subarray(0, length)))
-    } catch {
-      return waitlistJson(request, 400, { error: 'Send the sign-up as JSON.' })
-    }
+    const body = read.body
 
     const clientIp = extractClientIp(request)
     if (clientIp) {
@@ -329,6 +351,79 @@ http.route({
       ).join('')
     }
     await ctx.runMutation(internal.waitlist.record, { ...result.value, updateTokenHash })
+    return waitlistJson(request, 200, { ok: true })
+  }),
+})
+
+http.route({
+  path: '/contact',
+  method: 'OPTIONS',
+  handler: httpAction(async (_ctx, request) => {
+    return new Response(null, { status: 204, headers: corsHeaders(request) })
+  }),
+})
+
+/**
+ * Support form on the landing site (landing/support). Same guards as
+ * `/waitlist`: body cap, IP and per-email rate limits, honeypot.
+ */
+http.route({
+  path: '/contact',
+  method: 'POST',
+  handler: httpAction(async (ctx, request) => {
+    const read = await readJsonBody(request, MAX_CONTACT_BODY_BYTES)
+    if (!read.ok) {
+      return waitlistJson(request, read.status, {
+        error: read.status === 413 ? 'That message is too long.' : 'Send the request as JSON.',
+      })
+    }
+
+    const tooMany = (retryAfterSeconds: number) =>
+      waitlistJson(
+        request,
+        429,
+        { error: 'Too many requests. Try again in a few minutes.' },
+        { 'Retry-After': String(retryAfterSeconds) }
+      )
+
+    const clientIp = extractClientIp(request)
+    if (clientIp) {
+      const ipLimit = await ctx.runMutation(internal.waitlist.checkRateLimit, {
+        key: `contact-ip:${clientIp}`,
+      })
+      if (!ipLimit.allowed) return tooMany(ipLimit.retryAfterSeconds)
+    }
+
+    const result = cleanContact(read.body)
+    // Spam gets the same answer as a real request so bots learn nothing.
+    if (!result.ok && 'spam' in result) return waitlistJson(request, 200, { ok: true })
+    if (!result.ok) return waitlistJson(request, 400, { error: result.error })
+
+    const emailLimit = await ctx.runMutation(internal.waitlist.checkRateLimit, {
+      key: `contact-email:${result.value.email.toLowerCase()}`,
+    })
+    if (!emailLimit.allowed) return tooMany(emailLimit.retryAfterSeconds)
+
+    // The IP comes from request headers and the email changes freely, so a
+    // script can dodge both limits. This one caps saved requests whatever it sends.
+    const globalLimit = await ctx.runMutation(internal.waitlist.checkRateLimit, {
+      key: 'contact-global',
+      limit: MAX_CONTACT_REQUESTS_PER_WINDOW,
+    })
+    if (!globalLimit.allowed) {
+      console.warn('POST /contact hit its global cap; requests are being refused')
+      return waitlistJson(
+        request,
+        429,
+        {
+          error:
+            'The form is busy. Try again in a few minutes. To delete an account now, use Profile → App settings → Delete account in the app.',
+        },
+        { 'Retry-After': String(globalLimit.retryAfterSeconds) }
+      )
+    }
+
+    await ctx.runMutation(internal.contact.record, result.value)
     return waitlistJson(request, 200, { ok: true })
   }),
 })
