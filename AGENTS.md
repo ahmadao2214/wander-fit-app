@@ -1,5 +1,7 @@
 # Wander-Fit Development Guidelines
 
+Multi-agent work on this repo follows `TEAM.md`.
+
 ## Keyboard Input Handling
 
 Wrap any screen with input fields in `KeyboardAvoidingView` so the keyboard doesn't hide them:
